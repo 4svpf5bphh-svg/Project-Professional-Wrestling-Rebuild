@@ -33,11 +33,13 @@ const money=(n:number)=>new Intl.NumberFormat("en-GB",{
 }).format(n);
 const tone=(n:number)=>n>=0?"ppw-positive":"ppw-negative";
 /** Read-only company balance-sheet and verified event P&L, no invented revenues. */
-export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
+export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
+ initialPane:"FINANCES"|"RATINGS"="FINANCES"){
  let view:BusinessView|null=null,error="",loading=false,
   rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
   rescueReceipt:string|null=null,
-  pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"="FINANCES",
+  pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"|"RATINGS"=initialPane,
+  selectedRatingsRivalId:string|null=null,
   commercialBusy=false,commercialNotice="",renaming=false,renameBusy=false,
   commercialKind:"BROADCAST"|"SPONSOR"="BROADCAST",
   spendingExpanded=false;
@@ -185,7 +187,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
   const nav=el("nav","ppw-business-nav");
   nav.setAttribute("aria-label","Business reports");
   for(const [id,title] of [
-   ["FINANCES","Finances"],["STANDING","Standing"],["ACTIVITY","Activity"],["EVENTS","Events"],["TERRITORIES","Territories"],["COMMERCIAL","Deals"]
+   ["FINANCES","Finances"],["RATINGS","Ratings War"],["STANDING","Standing"],["ACTIVITY","Activity"],["EVENTS","Events"],["TERRITORIES","Territories"],["COMMERCIAL","Deals"]
   ] as const){
    const b=button(title,()=>{pane=id;draw();});
    b.setAttribute("aria-current",pane===id?"page":"false");nav.append(b);
@@ -609,6 +611,138 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort){
     card.append(body);section.append(card);
    }
    root.append(section);
+  }
+
+  if(pane==="RATINGS"){
+   // The existing bounded six-week competitor read is public certified World
+   // audience data. All filters, head-to-head choices and graphs are local.
+   const section=el("section","ppw-ratings-war-desk");
+   section.dataset.kind="certified-tv";
+   const header=el("header","ppw-ratings-war-head");
+   header.append(el("span","ppw-business-kicker","PPW / BROADCAST BATTLE"),
+    el("h2","","Ratings War"),
+    el("p","ppw-business-muted",
+     "Latest certified TV episode per promotion · past six weeks"));
+   section.append(header);
+   const ranking=view.competitorBroadcasts??[];
+   const own=ranking.find(episode=>episode.isYours)??null;
+   const others=ranking.filter(episode=>!episode.isYours);
+   const opponent=others.find(episode=>episode.promotionId===selectedRatingsRivalId)??
+    others[0]??null;
+   const ownRank=ranking.findIndex(episode=>episode.isYours);
+   const compare=el("section","ppw-ratings-war-faceoff");
+   compare.setAttribute("aria-label","Certified TV ratings comparison");
+   const cards=el("div","ppw-ratings-war-faceoff-scores");
+   const scoreCard=(name:string,rating:number|null,kind:"OWNER"|"RIVAL")=>{
+    const tile=el("div","ppw-ratings-war-score");
+    tile.dataset.side=kind;
+    tile.append(el("span","",kind==="OWNER"?"YOUR PROMOTION":"CHALLENGER"),
+     el("strong","ppw-ratings-war-promotion",name),
+     el("b","ppw-ratings-war-rating",rating===null?"—":rating.toFixed(1)),
+     el("small","",rating===null?"No recent certified TV result":"HOUSEHOLD RATING"));
+    return tile;
+   };
+   cards.append(scoreCard(own?.name??view.name,own?.householdRating??null,"OWNER"),
+    el("span","ppw-ratings-war-versus","VS"),
+    scoreCard(opponent?.name??"No challenger recorded",
+     opponent?.householdRating??null,"RIVAL"));
+   compare.append(cards);
+   if(own&&opponent){
+    const difference=own.householdRating-opponent.householdRating;
+    const score=Math.abs(difference).toFixed(1);
+    compare.append(el("p","ppw-ratings-war-result",difference===0?
+     "Latest broadcasts are level on household rating.":
+     difference>0?"You're ahead by "+score+" rating points.":
+      opponent.name+" leads by "+score+" rating points."));
+    if(own.year!==opponent.year||own.week!==opponent.week)
+     compare.append(el("small","ppw-ratings-war-note",
+      "Latest episodes aired in different weeks; this is not a same-slot result."));
+   }else compare.append(el("p","ppw-ratings-war-result",
+    "Compare audiences once you and another promotion have certified TV results."));
+   section.append(compare);
+   if(ownRank>=0){
+    const position=el("p","ppw-ratings-war-standings",
+     "YOUR POSITION  ·  #"+(ownRank+1)+" OF "+ranking.length+
+     " RECENT BROADCASTERS");
+    section.append(position);
+   }
+   const episodes=view.shows.filter(show=>
+    show.audience?.format==="TV"&&typeof show.audience.householdRating==="number")
+    .slice(0,6).reverse();
+   const trend=el("section","ppw-ratings-war-trend");
+   trend.append(el("h3","","Your last six TV broadcasts"));
+   if(!episodes.length)trend.append(el("p","ppw-business-muted",
+    "Your first certified TV rating will appear after a completed broadcast."));
+   else{
+    const highest=Math.max(.1,...episodes.map(e=>e.audience!.householdRating!));
+    const bars=el("div","ppw-ratings-war-bars");
+    bars.setAttribute("role","list");
+    bars.setAttribute("aria-label","Your certified TV ratings history");
+    for(const episode of episodes){
+     const rating=episode.audience!.householdRating!;
+     const bar=el("div","ppw-ratings-war-bar");
+     bar.setAttribute("role","listitem");
+     bar.setAttribute("aria-label","Year "+episode.year+" Week "+episode.week+
+      ", household rating "+rating.toFixed(1));
+     bar.append(el("strong","",rating.toFixed(1)));
+     const track=el("div","ppw-ratings-war-track");
+     const fill=el("span","ppw-ratings-war-fill");
+     fill.style.height=Math.max(5,Math.round(rating/highest*100))+"%";
+     track.append(fill);bar.append(track,
+      el("small","","W"+episode.week));
+     bars.append(bar);
+    }
+    trend.append(bars);
+    if(typeof view.averageTvRating==="number"&&view.recentTvEpisodes)
+     trend.append(el("p","ppw-ratings-war-average",
+      view.recentTvEpisodes+" recent broadcasts · "+
+      view.averageTvRating.toFixed(1)+" average TV rating"));
+   }
+   section.append(trend);
+   const board=el("section","ppw-ratings-war-leaderboard");
+   board.append(el("h3","","The field"));
+   if(!ranking.length)board.append(el("p","ppw-business-muted",
+    "No certified TV broadcasts in the last six weeks."));
+   const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+   // Display the current promotion even when outside the first seven.
+   const shown=ranking.slice(0,7);
+   if(ownRank>=7)shown.push(ranking[ownRank]!);
+   for(const episode of shown){
+    const row=el("article","ppw-ratings-war-rival");
+    if(episode.isYours)row.dataset.own="true";
+    if(episode.promotionId===opponent?.promotionId)row.dataset.selected="true";
+    const rank=ranking.indexOf(episode)+1;
+    const description=el("div","ppw-ratings-war-rival-copy");
+    description.append(el("strong","","#"+rank+" · "+episode.name+
+     (episode.isYours?" · YOU":"")),
+     el("small","",episode.showName+" · "+(days[(episode.day??0)-1]??"Day unreported")+
+      " · Y"+episode.year+" W"+episode.week));
+    const numbers=el("div","ppw-ratings-war-rival-number");
+    numbers.append(el("b","",episode.householdRating.toFixed(1)),
+     el("small","",episode.estimatedViewers===null?
+      "Household rating":episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
+    row.append(description,numbers);
+    if(!episode.isYours){
+     const choose=button("Compare",()=>{
+      selectedRatingsRivalId=episode.promotionId;draw();
+     });
+     choose.classList.add("ppw-ratings-war-compare");
+     choose.setAttribute("aria-label","Compare against "+episode.name);
+     choose.setAttribute("aria-pressed",
+      String(episode.promotionId===opponent?.promotionId));
+     row.append(choose);
+    }
+    board.append(row);
+   }
+   section.append(board);
+   const next=el("div","ppw-ratings-war-next");
+   next.append(el("strong","","Turn ratings into better deals"),
+    el("p","ppw-business-muted",
+     "Audience and reach influence available broadcasters. Partners are exclusive in this World."));
+   next.append(button("Networks & sponsors",()=>{
+    commercialKind="BROADCAST";pane="COMMERCIAL";draw();
+   }));
+   section.append(next);root.append(section);
   }
   if(pane==="COMMERCIAL"){
    const section=el("section","ppw-business-panel ppw-commercial-desk");

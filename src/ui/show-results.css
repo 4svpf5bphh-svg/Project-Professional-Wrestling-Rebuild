@@ -531,3 +531,50 @@
 .ppw-road-agent-observation .ppw-next-show-evidence{justify-self:start}
 @media(max-width:390px){.ppw-next-show-buttons{display:grid;grid-template-columns:1fr}
  .ppw-next-show-buttons>*{width:100%}}
+
+/* Phase 33: certified broadcast performance belongs to the results design,
+   not a tiny unrelated rating sticker. Never confuse rating with match stars. */
+#game .ppw-results .ppw-result-broadcast-audience{
+ box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;
+ grid-template-rows:auto auto;gap:8px 14px;
+ width:100%;max-width:100%;min-width:0;margin:11px 0 15px;
+ padding:12px 14px;background:linear-gradient(130deg,#172740ef,#192e4bef);
+ border:1px solid #5d8cac;border-top:3px solid #74d4e5;border-radius:12px;
+ box-shadow:inset 0 1px #ffffff16;align-items:center;
+}
+#game .ppw-results .ppw-audience-head{
+ grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;
+ gap:7px 12px;min-width:0;
+}
+#game .ppw-results .ppw-result-audience-label{
+ font-size:10px;letter-spacing:.13em;font-weight:950;color:#80e9f2;
+}
+#game .ppw-results .ppw-audience-format{
+ color:#cad6e7;font-size:9px;letter-spacing:.06em;font-weight:750;
+}
+#game .ppw-results .ppw-audience-metrics{
+ display:flex;gap:17px;flex-wrap:wrap;align-items:center;min-width:0;
+}
+#game .ppw-results .ppw-audience-metric{display:grid;gap:2px;min-width:0}
+#game .ppw-results .ppw-audience-metric small{
+ font-size:9px;color:#c9d8e5;font-weight:850;letter-spacing:.065em;line-height:1.25;
+}
+#game .ppw-results .ppw-audience-metric strong{
+ font-size:clamp(19px,6.4vw,27px);line-height:1.08;letter-spacing:-.025em;
+ color:#fff0c3;font-variant-numeric:tabular-nums;
+}
+#game .ppw-results .ppw-audience-ratings-link{
+ grid-column:2;grid-row:2;min-height:44px;min-width:0;
+ padding:9px 11px;border:1px solid #7edfea;background:#144a66;
+ border-radius:9px;color:#efffff;font-size:12px;font-weight:850;
+ white-space:nowrap;box-shadow:none;
+}
+@media(max-width:360px){
+ #game .ppw-results .ppw-result-broadcast-audience{
+  grid-template-columns:minmax(0,1fr);padding:10px 11px;gap:9px;
+ }
+ #game .ppw-results .ppw-audience-ratings-link{
+  grid-column:1;grid-row:auto;width:100%;
+ }
+ #game .ppw-results .ppw-audience-metrics{gap:12px}
+}

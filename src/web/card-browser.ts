@@ -420,7 +420,8 @@ function businessPort(root:HTMLElement,scope:Scope,
 }
 export function mountBusinessPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
- return mountBusinessDesk(root,businessPort(root,scope,call));
+ return mountBusinessDesk(root,businessPort(root,scope,call),
+  window.location.hash==="#/business/ratings"?"RATINGS":"FINANCES");
 }
 function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{
@@ -553,6 +554,7 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  await mountShowResults(root,{
   load:async()=>createCardClient(scope)("results"),
   openNext:destination=>{window.location.hash=hostSectionHash(destination);},
+  openRatings:()=>{window.location.hash="#/business/ratings";},
   openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
   mediaScrum:{
    read:()=>scrumRequest(scope,{action:"READ"}),

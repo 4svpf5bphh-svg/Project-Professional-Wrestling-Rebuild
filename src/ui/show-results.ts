@@ -130,13 +130,15 @@ export async function mountShowResults(root:HTMLElement,port:{
  commentary?():Promise<{status:"ready"|"pending"|"unavailable";review?:RingsideCopy}>;
  mediaScrum?:MediaScrumPort;
  openNext?:(section:NextStepDestination)=>void;
+ openRatings?():void;
  openWrestler?:(personId:string)=>void;
 }){
  root.classList.add("ppw-editor","ppw-results");
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
-  renderBroadcast(root,show,port.openNext,port.mediaScrum,port.openWrestler);
+  renderBroadcast(root,show,port.openNext,port.mediaScrum,
+   port.openWrestler,port.openRatings);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
    if(result.status==="ready"&&result.review&&
@@ -151,7 +153,7 @@ export async function mountShowResults(root:HTMLElement,port:{
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort,
- openWrestler?:(personId:string)=>void):void{
+ openWrestler?:(personId:string)=>void,openRatings?:()=>void):void{
  root.classList.remove("ppw-editorial-ready");
  const poster=show.bookingClass==="PREMIUM"?eventPosterByStyle(show.eventPosterStyle):null;
  const effectiveSkin=poster?null:show.resultsSkin;
@@ -189,16 +191,34 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   node("span","ppw-result-score-label","CROWD / 100"));
  append(header,append(node("div","ppw-result-hero-main"),titleWrap));
  if(show.audience){
-  const report=show.audience,block=node("div","ppw-result-broadcast-audience");
-  if(report.format==="TV"&&report.householdRating!==null&&report.estimatedViewers!==null)
-   append(block,node("span","ppw-result-audience-label","TV RATING"),
-    node("strong","",report.householdRating.toFixed(1)),
-    node("small","","Approx. "+report.estimatedViewers.toLocaleString("en-GB")+" viewers"));
-  else if(report.format==="PPV"&&report.ppvBuys!==null)
-   append(block,node("span","ppw-result-audience-label","PPV BUYS"),
-    node("strong","",report.ppvBuys.toLocaleString("en-GB")),
-    node("small","","Estimated purchases"));
-  if(block.childElementCount)header.append(block);
+  const report=show.audience,block=node("section","ppw-result-broadcast-audience");
+  block.setAttribute("aria-label","Broadcast performance");
+  const title=node("div","ppw-audience-head");
+  title.append(node("span","ppw-result-audience-label","BROADCAST PERFORMANCE"),
+   node("span","ppw-audience-format",report.format==="TV"?"TELEVISION":"PAY-PER-VIEW"));
+  const metrics=node("div","ppw-audience-metrics");
+  const metric=(caption:string,value:string)=>{
+   const item=node("div","ppw-audience-metric");
+   item.append(node("small","",caption),node("strong","",value));
+   return item;
+  };
+  if(report.format==="TV"&&report.householdRating!==null){
+   metrics.append(metric("TV RATING",report.householdRating.toFixed(1)));
+   if(report.estimatedViewers!==null)
+    metrics.append(metric("EST. VIEWERS",report.estimatedViewers.toLocaleString("en-GB")));
+  }else if(report.format==="PPV"&&report.ppvBuys!==null)
+   metrics.append(metric("EST. PPV BUYS",report.ppvBuys.toLocaleString("en-GB")));
+  if(metrics.childElementCount){
+   block.append(title,metrics);
+   if(report.format==="TV"&&openRatings){
+    const compare=document.createElement("button");
+    compare.type="button";compare.className="ppw-audience-ratings-link";
+    compare.textContent="Ratings War";compare.onclick=openRatings;
+    compare.setAttribute("aria-label","Compare TV ratings in Ratings War");
+    block.append(compare);
+   }
+   header.append(block);
+  }
  }
 
  const firstMoment=showBroadcastHighlights(show.entries)[0];

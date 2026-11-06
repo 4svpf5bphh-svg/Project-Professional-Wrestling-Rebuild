@@ -329,3 +329,73 @@
  .ppw-business-budget-presets{gap:5px}
  .ppw-business-budget-presets>.ppw-business-budget-preset{padding:9px 6px;font-size:12px}
 }
+
+/* Phase 33 Ratings War: the existing certified public six-week World board,
+   promoted to a competitive, thumb-friendly Business destination. */
+.ppw-ratings-war-desk{display:grid;gap:13px;min-width:0}
+.ppw-ratings-war-head{padding:14px 13px;background:linear-gradient(115deg,#151c35,#292548);
+ border:1px solid #7369ae;border-radius:14px}
+.ppw-ratings-war-head h2{font-size:clamp(25px,7vw,37px);font-style:italic;
+ letter-spacing:-.045em;color:#fff0ce;margin:4px 0 3px;text-transform:uppercase}
+.ppw-ratings-war-head p{margin:0}
+.ppw-ratings-war-faceoff{padding:14px 10px 10px;background:#151d32;
+ border:1px solid #4d6c96;border-radius:14px}
+.ppw-ratings-war-faceoff-scores{display:grid;
+ grid-template-columns:minmax(0,1fr) 27px minmax(0,1fr);align-items:center;gap:5px}
+.ppw-ratings-war-score{min-width:0;display:grid;gap:5px;padding:13px 8px;
+ border:1px solid #4f7794;background:#102c43;border-radius:11px;text-align:center}
+.ppw-ratings-war-score[data-side="RIVAL"]{background:#33263b;border-color:#a77699}
+.ppw-ratings-war-score>span{font-size:9px;letter-spacing:.08em;color:#b5d4e8;font-weight:850}
+.ppw-ratings-war-promotion{font-size:clamp(12px,3.5vw,15px);color:#fff;line-height:1.25;min-height:35px;overflow-wrap:anywhere}
+.ppw-ratings-war-rating{font-variant-numeric:tabular-nums;font-size:clamp(34px,11vw,53px);
+ color:#f8dc9e;line-height:1;font-weight:950}
+.ppw-ratings-war-score small{font-size:9px;color:#c2d5e6}
+.ppw-ratings-war-versus{font-size:14px;font-weight:950;color:#f4cee7;text-align:center}
+.ppw-ratings-war-result{text-align:center;color:#f6e4bd;font-size:14px;
+ font-weight:850;margin:12px 0 5px}
+.ppw-ratings-war-note{display:block;text-align:center;color:#a9bed2;font-size:11px}
+.ppw-ratings-war-standings{font-size:12px;font-weight:950;letter-spacing:.04em;
+ color:#8ce6df;margin:0}
+.ppw-ratings-war-trend,.ppw-ratings-war-leaderboard,.ppw-ratings-war-next{
+ padding:13px;border:1px solid #446581;background:#10283b;border-radius:14px;
+ min-width:0}
+.ppw-ratings-war-desk h3{font-size:17px;margin:0 0 11px;color:#fff0c9}
+.ppw-ratings-war-bars{display:flex;gap:7px;justify-content:space-between;
+ align-items:stretch;width:100%;height:143px;padding:0 3px}
+.ppw-ratings-war-bar{display:grid;grid-template-rows:20px minmax(0,1fr) 20px;
+ align-items:center;justify-items:center;flex:1;min-width:0;gap:3px}
+.ppw-ratings-war-bar strong{font-variant-numeric:tabular-nums;font-size:12px;color:#f1daaa}
+.ppw-ratings-war-track{width:min(100%,38px);height:100%;display:flex;
+ align-items:flex-end;justify-content:center;background:#ffffff14;border-radius:5px;overflow:hidden}
+.ppw-ratings-war-fill{width:100%;display:block;background:linear-gradient(#64d3eb,#3c67b5);
+ border-radius:5px 5px 0 0;min-height:2px}
+.ppw-ratings-war-bar small{font-size:10px;color:#c4d3e1}
+.ppw-ratings-war-average{margin:9px 0 0;font-size:12px;color:#b6d9e9}
+.ppw-ratings-war-leaderboard{display:grid;gap:7px}
+.ppw-ratings-war-leaderboard h3{margin-bottom:3px}
+.ppw-ratings-war-rival{display:grid;grid-template-columns:minmax(0,1fr) auto;
+ gap:8px 11px;align-items:center;padding:10px;border-radius:10px;
+ border:1px solid #385971;background:#142f46}
+.ppw-ratings-war-rival[data-own="true"]{border-color:#69d4c5;background:#17413f}
+.ppw-ratings-war-rival[data-selected="true"]:not([data-own="true"]){border-color:#b98bb1}
+.ppw-ratings-war-rival-copy{display:grid;min-width:0;gap:4px}
+.ppw-ratings-war-rival-copy strong{font-size:13px;overflow-wrap:anywhere}
+.ppw-ratings-war-rival-copy small{font-size:10px;color:#b6cddd;line-height:1.35}
+.ppw-ratings-war-rival-number{text-align:right;display:grid;gap:3px}
+.ppw-ratings-war-rival-number b{font-size:23px;color:#f6dcaa;font-variant-numeric:tabular-nums}
+.ppw-ratings-war-rival-number small{font-size:10px;color:#b6d4e3;white-space:nowrap}
+.ppw-ratings-war-compare{grid-column:1/-1;justify-self:end;min-height:44px;
+ font-size:12px;padding:8px 16px}
+.ppw-ratings-war-compare[aria-pressed="true"]{background:#5f3c65;border-color:#e7bde5;color:#fff}
+.ppw-ratings-war-next{display:grid;gap:6px}
+.ppw-ratings-war-next>strong{color:#ffe6ad;font-size:15px}
+.ppw-ratings-war-next p{margin:0}
+.ppw-ratings-war-next button{justify-self:start;min-height:44px}
+@media(max-width:360px){
+ .ppw-ratings-war-faceoff{padding:10px 7px}
+ .ppw-ratings-war-score{padding:12px 5px}
+ .ppw-ratings-war-faceoff-scores{grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr);gap:2px}
+ .ppw-ratings-war-versus{font-size:11px}
+ .ppw-ratings-war-rival{grid-template-columns:minmax(0,1fr)}
+ .ppw-ratings-war-rival-number{text-align:left}
+}
