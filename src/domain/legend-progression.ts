@@ -64,3 +64,27 @@ export function paceLegendForOneWorld(def:LegendDefinition):LegendDefinition{
  const target=pacedWorldLegendTarget(def.metric,def.target,def.tier);
  return {...def,target,achievement:worldLegendAchievement(def.metric,target)};
 }
+
+/** Apply the original World milestone design in catalogue order, then
+ * separate any newly collided metric+target pairs. The original 48 (and
+ * previously released World unlocks) remain ahead of the new collection.
+ * No achievement requires resetting, joining or creating another World.
+ */
+export function paceWorldLegendCatalogue(
+ definitions:readonly LegendDefinition[],
+):LegendDefinition[]{
+ const used=new Set<string>();
+ return definitions.map(def=>{
+  const paced=paceLegendForOneWorld(def);
+  if(paced.metric===null||paced.target===null)return paced;
+  let target=paced.target;
+  // Metric-specific spacing prevents duplicate release thresholds when a
+  // common floor raises two different authored milestones to one number.
+  const increment=paced.metric==="LONGEST_REIGN"?1:
+   Math.max(1,Math.ceil(LEGEND_WORLD_METRIC_FLOORS[paced.metric]*.08));
+  while(used.has(paced.metric+":"+target))target+=increment;
+  used.add(paced.metric+":"+target);
+  return target===paced.target?paced:
+   {...paced,target,achievement:worldLegendAchievement(paced.metric,target)};
+ });
+}

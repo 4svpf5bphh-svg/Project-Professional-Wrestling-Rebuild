@@ -18,6 +18,9 @@ test("single-World targets reflect the live Week 21 volume, not fresh Worlds",()
   "A single uninterrupted championship reign of 52 World weeks");
  assert.ok(LEGENDS_CATALOGUE.every(d=>d.metric&&d.target&&
   d.achievement===worldLegendAchievement(d.metric,d.target)));
+ assert.equal(new Set(LEGENDS_CATALOGUE.map(d=>d.metric+":"+d.target)).size,
+  LEGENDS_CATALOGUE.length,
+  "Whole-World pacing must not bundle multiple Legends on the same receipt");
 });
 
 test("World achievements are feasible within one uninterrupted five-season save",()=>{
