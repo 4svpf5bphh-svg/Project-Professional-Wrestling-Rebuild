@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,RINGSIDE_STYLE_GUIDE} from "../src/domain/ringside-editorial.js";
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,RINGSIDE_STYLE_GUIDE,ringsideStipulationNote,RINGSIDE_PROMPT_VERSION} from "../src/domain/ringside-editorial.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 const example:CompletedShowView={showId:"show-1",showName:"Omega Night",year:1,week:1,
  crowdResponse:83,matchCount:1,angleCount:1,entries:[
@@ -121,4 +121,30 @@ test("repeat sentences are discarded while distinct editorial observations survi
  const clean=removeVerbatimRecapEchoes(prose);
  assert.equal(clean.match(/A big boot flattened/g)?.length,1);
  assert.match(clean,/referee looked impressed/);
+});
+
+
+test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls",()=>{
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v7");
+ assert.match(ringsideStipulationNote("I Quit Match · SINGLES")!.winningCondition,/VERBALLY/);
+ assert.match(ringsideStipulationNote("Steel Cage · SINGLES")!.plausibleAction,/Steel mesh/);
+ const quit:CompletedShowView={...example,entries:[{
+  ...example.entries[0]!,outcome:"VERBAL_SURRENDER",
+  matchContext:{...example.entries[0]!.matchContext!,format:"I Quit Match · SINGLES"}
+ },example.entries[1]!]};
+ assert.equal(ringsideBrief(quit).slots[0]!.match!.stipulationRules!.stipulation,"I_QUIT");
+ const spoken={...valid,slots:[{...valid.slots[0],
+  recap:"Omega stretched the hold as the referee raised the microphone. The challenger verbally surrendered."},
+  valid.slots[1]]};
+ assert.doesNotThrow(()=>validateRingsideCopy(spoken,quit));
+ assert.throws(()=>validateRingsideCopy({...spoken,slots:[{
+  ...spoken.slots[0],recap:"The challenger tapped out to end it."},spoken.slots[1]]},quit),
+  /verbal surrender/);
+ const cage:CompletedShowView={...example,entries:[{
+  ...example.entries[0]!,
+  matchContext:{...example.entries[0]!.matchContext!,format:"Steel Cage · SINGLES"}
+ },example.entries[1]!]};
+ assert.throws(()=>validateRingsideCopy({...valid,slots:[{...valid.slots[0],
+  recap:"Kenny Omega escaped the cage for the win."},valid.slots[1]]},cage),/Cage escape/);
+ assert.equal(ringsideStipulationNote("SINGLES"),null);
 });

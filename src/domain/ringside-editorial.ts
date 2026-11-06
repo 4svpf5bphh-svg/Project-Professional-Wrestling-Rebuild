@@ -2,10 +2,53 @@
 import type {CompletedShowView} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
+import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // Updated editorial is versioned independently. Published v4 remains immutable.
-export const RINGSIDE_PROMPT_VERSION="ringside-v6";
+export const RINGSIDE_PROMPT_VERSION="ringside-v7";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v6";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
+/** Compact, provider-neutral vocabulary. No additional model request, database
+ * read or invented permanent event; the recorded winning method stays final. */
+const STIPULATION_NOTES:Partial<Readonly<Record<MatchStipulation,{
+ win:string;texture:string}>>>={
+ HARDCORE:{win:"Pinned or submitted under no-disqualification rules.",
+  texture:"An uncompromising fight that may spill outside and use ringside objects, but invent no decisive weapon or medical fallout."},
+ STEEL_CAGE:{win:"Pinfall or submission inside the cage; escape is NOT a winning method.",
+  texture:"Steel mesh looming over the ring, bodies pressed against the wall, rattling panels and restricted space. No invented outsiders."},
+ LADDER:{win:"Climb a ladder and retrieve the suspended prize; a pin cannot win.",
+  texture:"Ladders erected and toppled, interrupted climbs, precarious reaches. Do not invent serious falls or injuries."},
+ TABLES:{win:"Send the opponent through a table; no three-count.",
+  texture:"Tables being positioned, avoided and threatened, with one decisive break."},
+ TLC:{win:"Retrieve the suspended prize from a ladder; a pin or table break alone cannot win.",
+  texture:"A hazardous landscape of tables, ladders and chairs, the ladder climb carrying the final stakes."},
+ LAST_MAN_STANDING:{win:"A wrestler loses by failing to stand before the referee completes ten.",
+  texture:"Repeated knockdowns and the referee's audible rising count; no made-up hospital aftermath."},
+ SUBMISSION:{win:"Tap-out or referee stoppage from a submission hold; no pinfall.",
+  texture:"Grip changes, limb pressure, crawling to ropes and struggles to escape a hold."},
+ IRON_MAN:{win:"Most certified falls when the time limit expires; don't invent an exact score.",
+  texture:"The clock, stamina, tactical adjustments and exhaustion across successive falls."},
+ TWO_OUT_OF_THREE:{win:"The second winning fall decides the bout; no fabricated earlier fall-by-fall score.",
+  texture:"Wrestlers adjust tactics through the contest as the final fall becomes urgent."},
+ FALLS_COUNT_ANYWHERE:{win:"Pin or submission can count beyond the ring; no count-out.",
+  texture:"Ringside floor, ramp and arena boundaries can become part of the action."},
+ I_QUIT:{win:"The opponent must VERBALLY surrender to the referee, normally into a microphone; a tap-out, pin or referee stoppage cannot win.",
+  texture:"Escalating pressure and psychology, threats of another painful hold, a microphone held close while the opponent refuses before finally speaking. No automatic blood, weapons or injury."},
+ FIRST_BLOOD:{win:"First opponent made to bleed loses; no three-count or submission win.",
+  texture:"The apprehension of a cut ending the match; don't turn blood into a diagnosed or lasting injury."},
+ BACKSTAGE_BRAWL:{win:"Recorded pin or submission decides a fight in a backstage area.",
+  texture:"Corridors, loading bays and production equipment provide setting, not automatic collateral damage."},
+ CASKET:{win:"Place the opponent inside the casket and shut the lid; no pinfall.",
+  texture:"Struggles near the casket, attempts to keep the lid open and the decisive closure, without supernatural embellishment."}
+};
+export function ringsideStipulationNote(format:string){
+ const stip=MATCH_STIPULATIONS.find(s=>s.value!=="STANDARD"&&
+  format.startsWith(s.label+" · "));
+ const note=stip?STIPULATION_NOTES[stip.value]:null;
+ return stip&&note?{stipulation:stip.value,winningCondition:note.win,
+  plausibleAction:note.texture}:null;
+}
+
 export interface RingsideCopy{
  showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[];
@@ -159,6 +202,24 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
     }
    }
    const finish=source.outcome;
+   const stipulated=source.matchContext?.format??"";
+   if(finish==="VERBAL_SURRENDER"){
+    if(!/\b(?:i quit|verbally surrender(?:ed)?|surrender(?:ed)? aloud|said (?:the|those) words|spoke (?:the|those) words|admitted defeat aloud)\b/i.test(prose))
+     throw new Error("I Quit finish must describe verbal surrender");
+    if(/\b(?:tapped(?:\s+out)?|tap-out|pinfall victory|three-count|referee stoppage)\b/i.test(prose))
+     throw new Error("I Quit cannot end by tap, pin or stoppage");
+   }
+   if(stipulated.startsWith("Steel Cage")&&
+    /\b(?:won|victory|prevailed|secured (?:the )?win)\b[^.!?]{0,60}\b(?:escap(?:e|ed|ing)|climb(?:ed|ing)? out)\b|\bescap(?:e|ed|ing)\b[^.!?]{0,50}\b(?:to win|for (?:the )?win|victory)\b/i.test(prose))
+    throw new Error("Cage escape is not a certified win condition");
+   if(finish==="CASKET_CLOSE"&&!/\b(?:casket|coffin)\b/i.test(prose))
+    throw new Error("Casket victory omitted the casket");
+   if(finish==="FIRST_BLOOD"&&!/\b(?:blood|bleed|bleeding|bled)\b/i.test(prose))
+    throw new Error("First Blood omitted the decisive blood");
+   if(["RETRIEVAL","TABLE_BREAK","TEN_COUNT","MOST_FALLS","SECOND_FALL",
+     "VERBAL_SURRENDER","FIRST_BLOOD","CASKET_CLOSE"].includes(finish)&&
+    /\b(?:won by (?:pinfall|submission)|pinned (?:him|her|them) for (?:the )?win|tapped out for (?:the )?win|three-count (?:secured|decided|won))\b/i.test(prose))
+    throw new Error("Stipulation result replaced by an invalid finish");
    if(finish==="CLEAN_PIN"||finish==="FLASH_PIN"){
     const winners=new Set(source.matchContext?.winnerNames??[]);
     for(const p of source.performerIdentities??[]){
@@ -278,7 +339,9 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
    ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
    ...(e.matchContext?{match:{format:e.matchContext.format,
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
-    titleContested:e.matchContext.championshipContested}}:{}),
+    titleContested:e.matchContext.championshipContested,
+    ...(ringsideStipulationNote(e.matchContext.format)?{
+     stipulationRules:ringsideStipulationNote(e.matchContext.format)}:{})}}:{}),
    ...(e.segmentContext?{angle:e.segmentContext}:{}),
    ...(e.segmentKind?{kind:e.segmentKind}:{}),
    ...(e.fallout?{fallout:{
@@ -392,6 +455,20 @@ no three-count. TEN_COUNT means the opponent fails a referee's ten-count.
 Steel Cage is fought inside an enclosure, but escape is not an authored win
 condition and interference cannot be invented. Hardcore has no disqualification.
 SUBMISSION stipulations end by tap-out or referee stoppage.
+I QUIT is DIFFERENT: the opponent must verbally say they surrender when
+the referee brings a microphone near; an I Quit finish is NEVER a tap-out.
+Build physical urgency around the pressure, the refusal to quit and the
+spoken surrender, with no invented diagnosed injury or actual blood.
+Steel Cage needs the enclosure to matter: the wall, mesh, restricted escape
+routes and impact against the steel can supply believable nonconsequential
+spots, but escaping the cage CANNOT win and no outsiders appear.
+An Iron Man match is decided by the MOST FALLS when time expires, not
+a single pin; don't invent exact intermediate scores. Two of Three Falls
+ends with the second fall to the winner. First Blood ends at the first
+bloodshed, not medical clearance. Casket finishes require closing the lid.
+Use each match's supplied stipulationRules as the correct rulebook and
+plausible-action palette. They describe possible flavour, not recorded
+spots or permission to invent weapons, title changes, injuries or run-ins.
 If the finish is CLEAN_PIN, favour an appropriate impact finisher and cover.
 A submission hold like Samoa Joe's Coquina Clutch cannot directly score a pin.
 Joe's Muscle Buster can. FLASH_PIN is an opportunistic roll-up or cradle,
