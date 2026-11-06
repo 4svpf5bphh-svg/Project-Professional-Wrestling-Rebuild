@@ -5,6 +5,7 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {settleCertifiedWorldLegends} from "../src/db/legends-settlement.js";
+import {findLegend} from "../src/domain/legends-catalogue.js";
 import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../src/db/legend-reveal-pilot.js";
 import {readLegendsVault,markLegendRevealSeen} from "../src/db/legends-vault.js";
 import {applyKayfabeAction} from "../src/db/kayfabe-points.js";
@@ -66,12 +67,19 @@ test("certified classics introduce Legends as competing free agents once; accoun
     VALUES($1,1,1,3)`,[world]);
    await tx.query(`INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,1)`,
     [world]);
+   // This settlement test focuses on market entry, cards and multiplayer
+   // privacy. Seed already-certified lifetime counters from the SAME World
+   // rather than constructing another 127 artificial card slots in one show.
+   // Eight genuine matches above add to the newly calibrated World target.
+   await tx.query(`INSERT INTO ppw_legend_metrics(world_id,metric,value)
+    VALUES($1,'CLASSICS',$2)`,
+    [world,findLegend("jerry-lynn")!.target!-8]);
   });
   const first=await withWorldTransaction(db.pool,tx=>
    settleCertifiedWorldLegends(tx,world,1,1));
   assert.equal(first.processed,true);
   assert.deepEqual(first.unlocked,["jerry-lynn"]);
-  // Mr Perfect met the same certified evidence, but must wait for his rarity gate.
+  // Higher rarity requires far more evidence; one large week is not enough.
   const replay=await withWorldTransaction(db.pool,tx=>
    settleCertifiedWorldLegends(tx,world,1,1));
   assert.deepEqual(replay,{processed:false,unlocked:[]});
@@ -142,17 +150,22 @@ test("certified classics introduce Legends as competing free agents once; accoun
     VALUES($1,1,13,3)`,[world]);
    await tx.query(`
     INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,13)`,[world]);
+   // A new, independently measured angle milestone earns a different
+   // Legend without needing to create a second World or reset the save.
+   await tx.query(`UPDATE ppw_legend_metrics SET value=$2
+    WHERE world_id=$1 AND metric='HOT_ANGLES'`,
+    [world,findLegend("raven")!.target!*2]);
   });
   const later=await withWorldTransaction(db.pool,tx=>
    settleCertifiedWorldLegends(tx,world,1,13));
-  assert.deepEqual(later.unlocked,["mr-perfect"]);
+  assert.deepEqual(later.unlocked,["raven"]);
   const laterRecord=await withWorldTransaction(db.pool,tx=>tx.query<{
    legend_id:string;year:number;week:number}>(`
    SELECT legend_id,year,week FROM ppw_world_legend_unlocks
    WHERE world_id=$1 ORDER BY year,week`,[world]));
   assert.deepEqual(laterRecord,[
    {legend_id:"jerry-lynn",year:1,week:1},
-   {legend_id:"mr-perfect",year:1,week:13}
+   {legend_id:"raven",year:1,week:13}
   ]);
  }finally{
   // Disposable Postgres fixture; never connect this test to Production.
