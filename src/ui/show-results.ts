@@ -1,3 +1,4 @@
+import {activateWorkspaceRoot} from "./workspace-root.js";
 /** PPW Ringside: a results broadcast, not a spreadsheet of resolution receipts.
  * Player-authored finishes remain sovereign; editorial copy is derived from
  * verified scores, written stories and the original locked card.
@@ -135,7 +136,7 @@ export async function mountShowResults(root:HTMLElement,port:{
  openWrestler?:(personId:string)=>void;
  openProgrammes?:(personId:string)=>void;
 }){
- root.classList.add("ppw-editor","ppw-results");
+ activateWorkspaceRoot(root,"ppw-results");
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
@@ -170,6 +171,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const pulse=broadcastShowPulse(show.entries);
  const tone=broadcastTone(show.crowdResponse);
  let changePage:(page:0|1|2)=>void=()=>{};
+ let revealNarrative:()=>void=()=>{};
  const header=node("header","ppw-result-hero ppw-tone-"+tone.toLowerCase());
  if(effectiveSkin==="TERRITORY_TV")
   header.append(node("div","ppw-territory-station",
@@ -271,7 +273,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     node("span","ppw-flow-slot",String(point.position+1)),
     node("span","ppw-flow-kind",kind.toUpperCase()));
    button.onclick=()=>{
-    changePage(1);setFilter("ALL");
+    revealNarrative();changePage(1);
     const target=storyLinks.get(point.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -293,8 +295,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   append(noise,
    node("span","ppw-pop-kicker",HOT_TAG_TAGLINE),
    node("h2","ppw-crowd-noise-title ppw-pop-title",HOT_TAG_NAME),
-   node("p","ppw-crowd-noise-disclaimer",
-    "Fictional in-game wrestling social media. Posts, profiles and engagement are simulated; results link to certified matches and angles."));
+   node("p","ppw-pop-intro","Wrestler voices and fans react to tonight's completed show."));
   const wall=node("div","ppw-crowd-noise-wall ppw-pop-timeline");
   wall.setAttribute("aria-label","HOT TAG fictional wrestling social timeline");
   for(const post of wrestlerPosts){
@@ -317,7 +318,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    const moment=node("button","ppw-pop-wrestler-action","See moment") as HTMLButtonElement;
    moment.type="button";
    moment.onclick=()=>{
-    changePage(1);setFilter("ALL");
+    revealNarrative();changePage(1);
     const target=storyLinks.get(post.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -362,7 +363,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     node("span","","🔁 "+reaction.reposts.toLocaleString("en-GB")));
    card.append(metrics,node("span","ppw-crowd-noise-read","OPEN THE RECORDED MOMENT ↗"));
    card.onclick=()=>{
-    changePage(1);setFilter("ALL");
+    revealNarrative();changePage(1);
     const target=storyLinks.get(reaction.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -383,7 +384,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     node("strong","",item.headline),node("p","",item.detail),
     node("span","ppw-result-read","READ THE STORY  ↗"));
    button.addEventListener("click",()=>{
-    changePage(1);setFilter("ALL");
+    revealNarrative();changePage(1);
     const target=storyLinks.get(item.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -395,7 +396,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  append(timeline,node("h2","ppw-broadcast-section-title","THE FULL SHOW"));
  const entries:({element:HTMLElement;lead:HTMLElement;type:ShowResultEntry["type"]})[]=[];
  // Single chronological narrative: highlights always reveal their verified card slot.
- const setFilter=(_filter:"ALL")=>{};
+
  if(!show.entries.length)append(timeline,node("p","ppw-muted","There are no recorded card items."));
  for(const [index,entry] of show.entries.entries()){
   const review=reviewCompletedEntry(entry,show.showId);
@@ -561,7 +562,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    const source=node("button","ppw-next-show-evidence","See the recorded moment") as HTMLButtonElement;
    source.type="button";
    source.onclick=()=>{
-    changePage(1);
+    revealNarrative();changePage(1);
     const detail=storyLinks.get(task.evidenceSlotId!);
     if(detail instanceof HTMLDetailsElement)detail.open=true;
     detail?.scrollIntoView({block:"start",behavior:"instant"});
@@ -601,7 +602,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
      "Review "+observation.headline.toLowerCase()) as HTMLButtonElement;
     source.type="button";
     source.onclick=()=>{
-     changePage(1);
+     revealNarrative();changePage(1);
      const target=storyLinks.get(observation.slotId);
      if(target instanceof HTMLDetailsElement)target.open=true;
      target?.scrollIntoView({block:"start",behavior:"instant"});
@@ -723,14 +724,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const narrativeButton=node("button","ppw-show-breakdown-toggle","Broadcast play-by-play") as HTMLButtonElement;
  const rundownButton=node("button","ppw-show-breakdown-toggle","Show Breakdown") as HTMLButtonElement;
  narrativeButton.type="button";rundownButton.type="button";
+ let compactFullShow=true;
  const setBreakdown=(compact:boolean)=>{
+  compactFullShow=compact;
   breakdown.hidden=!compact;timeline.hidden=compact;
   // Portraits are created only while browsing the breakdown. Keeping a
   // hidden second copy would duplicate wrestler content for screen readers,
   // needlessly allocate images and break the original broadcast view.
   for(const job of portraitJobs){
    const existing=job.card.querySelector(".ppw-breakdown-portraits");
-   if(compact&&!existing){
+   if(compact&&!existing&&full.isConnected&&!full.hidden){
     const strip=matchPortraits(job.entry);
     if(strip){strip.classList.add("ppw-breakdown-portraits");job.card.append(strip);}
    }else if(!compact)existing?.remove();
@@ -770,7 +773,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   };
   card.append(open);breakdown.append(card);
  }
- setBreakdown(false);
+ // Show the easy-to-scan rundown first. The original detailed report and
+ // every results skin stay one tap away; evidence links always open it.
+ revealNarrative=()=>setBreakdown(false);
+ setBreakdown(true);
  full.append(breakdownSwitch,breakdown,timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  if(effectiveSkin==="TERRITORY_TV"){
@@ -802,7 +808,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   after.append(station);
  }
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
-  ...(reactions.length?[noise]:[]),management,
+  ...(reactions.length||wrestlerPosts.length?[noise]:[]),management,
   ...(position?[position]:[]),analysis);
  if(show.bookingClass==="PREMIUM"&&mediaScrum){
   const scrumPort=mediaScrum;
@@ -869,12 +875,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   button.type="button";button.onclick=()=>changePage(dest);return button;
  };
  headlines.append(goButton("Read the Full Show",1));
+ if(reactions.length||wrestlerPosts.length)
+  headlines.append(goButton("HOT TAG · After the Bell",2));
  full.append(goButton("Read Post-show Brief",2));
  after.append(goButton("Return to Headlines",0));
  root.replaceChildren(...pages);
  changePage=(index:0|1|2)=>{
   for(const [i,page] of pages.entries())page.hidden=i!==index;
-
+  // Images for the compact rundown are not fetched while headlines or
+  // HOT TAG are on screen. Source links select the narrative first.
+  if(index===1)setBreakdown(compactFullShow);
   window.scrollTo({top:0,behavior:"instant"});
  };
  changePage(0);

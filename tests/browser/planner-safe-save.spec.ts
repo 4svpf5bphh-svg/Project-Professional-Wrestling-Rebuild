@@ -58,7 +58,7 @@ test("iPhone retries a committed show with the SAME receipt after its response i
  await expect(page.getByRole("button",{name:"Edit card"})).toBeVisible();
  expect(keys).toHaveLength(2);
  expect(keys[0]).toBe(keys[1]);
- await expect(page.getByText(/Weekly show · Town Hall/)).toBeVisible();
+ await expect(page.getByText(/Weekly show · Fri · Town Hall/)).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -91,7 +91,8 @@ test("stale two-manager show planning never reports success or loses venue/day s
  await expect(page.getByText(/Plans have changed/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Save show"})).toBeVisible();
  await expect(page.getByLabel("Show venue")).toHaveValue("home-hall");
- await expect(page.getByLabel("Show day")).toHaveValue("5");
+ await expect(page.getByRole("group",{name:"Show day"})
+  .getByRole("button",{name:"Friday"})).toHaveAttribute("aria-pressed","true");
  await page.getByRole("button",{name:"Save show"}).click();
  await expect(page.getByRole("button",{name:"Edit card"})).toBeVisible();
  expect(attempts).toHaveLength(2);
@@ -217,22 +218,20 @@ test("iPhone Planner fixes a signed Thursday TV slot while PPVs default to Satur
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Plan weekly show"}).click();
- const tv=page.getByRole("combobox",{name:"Show day"});
- await expect(tv).toHaveValue("4");
- await expect(tv).toBeDisabled();
- await expect(page.getByText(/VibeFlix airs your weekly show on Thursday at 20:00/))
+ await expect(page.getByText("Thursday · 20:00")).toBeVisible();
+ await expect(page.getByText(/VibeFlix · Fixed by your broadcast agreement/))
   .toBeVisible();
+ await expect(page.getByRole("group",{name:"Show day"})).toHaveCount(0);
  await page.getByRole("button",{name:"Save show"}).click();
  expect(calls.filter(c=>c.method==="planShow")).toEqual([
   {method:"planShow",day:4}
  ]);
  await page.getByRole("button",{name:"Book PPV · Autumn Slam"}).click();
- const ppv=page.getByRole("combobox",{name:"Show day"});
- await expect(ppv).toHaveValue("6");
- await expect(ppv).toBeEnabled();
+ const ppv=page.getByRole("group",{name:"Show day"});
+ await expect(ppv.getByRole("button",{name:"Saturday"})).toHaveAttribute("aria-pressed","true");
  await expect(page.getByText(/PPVs normally run on Saturday or Sunday/)).toBeVisible();
- await ppv.selectOption("7");
- await expect(ppv).toHaveValue("7");
+ await ppv.getByRole("button",{name:"Sunday"}).click();
+ await expect(ppv.getByRole("button",{name:"Sunday"})).toHaveAttribute("aria-pressed","true");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -267,7 +266,11 @@ test("The signed TV night has an accessible route to request a broadcaster chang
  await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
  await expect(page.getByText(/Your contracted TV night.*Thursday at 20:00/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Request a different broadcast day"})).toBeVisible();
- expect(seen).toEqual(["planner","business"]);
+ await page.getByRole("button",{name:"← Back"}).click();
+ await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
+ await expect(page.getByText("Thursday · 20:00")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Save show"})).toBeVisible();
+ expect(seen).toEqual(["planner","business","planner"]);
 });
 
 test("Saturday network television moves the PPV weekend default to Sunday",async({page})=>{
@@ -285,11 +288,10 @@ test("Saturday network television moves the PPV weekend default to Sunday",async
  }}));
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Book PPV · Summer Showdown"}).click();
- const date=page.getByRole("combobox",{name:"Show day"});
- await expect(date).toHaveValue("7");
- await expect(date).toBeEnabled();
- await date.selectOption("5");
- await expect(date).toHaveValue("5");
+ const date=page.getByRole("group",{name:"Show day"});
+ await expect(date.getByRole("button",{name:"Sunday"})).toHaveAttribute("aria-pressed","true");
+ await date.getByRole("button",{name:"Friday"}).click();
+ await expect(date.getByRole("button",{name:"Friday"})).toHaveAttribute("aria-pressed","true");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });

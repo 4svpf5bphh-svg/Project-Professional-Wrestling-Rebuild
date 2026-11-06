@@ -48,7 +48,13 @@ import "../ui/show-results.css";
 import "../ui/results-archive.css";
 import "../ui/card-editor.css";
 import "../ui/talent-filter-controls.css";
+import {activateWorkspaceRoot} from "../ui/workspace-root.js";
 type Scope=CardSessionScope;
+// The Results → Ratings War handoff is a one-use local navigation context.
+// No completed-show ID or private user detail is placed into the URL.
+type ResultsRatingsOrigin={worldId:string;promotionId:string;showId:string;
+ onBack?:()=>void};
+let pendingResultsRatingsOrigin:ResultsRatingsOrigin|null=null;
 // Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
 let pendingProgrammeFocusPersonId:string|null=null;
 // Keep a booker-approved two-person idea private to this browser session,
@@ -310,7 +316,8 @@ export function mountCollectionPage(root:HTMLElement,scope:Scope){
  let error="",busy=true;
  const render=()=>{
   clearLegendRevealPortal();
-  root.classList.add("ppw-editor","ppw-industry","ppw-collection-screen");
+  activateWorkspaceRoot(root,"ppw-industry");
+  root.classList.add("ppw-collection-screen");
   root.replaceChildren();
   if(error){
    const notice=document.createElement("p");notice.className="ppw-alert ppw-error";
@@ -400,7 +407,7 @@ export function mountAchievementsPage(root:HTMLElement,scope:Scope,
  });
 }
 function businessPort(root:HTMLElement,scope:Scope,
- call:ReturnType<typeof createCardClient>):BusinessPort{
+ call:ReturnType<typeof createCardClient>,onBack?:()=>void):BusinessPort{
  return {
   load:()=>call("business"),
   renamePromotion:async name=>{
@@ -430,14 +437,27 @@ function businessPort(root:HTMLElement,scope:Scope,
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
   openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>mountBusinessDesk(root,businessPort(root,scope,call))),
-  back:scope.showId?()=>mountBookingPage(root,scope):
-   ()=>mountWorldHomePage(root,scope)
+  back:onBack??(scope.showId?()=>mountBookingPage(root,scope):
+   ()=>mountWorldHomePage(root,scope))
  };
 }
 export function mountBusinessPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
- return mountBusinessDesk(root,businessPort(root,scope,call),
-  window.location.hash==="#/business/ratings"?"RATINGS":"FINANCES");
+ const isRatings=window.location.hash==="#/business/ratings";
+ const origin=pendingResultsRatingsOrigin;
+ pendingResultsRatingsOrigin=null;
+ const returning=isRatings&&origin?.worldId===scope.worldId&&
+  origin.promotionId===scope.promotionId?origin:null;
+ const goBack=returning?()=>{
+  // Replace the deep-link route with its normal Results entry. The content
+  // is restored to the exact certified show; no new World mutation occurs.
+  window.history.replaceState(null,"","#/results");
+  void mountResultsPage(root,{...scope,showId:returning.showId},
+   returning.onBack??(()=>void mountResultsArchivePage(root,scope)),"results");
+ }:undefined;
+ const port=businessPort(root,scope,call,goBack);
+ if(goBack)port.returnToResults=goBack;
+ return mountBusinessDesk(root,port,isRatings?"RATINGS":"FINANCES");
 }
 function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{
@@ -570,7 +590,12 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
  await mountShowResults(root,{
   load:async()=>createCardClient(scope)("results"),
   openNext:destination=>{window.location.hash=hostSectionHash(destination);},
-  openRatings:()=>{window.location.hash="#/business/ratings";},
+  openRatings:()=>{
+   if(scope.showId)pendingResultsRatingsOrigin={
+    worldId:scope.worldId,promotionId:scope.promotionId,
+    showId:scope.showId,onBack};
+   window.location.hash="#/business/ratings";
+  },
   openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
   openProgrammes:personId=>openFocusedProgrammes(root,scope,personId),
   mediaScrum:{
@@ -743,7 +768,10 @@ export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  const port:PlannerPort={
   load:()=>call("planner"),
   save:input=>call("planShow",input),
-  openDeals:()=>mountBusinessDesk(root,businessPort(root,scope,call),"COMMERCIAL"),
+  // Resume the same booked date after a broadcaster detour, with fresh
+  // contract terms rather than returning the player to World Home.
+  openDeals:target=>mountBusinessDesk(root,businessPort(root,scope,call,
+   ()=>mountPlannerPage(root,scope,onBack,false,target,onOpenBooking)),"COMMERCIAL"),
   openCard:draftId=>onOpenBooking?onOpenBooking(draftId):
    mountBookingPage(root,{...scope,showId:draftId}),
   openCalendar:()=>mountCalendarPage(root,scope,

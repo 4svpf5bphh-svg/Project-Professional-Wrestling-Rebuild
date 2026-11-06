@@ -1,3 +1,4 @@
+import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {readBusinessWorkspace} from "../db/business-workspace.js";
 import {commercialCompanyName,COMMERCIAL_COMPANIES,broadcasterRatingTarget,partnerResponse}
  from "../domain/commercial-offers.js";
@@ -20,6 +21,7 @@ export interface BusinessPort{
  restructure?(input:{requestId:string;expectedRevision:number}):
   Promise<{status:"APPLIED"|"REPLAYED"|"STALE";revision:number}>;
  openResults?(showId:string):void;
+ returnToResults?():void;
  openRoster?():void;openContracts?():void;
  back?():void;
 }
@@ -168,7 +170,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
   return card;
  }
  function draw(){
-  root.classList.add("ppw-editor","ppw-business");root.replaceChildren();
+  activateWorkspaceRoot(root,"ppw-business");root.replaceChildren();
   const ratingsFocused=pane==="RATINGS";
   root.classList.toggle("ppw-business-ratings-focused",ratingsFocused);
   const head=el("header","ppw-business-head");
@@ -187,6 +189,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
   if(ratingsFocused){
    const returnNav=el("nav","ppw-ratings-war-return");
    returnNav.setAttribute("aria-label","Ratings War navigation");
+   if(port.returnToResults)
+    returnNav.append(button("← Ringside Results",()=>port.returnToResults?.()));
    returnNav.append(button("← Business",()=>{
     pane="FINANCES";
     if(window.location.hash==="#/business/ratings")
@@ -673,6 +677,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    const own=ranking.find(episode=>episode.isYours)??null;
    const others=ranking.filter(episode=>!episode.isYours);
    const opponent=others.find(episode=>episode.promotionId===selectedRatingsRivalId)??
+    // Real same-slot competition is the default comparison over a human
+    // promotion airing in a different window.
+    others.find(episode=>own&&episode.year===own.year&&
+     episode.week===own.week&&episode.day===own.day&&
+     episode.airingHour!==null&&episode.airingHour!==undefined&&
+     episode.airingHour===own.airingHour&&
+     (own.ratingsWarOpponents??0)>0&&(episode.ratingsWarOpponents??0)>0)??
     others.find(episode=>episode.humanManaged)??others[0]??null;
    const ownRank=ranking.findIndex(episode=>episode.isYours);
    const compare=el("section","ppw-ratings-war-faceoff");
@@ -951,12 +962,19 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     }
     section.append(item);
    }
-   section.append(el("h3","","The World deal market"),
-    el("p","ppw-commercial-world-note",
-     "Each partner can back only one promotion at a time in this World. "+
-     "More viewers strengthen future offers; existing agreements are honoured until expiry."));
    const brands=Object.entries(COMMERCIAL_COMPANIES)
     .filter(([code])=>code.startsWith(commercialKind+"_"));
+   // A signed deal gets priority over a catalogue of unavailable options.
+   const market=document.createElement("details");
+   market.className="ppw-commercial-market-browser";
+   market.open=current.length===0;
+   market.append(el("summary","ppw-commercial-market-trigger",
+    current.length?"Explore other "+(commercialKind==="BROADCAST"?"networks":"sponsors")+
+     " · "+Math.max(0,brands.length-current.length):
+     "Available "+(commercialKind==="BROADCAST"?"networks":"sponsors")));
+   const marketBody=el("div","ppw-commercial-market-body");
+   marketBody.append(el("p","ppw-commercial-world-note",
+    "Partners are exclusive in this World. Stronger audiences attract better offers."));
    for(const [code,identity] of brands){
     if(current.some(d=>d.offerCode===code))continue;
     const reserved=(view.partnerInventory??[]).find(d=>d.offerCode===code);
@@ -1002,8 +1020,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
       "Not approaching your promotion yet"));
      item.append(el("small","ppw-business-muted",identity.preference));
     }
-    section.append(item);
+    marketBody.append(item);
    }
+   market.append(marketBody);section.append(market);
    root.append(section);
   }
   if(pane==="TERRITORIES"){

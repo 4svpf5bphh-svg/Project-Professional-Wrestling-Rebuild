@@ -40,6 +40,7 @@ for(const width of [320,390]){
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   const recaps=page.locator(".ppw-rivalry-at-ringside");
   await expect(recaps).toHaveCount(2);
   await expect(recaps.first()).toContainText("Samoa Joe vs Matt Riddle");

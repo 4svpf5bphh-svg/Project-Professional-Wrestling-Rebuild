@@ -1,3 +1,4 @@
+import {activateWorkspaceRoot} from "./workspace-root.js";
 /** PPW roster and market: one thumb-friendly directory, separate recruitment
  * from contracted talent, reuse existing team, stable, persona, contract desks.
  */
@@ -391,7 +392,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   return editor;
  }
  function render(){
-  root.classList.add("ppw-editor","ppw-directory");
+  activateWorkspaceRoot(root,"ppw-directory");
   root.replaceChildren();
   const head=el("header","ppw-directory-header");
   head.append(el("span","ppw-directory-kicker","THE LOCKER ROOM / TALENT"),
