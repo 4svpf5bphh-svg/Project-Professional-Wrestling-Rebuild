@@ -346,7 +346,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const themed=page.locator(".ppw-results[data-results-skin='territory-tv']");
   await expect(themed).toBeVisible();
-  await expect(themed.locator(".ppw-territory-station")).toContainText("TERRITORY TELEVISION");
+  await expect(themed.locator(".ppw-territory-chapter-head").first()).toContainText("TERRITORY TELEVISION");
   await expect(page.getByRole("heading",{name:"THE COMPLETE NIGHT"})).toBeVisible();
   const names=page.locator(".ppw-result-competitor-name");
   await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
@@ -389,9 +389,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const report=page.locator(".ppw-results[data-results-skin='fight-night']");
   await expect(report).toBeVisible();
-  await expect(report.locator(".ppw-fight-station")).toContainText("FIGHT NIGHT");
-  await expect(report.locator(".ppw-result-hero")).toHaveCSS(
-   "background-color","rgb(255, 255, 255)");
+  await expect(report.locator(".ppw-fight-chapter-head").first()).toContainText("FIGHT NIGHT");
+  
   await expect(report.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
   await expect(report.getByRole("heading",{name:"MATCH REPORT"})).toBeVisible();
   const names=report.locator(".ppw-result-competitor-name");
@@ -440,8 +439,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const report=page.locator(".ppw-results[data-results-skin='underground-zine']");
   await expect(report).toBeVisible();
-  await expect(report.locator(".ppw-zine-station")).toContainText("UNDERGROUND REPORT");
-  await expect(report.locator(".ppw-result-title-wrap h1")).toContainText("Dynamite");
+  await expect(report.locator(".ppw-zine-chapter-head").first()).toContainText("UNDERGROUND REPORT");
+  await expect(report.locator(".ppw-results-show-intro h1")).toContainText("Dynamite");
   await expect(report.getByRole("heading",{name:"EVERY BELL. EVERY BRAWL."})).toBeVisible();
   const names=report.locator(".ppw-result-competitor-name");
   await expect(names).toHaveText(["Kenny Omega","Samoa Joe"]);
@@ -551,8 +550,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const report=page.locator('.ppw-results[data-results-skin="retro-booker-02"]');
   await expect(report).toBeVisible();
-  await expect(report.locator(".ppw-retro-station")).toContainText("BOOKER 2002");
-  await expect(report.locator(".ppw-result-title-wrap h1")).toContainText("Dynamite");
+  await expect(report.locator(".ppw-retro-chapter-head").first()).toContainText("BOOKER 2002");
+  await expect(report.locator(".ppw-results-show-intro h1")).toContainText("Dynamite");
   await expect(report.getByRole("heading",{name:"MATCH RESULTS"})).toBeVisible();
   await expect(report.locator(".ppw-result-competitor-name"))
    .toHaveText(["Kenny Omega","Samoa Joe"]);

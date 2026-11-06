@@ -230,3 +230,12 @@
 .ppw-home-inbox-body .ppw-home-wire{margin:0;min-width:0}
 @media(max-width:350px){.ppw-home-action-with-dismiss{grid-template-columns:1fr}
  .ppw-home-action-with-dismiss .ppw-home-wire-dismiss{justify-self:end}}
+
+/* Accepted offer: keep a direct dossier shortcut alongside Contracts. */
+.ppw-home-action-with-dismiss>.ppw-home-wire-button{min-height:44px;
+ font-size:12px;max-width:100%;white-space:normal}
+@media(max-width:520px){.ppw-home-action-with-dismiss{
+ grid-template-columns:minmax(0,1fr) auto}
+ .ppw-home-action-with-dismiss .ppw-home-tile{grid-column:1/-1}
+ .ppw-home-action-with-dismiss>.ppw-home-wire-button{grid-column:1}
+ .ppw-home-action-with-dismiss>.ppw-home-wire-dismiss{grid-column:2}}

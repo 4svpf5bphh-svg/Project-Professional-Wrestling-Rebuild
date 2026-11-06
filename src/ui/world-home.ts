@@ -363,7 +363,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    el("h3","","What needs you"));
   brief.append(briefHead);
   const items:{title:string;detail:string;action:()=>void;icon:string;
-   level:string;noticeId?:string}[]=[];
+   level:string;noticeId?:string;personId?:string;personName?:string}[]=[];
   // Tolerate previously cached session projections and historical test fixtures.
   // Unavailable telemetry must never be interpreted as a confirmed alert.
   const attention=promotion.attention;
@@ -444,7 +444,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    .filter(x=>x.status==="ACCEPTED").slice(0,3)){
    items.unshift({title:accepted.name+" has signed",
     detail:"Agreement accepted. Check dates and booking availability in Contracts.",
-    action:port.contracts,icon:"✓",level:"priority",noticeId:accepted.id});
+    action:port.contracts,icon:"✓",level:"priority",noticeId:accepted.id,
+    personId:accepted.personId,personName:accepted.name});
   }
   if(attention?.pendingContractOffers)
    items.push({title:"Offers awaiting decisions",detail:
@@ -464,7 +465,15 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     const dismiss=el("button","ppw-home-wire-dismiss","Dismiss") as HTMLButtonElement;
     dismiss.type="button";dismiss.disabled=clearing||dismissing.has(item.noticeId);
     dismiss.onclick=()=>void dismissNews(item.noticeId!);
-    holder.append(entry,dismiss);brief.append(holder);
+    holder.append(entry);
+    if(item.personId&&item.personName&&port.openWrestler){
+     const dossier=el("button","ppw-home-wire-button",
+      "View "+item.personName+"'s wrestler dossier") as HTMLButtonElement;
+     dossier.type="button";
+     dossier.onclick=()=>port.openWrestler!(item.personId!);
+     holder.append(dossier);
+    }
+    holder.append(dismiss);brief.append(holder);
    }else brief.append(entry);
   }
   // Immediate decisions are above passive links; no additional reads.
