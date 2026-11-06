@@ -286,6 +286,7 @@ test("iPhone clears all settled notices in one request and preserves urgent work
   }else await route.fulfill({json:request.method==="overview"?home():{}});
  });
  await page.goto("/#/home");
+ await page.locator(".ppw-home-inbox-toggle").click();
  await expect(page.getByRole("button",{name:"Clear all resolved updates"})).toBeVisible();
  await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
  await page.getByRole("button",{name:"Clear all resolved updates"}).click();
@@ -466,11 +467,12 @@ test("Home contract wire dismisses one resolved offer without suppressing show o
   await route.fulfill({json:data.method==="overview"?home:{}});
  });
  await page.goto("/#/home");
- await expect(page.getByText("Alice accepted the offer")).toBeVisible();
+ await expect(page.getByText("Alice has signed")).toBeVisible();
+ await page.locator(".ppw-home-inbox-toggle").click();
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
- await page.getByRole("button",{name:"Dismiss Alice's contract update"}).click();
- await expect(page.getByText("Alice accepted the offer")).toHaveCount(0);
+ await page.locator(".ppw-home-action-with-dismiss").getByRole("button",{name:"Dismiss"}).click();
+ await expect(page.getByText("Alice has signed")).toHaveCount(0);
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
  expect(methods).toEqual(["overview","dismissAttention"]);

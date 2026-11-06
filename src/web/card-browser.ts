@@ -13,6 +13,7 @@ import {mountShowResults} from "../ui/show-results.js";
 import {mountPremiumPressScrum,type PremiumPressView} from "../ui/premium-press-screen.js";
 import "../ui/premium-press-screen.css";
 import type {CompletedShowView} from "../db/show-results-view.js";
+const resultExitControllers=new WeakMap<HTMLElement,AbortController>();
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
@@ -603,6 +604,9 @@ async function scrumRequest(scope:Scope,fields:Record<string,unknown>){
 /** Host may open the resolved-show broadcast without any write capability. */
 export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  backLabel="programmes"){
+ resultExitControllers.get(root)?.abort();
+ const resultExitController=new AbortController();
+ resultExitControllers.set(root,resultExitController);
  let loadedShow:CompletedShowView|null=null,leaving=false;
  const pressPort={
   read:()=>scrumRequest(scope,{action:"READ"}) as Promise<PremiumPressView>,
@@ -615,7 +619,10 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
   if(leaving)return;
   if(loadedShow?.bookingClass!=="PREMIUM"){next();return;}
   const proceed=()=>{
-   if(!replay)delete root.dataset.ppwPremiumExit;
+   if(!replay){
+    delete root.dataset.ppwPremiumExit;
+    resultExitController.abort();
+   }
    next();
   };
   leaving=true;
@@ -668,7 +675,7 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
   const target=(event as CustomEvent<{targetHash:string}>).detail?.targetHash;
   if(typeof target==="string"&&/^#\/[a-z/-]+$/.test(target))
    void leave(()=>{window.location.hash=target;});
- });
+ },{signal:resultExitController.signal});
  if(onBack){
   const back=document.createElement("button");
   back.type="button";back.textContent="← Back";
