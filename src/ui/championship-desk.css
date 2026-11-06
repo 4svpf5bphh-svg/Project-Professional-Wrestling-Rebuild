@@ -238,3 +238,24 @@
  border-color:#e6b4d8;color:#fff;font-weight:850}
 .ppw-title-new-form .ppw-muted{font-size:12px;line-height:1.5;margin:0}
 .ppw-title-new-feedback{color:#f9c9b8;font-size:13px}
+
+/* Phase 38: championship creation is a dedicated touch-first screen. */
+.ppw-title-create-entry{display:block;margin:16px 0 0;min-width:190px;
+ border-color:#dfbb70;background:#584429;color:#fff3d7;font-weight:900}
+.ppw-title-create-entry:disabled{opacity:.5}
+.ppw-title-create-screen{max-width:650px;margin:0 auto;display:grid;gap:15px;
+ padding:12px 0 calc(100px + env(safe-area-inset-bottom))}
+.ppw-title-create-screen h1{font-size:clamp(25px,7vw,34px);margin:0}
+.ppw-title-create-screen p{margin:0}
+.ppw-title-create-screen>.ppw-title-back{justify-self:start}
+.ppw-title-create-kinds{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ppw-title-create-kind{box-sizing:border-box;min-height:76px;padding:12px 8px;
+ background:#1a3349;color:#e2f5ff;border:1px solid #65889d;
+ border-radius:13px;font:850 14px/1.3 system-ui;white-space:normal;cursor:pointer}
+.ppw-title-create-kind[aria-pressed=true]{background:#55452b;border:2px solid #e9c884;color:#fff4ce}
+.ppw-title-create-kind:disabled{opacity:.4}
+.ppw-title-create-name{width:100%;min-height:50px;min-width:0;
+ box-sizing:border-box;padding:11px;font-size:16px;
+ border:1px solid #85b5c2;border-radius:12px;background:#10283b;color:#fff}
+.ppw-title-create-screen .ppw-title-more{font-size:15px;font-weight:850}
+@media(max-width:350px){.ppw-title-create-kind{font-size:12px;padding:8px 5px}}

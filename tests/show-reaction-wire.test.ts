@@ -132,3 +132,24 @@ test("fictional fans do not speak in simulation scores or pass for real posts",(
  assert.ok(posts.every(p=>!(/@|\b(?:\d+\/100|simulation|crowd score|execution score|protected finish|foreign object)\b/i).test(p.text)));
  assert.ok(posts.every(p=>p.slotId==="belt"||p.slotId==="cold"));
 });
+
+
+test("several hot rivalries get differing fan accounts and grounded opinions",()=>{
+ const entries=Array.from({length:5},(_,i)=>{
+  const bout=match("feud-"+i,85);
+  bout.fallout!.programmeSignal="HOT_PROGRAMME";
+  bout.fallout!.linkedProgrammes=1;return bout;
+ });
+ const wire=showReactionWire(show(entries));
+ assert.equal(new Set(wire.map(x=>x.voice)).size,5);
+ assert.equal(new Set(wire.map(x=>x.text)).size,5);
+ assert.ok(wire.every(x=>x.source==="RIVALRY"));
+ assert.ok(wire.every(x=>/audience|crowd|feud|room|chapter|reaction|invested/i.test(x.text)));
+ assert.deepEqual(showReactionWire(show(entries)),wire);
+});
+test("I Quit social reactions acknowledge verbal surrender, not a tap out",()=>{
+ const quit=match("quitting",90);quit.outcome="VERBAL_SURRENDER";
+ const wire=showReactionWire(show([quit]));
+ assert.match(wire[0]!.text,/i quit/i);
+ assert.doesNotMatch(wire[0]!.text,/tap-out|tapped/);
+});
