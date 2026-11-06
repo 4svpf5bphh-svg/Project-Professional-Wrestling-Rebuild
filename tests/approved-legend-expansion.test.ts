@@ -49,11 +49,11 @@ test("all 81 new Legends have a single planning-only certified achievement with 
  assert.equal(new Set(APPROVED_LEGEND_MILESTONES.map(x=>x.name)).size,81);
  const actual=new Set(APPROVED_LEGEND_EXPANSION.map(x=>x.name));
  assert.deepEqual(new Set(APPROVED_LEGEND_MILESTONES.map(x=>x.name)),actual);
+ // Approved staging targets predate the World-wide calibration. They are
+ // intentionally NOT compared with newly paced live catalogue thresholds.
  const original=LEGENDS_CATALOGUE.slice(0,48);
  const metrics=new Set(original.map(x=>x.metric).filter(Boolean));
- const milestones=new Set(
-  original.filter(x=>x.metric!==null&&x.target!==null)
-   .map(x=>x.metric+":"+x.target));
+ const milestones=new Set<string>();
  for(const item of APPROVED_LEGEND_MILESTONES){
   assert.ok(metrics.has(item.metric),"Unsupported fact metric for "+item.name);
   assert.ok(Number.isSafeInteger(item.target)&&item.target>=1&&item.target<=500);
@@ -62,6 +62,9 @@ test("all 81 new Legends have a single planning-only certified achievement with 
    "Shared threshold would bundle new Legends: "+item.name+" "+milestoneKey);
   milestones.add(milestoneKey);
  }
+ const liveMilestones=LEGENDS_CATALOGUE.map(x=>x.metric+":"+x.target);
+ assert.equal(new Set(liveMilestones).size,LEGENDS_CATALOGUE.length,
+  "Once calibrated, no two live Legends should share a World milestone");
  const teams=APPROVED_LEGEND_EXPANSION.filter(x=>x.members);
  for(const team of teams){
   const m=APPROVED_LEGEND_MILESTONES.find(x=>x.name===team.name)!;

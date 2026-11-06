@@ -5,7 +5,7 @@ import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {wrestlerInitials} from "./wrestler-card.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {beltCategory} from "./championship-artwork.js";
-import {mountTournamentDesk,type TournamentPort} from "./tournament-desk.js";
+import type {TournamentPort} from "./tournament-desk.js";
 import type {ChampionshipDirectory,ChampionshipHistory,ChampionshipCard,ReignCursor}
  from "../db/championship-history.js";
 export interface ChampionshipPort extends Partial<TournamentPort> {
@@ -22,7 +22,7 @@ const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
 const week=(index:number)=>"YEAR "+(Math.floor(index/52)+1)+" / WEEK "+(index%52+1);
 export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPort,
- onBack?:()=>void,initialScope:"WORLD"|"MINE"="WORLD"){
+ onBack?:()=>void,initialScope:"WORLD"|"MINE"="MINE"){
  root.classList.add("ppw-editor","ppw-championship-desk");
  root.replaceChildren(element("p","ppw-muted","Opening championship records…"));
  try{
@@ -37,72 +37,87 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    back.type="button";back.onclick=onBack;header.append(back);
   }
   header.append(eyebrow,heading,subtitle);
-  if(port.loadTournaments&&port.createTournament&&port.cancelTournament){
-   const tourney=element("button","ppw-title-back","🏆 Tournaments") as HTMLButtonElement;
-   tourney.type="button";
-   tourney.onclick=()=>void mountTournamentDesk(root,
-    {loadTournaments:port.loadTournaments!,createTournament:port.createTournament!,
-     cancelTournament:port.cancelTournament!},
-    ()=>void mountChampionshipDesk(root,port,onBack,initialScope));
-   header.append(tourney);
-  }
+
+  // A dedicated title-creation screen is distinct from the champion list.
+  // Returning to the list reuses the already loaded, bounded directory.
   if(port.createChampionship&&directory.canEdit){
-   const current=directory.titles.filter(x=>x.promotionId===directory.viewerPromotionId&&
-    x.status==="ACTIVE");
-   const canSecondary=!current.some(x=>x.division==="SINGLES"&&
-    x.bookingDivision==="MEN"&&x.titleRole==="SECONDARY");
-   const canWomen=!current.some(x=>x.division==="SINGLES"&&
-    x.bookingDivision==="WOMEN"&&x.titleRole==="PRIMARY");
-   const create=document.createElement("details");
-   create.className="ppw-title-new";
-   create.append(element("summary","","+ Create championship"));
-   const form=element("div","ppw-title-new-form");
-   const kind=document.createElement("select");
-   kind.setAttribute("aria-label","Championship type");
-   for(const [value,title,allowed] of [
-    ["SECONDARY_MEN","Men's secondary singles",canSecondary],
-    ["WOMEN_SINGLES","Women's singles championship",canWomen]
-   ] as const){
-    const o=document.createElement("option");
-    o.value=value;o.textContent=title;
-    o.disabled=!allowed;kind.append(o);
-   }
-   if(!canSecondary&&canWomen)kind.value="WOMEN_SINGLES";
-   const entry=document.createElement("input");
-   entry.type="text";entry.maxLength=90;entry.minLength=4;
-   entry.setAttribute("aria-label","New championship name");
-   entry.value=directory.titles.find(t=>t.promotionId===directory.viewerPromotionId)?.
-    promotionName+" "+(kind.value==="WOMEN_SINGLES"?"Women's":"Intercontinental")+
-    " Championship";
-   kind.onchange=()=>{
-    const prefix=directory.titles.find(t=>t.promotionId===directory.viewerPromotionId)?.
+   const current=directory.titles.filter(t=>
+    t.promotionId===directory.viewerPromotionId&&t.status==="ACTIVE");
+   const canSecondary=!current.some(t=>t.division==="SINGLES"&&
+    t.bookingDivision==="MEN"&&t.titleRole==="SECONDARY");
+   const canWomen=!current.some(t=>t.division==="SINGLES"&&
+    t.bookingDivision==="WOMEN"&&t.titleRole==="PRIMARY");
+   const create=element("button","ppw-title-back ppw-title-create-entry",
+    "＋ Create Championship") as HTMLButtonElement;
+   create.type="button";create.disabled=current.length>=8||!canSecondary&&!canWomen;
+   create.onclick=()=>{
+    const previous=Array.from(root.childNodes);
+    const screen=element("section","ppw-title-create-screen");
+    const back=element("button","ppw-title-back","← My Champions") as HTMLButtonElement;
+    back.type="button";back.onclick=()=>root.replaceChildren(...previous);
+    screen.append(back,element("span","ppw-eyebrow","MY PROMOTION / TITLES"),
+     element("h1","","Create Championship"),
+     element("p","ppw-muted","Choose the division and name the new title."));
+    const types=element("div","ppw-title-create-kinds");
+    types.setAttribute("role","group");
+    types.setAttribute("aria-label","Championship division");
+    type Kind="SECONDARY_MEN"|"WOMEN_SINGLES";
+    let selected:Kind=canSecondary?"SECONDARY_MEN":"WOMEN_SINGLES";
+    const name=document.createElement("input");
+    name.type="text";name.maxLength=90;name.minLength=4;
+    name.className="ppw-title-create-name";name.setAttribute("aria-label","Championship name");
+    const promotion=directory.titles.find(t=>t.promotionId===directory.viewerPromotionId)?.
      promotionName??"";
-    entry.value=prefix+" "+(kind.value==="WOMEN_SINGLES"?
-     "Women's":"Intercontinental")+" Championship";
-   };
-   const confirm=element("button","ppw-title-more","Create vacant title") as HTMLButtonElement;
-   confirm.type="button";confirm.disabled=!canSecondary&&!canWomen||current.length>=8;
-   const warning=element("p","ppw-muted",
-    "New belts start vacant. Book a valid title match to crown the first champion.");
-   const feedback=element("p","ppw-title-new-feedback");
-   confirm.onclick=async()=>{
-    if(!port.createChampionship)return;
-    confirm.disabled=true;feedback.textContent="Creating title…";
-    try{
-     const result=await port.createChampionship({requestId:crypto.randomUUID(),
-      expectedRevision:directory.worldRevision,
-      kind:kind.value as "SECONDARY_MEN"|"WOMEN_SINGLES",name:entry.value});
-     if(result&&typeof result==="object"&&"status" in result&&
-       (result as {status:unknown}).status==="STALE")
-      throw new Error("Another manager changed the World. Reload and try again.");
-     await mountChampionshipDesk(root,port,onBack,"MINE");
-    }catch(e){
-     feedback.textContent=e instanceof Error?e.message:"Could not create championship";
-     confirm.disabled=false;
+    const suggested=(kind:Kind)=>promotion+" "+
+     (kind==="WOMEN_SINGLES"?"Women's":"Intercontinental")+" Championship";
+    name.value=suggested(selected).trim();
+    const choices:[Kind,string,boolean][]=[
+     ["SECONDARY_MEN","Men's secondary",canSecondary],
+     ["WOMEN_SINGLES","Women's singles",canWomen]
+    ];
+    for(const [kind,label,allowed] of choices){
+     const choose=element("button","ppw-title-create-kind",label) as HTMLButtonElement;
+     choose.type="button";choose.disabled=!allowed;
+     choose.setAttribute("aria-pressed",String(selected===kind));
+     choose.onclick=()=>{
+      const original=suggested(selected).trim();
+      const auto=name.value.trim()===original;
+      selected=kind;if(auto)name.value=suggested(selected).trim();
+      types.querySelectorAll("button").forEach(b=>
+       b.setAttribute("aria-pressed",String(b===choose)));
+     };
+     types.append(choose);
     }
+    const error=element("p","ppw-alert ppw-error");error.hidden=true;
+    const submit=element("button","ppw-title-more","Create vacant title") as HTMLButtonElement;
+    submit.type="button";
+    submit.onclick=async()=>{
+     if(!port.createChampionship)return;
+     const proposed=name.value.trim();
+     if(proposed.length<4||proposed.length>90){
+      error.hidden=false;error.textContent="Use a title name of 4–90 characters.";return;
+     }
+     submit.disabled=true;error.hidden=true;
+     try{
+      const result=await port.createChampionship({requestId:crypto.randomUUID(),
+       expectedRevision:directory.worldRevision,kind:selected,name:proposed});
+      if(result&&typeof result==="object"&&"status" in result&&
+       (result as {status:unknown}).status==="STALE")
+       throw new Error("Another manager changed the World. Reload and try again.");
+      await mountChampionshipDesk(root,port,onBack,"MINE");
+     }catch(e){
+      error.hidden=false;
+      error.textContent=e instanceof Error?e.message:"Could not create championship";
+      submit.disabled=false;
+     }
+    };
+    screen.append(types,name,
+     element("p","ppw-muted",
+      "A new championship begins vacant. The first valid title match crowns its champion."),
+     submit,error);
+    root.replaceChildren(screen);
    };
-   form.append(kind,entry,warning,confirm,feedback);
-   create.append(form);header.append(create);
+   header.append(create);
   }
   const search=document.createElement("input");
   search.type="search";search.placeholder="Find a belt, promotion or champion";

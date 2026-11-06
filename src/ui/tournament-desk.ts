@@ -30,10 +30,10 @@ export async function mountTournamentDesk(root:HTMLElement,
  root.replaceChildren(el("p","ppw-muted","Opening your tournament brackets…"));
  let view:View;
  try{view=await port.loadTournaments();}
- catch(e){root.replaceChildren(button("← Championships",onBack),
+ catch(e){root.replaceChildren(button("← Promotion",onBack),
   el("p","ppw-alert ppw-error",e instanceof Error?e.message:"Unable to load tournaments"));return;}
  const head=el("header","ppw-title-hero");
- head.append(button("← Championships",onBack),
+ head.append(button("← Promotion",onBack),
   el("span","ppw-eyebrow","MY PROMOTION / TOURNAMENTS"),
   el("h1","","The Road to the Final"),
   el("p","ppw-muted","Book the matches on your ordinary shows. Winners advance only after certified results."));

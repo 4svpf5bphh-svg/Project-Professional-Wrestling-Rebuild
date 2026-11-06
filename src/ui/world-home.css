@@ -214,3 +214,28 @@
 
 /* Crest lives below promotion identity rather than competing with it. */
 .ppw-home-hero .ppw-promoter-prestige-crest{margin:7px 0 5px;max-width:405px}
+
+/* Phase 38: actionable signed deals before the dashboard, quiet news in an inbox. */
+.ppw-home-action-with-dismiss{display:grid;grid-template-columns:minmax(0,1fr) auto;
+ gap:8px;align-items:center}
+.ppw-home-action-with-dismiss .ppw-home-tile{min-width:0}
+.ppw-home-action-with-dismiss .ppw-home-wire-dismiss{min-height:44px;margin:0}
+.ppw-home-notification-inbox{min-width:0;margin:12px 0 17px;
+ background:#16293b;border:1px solid #477489;border-radius:14px;
+ overflow:hidden}
+.ppw-home-inbox-toggle{padding:14px;min-height:48px;color:#eaf7ff;
+ font:850 13px/1.3 system-ui;cursor:pointer}
+.ppw-home-inbox-toggle:focus-visible{outline:2px solid #8fe6f4;outline-offset:-3px}
+.ppw-home-inbox-body{display:grid;gap:10px;padding:0 11px 12px}
+.ppw-home-inbox-body .ppw-home-wire{margin:0;min-width:0}
+@media(max-width:350px){.ppw-home-action-with-dismiss{grid-template-columns:1fr}
+ .ppw-home-action-with-dismiss .ppw-home-wire-dismiss{justify-self:end}}
+
+/* Accepted offer: keep a direct dossier shortcut alongside Contracts. */
+.ppw-home-action-with-dismiss>.ppw-home-wire-button{min-height:44px;
+ font-size:12px;max-width:100%;white-space:normal}
+@media(max-width:520px){.ppw-home-action-with-dismiss{
+ grid-template-columns:minmax(0,1fr) auto}
+ .ppw-home-action-with-dismiss .ppw-home-tile{grid-column:1/-1}
+ .ppw-home-action-with-dismiss>.ppw-home-wire-button{grid-column:1}
+ .ppw-home-action-with-dismiss>.ppw-home-wire-dismiss{grid-column:2}}

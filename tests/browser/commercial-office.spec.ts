@@ -50,8 +50,8 @@ test("320px Business commercial agreements are optional, readable and consented 
   }});
  });
  await page.goto("/#/business");
- await page.getByRole("button",{name:"Deals"}).click();
- await expect(page.getByRole("heading",{name:"Broadcasting & sponsorship"})).toBeVisible();
+ await page.getByRole("button",{name:"Commercials",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Commercials"})).toBeVisible();
  await expect(page.getByText("VibeFlix",{exact:true})).toBeVisible();
  await expect(page.getByText("US$312,000/week")).toBeVisible();
  await expect(page.getByText("26 weeks")).toBeVisible();
@@ -104,16 +104,17 @@ for(const width of [320,390]){
    return route.fulfill({json:{}});
   });
   await page.goto("/#/home");
+  await page.locator(".ppw-home-inbox-toggle").click();
   await expect(page.getByRole("heading",{name:"Company updates"})).toBeVisible();
-  await expect(page.getByText("A commercial deal has ended")).toBeVisible();
+  await expect(page.getByText("Previous broadcast deal ended")).toBeVisible();
   await expect(page.getByText("AGREEMENT ENDED")).toBeVisible();
-  await page.getByRole("button",{name:"Review commercial deals"}).click();
+  await page.getByRole("button",{name:"Open Commercials"}).click();
   await expect(page).toHaveURL(/#\/business$/);
   expect(calls.filter(method=>method==="overview")).toEqual(["overview"]);
   expect(calls.filter(method=>method==="business").length).toBeLessThanOrEqual(1);
   renewalDue=false;
   await page.goto("/#/home");
-  await expect(page.getByText("A commercial deal has ended")).toHaveCount(0);
+  await expect(page.getByText("Previous broadcast deal ended")).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
@@ -166,8 +167,10 @@ for(const width of [320,390]){
    }});
   });
   await page.goto("/#/business");
+  await page.getByRole("button",{name:"Finances",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
   await expect(page.locator(".ppw-finance-bank")).toContainText("US$5,000,000");
+  await page.getByRole("button",{name:"← Business"}).click();
   await page.getByRole("button",{name:"Ratings War",exact:true}).click();
   const war=page.locator(".ppw-ratings-war-desk");
   await expect(war.getByRole("heading",{name:"Ratings War"})).toBeVisible();
@@ -177,9 +180,9 @@ for(const width of [320,390]){
    "Rival Wrestling leads by 0.4 rating points.");
   await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(1);
   await page.getByRole("button",{name:"← Business"}).click();
-  await page.getByRole("button",{name:"Deals"}).click();
-  await expect(page.getByRole("heading",{name:"Ratings war"})).toBeVisible();
-  await expect(page.getByText(/Your latest TV show ranks #2 of 2/)).toBeVisible();
+  await page.getByRole("button",{name:"Commercials",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Commercials"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Ratings war"})).toHaveCount(0);
   const v=page.locator('.ppw-commercial-offer[data-availability="TAKEN"]')
    .filter({has:page.locator('.ppw-commercial-brand[data-code="BROADCAST_GROWTH"]')});
   await expect(v.locator("svg")).toBeVisible();
@@ -233,10 +236,10 @@ test("Ratings war keeps a lower-ranked owner visible and ignores legacy PPV rows
   }});
  });
  await page.goto("/#/business");
- await page.getByRole("button",{name:"Deals"}).click();
- await expect(page.getByText(/Your latest TV show ranks #9 of 9/)).toBeVisible();
- await expect(page.getByText("#9 · CWA · YOUR SHOW")).toBeVisible();
- await expect(page.getByText("Latest TV episode per promotion · past six weeks")).toBeVisible();
+ await page.getByRole("button",{name:"Ratings War",exact:true}).click();
+ await expect(page.getByText(/YOUR POSITION/)).toContainText("#9 OF 9");
+ await expect(page.locator(".ppw-ratings-war-rival[data-own=true]")).toContainText("#9 · CWA");
+ await expect(page.locator(".ppw-ratings-war-leaderboard")).toBeVisible();
  await expect(page.getByText(/PPV buys/)).toHaveCount(0);
  expect(calls).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

@@ -70,7 +70,7 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-ratings-war-impact")).toContainText("YOU GAINED 0.2");
   await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("North Wrestling");
   await war.getByRole("button",{name:"Networks & sponsors"}).click();
-  await expect(page.getByRole("heading",{name:"Broadcasting & sponsorship"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Commercials"})).toBeVisible();
   expect(methods).toEqual(["business"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
@@ -165,7 +165,7 @@ for(const width of [320,390]){
   await expect(page).toHaveURL(/#\/results$/);
   await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
   await expect(page.locator(".ppw-business")).toHaveCount(0);
-  await expect(page.getByRole("button",{name:"Read the Full Show"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   expect(methods).toEqual(["resultsArchive","results","business","results"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);

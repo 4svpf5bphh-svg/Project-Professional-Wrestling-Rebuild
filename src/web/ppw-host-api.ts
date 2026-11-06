@@ -18,7 +18,7 @@ import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-rev
 import {readPlaytestKp,grantPlaytestKp} from "../db/admin-kp-playtest.js";
 import {getOwnerDisplayName,saveOwnerDisplayName,renameOwnedPromotion}
  from "../db/owner-identities.js";
-import {readPremiumScrum,answerPremiumScrum} from "../db/premium-media-scrum.js";
+import {readPremiumScrum,answerPremiumScrum,dismissPremiumScrum} from "../db/premium-media-scrum.js";
 import {availablePromotionsAsActor,claimPromotionAsActor,joinWorldAsActor,
  overviewAsActor} from "../api/world-service.js";
 import {handleCardHttp} from "./card-http.js";
@@ -132,6 +132,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    promotionId:b.promotionId,showId:b.showId};
   try{
    if(b.action==="READ")return json(200,await readPremiumScrum(pool,scope));
+   if(b.action==="DISMISS")return json(200,await dismissPremiumScrum(pool,scope));
    if(b.action==="ANSWER"&&typeof b.questionId==="string"&&
     Number.isInteger(b.answerIndex))
     return json(200,await answerPremiumScrum(pool,scope,

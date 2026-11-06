@@ -1,0 +1,22 @@
+/* Phase 38 press: one journalist per view; bottom safe area for iPhone. */
+.ppw-press-screen{max-width:680px;margin:0 auto;
+ padding:16px 12px calc(110px + env(safe-area-inset-bottom))}
+.ppw-press-head h1{font-size:clamp(25px,7vw,35px);margin:8px 0}
+.ppw-press-head p{margin:0 0 20px}
+.ppw-press-progress{font:850 11px/1.2 system-ui;letter-spacing:.12em;color:#91e1ec}
+.ppw-press-question{display:grid;gap:15px;padding:20px 16px;
+ border:1px solid #6c91aa;border-radius:18px;
+ background:linear-gradient(132deg,#1c3748,#111f34)}
+.ppw-press-journalist{font-size:14px;color:#90e3e9}
+.ppw-press-prompt{font-size:clamp(17px,4.5vw,21px);line-height:1.48;
+ color:#f7faff;margin:0}
+.ppw-press-quote{margin:0;font-size:16px;line-height:1.55;color:#f8e6b5}
+.ppw-press-choices{display:grid;gap:8px}
+.ppw-press-action{width:100%;min-height:48px;margin:7px 0 0;padding:13px;
+ border:1px solid #6ea6b9;background:#1d465b;color:#f4ffff;
+ border-radius:12px;font:750 14px/1.35 system-ui;text-align:left;
+ white-space:normal;overflow-wrap:anywhere}
+.ppw-press-action:disabled{opacity:.6}
+.ppw-press-action:focus-visible{outline:3px solid #9ef9ff;outline-offset:3px}
+@media(max-width:350px){.ppw-press-question{padding:16px 11px}
+ .ppw-press-screen{padding-inline:8px}}

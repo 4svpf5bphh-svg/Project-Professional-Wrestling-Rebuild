@@ -7,17 +7,6 @@ import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js
 import {projectShowBreakdown} from "./show-breakdown.js";
 import {programmeBroadcastRecap,programmeManagementNote}
  from "../domain/verified-programme-broadcast.js";
-import type {ScrumQuestionId} from "../domain/premium-media-scrum.js";
-type MediaScrumView={showId:string;showName?:string;questions:{
- id:ScrumQuestionId;journalist:string;question:string;
- answers:readonly [string,string,string];answerIndex:number|null
-}[]};
-type MediaScrumPort={
- read():Promise<MediaScrumView>;
- answer(questionId:ScrumQuestionId,answerIndex:number):Promise<{
-  questionId:ScrumQuestionId;answerIndex:number;answer:string;saved:boolean
- }>;
-};
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
 import {postShowStaffObservations} from "../domain/post-show-staff-observations.js";
 import {projectPostShowScorecard} from "./post-show-scorecard.js";
@@ -53,7 +42,8 @@ function finishLabel(entry:ShowResultEntry):string{
   DISQUALIFICATION:"Disqualification",FOREIGN_OBJECT:"Controversial win",
   PROTECTED_FINISH:"Disputed decision",INJURY_STOPPAGE:"Referee stoppage",
   OVER_THE_TOP_ROPE:"Final elimination",
-  RETRIEVAL:"Prize retrieval",TABLE_BREAK:"Table break",TEN_COUNT:"Ten-count knockout"};
+  RETRIEVAL:"Prize retrieval",TABLE_BREAK:"Table break",TEN_COUNT:"Ten-count knockout",
+  VERBAL_SURRENDER:"I quit"};
  return labels[entry.outcome]??"Decision";
 }
 function node(tag:string,className:string,content=""):HTMLElement{
@@ -130,7 +120,7 @@ function transitionFor(entries:ShowResultEntry[],index:number,showName:string):s
 export async function mountShowResults(root:HTMLElement,port:{
  load():Promise<CompletedShowView>;
  commentary?():Promise<{status:"ready"|"pending"|"unavailable";review?:RingsideCopy}>;
- mediaScrum?:MediaScrumPort;
+ openPress?:()=>void;
  openNext?:(section:NextStepDestination)=>void;
  openRatings?():void;
  openWrestler?:(personId:string)=>void;
@@ -140,7 +130,7 @@ export async function mountShowResults(root:HTMLElement,port:{
  root.replaceChildren(node("p","ppw-muted","Preparing the ringside report…"));
  try{
   const show=await port.load();
-  renderBroadcast(root,show,port.openNext,port.mediaScrum,
+  renderBroadcast(root,show,port.openNext,port.openPress,
    port.openWrestler,port.openRatings,port.openProgrammes);
   if(port.commentary)void port.commentary().then(result=>{
    if(root.querySelector(".ppw-ringside-dispatch")?.getAttribute("data-show-id")!==show.showId)return;
@@ -155,7 +145,7 @@ export async function mountShowResults(root:HTMLElement,port:{
  }catch(e){showError(root,e);}
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
- openNext?:(section:NextStepDestination)=>void,mediaScrum?:MediaScrumPort,
+ openNext?:(section:NextStepDestination)=>void,openPress?:()=>void,
  openWrestler?:(personId:string)=>void,openRatings?:()=>void,
  openProgrammes?:(personId:string)=>void):void{
  root.classList.remove("ppw-editorial-ready");
@@ -195,6 +185,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  append(scoreWrap,node("span","ppw-result-score",String(Math.round(show.crowdResponse))),
   node("span","ppw-result-score-label","CROWD / 100"));
  append(header,append(node("div","ppw-result-hero-main"),titleWrap));
+ let audiencePanel:HTMLElement|null=null;
  if(show.audience){
   const report=show.audience,block=node("section","ppw-result-broadcast-audience");
   block.setAttribute("aria-label","Broadcast performance");
@@ -231,7 +222,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     compare.setAttribute("aria-label","Compare TV ratings in Ratings War");
     block.append(compare);
    }
-   header.append(block);
+   audiencePanel=block;
   }
  }
 
@@ -485,9 +476,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  // The historical show report does not claim these concerns are still live.
  const handoff=postShowHandoff(show);
  const snapshot=projectPostShowScorecard(show);
- const overview=document.createElement("details");
- overview.className="ppw-manager-snapshot";
- const summary=node("summary","ppw-manager-snapshot-toggle");
+ const overview=node("section","ppw-manager-snapshot");
+ overview.setAttribute("aria-label","The night in numbers");
+ const summary=node("div","ppw-manager-snapshot-toggle");
  summary.append(node("span","ppw-eyebrow","CERTIFIED / THIS SHOW"),
   node("h3","","The night in numbers"),
   node("span","ppw-manager-snapshot-hint","Ratings, audience, injuries and event finances"));
@@ -537,7 +528,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
      (-BigInt(show.economics.netResult)).toString():show.economics.netResult),
    "Event-only P&L; not the promotion's overall weekly profit");
  }
- overview.append(facts);
+ overview.append(scoreWrap,pulseRow,facts);
  if(show.economics)overview.append(node("p","ppw-manager-snapshot-note",
   "Appearance fees are included in event costs but already settled by World accounting. "+
   "Event profit/loss is not a second cash payment; weekly salaries and other business costs are separate."));
@@ -582,7 +573,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(actionRow.childElementCount)item.append(actionRow);
   choices.append(item);
  }
- management.append(choices,overview);
+ management.append(choices);
  if(report){
   const office=node("div","ppw-post-show-road-agent");
   office.append(node("span","ppw-eyebrow","FROM THE LOCKER ROOM"),
@@ -591,33 +582,21 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","ppw-road-agent-voice",report.praise),
    node("p","ppw-road-agent-voice",report.concern),
    node("p","ppw-road-agent-next",report.recommendation));
-  const observed=postShowStaffObservations(show);
-  if(observed.length){
+  // Show the concrete evidence even when it came from the show's
+  // strongest match: a real injury or nine-minute overrun still needs care.
+  // These are bounded verified notes, never fabricated staff conversations.
+  const observations=postShowStaffObservations(show);
+  if(observations.length){
    const specific=node("div","ppw-road-agent-observations");
-   specific.append(node("strong","","From the completed match reports"));
-   for(const observation of observed){
+   specific.append(node("strong","","On my desk tonight"));
+   for(const observation of observations){
     const line=node("article","ppw-road-agent-observation");
-    line.append(node("h4","",observation.headline),node("p","",observation.note));
-    const source=node("button","ppw-next-show-evidence",
-     "Review "+observation.headline.toLowerCase()) as HTMLButtonElement;
-    source.type="button";
-    source.onclick=()=>{
-     revealNarrative();changePage(1);
-     const target=storyLinks.get(observation.slotId);
-     if(target instanceof HTMLDetailsElement)target.open=true;
-     target?.scrollIntoView({block:"start",behavior:"instant"});
-    };
-    line.append(source);specific.append(line);
+    line.append(node("h4","",observation.headline),
+     node("p","",observation.note));
+    specific.append(line);
    }
    office.append(specific);
   }
-  const strongest=show.entries.find(entry=>entry.slotId===report.strongestMatchId);
-  if(strongest)office.append(node("p","ppw-road-agent-standout",
-   "If I were showing the locker room one match from tonight, it'd be "+
-    strongest.headline+"."));
-  const storylineNote=programmeManagementNote(show.entries.flatMap(e=>e.programmeChapters??[]));
-  if(storylineNote)office.append(node("p","ppw-road-agent-continuity",
-   "On our ongoing stories: "+storylineNote));
   management.append(office);
  }
  // Without a hired Road Agent, the factual hand-off still belongs in the
@@ -651,27 +630,27 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(gorilla.crowdAdjustment>0)position.append(node("p","",
    "Production recovered its rhythm, and the building responded."));
  }
- const analysis=document.createElement("details");
- analysis.className="ppw-results-analysis";
- analysis.append(node("summary","","MANAGER ANALYSIS · Audience & production"));
- const stats=node("div","ppw-results-analysis-stats");
- stats.append(scoreWrap,pulseRow);analysis.append(stats);
- if(flowScores.length>=2)analysis.append(crowdFlow);
- if(gorilla&&gorilla.crowdAdjustment>0)analysis.append(node("p","ppw-muted",
-  "Internal recovery adjustment: +"+gorilla.crowdAdjustment.toFixed(1)+
-  " audience response. Certified results remain unchanged."));
  // All three chapters reuse one immutable completed show; no extra reads.
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
+ let premiumOpening:HTMLElement|null=null;
  // A permanent television identity, before the actual Results Skin report.
  // The certified narrative, manager analysis and results are untouched.
  if(poster){
+  // A settled PPV cannot still be advertising an unannounced card.
+  // Name participants only when the locked show certified a main event.
+  const main=show.entries.find(entry=>
+   entry.type==="MATCH"&&entry.matchContext?.isMainEvent);
+  const sides=main?.matchContext?.sides.filter(side=>side.length>0)
+   .map(side=>side.join(" & "));
+  const mainEvent=sides&&sides.length>=2?sides.join(" vs "):null;
   const opening=createAnimatedEventPoster({
    style:poster.style,eventName:show.showName??"Premium event",
-   promotionName:show.promotionName??"PPW",compact:true
+   promotionName:show.promotionName??"PPW",compact:true,
+   mainEvent,completed:true
   });
   if(opening){
    const wrap=node("section","ppw-results-event-poster");
-   wrap.append(opening);headlines.append(wrap);
+   wrap.append(opening);premiumOpening=wrap;
   }
  }else if(show.broadcastPackage){
   const opening=createBroadcastPackageFrame({style:show.broadcastPackage,kind:"OPEN",
@@ -681,8 +660,18 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    wrap.append(opening);headlines.append(wrap);
   }
  }
- headlines.append(header,feature,...(featured.length?[highlights]:[]));
+ headlines.append(header,...(featured.length?[highlights]:[]));
  const full=node("section","ppw-results-page");full.dataset.page="full";
+ if(premiumOpening)full.append(premiumOpening);
+ else{
+  const identity=node("header","ppw-results-show-intro");
+  identity.append(node("span","ppw-eyebrow","PPW / RINGSIDE"),
+   node("h1","",show.showName??"The completed show"),
+   node("p","ppw-muted","Year "+show.year+" · Week "+show.week));
+  full.append(identity);
+ }
+ if(audiencePanel)full.append(audiencePanel);
+ full.append(feature);
  if(effectiveSkin==="TERRITORY_TV"){
   const station=node("header","ppw-territory-chapter-head");
   station.append(node("span","ppw-territory-eyebrow","★ PPW TERRITORY TELEVISION · FULL CARD"),
@@ -773,10 +762,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   };
   card.append(open);breakdown.append(card);
  }
- // Show the easy-to-scan rundown first. The original detailed report and
- // every results skin stay one tap away; evidence links always open it.
+ // Enter the chronological broadcast; the compact rundown remains one tap away.
  revealNarrative=()=>setBreakdown(false);
- setBreakdown(true);
+ setBreakdown(false);
  full.append(breakdownSwitch,breakdown,timeline);
  const after=node("section","ppw-results-page");after.dataset.page="after";
  if(effectiveSkin==="TERRITORY_TV"){
@@ -808,66 +796,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   after.append(station);
  }
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
+  overview,...(flowScores.length>=2?[crowdFlow]:[]),
   ...(reactions.length||wrestlerPosts.length?[noise]:[]),management,
-  ...(position?[position]:[]),analysis);
- if(show.bookingClass==="PREMIUM"&&mediaScrum){
-  const scrumPort=mediaScrum;
+  ...(position?[position]:[]));
+ if(show.bookingClass==="PREMIUM"&&openPress){
   const press=node("section","ppw-media-scrum");
-  press.append(node("span","ppw-eyebrow","AFTER THE MAIN EVENT"),
-   node("h2","","The Media Scrum"),
-   node("p","ppw-muted",
-    "Answer the wrestling press in your own voice. The questions follow the certified show; your quotes are recorded once."));
-  const open=node("button","ppw-results-next","Meet the press") as HTMLButtonElement;
-  open.type="button";open.setAttribute("aria-expanded","false");
-  const content=node("div","ppw-media-scrum-content");
-  let loaded=false,working=false,view:MediaScrumView|null=null;
-  function draw(){
-   content.replaceChildren();
-   if(!view)return;
-   for(const q of view.questions){
-    const article=node("article","ppw-media-scrum-question");
-    article.append(node("span","ppw-eyebrow",q.journalist),
-     node("p","ppw-media-scrum-prompt",q.question));
-    if(q.answerIndex!==null){
-     article.append(node("p","ppw-media-scrum-quote",
-      "You: “"+q.answers[q.answerIndex]+"”"));
-    }else{
-     const choices=node("div","ppw-media-scrum-choices");
-     q.answers.forEach((answer,index)=>{
-      const selection=node("button","ppw-legend-button",answer) as HTMLButtonElement;
-      selection.type="button";selection.disabled=working;
-      selection.onclick=async()=>{
-       if(working||!view)return;working=true;
-       choices.querySelectorAll("button").forEach(b=>(b as HTMLButtonElement).disabled=true);
-       try{
-        const recorded=await scrumPort.answer(q.id,index);
-        q.answerIndex=recorded.answerIndex;draw();
-       }catch(e){choices.append(node("p","ppw-alert ppw-error",
-         e instanceof Error?e.message:"Could not save the answer"));working=false;}
-       finally{working=false;}
-      };
-      choices.append(selection);
-     });
-     article.append(choices);
-    }
-    content.append(article);
-   }
-  }
-  open.onclick=async()=>{
-   if(working)return;
-   if(open.getAttribute("aria-expanded")==="true"){
-    open.setAttribute("aria-expanded","false");content.hidden=true;return;
-   }
-   open.setAttribute("aria-expanded","true");content.hidden=false;
-   if(loaded){draw();return;}
-   open.disabled=true;
-   content.replaceChildren(node("p","ppw-muted","The journalists are gathering…"));
-   try{view=await scrumPort.read();loaded=true;draw();}
-   catch(e){content.replaceChildren(node("p","ppw-alert ppw-error",
-     e instanceof Error?e.message:"Press scrum unavailable"));}
-   finally{open.disabled=false;}
-  };
-  press.append(open,content);content.hidden=true;after.append(press);
+  press.append(node("span","ppw-eyebrow","FROM THE PRESS ROOM"),
+   node("h2","","Meet the Press"));
+  const action=node("button","ppw-results-next","Revisit press conference") as HTMLButtonElement;
+  action.type="button";action.onclick=openPress;
+  press.append(action);after.append(press);
  }
  const pages=[headlines,full,after];
  const goButton=(label:string,dest:0|1|2)=>{
@@ -887,7 +825,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(index===1)setBreakdown(compactFullShow);
   window.scrollTo({top:0,behavior:"instant"});
  };
- changePage(0);
+ changePage(1);
 }
 function metric(value:string,caption:string){
  return append(node("div","ppw-result-pulse-stat"),

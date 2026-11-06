@@ -4,7 +4,7 @@ import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
-import {readPremiumScrum,answerPremiumScrum} from "../src/db/premium-media-scrum.js";
+import {readPremiumScrum,answerPremiumScrum,dismissPremiumScrum} from "../src/db/premium-media-scrum.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("certified PPV scrum records first owner response once, preserves outcomes and rejects rival access",{
@@ -48,6 +48,7 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
     [worldId]);
   });
   const initial=await readPremiumScrum(db.pool,scope);
+  assert.equal(initial.dismissed,false);
   assert.equal(initial.showName,"Starlight PPV");
   assert.deepEqual(initial.questions.map(q=>q.id),
    ["MAIN_EVENT","BIG_PICTURE","NEXT_CHAPTER"]);
@@ -74,6 +75,24 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
    WHERE world_id=$1 AND show_id=$2 AND player_id=$3`,
    [worldId,scope.showId,owner]));
   assert.deepEqual(recorded,[{count:"1",answer_index:1}]);
+  // Skipping is private, idempotent and preserves the published answer.
+  await assert.rejects(dismissPremiumScrum(db.pool,{...scope,playerId:rival}),
+   /unavailable|controller|permission/i);
+  assert.deepEqual(await dismissPremiumScrum(db.pool,scope),{dismissed:true,saved:true});
+  assert.deepEqual(await dismissPremiumScrum(db.pool,scope),{dismissed:true,saved:false});
+  const ended=await readPremiumScrum(db.pool,scope);
+  assert.equal(ended.dismissed,true);
+  assert.equal(ended.questions[0]?.answerIndex,1);
+  assert.equal(ended.questions[1]?.answerIndex,null);
+  const marker=await withWorldTransaction(db.pool,tx=>tx.query<{
+   question_id:string;answer_index:number}>(`
+   SELECT question_id,answer_index FROM ppw_premium_media_scrum_answers
+   WHERE world_id=$1 AND show_id=$2 AND player_id=$3
+   ORDER BY question_id`,[worldId,scope.showId,owner]));
+  assert.deepEqual(marker,[
+   {question_id:"DISMISSED",answer_index:0},
+   {question_id:"MAIN_EVENT",answer_index:1}
+  ]);
   const immutable=await withWorldTransaction(db.pool,tx=>tx.query<{
    crowd_response:number;actual_finish:string}>(`
    SELECT c.crowd_response::double precision AS crowd_response,m.actual_finish FROM ppw_completed_shows c
