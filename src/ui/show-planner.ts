@@ -8,6 +8,7 @@ export interface PlannerPort {
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
  openCard(draftId:string):void;
  openCalendar?():void;
+ openDeals?():void;
 }
 const node=(tag:string,text="",className="")=>{
  const x=document.createElement(tag);x.textContent=text;x.className=className;return x;};
@@ -100,7 +101,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   selectedSeriesId=draft?.showSeriesId??seriesId;
   venueId=draft?.venueId??data?.venues.find(v=>v.home)?.venueId??data?.venues[0]?.venueId??"";
   marketId=data?.venues.find(v=>v.venueId===venueId)?.marketId??"";
-  day=draft?.day??5;strategy=draft?.ticketStrategy??"STANDARD";draw();
+  const selected=week.scheduled.find(x=>x.seriesId===selectedSeriesId);
+  const premium=draft?.bookingClass==="PREMIUM"||selected?.eventType==="MAJOR";
+  const slot=data?.broadcastSlot,index=(week.year-1)*52+week.week-1;
+  const fixed=!premium&&slot&&index>=slot.startWeekIndex&&index<=slot.endWeekIndex;
+  day=fixed?slot.day:draft?.day??(premium?6:5);
+  strategy=draft?.ticketStrategy??"STANDARD";draw();
  }
  function draw(){
   root.replaceChildren();root.classList.add("ppw-planner");
@@ -215,8 +221,24 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    }
    const days=document.createElement("select");days.setAttribute("aria-label","Show day");
    for(let d=1;d<=7;d++){const opt=document.createElement("option");opt.value=String(d);opt.textContent=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][d-1];days.append(opt);}
-   days.value=String(day);days.onchange=()=>{day=Number(days.value);draw();};
-   form.append(node("label","Day"),days);
+   const selected=editing.scheduled.find(x=>x.seriesId===selectedSeriesId);
+   const premium=selected?.eventType==="MAJOR"||
+    editing.shows.find(x=>x.draftId===selectedDraft)?.bookingClass==="PREMIUM";
+   const contract=data.broadcastSlot,idx=(editing.year-1)*52+editing.week-1;
+   const fixed=!premium&&contract&&idx>=contract.startWeekIndex&&idx<=contract.endWeekIndex;
+   if(fixed)day=contract.day;
+   days.value=String(day);days.disabled=busy||!!fixed;
+   days.onchange=()=>{day=Number(days.value);draw();};
+   form.append(node("label",fixed?"Contracted broadcast day":"Show day"),days);
+   if(fixed){
+    form.append(node("p",contract.networkName+" airs your weekly show on "+
+     ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][contract.day-1]+
+     " at "+String(contract.hour).padStart(2,"0")+":00. This day is fixed by your agreement.",
+     "ppw-planner-calendar-label"));
+    if(port.openDeals)form.append(button("Request another broadcast day",()=>port.openDeals?.()));
+   }else if(premium)form.append(node("p",
+    "PPVs normally run on Saturday or Sunday; other days remain available.",
+    "ppw-planner-calendar-label"));
    const contenders=venuePressureCount(data,editing.year,editing.week,day,venueId);
    if(contenders){
     const warning=node("section","","ppw-planner-contention");
@@ -229,7 +251,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      .flatMap(s=>s.day===null?[]:[s.day]));
     const freeDays=freeVenueDays(data,editing.year,editing.week,venueId)
      .filter(d=>!ownDays.has(d));
-    const alternative=freeDays.find(d=>d!==day);
+    const alternative=fixed?undefined:freeDays.find(d=>d!==day);
     if(alternative){
      const dayName=["","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][alternative];
      warning.append(button("Try "+dayName+" instead",()=>{day=alternative;draw();}));

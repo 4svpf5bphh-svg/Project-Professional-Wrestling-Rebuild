@@ -25,7 +25,7 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
   commandType:"SIGN_COMMERCIAL_DEAL",requiresOpenWeek:true,
   execute:async tx=>{
    const rows=await tx.query<CommercialEvidence&{year:number;week:number;
-    management_mode:string;existing_kinds:string[];recentShowDay:number|null;
+    management_mode:string;existing_kinds:string[];
     recentTvEpisodes:number;averageTvRating:number|null}>(`
     SELECT w.year,w.week,p.management_mode,p.tier,p.media_reach AS "mediaReach",
      p.weekly_media_income::numeric::float8 AS "weeklyMediaIncome",
@@ -34,14 +34,7 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
      results.crowd::float8 AS "averageCrowd",
      results.tv_episodes AS "recentTvEpisodes",
      results.average_rating::float8 AS "averageTvRating",
-     (SELECT d.show_day FROM ppw_booking_drafts d
-      JOIN ppw_completed_shows c ON c.world_id=d.world_id
-       AND c.show_id=d.draft_id AND c.promotion_id=d.promotion_id
-      WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
-       AND d.event_type='REGULAR' AND d.status='SUBMITTED'
-      ORDER BY d.year DESC,d.week DESC,d.draft_id DESC LIMIT 1)
-       AS "recentShowDay",
-     ARRAY(SELECT d.kind FROM ppw_commercial_deals d
+      ARRAY(SELECT d.kind FROM ppw_commercial_deals d
       WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
        AND d.status='ACTIVE') AS existing_kinds
     FROM ppw_worlds w JOIN ppw_promotion_controls c

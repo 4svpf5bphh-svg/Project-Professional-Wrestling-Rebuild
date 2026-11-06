@@ -41,7 +41,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
   rescueReceipt:string|null=null,
   pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"|"RATINGS"=initialPane,
   selectedRatingsRivalId:string|null=null,
-  commercialBusy=false,commercialNotice="",renaming=false,renameBusy=false,
+  commercialBusy=false,commercialNotice="",requestingDayFor:string|null=null,
+  chosenBroadcastDay=5,renaming=false,renameBusy=false,
   commercialKind:"BROADCAST"|"SPONSOR"="BROADCAST",
   spendingExpanded=false;
  let spendingDraft:PromotionSpendingPlan|null=null,spendingBusy=false,spendingNotice="";
@@ -54,7 +55,14 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
  }
  async function acceptCommercial(offerCode:string){
   if(commercialBusy||!port.signCommercial||!view)return;
-  if(!window.confirm("Sign this commercial agreement? Its weekly income and distribution apply until the term ends. The offer cannot be replaced early."))return;
+  const term=COMMERCIAL_COMPANIES[offerCode];
+  const weekday=term?.preferredDay?
+   ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][term.preferredDay-1]:null;
+  const schedule=offerCode.startsWith("BROADCAST_")&&weekday?
+   " Your weekly TV shows will be fixed to "+weekday+" at "+term.airtime+
+   ". Move conflicting existing bookings before signing.":"";
+  if(!window.confirm("Sign this commercial agreement? Its weekly income and distribution apply until the term ends."+
+   schedule+" The offer cannot be replaced early."))return;
   commercialBusy=true;error="";commercialNotice="";draw();
   try{
    const result=await port.signCommercial({offerCode,requestId:crypto.randomUUID(),
@@ -66,6 +74,29 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     await refresh();commercialNotice="Commercial agreement signed. It will settle with your normal weekly accounts.";
    }else error="The agreement was not accepted.";
   }catch(e){error=e instanceof Error?e.message:"Agreement could not be signed";}
+  finally{commercialBusy=false;draw();}
+ }
+ async function sendBroadcastDayRequest(dealId:string){
+  if(commercialBusy||!port.requestBroadcastDay||!view)return;
+  const current=view.commercialAgreements.find(x=>x.dealId===dealId);
+  if(!current||current.kind!=="BROADCAST"||current.airingDay===chosenBroadcastDay)return;
+  const dayName=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][chosenBroadcastDay-1];
+  if(!window.confirm("Request "+dayName+" from your network? The network permits one approved day change per contract."+
+   " Any unsubmitted TV cards will move with the slot and need to be marked ready again."))return;
+  commercialBusy=true;error="";commercialNotice="";draw();
+  try{
+   const response=await port.requestBroadcastDay({dealId,requestedDay:chosenBroadcastDay,
+    requestId:crypto.randomUUID(),expectedRevision:view.worldRevision}) as
+    {status?:string;result?:{networkResponse?:string}};
+   if(response.status==="STALE"){
+    error="The World changed. Review your broadcaster's terms and try again.";
+    await refresh();
+   }else if(response.status==="APPLIED"||response.status==="REPLAYED"){
+    requestingDayFor=null;await refresh();
+    commercialNotice=response.result?.networkResponse??
+     "Your broadcaster approved the new weekly TV day.";
+   }else error="Your network did not approve the day change.";
+  }catch(e){error=e instanceof Error?e.message:"The day-change request was refused.";}
   finally{commercialBusy=false;draw();}
  }
  async function reviewRescue(){
@@ -888,10 +919,35 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      money(deal.weeklyIncome)+" weekly guarantee"));
     item.append(el("small","ppw-commercial-status",
      Math.max(0,deal.endWeekIndex-now+1)+" weeks left on this agreement"));
-    if(deal.kind==="BROADCAST"&&typeof deal.airingDay==="number"&&typeof deal.airingHour==="number")
+    if(deal.kind==="BROADCAST"&&typeof deal.airingDay==="number"&&typeof deal.airingHour==="number"){
      item.append(el("span","ppw-commercial-slot",
-      "Your broadcast slot · "+(day[deal.airingDay-1]??"Weekly")+
-       " at "+String(deal.airingHour).padStart(2,"0")+":00"));
+      "Your contracted TV night · "+(day[deal.airingDay-1]??"Weekly")+
+       " at "+String(deal.airingHour).padStart(2,"0")+":00 · Weekly shows fixed"));
+     if(port.requestBroadcastDay&&deal.source==="HUMAN"){
+      const open=requestingDayFor===deal.dealId;
+      item.append(button(open?"Cancel day request":"Request a different broadcast day",()=>{
+       requestingDayFor=open?null:deal.dealId;
+       chosenBroadcastDay=deal.airingDay===5?4:5;draw();
+      },commercialBusy));
+      if(open){
+       const selector=el("div","ppw-broadcast-day-options");
+       selector.setAttribute("role","group");
+       selector.setAttribute("aria-label","Requested broadcast day");
+       for(let next=1;next<=7;next++){
+        if(next===deal.airingDay)continue;
+        const choose=button(day[next-1]!,()=>{
+         chosenBroadcastDay=next;draw();
+        },commercialBusy);
+        choose.setAttribute("aria-pressed",String(chosenBroadcastDay===next));
+        selector.append(choose);
+       }
+       item.append(selector);
+       item.append(button(commercialBusy?"Requesting…":"Ask the network",()=>{
+        void sendBroadcastDayRequest(deal.dealId);
+       },commercialBusy));
+      }
+     }
+    }
     section.append(item);
    }
    section.append(el("h3","","The World deal market"),
@@ -926,8 +982,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
       offer.termWeeks+" weeks"));
      if(offer.kind==="BROADCAST"){
       item.append(el("span","ppw-commercial-slot",
-       "Preferred "+(day[identity.preferredDay-1]??"weekly")+
-       " "+identity.airtime+" · Rating target "+
+       "Contracted weekly slot: "+(day[identity.preferredDay-1]??"weekly")+
+       " at "+identity.airtime+" · Rating target "+
        broadcasterRatingTarget(code,view.tier).toFixed(1)));
       item.append(el("span","ppw-commercial-slot",
        "+"+Math.round(offer.reachIncrease)+" distribution reach"));

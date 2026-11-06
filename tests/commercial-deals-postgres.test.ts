@@ -75,6 +75,8 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
   if(first.status!=="APPLIED")throw new Error("Expected signed deal");
   assert.equal(first.result.weeklyIncome,312000);
   assert.equal(first.result.reachIncrease,10);
+  assert.equal(first.result.airingDay,5,
+   "The broadcaster's advertised Friday night, not last Tuesday, is the signed slot");
   const replay=await signCommercialDeal(db.pool,command);
   assert.equal(replay.status,"REPLAYED");
   const updated=await readBusinessWorkspace(db.pool,{
@@ -153,7 +155,7 @@ test("Commercial negotiation is player-scoped, immutable per term and expires on
    await tx.query(`INSERT INTO ppw_booking_drafts
     (world_id,draft_id,promotion_id,year,week,status,show_day,
      show_name,event_type,market_id)
-    VALUES($1,'regional-tour', $2,1,16,'SUBMITTED',2,
+    VALUES($1,'regional-tour', $2,1,16,'SUBMITTED',5,
      'An Away-Market Event','REGULAR','market-1')`,[world,promotion]);
    await tx.query(`INSERT INTO ppw_completed_shows
     (world_id,promotion_id,show_id,year,week,resolution_id,

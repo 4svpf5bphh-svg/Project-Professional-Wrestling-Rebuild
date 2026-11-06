@@ -194,6 +194,10 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  // Previously published fan threads stay unchanged. New episodes get
  // additional fictional voices without new requests, timers or Neon writes.
  const expanded:Record<typeof kind,string[]>={
+  BROADCAST:["Networks are about to become the main characters. 📺",
+   "A fixed broadcast night means the fans know where to find you. 🔥",
+   "The partner's reaction is public, and the ratings will be too. 👀",
+   "A big ratings win means nothing if you miss next week's slot. 🍿"],
   RUMOUR:["Somebody's cousin's barber has become an anonymous source. 😂",
    "Six theories and not one screenshot. That's wrestling journalism for you. 👀",
    "The conspiracy board has sixteen strings and zero evidence. 🧵",

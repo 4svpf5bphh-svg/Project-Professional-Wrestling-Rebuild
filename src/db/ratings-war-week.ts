@@ -33,8 +33,24 @@ export async function settleRatingsWarWorldWeek(tx:SqlRows,
     WHERE d.world_id=econ.world_id AND d.promotion_id=econ.promotion_id
      AND d.kind='BROADCAST'
      AND d.start_week_index<=$4 AND d.end_week_index>=$4)
-   THEN (SELECT CASE WHEN d.airing_day IS NOT NULL AND
-      d.airing_day<>draft.show_day THEN NULL
+   THEN (SELECT CASE WHEN coalesce(
+      (SELECT (change.payload->>'oldDay')::integer
+       FROM ppw_ledger_events change
+       WHERE change.world_id=d.world_id
+        AND change.event_type='BROADCAST_SLOT_CHANGED'
+        AND change.payload->>'dealId'=d.deal_id
+        AND (change.payload->>'effectiveWeekIndex')::integer>$4
+       ORDER BY change.year DESC,change.week DESC LIMIT 1),
+      d.airing_day) IS NOT NULL AND
+      coalesce(
+       (SELECT (change.payload->>'oldDay')::integer
+        FROM ppw_ledger_events change
+        WHERE change.world_id=d.world_id
+         AND change.event_type='BROADCAST_SLOT_CHANGED'
+         AND change.payload->>'dealId'=d.deal_id
+         AND (change.payload->>'effectiveWeekIndex')::integer>$4
+        ORDER BY change.year DESC,change.week DESC LIMIT 1),
+       d.airing_day)<>draft.show_day THEN NULL
      ELSE coalesce(d.airing_hour,20) END
     FROM ppw_commercial_deals d
     WHERE d.world_id=econ.world_id AND d.promotion_id=econ.promotion_id

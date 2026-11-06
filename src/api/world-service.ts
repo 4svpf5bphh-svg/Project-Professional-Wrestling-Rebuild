@@ -56,6 +56,7 @@ import {readContractDesk} from "../db/contract-desk-workspace.js";
 import {readBusinessWorkspace} from "../db/business-workspace.js";
 import {setPromotionSpendingPlan} from "../db/promotion-spending-plan.js";
 import {signCommercialDeal} from "../db/commercial-deals.js";
+import {requestBroadcastDay} from "../db/broadcast-day-request.js";
 import {previewHumanPromotionRestructure,applyHumanPromotionRestructure}
  from "../db/human-promotion-restructuring.js";
 import {readWrestlerDirectory,type DirectoryFilter} from "../db/wrestler-directory.js";
@@ -96,6 +97,16 @@ export async function signCommercialDealAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.offerCode,"offer");
  return signCommercialDeal(context.pool,{...input,playerId:context.actor.playerId});
+}
+/** A broadcaster may approve a manager-initiated contract day amendment.
+ * This uses the same membership, revision and single-World authority as sign.
+ */
+export async function requestBroadcastDayAsActor(context:WorldApiContext,
+ input:{worldId:string;promotionId:string;requestId:string;
+ expectedRevision:number;dealId:string;requestedDay:number}){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.dealId,"deal");
+ return requestBroadcastDay(context.pool,{...input,playerId:context.actor.playerId});
 }
 /** Explicitly authorised human rescue, sharing revision/replay safeguards. */
 export async function previewRestructureAsActor(context:WorldApiContext,
