@@ -761,7 +761,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const verified=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
     const posts=[...(verified?[verified]:[]),...projectHotTagNewsThread(story)];
     for(const post of posts){
-     const wrestler="personId" in post;
+     const wrestler="personId" in post && typeof post.personId==="string";
      const card=el("div","ppw-hot-tag-news-post"+(wrestler?" ppw-hot-tag-wrestler":""));
      const avatar=el("span","ppw-hot-tag-avatar",post.avatar);
      if(wrestler){
