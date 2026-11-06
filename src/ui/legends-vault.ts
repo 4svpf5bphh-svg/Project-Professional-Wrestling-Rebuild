@@ -139,6 +139,30 @@ export function drawLegendAlbum(
  const fill=el("span","ppw-album-progress-ink");
  fill.style.width=(owned.length/Math.max(1,view.entries.length)*100)+"%";
  meter.append(fill);cabinet.append(headline,meter);
+ // Put genuine owned cards before filters, especially on a 320px iPhone.
+ // The shelf is a limited view of the SAME current-world KP receipts.
+ // Mystery entries and cards not yet owned never appear in this highlight.
+ const highlights=el("section","ppw-album-highlights");
+ highlights.setAttribute("aria-label","Collected card highlights");
+ const highlightTitle=el("h3","ppw-album-highlights-title","Your Cards");
+ const highlightRail=el("div","ppw-album-highlights-rail");
+ highlightRail.setAttribute("role","group");
+ highlightRail.setAttribute("aria-label","Swipe through your collected cards");
+ highlightRail.tabIndex=0;
+ for(const item of owned.filter(x=>x.unlocked&&x.cardAsset).slice(0,4)){
+  const tile=button("",()=>actions.showCard(item.id));
+  tile.classList.add("ppw-album-highlight-card");
+  tile.dataset.legendId=item.id;tile.dataset.tier=item.tier;
+  tile.setAttribute("aria-label","View "+(item.name??"Legend")+" collectible card");
+  const art=cardGraphic(item);
+  if(art){art.loading="eager";tile.append(art);}
+  highlightRail.append(tile);
+ }
+ if(!highlightRail.children.length){
+  highlightRail.append(el("p","ppw-album-highlights-empty",
+   "Your first collected card will appear here."));
+ }
+ highlights.append(highlightTitle,highlightRail);
  const tierStrip=el("nav","ppw-album-tier-strip");
  tierStrip.setAttribute("aria-label","Collection progress by tier");
  const pageTabs=el("nav","ppw-album-pages");
@@ -238,7 +262,9 @@ export function drawLegendAlbum(
     if(art)slot.append(art);
     else slot.append(el("div","ppw-album-silhouette","★"));
     slot.append(el("strong","ppw-album-slot-name",item.name??"Collected Legend"));
-    slot.append(button("View card",()=>actions.showCard(item.id),!item.cardAsset));
+    const inspect=button("View card",()=>actions.showCard(item.id),!item.cardAsset);
+    inspect.classList.add("ppw-album-open-card");
+    slot.append(inspect);
    }else{
     slot.append(el("div","ppw-album-silhouette","?"));
     slot.append(el("strong","ppw-album-slot-name",
@@ -255,7 +281,7 @@ export function drawLegendAlbum(
     button("Next page",()=>{sheet++;save();renderPage();},sheet===pageCount-1));
   }
  }
- cabinet.append(tierStrip,pageTabs,tools,counts,grid,paging);
+ cabinet.append(highlights,tierStrip,pageTabs,tools,counts,grid,paging);
  renderPage();target.append(cabinet);
  showLegendCardViewer(view,actions,expandedCard);
 }

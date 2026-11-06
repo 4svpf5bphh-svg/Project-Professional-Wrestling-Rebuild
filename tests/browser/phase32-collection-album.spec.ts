@@ -39,10 +39,28 @@ for(const width of [320,390]){
    }));
   expect(tierWrap.every(x=>x.whiteSpace==="nowrap"&&x.countWhiteSpace==="nowrap")).toBe(true);
   expect(tierWrap.every(x=>x.size<=80)).toBe(true);
+  await expect(album.locator(".ppw-album-highlights")).toHaveCount(1);
+  await expect(album.locator(".ppw-album-highlight-card")).toHaveCount(4);
+  const firstHighlight=album.getByRole("button",{name:"View Jerry Lynn collectible card"});
+  await expect(firstHighlight).toBeVisible();
+  const highlightBounds=await firstHighlight.boundingBox();
+  expect(highlightBounds).not.toBeNull();
+  expect(highlightBounds!.y,
+   "An actual collectible appears near the top of the first iPhone screen")
+   .toBeLessThan(width===320?420:590);
+  await expect(firstHighlight.locator("img.ppw-legend-card-art"))
+   .toHaveJSProperty("naturalWidth",960);
   await expect(album.locator(".ppw-album-slot")).toHaveCount(12);
   await expect(album.getByText("129 cards · Page 1 of 11")).toBeVisible();
   await expect(page.getByRole("link",{name:"World Record Book"})).toHaveAttribute("href","#/records");
   await page.screenshot({path:info.outputPath("phase32-album-"+width+"-main.png")});
+  // The featured card is an actual viewer entry, not a decorative fake.
+  await firstHighlight.click();
+  const featuredViewer=page.getByRole("dialog",{name:"Collectible card: Jerry Lynn"});
+  await expect(featuredViewer).toBeVisible();
+  await featuredViewer.getByRole("button",{name:"Close card"}).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(firstHighlight).toBeFocused();
   await album.getByRole("button",{name:"Next page"}).click();
   await expect(album.getByText("129 cards · Page 2 of 11")).toBeVisible();
   await expect(album.locator(".ppw-album-slot")).toHaveCount(12);

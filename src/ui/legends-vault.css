@@ -383,3 +383,48 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
  .ppw-album-tier-summary{font-size:10px!important;padding:.42rem .24rem!important}
  .ppw-album-tier-summary strong{font-size:11px!important}
 }
+
+
+/* A real, owner-only card shelf appears before album controls. Limit to
+   four canonical art assets and retain native iPhone horizontal scrolling. */
+.ppw-album-highlights{
+ margin:.3rem 0 .7rem;min-width:0;max-width:100%;overflow:hidden;
+}
+.ppw-album-highlights-title{
+ font-size:.83rem!important;letter-spacing:.06em;text-transform:uppercase;
+ color:#f3d5a2;margin:0 0 .45rem!important;
+}
+.ppw-album-highlights-rail{
+ display:flex;gap:.6rem;overflow-x:auto;overscroll-behavior-x:contain;
+ scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+ padding:.15rem .18rem .5rem;scrollbar-width:thin;
+}
+.ppw-album-highlight-card{
+ --highlight-accent:#8be3e6;
+ position:relative;display:block;flex:0 0 108px;align-self:flex-start;
+ width:108px;min-width:108px;max-width:108px;height:auto;min-height:44px;
+ padding:3px;border:1px solid var(--highlight-accent);border-radius:6px;
+ background:#07131b;scroll-snap-align:start;box-shadow:0 0 13px #48e4e21f;
+}
+.ppw-album-highlight-card[data-tier="LEGEND"]{--highlight-accent:#eac184;box-shadow:0 0 13px #e4b15a30}
+.ppw-album-highlight-card[data-tier="ICON"]{--highlight-accent:#9bd9ff;box-shadow:0 0 13px #71bcfa30}
+.ppw-album-highlight-card[data-tier="IMMORTAL"]{--highlight-accent:#e8d1a2;box-shadow:0 0 13px #e9d2ad2e}
+.ppw-album-highlight-card .ppw-legend-card-art,
+.ppw-album-highlight-card .ppw-undertaker-card{
+ display:block;width:100%!important;max-width:100%!important;
+ height:auto!important;max-height:none!important;aspect-ratio:2/3;
+ border:0!important;border-radius:3px!important;
+ background:transparent!important;box-shadow:none!important;object-fit:contain;
+}
+.ppw-album-highlight-card:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.ppw-album-highlights-empty{
+ margin:0;padding:.6rem .75rem;background:#16202ac9;
+ border:1px dashed #ffffff3d;border-radius:9px;color:#c4ced4;font-size:.8rem;
+}
+@media(max-width:390px){
+ .ppw-album-highlights{margin:.2rem 0 .6rem}
+ .ppw-album-highlight-card{flex-basis:104px;width:104px;min-width:104px;max-width:104px}
+}
+@media(prefers-reduced-motion:reduce){
+ .ppw-album-highlights-rail{scroll-behavior:auto}
+}

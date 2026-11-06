@@ -290,6 +290,8 @@ export function mountCollectionPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
  let view:LegendsVaultView|null=null,expanded:string|null=null;
  let albumState:LegendAlbumState={page:"ALL",query:"",sort:"CATALOGUE",sheet:0};
+ let returnFocusId:string|null=null;
+ let returnFocusFrom:"highlights"|"album"="album";
  let error="",busy=true;
  const render=()=>{
   clearLegendRevealPortal();
@@ -308,8 +310,28 @@ export function mountCollectionPage(root:HTMLElement,scope:Scope){
   content.className="ppw-industry-list ppw-collection";
   content.dataset.legendAlbumPage=albumState.page;
   drawLegendAlbum(content,view,{
-   showCard:id=>{expanded=id;render();},
-   closeCard:()=>{expanded=null;render();}
+   showCard:id=>{
+    if(!expanded){
+     returnFocusId=id;
+     returnFocusFrom=document.activeElement?.closest(".ppw-album-highlight-card")?
+      "highlights":"album";
+    }
+    expanded=id;render();
+   },
+   closeCard:()=>{
+    expanded=null;render();
+    if(returnFocusId){
+     const area=returnFocusFrom==="highlights"?
+      ".ppw-album-highlight-card":".ppw-album-slot";
+     const item=Array.from(root.querySelectorAll<HTMLElement>(area))
+      .find(x=>x.dataset.legendId===returnFocusId);
+     const button=returnFocusFrom==="highlights"?
+      item as HTMLButtonElement|undefined:
+      item?.querySelector<HTMLButtonElement>(".ppw-album-open-card");
+     button?.focus({preventScroll:true});
+    }
+    returnFocusId=null;
+   }
   },expanded,undefined,albumState,next=>{albumState=next;});
   root.append(content);
  };
