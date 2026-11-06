@@ -1,7 +1,7 @@
 import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTalentMarketPage,mountContractsPage,mountPersonaPage,
  mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountCollectionPage,mountKayfabePage,mountAchievementsPage,
- mountCalendarPage,mountProgrammePage,mountChampionshipsPage,
+ mountCalendarPage,mountProgrammePage,mountChampionshipsPage,mountTournamentsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
  consumeBackstageRivalryFocus,
@@ -358,7 +358,8 @@ function renderSection(){
     pitchFocus?.personId??dossierFocus??undefined,pitchFocus?.opponentId);
    break;
   }
-  case "championships":void mountChampionshipsPage(view,scope,back);break;
+  case "championships":void mountChampionshipsPage(view,scope,back,"MINE");break;
+  case "tournaments":void mountTournamentsPage(view,scope,()=>openSection("roster"));break;
   case "teams":mountTagTeamsPage(view,scope);break;
   case "stables":mountStablesPage(view,scope);break;
   case "connections":mountWorkingConnectionsPage(view,scope);break;

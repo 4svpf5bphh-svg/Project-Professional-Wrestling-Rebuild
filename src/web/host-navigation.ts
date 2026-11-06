@@ -25,7 +25,8 @@ export const HOST_SECTIONS=[
  {id:"calendar",label:"Calendar",glyph:"▦"},
  {id:"results",label:"Results",glyph:"R"},
  {id:"programmes",label:"Programmes",glyph:"⚑"},
- {id:"championships",label:"Championships",glyph:"♛"},
+ {id:"championships",label:"My Champions",glyph:"♛"},
+ {id:"tournaments",label:"Tournaments",glyph:"🏆"},
  {id:"teams",label:"Tag Teams",glyph:"♧"},
  {id:"stables",label:"Stables",glyph:"♜"},
  {id:"connections",label:"Connections",glyph:"∞"}
@@ -75,7 +76,8 @@ export const HOST_DRAWER_ROOTS=[
   ["roster","My Roster","Wrestlers, divisions and dossiers"],
   ["market","Talent Market","Recruitment and free agents"],
   ["results","Results","Completed shows and reports"],
-  ["championships","Championships","Title holders and history"],
+  ["championships","My Champions","Your belts, champions and title history"],
+  ["tournaments","Tournaments","Create, active brackets and heritage"],
   ["contracts","Contracts","Deals, renewals and dates"],
   ["backstage","Backstage","Private wrestler conversations"],
   ["teams","Tag Teams","Partnerships and pairings"],
@@ -86,7 +88,7 @@ export const HOST_DRAWER_ROOTS=[
   ["calendar","Calendar","Events and venues"],
   ["programmes","Programmes","Rivalries and ongoing stories"]]},
  {key:"business",label:"Business",glyph:"B",landing:"business",destinations:[
-  ["business","Finances & deals","Broadcasting, sponsorship and operations"],
+  ["business","Business","Finances, Commercials and Ratings War"],
   ["staff","Staff Office","Your team and its decisions"],
   ["admin","Admin","Operator-only World controls"]]}
 ] as const;
@@ -95,7 +97,7 @@ export function drawerRootForSection(section:HostSection):HostDrawerRoot{
  if(section==="news")return "news";
  if(["industry","promotions","broadcasts","records","legends","collection","achievements","hall-of-fame",
   "annual-awards","world-moments"].includes(section))return "world";
- if(["roster","market","results","championships","contracts","backstage","teams","stables","connections"].includes(section))return "promotion";
+ if(["roster","market","results","championships","tournaments","contracts","backstage","teams","stables","connections"].includes(section))return "promotion";
  if(["planner","card","calendar","programmes"].includes(section))return "plan";
  if(["business","staff","admin","kayfabe"].includes(section))return "business";
  return "world";

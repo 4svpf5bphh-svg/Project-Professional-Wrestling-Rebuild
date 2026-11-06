@@ -22,7 +22,7 @@ export interface BusinessPort{
   Promise<{status:"APPLIED"|"REPLAYED"|"STALE";revision:number}>;
  openResults?(showId:string):void;
  returnToResults?():void;
- openRoster?():void;openContracts?():void;
+ openRoster?():void;openContracts?():void;openStaff?():void;
  back?():void;
 }
 const el=(tag:string,cls="",content="")=>{
@@ -38,11 +38,11 @@ const money=(n:number)=>new Intl.NumberFormat("en-GB",{
 const tone=(n:number)=>n>=0?"ppw-positive":"ppw-negative";
 /** Read-only company balance-sheet and verified event P&L, no invented revenues. */
 export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
- initialPane:"FINANCES"|"RATINGS"|"COMMERCIAL"="FINANCES"){
+ initialPane:"OVERVIEW"|"FINANCES"|"RATINGS"|"COMMERCIAL"="OVERVIEW"){
  let view:BusinessView|null=null,error="",loading=false,
   rescue:RescueView|null=null,rescueReviewed=false,rescueBusy=false,
   rescueReceipt:string|null=null,
-  pane:"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"|"RATINGS"=initialPane,
+  pane:"OVERVIEW"|"FINANCES"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES"|"COMMERCIAL"|"RATINGS"=initialPane,
   selectedRatingsRivalId:string|null=null,
   commercialBusy=false,commercialNotice="",requestingDayFor:string|null=null,
   chosenBroadcastDay=5,renaming=false,renameBusy=false,
@@ -192,7 +192,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    if(port.returnToResults)
     returnNav.append(button("← Ringside Results",()=>port.returnToResults?.()));
    returnNav.append(button("← Business",()=>{
-    pane="FINANCES";
+    pane="OVERVIEW";
     if(window.location.hash==="#/business/ratings")
      window.history.replaceState(null,"","#/business");
     draw();
@@ -233,15 +233,38 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(commercialNotice)root.append(el("p","ppw-alert ppw-success",commercialNotice));
   if(!view){if(!loading)root.append(button("Retry",()=>void refresh()));return;}
-  const nav=el("nav","ppw-business-nav");
-  nav.setAttribute("aria-label","Business reports");
-  for(const [id,title] of [
-   ["FINANCES","Finances"],["RATINGS","Ratings War"],["STANDING","Standing"],["ACTIVITY","Activity"],["EVENTS","Events"],["TERRITORIES","Territories"],["COMMERCIAL","Deals"]
-  ] as const){
-   const b=button(title,()=>{pane=id;draw();});
-   b.setAttribute("aria-current",pane===id?"page":"false");nav.append(b);
+  if(pane==="OVERVIEW"){
+   const hub=el("section","ppw-business-hub");
+   hub.append(el("h2","","Choose your desk"),
+    el("p","ppw-business-muted","Your promotion's money, partners and performance in one place."));
+   const destinations=el("div","ppw-business-hub-grid");
+   const sections=[
+    ["FINANCES","Finances","Bank, spending plan and event accounts"],
+    ["COMMERCIAL","Commercials","Networks, streaming and sponsors"],
+    ["RATINGS","Ratings War","Audiences, rivals and head-to-head results"],
+    ["STAFF","Staff Admin","Your team, roles and staff decisions"],
+    ["STANDING","Standing","Company status and progress"],
+    ["ACTIVITY","Activity","Income and expenditure history"],
+    ["EVENTS","Events","Show takings and business results"],
+    ["TERRITORIES","Territories","Where your audience is growing"]
+   ] as const;
+   for(const [id,title,description] of sections){
+    const choice=button(title,()=>{
+     if(id==="STAFF"){if(port.openStaff)port.openStaff();return;}
+     pane=id;draw();
+    },id==="STAFF"&&!port.openStaff);
+    choice.classList.add("ppw-business-hub-choice");
+    choice.append(el("small","",description));
+    destinations.append(choice);
+   }
+   hub.append(destinations);root.append(hub);return;
   }
-  if(!ratingsFocused)root.append(nav);
+  if(pane!=="RATINGS"){
+   const nav=el("nav","ppw-business-back-nav");
+   nav.setAttribute("aria-label","Business navigation");
+   nav.append(button("← Business",()=>{pane="OVERVIEW";draw();}));
+   root.append(nav);
+  }
   if(pane==="FINANCES"){
    const weeklyIncome=view.weeklyMediaIncome!=null&&view.weeklySponsorIncome!=null?
     view.weeklyMediaIncome+view.weeklySponsorIncome:null;
@@ -828,7 +851,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    const section=el("section","ppw-business-panel ppw-commercial-desk");
    const day=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
    const now=(view.year-1)*52+view.week-1;
-   section.append(el("h2","","Broadcasting & sponsorship"));
+   section.append(el("h2","","Commercials"),
+    el("p","ppw-business-muted","Broadcast networks, streaming services and sponsors."));
    const rows=el("div","ppw-commercial-deal-tabs");
    for(const [kind,label] of [["BROADCAST","Networks & streaming"],["SPONSOR","Sponsors"]] as const){
     const choice=button(label,()=>{commercialKind=kind;draw();});
@@ -856,42 +880,6 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     if(ppv)audience.append(el("small","",
      ppv.name+" · "+ppv.audience!.ppvBuys!.toLocaleString("en-GB")+" PPV buys"));
     section.append(audience);
-    const rivals=view.competitorBroadcasts??[];
-    if(rivals.length){
-     const ranking=el("section","ppw-business-broadcast-comparison");
-     ranking.append(el("h3","","Ratings war"),
-      el("small","ppw-business-muted","Latest TV episode per promotion · past six weeks"));
-     const yourRank=rivals.findIndex(r=>r.isYours);
-     ranking.append(el("p","ppw-business-muted",yourRank>=0?
-      "Your latest TV show ranks #"+(yourRank+1)+" of "+
-      rivals.length+" recent broadcasters.":"No certified recent episode of yours."));
-     if(yourRank>0)ranking.append(el("p","ppw-business-muted",
-      rivals[0]!.name+" leads your latest audience by "+
-      Math.max(0,rivals[0]!.householdRating-rivals[yourRank]!.householdRating)
-       .toFixed(1)+" rating points."));
-     // Keep the manager's own place visible even below the seven leaders.
-     const visible=rivals.slice(0,7);
-     if(yourRank>=7)visible.push(rivals[yourRank]!);
-     for(const episode of visible){
-      const i=rivals.indexOf(episode);
-      const row=el("article","ppw-business-broadcast-row");
-      if(episode.isYours)row.classList.add("ppw-business-broadcast-yours");
-      const label=el("div","");
-      label.append(el("strong","","#"+(i+1)+" · "+episode.name+
-       (episode.isYours?" · YOUR SHOW":"")),
-       el("span","",episode.showName+" · "+
-        (day[(episode.day??0)-1]??"Day unreported")+
-        " · Y"+episode.year+" W"+episode.week),
-       el("small","",episode.networkOfferCode?
-        commercialCompanyName(episode.networkOfferCode):"No partner on record"));
-      const score=el("div","ppw-business-broadcast-numbers");
-      score.append(el("strong","",episode.householdRating.toFixed(1)),
-       el("small","",episode.estimatedViewers===null?"Household rating":
-        episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
-      row.append(label,score);ranking.append(row);
-     }
-     section.append(ranking);
-    }
    }
    const current=view.commercialAgreements.filter(d=>d.kind===commercialKind);
    if(current.length)section.append(el("h3","","Your partner"));

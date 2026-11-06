@@ -14,6 +14,7 @@ import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
 import {mountChampionshipDesk,type ChampionshipPort} from "../ui/championship-desk.js";
+import {mountTournamentDesk,type TournamentPort} from "../ui/tournament-desk.js";
 import {mountTagTeamDesk,type TagTeamPort} from "../ui/tag-team-desk.js";
 import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
 import {mountRosterMarket,type RosterMarketPort} from "../ui/roster-market.js";
@@ -237,7 +238,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
 
 /** Public World title records; each reign page is a separate, bounded read. */
 export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
- onBack?:()=>void,initialScope:"WORLD"|"MINE"="WORLD"){
+ onBack?:()=>void,initialScope:"WORLD"|"MINE"="MINE"){
  const call=createCardClient(scope);
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
@@ -256,6 +257,17 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
   }
  };
  return mountChampionshipDesk(root,port,onBack,initialScope);
+}
+
+/** Independent Promotion tournament route; all mutations remain server-authoritative. */
+export function mountTournamentsPage(root:HTMLElement,scope:Scope,onBack:()=>void){
+ const call=createCardClient(scope);
+ const port:TournamentPort={
+  loadTournaments:()=>call("tournaments"),
+  createTournament:input=>call("createTournament",input),
+  cancelTournament:input=>call("cancelTournament",input)
+ };
+ return mountTournamentDesk(root,port,onBack);
 }
 
 function contractPort(call:ReturnType<typeof createCardClient>,
@@ -435,6 +447,7 @@ function businessPort(root:HTMLElement,scope:Scope,
   openResults:showId=>{void mountResultsPage(root,{...scope,showId},
     ()=>mountBusinessDesk(root,businessPort(root,scope,call)),"business");},
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
+  openStaff:()=>{window.location.hash=hostSectionHash("staff");},
   openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>mountBusinessDesk(root,businessPort(root,scope,call))),
   back:onBack??(scope.showId?()=>mountBookingPage(root,scope):
@@ -457,7 +470,7 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
  }:undefined;
  const port=businessPort(root,scope,call,goBack);
  if(goBack)port.returnToResults=goBack;
- return mountBusinessDesk(root,port,isRatings?"RATINGS":"FINANCES");
+ return mountBusinessDesk(root,port,isRatings?"RATINGS":"OVERVIEW");
 }
 function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{

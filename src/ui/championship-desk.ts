@@ -5,7 +5,7 @@ import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {wrestlerInitials} from "./wrestler-card.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {beltCategory} from "./championship-artwork.js";
-import {mountTournamentDesk,type TournamentPort} from "./tournament-desk.js";
+import type {TournamentPort} from "./tournament-desk.js";
 import type {ChampionshipDirectory,ChampionshipHistory,ChampionshipCard,ReignCursor}
  from "../db/championship-history.js";
 export interface ChampionshipPort extends Partial<TournamentPort> {
@@ -37,15 +37,6 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    back.type="button";back.onclick=onBack;header.append(back);
   }
   header.append(eyebrow,heading,subtitle);
-  if(port.loadTournaments&&port.createTournament&&port.cancelTournament){
-   const tourney=element("button","ppw-title-back","🏆 Tournaments") as HTMLButtonElement;
-   tourney.type="button";
-   tourney.onclick=()=>void mountTournamentDesk(root,
-    {loadTournaments:port.loadTournaments!,createTournament:port.createTournament!,
-     cancelTournament:port.cancelTournament!},
-    ()=>void mountChampionshipDesk(root,port,onBack,initialScope));
-   header.append(tourney);
-  }
   if(port.createChampionship&&directory.canEdit){
    const current=directory.titles.filter(x=>x.promotionId===directory.viewerPromotionId&&
     x.status==="ACTIVE");
