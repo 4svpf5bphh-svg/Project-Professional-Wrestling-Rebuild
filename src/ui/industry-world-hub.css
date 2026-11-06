@@ -327,3 +327,9 @@
 .ppw-hot-tag-wrestler .ppw-hot-tag-news-copy>strong{color:#fce3ae!important}
 .ppw-hot-tag-wrestler .ppw-hot-tag-dossier{margin-top:7px;min-height:40px;
  font-size:12px;padding:8px 10px;background:#554564;border-color:#a38bb7}
+
+/* Network-originated statements appear only under confirmed World news. */
+.ppw-hot-tag-network{border-left:3px solid #77a9c8;padding-left:9px}
+.ppw-hot-tag-network .ppw-hot-tag-avatar{font:900 12px/1 system-ui;
+ text-align:center;letter-spacing:-.02em;background:#263e58;color:#e3f2ff}
+.ppw-hot-tag-network .ppw-hot-tag-news-copy>strong{color:#c8e6f8!important}
