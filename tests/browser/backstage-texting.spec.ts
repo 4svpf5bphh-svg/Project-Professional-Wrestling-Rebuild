@@ -72,3 +72,71 @@ test("320px Backstage: actual SMS choices retry the same World command after a l
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+/** A real long thread must scroll through the document on iPhone, not stick
+ * inside a fixed height flex container after the first few messages. */
+for(const width of [320,390]){
+ test("Backstage long thread has no blank account header and reaches latest messages at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?568:844});
+  const overview={world:{revision:44,name:"World",year:1,week:20,phase:"OPEN",
+   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",cash:200000,debt:0}};
+  const conversations=Array.from({length:24},(_,i)=>({
+   conversationId:"conversation-"+i,kind:"CREATIVE",createdWeekIndex:i,
+   respondedWeekIndex:i,relatedPersonId:null,status:"ANSWERED",
+   decision:"TALK",dueWeekIndex:null,promisedRole:null,
+   observedMatchShows:null,observedFeaturedShows:null,assessmentReason:null,
+   trustDelta:0,workingVerifiedShows:null,workingTrustDelta:null,averageCrowd:null,
+   verifiedSinglesShows:null,professionalTrust:null,verifiedTagShows:null,
+   averageExecution:null,followThroughWeekIndex:null,followThroughKind:null
+  }));
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,
+   availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const req=r.request().postDataJSON() as {method:string;personId?:string};
+   if(req.method==="backstage")return r.fulfill({json:{
+    personId:req.personId==="ada"?"ada":null,
+    personName:req.personId==="ada"?"Ada Stone":"",
+    worldYear:1,worldWeek:20,worldRevision:44,canEdit:true,
+    roster:[{personId:"ada",name:"Ada Stone",isCurrent:true,morale:55,
+     momentum:65,lastMessage:null,latestIncoming:{request_id:"conversation-23",
+      kind:"CREATIVE",status:"ANSWERED",created_week_index:23,
+      read_week_index:23,archived:false}}],
+    persona:null,archetypes:[],history:[],memories:[],recentRequests:[],
+    nextPitchWeek:0,documentedAlternates:[],
+    conversations:req.personId==="ada"?conversations:[]
+   }});
+   return r.fulfill({json:{readCount:0}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:/Ada Stone/}).click();
+  const thread=page.getByLabel("Conversation with Ada Stone");
+  await expect(thread).toBeVisible();
+  await expect(thread.locator(".ppw-persona-bubble.ppw-persona-in")).toHaveCount(24);
+  await expect(page.locator("#account")).toBeHidden();
+  const geometry=await page.evaluate(()=>{
+   const exit=document.querySelector(".ppw-backstage-thread-exit")!
+    .getBoundingClientRect();
+   const chat=document.querySelector(".ppw-persona-chat")!;
+   const root=document.querySelector(".ppw-messenger-thread")!;
+   return {exitY:exit.y,chatScroll:getComputedStyle(chat).overflowY,
+    rootScroll:getComputedStyle(root).overflowY,
+    documentHeight:document.scrollingElement!.scrollHeight,viewport:innerHeight,
+    horizontal:document.documentElement.scrollWidth-innerWidth};
+  });
+  expect(geometry.exitY,"Exit belongs immediately below the iPhone safe area").toBeLessThan(100);
+  expect(geometry.chatScroll).toBe("visible");
+  expect(geometry.rootScroll).toBe("visible");
+  expect(geometry.documentHeight).toBeGreaterThan(geometry.viewport+350);
+  expect(geometry.horizontal).toBeLessThanOrEqual(1);
+  await page.evaluate(()=>scrollTo(0,0));
+  const rect=await thread.boundingBox();expect(rect).not.toBeNull();
+  await page.mouse.move(rect!.x+Math.min(80,rect!.width/2),rect!.y+Math.min(140,rect!.height/2));
+  await page.mouse.wheel(0,1200);
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeGreaterThan(200);
+  await page.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
+  await expect(thread.locator(".ppw-persona-bubble.ppw-persona-in").last()).toBeInViewport();
+  await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
+ });
+}
