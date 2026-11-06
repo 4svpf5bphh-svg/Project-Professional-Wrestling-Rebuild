@@ -4,7 +4,7 @@
  * authoritative. No random calls, new polls or wrestler-stat shortcuts.
  */
 export interface RatingsWarEpisode{
- showId:string;promotionId:string;day:number;hour:number;
+ showId:string;promotionId:string;day:number;hour:number|null;
  householdRating:number;estimatedViewers:number;crowdResponse:number;
 }
 export interface RatingsWarResult{
@@ -33,7 +33,7 @@ export function projectRatingsWarWeek(episodes:readonly RatingsWarEpisode[]):Rat
   if(typeof e.showId!=="string"||!e.showId||e.showId.length>200||
    typeof e.promotionId!=="string"||!e.promotionId||e.promotionId.length>200||
    seen.has(e.promotionId)||!Number.isSafeInteger(e.day)||e.day<1||e.day>7||
-   !Number.isSafeInteger(e.hour)||e.hour<0||e.hour>23||
+   (e.hour!==null&&(!Number.isSafeInteger(e.hour)||e.hour<0||e.hour>23))||
    !safe(e.householdRating)||e.householdRating<0||e.householdRating>10||
    Math.abs(e.householdRating*10-units(e.householdRating))>0.000001||
    !Number.isSafeInteger(e.estimatedViewers)||e.estimatedViewers<0||
@@ -48,6 +48,7 @@ export function projectRatingsWarWeek(episodes:readonly RatingsWarEpisode[]):Rat
  }]));
  const slots=new Map<string,typeof ordered>();
  for(const e of ordered){
+  if(e.hour===null)continue; // A verified off-slot TV show cannot win a scheduled audience clash.
   const key=e.day+":"+e.hour;
   const members=slots.get(key)??[];members.push(e);slots.set(key,members);
  }

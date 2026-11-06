@@ -422,3 +422,13 @@
 .ppw-ratings-war-impact{margin:8px 0 0;border-top:1px solid #64819a;
  padding-top:10px;font:850 11px/1.5 system-ui;letter-spacing:.04em;color:#c8e6f2}
 .ppw-ratings-war-rival-copy small{overflow-wrap:anywhere}
+
+
+/* Business partner reads existing receipts; no extra network summary request. */
+.ppw-commercial-partner-review{display:grid;gap:3px;margin:8px 0;
+ padding:9px 12px;border:1px solid #596e8b;border-radius:9px}
+.ppw-commercial-partner-review strong{font:800 12px/1.3 system-ui;letter-spacing:.03em}
+.ppw-commercial-partner-review small{font-size:12px;line-height:1.45;opacity:.86}
+.ppw-commercial-partner-review[data-status="warning"],
+.ppw-commercial-partner-review[data-status="OFF_SLOT"],
+.ppw-commercial-partner-review[data-status="BELOW_TARGET"]{border-color:#a07957}

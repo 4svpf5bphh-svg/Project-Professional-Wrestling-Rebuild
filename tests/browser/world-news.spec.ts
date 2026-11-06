@@ -43,6 +43,12 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
     {year:2,week:6,id:"angle:s1:a1",desk:"OFFICIAL",certainty:"CONFIRMED",
     promotionId:"human",promotionName:"Human Pro",showId:"s1",
     title:"Alice turns at Fight Night",summary:"The crowd witnessed her change of course.",sourceKind:"ANGLE"},
+    {year:2,week:6,id:"broadcast:network:BROADCAST_TV:warning:s3",
+     desk:"OFFICIAL",certainty:"CONFIRMED",
+     promotionId:"human",promotionName:"Human Pro",showId:"s1",
+     title:"BBS Sports demands better television from Human Pro",
+     summary:'Three certified broadcast misses. BBS Sports responded: "Three misses. The board expects a credible turnaround." The signed deal continues.',
+     sourceKind:"EVENT"},
     {year:2,week:6,id:"s1",desk:"DIRT",certainty:"SPECULATION",
     promotionId:"human",promotionName:"Human Pro",showId:"s1",
     title:"Creative shake-up?",summary:"No plans have been confirmed.",sourceKind:"CROWD"},
@@ -73,6 +79,15 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toHaveCount(1);
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toContainText("Cara");
  await expect(officialThread.getByRole("button",{name:"View wrestler dossier"})).toHaveCount(1);
+ const networkThread=page.locator(".ppw-news-official .ppw-hot-tag-thread").nth(2);
+ await networkThread.locator("summary").click();
+ const networkPost=networkThread.locator(".ppw-hot-tag-network");
+ await expect(networkPost).toHaveCount(1);
+ await expect(networkPost).toContainText("BBS Sports");
+ await expect(networkPost).toContainText("Verified network");
+ await expect(networkPost).toContainText("The board expects");
+ await expect(networkThread.locator(".ppw-hot-tag-news-post")).toHaveCount(4);
+ await expect(networkPost.getByRole("button",{name:"Develop programme"})).toHaveCount(0);
  await expect(page.getByText("Maya Storm becomes a special attraction")).toBeVisible();
  await expect(page.getByText("Alex Rook hangs up the boots")).toBeVisible();
  await expect(page.getByText(/Career stage: veteran → special attraction/)).toBeVisible();

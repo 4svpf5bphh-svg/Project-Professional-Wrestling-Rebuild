@@ -6,6 +6,7 @@ import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
 import {recommendPromotionBudgets,type BudgetRisk} from "../domain/financial-adviser.js";
+import {broadcasterReaction} from "../domain/broadcast-network-review.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
@@ -854,10 +855,35 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    for(const deal of current){
     const item=el("article","ppw-commercial-offer");
     item.append(commercialPartnerBrand(deal.offerCode));
-    item.append(el("p","ppw-commercial-voice",partnerResponse(deal.offerCode,{
-     tier:view.tier,averageTvRating:view.averageTvRating,
-     crowd:view.recentAverageCrowd,current:true
-    })));
+    item.append(el("p","ppw-commercial-voice",deal.networkReview?
+     broadcasterReaction(deal.networkReview):
+     partnerResponse(deal.offerCode,{
+      tier:view.tier,averageTvRating:view.averageTvRating,
+      crowd:view.recentAverageCrowd,current:true
+     })));
+    if(deal.networkReview){
+     const review=deal.networkReview;
+     const status=review.missedConsecutively>=3?"AT RISK":
+      review.status==="OFF_SLOT"?"OFF-SLOT BROADCAST":
+      review.status==="NO_TV"?"NO CERTIFIED TV":
+      review.status==="BELOW_TARGET"?"AUDIENCE BELOW TARGET":
+      review.status==="WATCH"?"NEAR TARGET":
+      review.status==="LEGACY"?"AUDIENCE NOT REPORTED":"ON TARGET";
+     const line=el("div","ppw-commercial-partner-review");
+     line.dataset.status=review.missedConsecutively>=3?"warning":review.status;
+     line.append(el("strong","",status),
+      el("small","",review.rating===null?"Last week · Rating not reported":
+       "Last week · "+review.rating.toFixed(1)+" TV / "+
+        review.target.toFixed(2)+" partner target"));
+     if(review.missedConsecutively>=2)
+      line.append(el("small","",
+       review.missedConsecutively+" consecutive missed network requirements"+
+       (review.missedConsecutively>=3?
+        " · Performance bonuses suspended until delivery improves":"")));
+     else if(!review.bonusEligible)
+      line.append(el("small","","Performance bonus not earned this week; guaranteed weekly income is unchanged"));
+     item.append(line);
+    }
     item.append(el("strong","",
      money(deal.weeklyIncome)+" weekly guarantee"));
     item.append(el("small","ppw-commercial-status",
