@@ -48,6 +48,7 @@ import "../ui/show-results.css";
 import "../ui/results-archive.css";
 import "../ui/card-editor.css";
 import "../ui/talent-filter-controls.css";
+import {activateWorkspaceRoot} from "../ui/workspace-root.js";
 type Scope=CardSessionScope;
 // The Results → Ratings War handoff is a one-use local navigation context.
 // No completed-show ID or private user detail is placed into the URL.
@@ -315,7 +316,8 @@ export function mountCollectionPage(root:HTMLElement,scope:Scope){
  let error="",busy=true;
  const render=()=>{
   clearLegendRevealPortal();
-  root.classList.add("ppw-editor","ppw-industry","ppw-collection-screen");
+  activateWorkspaceRoot(root,"ppw-industry");
+  root.classList.add("ppw-collection-screen");
   root.replaceChildren();
   if(error){
    const notice=document.createElement("p");notice.className="ppw-alert ppw-error";

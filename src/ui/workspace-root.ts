@@ -11,8 +11,8 @@ const workspaceModes:readonly string[]=[
 export function activateWorkspaceRoot(root:HTMLElement,mode:WorkspaceRootMode){
  root.classList.remove(...workspaceModes);
  root.classList.add("ppw-editor",mode);
- if(mode!=="ppw-results"){
-  delete root.dataset.resultsSkin;
-  delete root.dataset.premiumPoster;
- }
+ // Rendering a new Results page can fail or still be loading. Neither
+ // case should display a previous show's skin or event poster.
+ delete root.dataset.resultsSkin;
+ delete root.dataset.premiumPoster;
 }

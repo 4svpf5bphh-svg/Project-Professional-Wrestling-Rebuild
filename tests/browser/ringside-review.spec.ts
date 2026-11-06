@@ -64,8 +64,10 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"HOT TAG · After the Bell"}).click();
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeVisible();
   await page.getByRole("button",{name:"Return to Headlines"}).click();
+  await expect(page.locator(".ppw-breakdown-portraits")).toHaveCount(0);
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(page.locator(".ppw-show-breakdown")).toBeVisible();
+  await expect(page.locator(".ppw-breakdown-portraits")).toHaveCount(1);
   await expect(page.locator(".ppw-result-entry").first()).toBeHidden();
   await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();

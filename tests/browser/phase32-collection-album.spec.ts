@@ -61,7 +61,19 @@ for(const width of [320,390]){
   await featuredViewer.getByRole("button",{name:"Close card"}).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(firstHighlight).toBeFocused();
+  // Entering the collection from other workspaces must not inherit an
+  // old Business desk or themed Results page on the shared mobile root.
+  await page.evaluate(()=>{
+   const root=document.getElementById("game");
+   root?.classList.add("ppw-results","ppw-business","ppw-directory");
+   if(root)root.dataset.resultsSkin="retro-booker-02";
+  });
   await album.getByRole("button",{name:"Next page"}).click();
+  await expect(page.locator(".ppw-business")).toHaveCount(0);
+  await expect(page.locator(".ppw-directory")).toHaveCount(0);
+  await expect(page.locator(".ppw-collection-screen")).toHaveCount(1);
+  await expect(page.locator(".ppw-collection-screen")).not.toHaveAttribute("data-results-skin");
+
   await expect(album.getByText("129 cards · Page 2 of 11")).toBeVisible();
   await expect(album.locator(".ppw-album-slot")).toHaveCount(12);
   await album.getByRole("button",{name:"Collected",exact:true}).click();

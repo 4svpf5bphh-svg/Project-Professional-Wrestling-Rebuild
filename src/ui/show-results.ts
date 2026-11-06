@@ -273,7 +273,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     node("span","ppw-flow-slot",String(point.position+1)),
     node("span","ppw-flow-kind",kind.toUpperCase()));
    button.onclick=()=>{
-    changePage(1);revealNarrative();
+    revealNarrative();changePage(1);
     const target=storyLinks.get(point.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -318,7 +318,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    const moment=node("button","ppw-pop-wrestler-action","See moment") as HTMLButtonElement;
    moment.type="button";
    moment.onclick=()=>{
-    changePage(1);revealNarrative();
+    revealNarrative();changePage(1);
     const target=storyLinks.get(post.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -363,7 +363,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     node("span","","🔁 "+reaction.reposts.toLocaleString("en-GB")));
    card.append(metrics,node("span","ppw-crowd-noise-read","OPEN THE RECORDED MOMENT ↗"));
    card.onclick=()=>{
-    changePage(1);revealNarrative();
+    revealNarrative();changePage(1);
     const target=storyLinks.get(reaction.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -384,7 +384,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     node("strong","",item.headline),node("p","",item.detail),
     node("span","ppw-result-read","READ THE STORY  ↗"));
    button.addEventListener("click",()=>{
-    changePage(1);revealNarrative();
+    revealNarrative();changePage(1);
     const target=storyLinks.get(item.slotId);
     if(target instanceof HTMLDetailsElement)target.open=true;
     target?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -562,7 +562,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    const source=node("button","ppw-next-show-evidence","See the recorded moment") as HTMLButtonElement;
    source.type="button";
    source.onclick=()=>{
-    changePage(1);revealNarrative();
+    revealNarrative();changePage(1);
     const detail=storyLinks.get(task.evidenceSlotId!);
     if(detail instanceof HTMLDetailsElement)detail.open=true;
     detail?.scrollIntoView({block:"start",behavior:"instant"});
@@ -602,7 +602,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
      "Review "+observation.headline.toLowerCase()) as HTMLButtonElement;
     source.type="button";
     source.onclick=()=>{
-     changePage(1);revealNarrative();
+     revealNarrative();changePage(1);
      const target=storyLinks.get(observation.slotId);
      if(target instanceof HTMLDetailsElement)target.open=true;
      target?.scrollIntoView({block:"start",behavior:"instant"});
@@ -724,14 +724,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const narrativeButton=node("button","ppw-show-breakdown-toggle","Broadcast play-by-play") as HTMLButtonElement;
  const rundownButton=node("button","ppw-show-breakdown-toggle","Show Breakdown") as HTMLButtonElement;
  narrativeButton.type="button";rundownButton.type="button";
+ let compactFullShow=true;
  const setBreakdown=(compact:boolean)=>{
+  compactFullShow=compact;
   breakdown.hidden=!compact;timeline.hidden=compact;
   // Portraits are created only while browsing the breakdown. Keeping a
   // hidden second copy would duplicate wrestler content for screen readers,
   // needlessly allocate images and break the original broadcast view.
   for(const job of portraitJobs){
    const existing=job.card.querySelector(".ppw-breakdown-portraits");
-   if(compact&&!existing){
+   if(compact&&!existing&&full.isConnected&&!full.hidden){
     const strip=matchPortraits(job.entry);
     if(strip){strip.classList.add("ppw-breakdown-portraits");job.card.append(strip);}
    }else if(!compact)existing?.remove();
@@ -880,7 +882,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  root.replaceChildren(...pages);
  changePage=(index:0|1|2)=>{
   for(const [i,page] of pages.entries())page.hidden=i!==index;
-
+  // Images for the compact rundown are not fetched while headlines or
+  // HOT TAG are on screen. Source links select the narrative first.
+  if(index===1)setBreakdown(compactFullShow);
   window.scrollTo({top:0,behavior:"instant"});
  };
  changePage(0);
