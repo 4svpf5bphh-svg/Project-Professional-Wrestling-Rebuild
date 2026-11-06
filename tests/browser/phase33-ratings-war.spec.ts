@@ -53,13 +53,16 @@ for(const width of [320,390]){
   expect(vsBounds).not.toBeNull();
   expect(vsBounds!.y).toBeLessThan(390);
   await expect(war.locator(".ppw-ratings-war-score").first()).toContainText("2.4");
-  await expect(war.locator(".ppw-ratings-war-score").last()).toContainText("1.9");
-  await expect(war.locator(".ppw-ratings-war-human-label")).toContainText("HUMAN MANAGER");
-  await expect(war.locator(".ppw-ratings-war-result")).toContainText("You're ahead by 0.5 rating points.");
+  await expect(war.locator(".ppw-ratings-war-score").last()).toContainText("3.0");
+  await expect(war.locator(".ppw-ratings-war-note")).toContainText("HEAD-TO-HEAD");
+  await expect(war.locator(".ppw-ratings-war-result")).toContainText("North Wrestling leads by 0.6 rating points.");
   await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(3);
   await expect(war.getByText("3 recent broadcasts · 2.3 average TV rating")).toBeVisible();
   await page.screenshot({path:info.outputPath("phase33-ratings-war-"+width+".png")});
-  await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("Another Wrestling Company");
+  await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("North Wrestling");
+  await war.getByRole("button",{name:"Compare against Another Wrestling Company"}).click();
+  await expect(war.locator(".ppw-ratings-war-human-label")).toContainText("HUMAN MANAGER");
+  await expect(war.locator(".ppw-ratings-war-result")).toContainText("You're ahead by 0.5 rating points.");
   await expect(war.locator('.ppw-ratings-war-rival[data-human="true"]')).toContainText("HUMAN MANAGER");
   await war.getByRole("button",{name:"Compare against North Wrestling"}).click();
   await expect(war.locator(".ppw-ratings-war-result")).toContainText("North Wrestling leads by 0.6 rating points.");
@@ -156,8 +159,14 @@ for(const width of [320,390]){
   await audience.getByRole("button",{name:"Compare TV ratings in Ratings War"}).click();
   await expect(page).toHaveURL(/#\/business\/ratings$/);
   await expect(page.getByRole("heading",{name:"Ratings War"})).toBeVisible();
+  await expect(page.locator(".ppw-results")).toHaveCount(0);
   await expect(page.locator(".ppw-ratings-war-score[data-side='OWNER']")).toContainText("2.4");
-  expect(methods).toEqual(["resultsArchive","results","business"]);
+  await page.getByRole("button",{name:"← Ringside Results"}).click();
+  await expect(page).toHaveURL(/#\/results$/);
+  await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
+  await expect(page.locator(".ppw-business")).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Read the Full Show"})).toBeVisible();
+  expect(methods).toEqual(["resultsArchive","results","business","results"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

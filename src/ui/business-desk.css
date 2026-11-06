@@ -422,3 +422,41 @@
 .ppw-ratings-war-impact{margin:8px 0 0;border-top:1px solid #64819a;
  padding-top:10px;font:850 11px/1.5 system-ui;letter-spacing:.04em;color:#c8e6f2}
 .ppw-ratings-war-rival-copy small{overflow-wrap:anywhere}
+
+
+/* Business partner reads existing receipts; no extra network summary request. */
+.ppw-commercial-partner-review{display:grid;gap:3px;margin:8px 0;
+ padding:9px 12px;border:1px solid #596e8b;border-radius:9px}
+.ppw-commercial-partner-review strong{font:800 12px/1.3 system-ui;letter-spacing:.03em}
+.ppw-commercial-partner-review small{font-size:12px;line-height:1.45;opacity:.86}
+.ppw-commercial-partner-review[data-status="warning"],
+.ppw-commercial-partner-review[data-status="OFF_SLOT"],
+.ppw-commercial-partner-review[data-status="BELOW_TARGET"]{border-color:#a07957}
+
+/* A broadcast move is a real network request, not a free date picker. */
+.ppw-broadcast-day-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:9px 0}
+.ppw-broadcast-day-options button{min-height:38px;padding:7px 3px;font:750 11px/1.3 system-ui;
+ background:#283c51;color:#f1f6ff;border:1px solid #7890a5;border-radius:9px}
+.ppw-broadcast-day-options button[aria-pressed="true"]{border-color:#e2c487;
+ background:#47536b;color:#fff;box-shadow:inset 0 0 0 1px #e2c487}
+.ppw-broadcast-day-options button:focus-visible{outline:2px solid #e2c487;outline-offset:2px}
+@media(max-width:340px){.ppw-broadcast-day-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* A result-led ratings detour must have an explicit route back to that show. */
+.ppw-ratings-war-return{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ppw-ratings-war-return .ppw-business-action{min-height:44px;min-width:0;
+ max-width:100%;white-space:normal;text-align:center}
+@media(max-width:350px){.ppw-ratings-war-return .ppw-business-action{flex:1}}
+
+/* Current contract first, optional market second. No extra data loading. */
+.ppw-commercial-market-browser{margin:14px 0 0;border:1px solid #476784;
+ border-radius:12px;background:#10283d;max-width:100%;overflow:hidden}
+.ppw-commercial-market-trigger{list-style:none;cursor:pointer;
+ padding:13px 14px;min-height:44px;box-sizing:border-box;
+ color:#f0faff;font:850 13px/1.4 system-ui}
+.ppw-commercial-market-trigger::-webkit-details-marker{display:none}
+.ppw-commercial-market-trigger:after{content:"+";float:right;font-size:19px;line-height:1}
+.ppw-commercial-market-browser[open] .ppw-commercial-market-trigger:after{content:"−"}
+.ppw-commercial-market-trigger:focus-visible{outline:3px solid #9ae7f6;outline-offset:-4px}
+.ppw-commercial-market-body{padding:0 12px 12px;min-width:0}
+.ppw-commercial-market-body .ppw-commercial-offer{min-width:0}

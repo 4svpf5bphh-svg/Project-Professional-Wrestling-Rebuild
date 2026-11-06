@@ -5,6 +5,7 @@ import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} fr
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,signCommercialDealAsActor,
+ requestBroadcastDayAsActor,
  spendingPlanAsActor,
  staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,achievementsWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
@@ -226,6 +227,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="signCommercial")
   return signCommercialDealAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,offerCode:id("offerCode")});
+ if(method==="requestBroadcastDay"){
+  if(typeof p.requestedDay!=="number"||!Number.isInteger(p.requestedDay)||
+   p.requestedDay<1||p.requestedDay>7)
+   throw new Error("Choose a valid weekly broadcast day");
+  return requestBroadcastDayAsActor(context,{
+   worldId,promotionId,requestId,expectedRevision,dealId:id("dealId"),
+   requestedDay:p.requestedDay as number});
+ }
  if(method==="hireStaff"||method==="renewStaff"){
    const salary=p.weeklySalary,term=p.termWeeks;
    if(typeof salary!=="number"||!Number.isSafeInteger(salary)||

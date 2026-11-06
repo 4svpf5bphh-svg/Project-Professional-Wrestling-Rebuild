@@ -62,3 +62,9 @@ test("malformed broadcasts, duplicate companies and unbounded worlds fail closed
  assert.throws(()=>projectRatingsWarWeek(Array.from({length:129},(_,i)=>
   e("s"+i,"p"+i,1,20,1))),/bounded/);
 });
+
+test("A signed broadcaster loses head-to-head eligibility when a certified show airs on the wrong day",()=>{
+ const out=projectRatingsWarWeek([e("a","a",5,20,2.8),{...e("b","b",5,20,2.2),hour:null}]);
+ assert.ok(out.every(x=>x.opponents===0&&x.change===0));
+ assert.equal(out[1]!.householdRating,2.2);
+});

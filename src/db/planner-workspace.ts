@@ -9,7 +9,12 @@ import {applyWorldCommand} from "./world-commands.js";
 import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import type {TicketStrategy} from "../domain/legacy-show-economics.js";
+import {commercialCompanyName} from "../domain/commercial-offers.js";
 
+export interface BroadcastPlannerSlot{
+ networkName:string;offerCode:string;day:number;hour:number;
+ startWeekIndex:number;endWeekIndex:number;
+}
 export type PlannedEventType="REGULAR"|"MAJOR";
 export interface PlannerScope {worldId:string;promotionId:string;playerId:string}
 export interface PlanWeekInput extends PlannerScope {
@@ -43,6 +48,7 @@ export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
  worldRevision:number;canEdit:boolean;homeMarketId:string|null;eventPosterStyle?:string|null;broadcastPackage?:string|null;
  venues:PlannerVenue[];weeks:PlannerWeek[];venuePressure:PlannerVenuePressure[];
+ broadcastSlot:BroadcastPlannerSlot|null;
 }
 const id=(s:unknown):s is string=>typeof s==="string"&&s.trim().length>0&&s.length<=200;
 function checkScope(s:PlannerScope){
@@ -53,7 +59,10 @@ const weekIndex=(year:number,week:number)=>(year-1)*52+week-1;
 function dateAt(index:number){return {year:Math.floor(index/52)+1,week:index%52+1};}
 type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
- major_interval:number|null;home_market_id:string|null;event_poster:string|null;broadcast_package:string|null};
+ major_interval:number|null;home_market_id:string|null;event_poster:string|null;
+ broadcast_package:string|null;
+ broadcast_slot:{offerCode:string;day:number|null;hour:number|null;
+ startWeekIndex:number;endWeekIndex:number}|null};
 async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
  checkScope(s);
  const rows=await tx.query<Owner>(`
@@ -62,7 +71,15 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
   p.home_market_id,
    (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,
-   (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package
+   (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,
+   (SELECT jsonb_build_object('offerCode',d.offer_code,'day',d.airing_day,
+     'hour',d.airing_hour,'startWeekIndex',d.start_week_index,
+     'endWeekIndex',d.end_week_index)
+    FROM ppw_commercial_deals d
+    WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
+     AND d.kind='BROADCAST' AND d.status='ACTIVE'
+     AND d.end_week_index >= (w.year-1)*52+w.week-1
+    ORDER BY d.end_week_index DESC LIMIT 1) AS broadcast_slot
    FROM ppw_worlds w
  JOIN ppw_promotions p ON p.world_id=w.world_id AND p.promotion_id=$2
  JOIN ppw_promotion_controls c ON c.world_id=w.world_id
@@ -188,6 +205,16 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
   canEdit:owned.booking_open,homeMarketId:owned.home_market_id,eventPosterStyle:owned.event_poster,
    broadcastPackage:owned.broadcast_package,
+  broadcastSlot:owned.broadcast_slot&&owned.broadcast_slot.day!==null&&
+   owned.broadcast_slot.hour!==null&&
+   Number.isInteger(owned.broadcast_slot.day)&&
+   owned.broadcast_slot.day>=1&&owned.broadcast_slot.day<=7?{
+    offerCode:owned.broadcast_slot.offerCode,
+    networkName:commercialCompanyName(owned.broadcast_slot.offerCode),
+    day:owned.broadcast_slot.day,hour:owned.broadcast_slot.hour,
+    startWeekIndex:owned.broadcast_slot.startWeekIndex,
+    endWeekIndex:owned.broadcast_slot.endWeekIndex
+   }:null,
   venuePressure:pressure,
   venues:venues.map(v=>({venueId:v.venue_id,marketId:v.market_id,
    marketName:v.market_name,name:v.name,capacity:v.capacity,
@@ -267,6 +294,15 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
     throw new Error("Show type must match the calendar event");
    const bookingClass:"REGULAR"|"PREMIUM"=
     selected?.eventType==="MAJOR"?"PREMIUM":"REGULAR";
+   // Contracted television dates are server-authoritative, not a UI hint.
+   // PPVs are independent of the network's weekly slot.
+   const slot=auth.broadcast_slot;
+   if(bookingClass==="REGULAR"&&slot&&slot.day!==null&&
+    target>=slot.startWeekIndex&&target<=slot.endWeekIndex&&
+    input.day!==slot.day)
+    throw new Error("Your signed network requires "+
+     ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][slot.day-1]+
+     " television. Request a new slot in Business → Deals.");
    const eligible=await tx.query<{venue_id:string}>(`
     SELECT v.venue_id FROM ppw_venues v
     JOIN ppw_promotion_market_states local ON local.world_id=v.world_id

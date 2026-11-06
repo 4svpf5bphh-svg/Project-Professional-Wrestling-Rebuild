@@ -1,3 +1,4 @@
+import {activateWorkspaceRoot} from "./workspace-root.js";
 /** Mobile PPW feud desk. Uses server-validated original programme sides.
  * No World-wide data, auto-submission, or mandatory flow.
  */
@@ -143,7 +144,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   return holder;
  }
  function render(){
-  root.classList.add("ppw-editor","ppw-programme-desk");
+  activateWorkspaceRoot(root,"ppw-programme-desk");
   root.replaceChildren();
   const header=element("header","ppw-top");
   if(onBack)header.append(button("← Back to card",onBack));

@@ -58,7 +58,7 @@ test("iPhone retries a committed show with the SAME receipt after its response i
  await expect(page.getByRole("button",{name:"Edit card"})).toBeVisible();
  expect(keys).toHaveLength(2);
  expect(keys[0]).toBe(keys[1]);
- await expect(page.getByText(/Weekly show · Town Hall/)).toBeVisible();
+ await expect(page.getByText(/Weekly show · Fri · Town Hall/)).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -91,7 +91,8 @@ test("stale two-manager show planning never reports success or loses venue/day s
  await expect(page.getByText(/Plans have changed/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Save show"})).toBeVisible();
  await expect(page.getByLabel("Show venue")).toHaveValue("home-hall");
- await expect(page.getByLabel("Show day")).toHaveValue("5");
+ await expect(page.getByRole("group",{name:"Show day"})
+  .getByRole("button",{name:"Friday"})).toHaveAttribute("aria-pressed","true");
  await page.getByRole("button",{name:"Save show"}).click();
  await expect(page.getByRole("button",{name:"Edit card"})).toBeVisible();
  expect(attempts).toHaveLength(2);
@@ -192,6 +193,105 @@ test("the Planner uses real booked premium event names with selected poster with
  await expect(poster.locator(".ppw-ep-title")).toHaveText("Midnight Ascension");
  await expect(poster.locator(".ppw-ep-main")).toHaveText("TO BE ANNOUNCED");
  expect(methods).toEqual(["planner"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
+
+test("iPhone Planner fixes a signed Thursday TV slot while PPVs default to Saturday and remain flexible",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const calls:Array<{method:string;day?:number;eventType?:string}>=[];
+ const premium={seriesId:"autumn-ppv",name:"Autumn Slam",eventType:"MAJOR",
+  role:"PREMIUM",cadenceWeeks:52,anchorWeek:0,importance:85,active:true};
+ const slot={offerCode:"BROADCAST_GROWTH",networkName:"VibeFlix",
+  day:4,hour:20,startWeekIndex:0,endWeekIndex:25};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const q=route.request().postDataJSON() as {method:string;day?:number;eventType?:string};
+  calls.push({method:q.method,...(typeof q.day==="number"?{day:q.day}:{})});
+  if(q.method==="planner")return route.fulfill({json:{
+   ...planner(4,false),broadcastSlot:slot,
+   weeks:[{...planner(4,false).weeks[0]!,scheduled:[premium]}]
+  }});
+  if(q.method==="planShow")return route.fulfill({json:{status:"APPLIED",revision:5,
+   result:{draftId:"planned-on-server",status:"CREATED"}}});
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Plan weekly show"}).click();
+ await expect(page.getByText("Thursday · 20:00")).toBeVisible();
+ await expect(page.getByText(/VibeFlix · Fixed by your broadcast agreement/))
+  .toBeVisible();
+ await expect(page.getByRole("group",{name:"Show day"})).toHaveCount(0);
+ await page.getByRole("button",{name:"Save show"}).click();
+ expect(calls.filter(c=>c.method==="planShow")).toEqual([
+  {method:"planShow",day:4}
+ ]);
+ await page.getByRole("button",{name:"Book PPV · Autumn Slam"}).click();
+ const ppv=page.getByRole("group",{name:"Show day"});
+ await expect(ppv.getByRole("button",{name:"Saturday"})).toHaveAttribute("aria-pressed","true");
+ await expect(page.getByText(/PPVs normally run on Saturday or Sunday/)).toBeVisible();
+ await ppv.getByRole("button",{name:"Sunday"}).click();
+ await expect(ppv.getByRole("button",{name:"Sunday"})).toHaveAttribute("aria-pressed","true");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
+
+test("The signed TV night has an accessible route to request a broadcaster change",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const seen:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const q=route.request().postDataJSON() as {method:string};
+  seen.push(q.method);
+  if(q.method==="planner")return route.fulfill({json:{
+   ...planner(4,false),broadcastSlot:{
+    offerCode:"BROADCAST_GROWTH",networkName:"VibeFlix",
+    day:4,hour:20,startWeekIndex:0,endWeekIndex:25}
+  }});
+  if(q.method==="business")return route.fulfill({json:{
+   worldRevision:4,year:1,week:1,promotionName:"Independent",
+   cash:3000000,debt:0,tier:"LOCAL",homeTerritory:"Home market",
+   shows:[],commercialOffers:[],commercialQualified:[],
+   commercialAgreements:[{dealId:"signed-broadcast",kind:"BROADCAST",
+    offerCode:"BROADCAST_GROWTH",source:"HUMAN",
+    weeklyIncome:312000,baselineIncome:100000,reachIncrease:10,
+    startWeekIndex:0,endWeekIndex:25,airingDay:4,airingHour:20}],
+   partnerInventory:[],competitorBroadcasts:[]
+  }});
+  return route.fulfill({json:{}});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Plan weekly show"}).click();
+ await page.getByRole("button",{name:"Request another broadcast day"}).click();
+ await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
+ await expect(page.getByText(/Your contracted TV night.*Thursday at 20:00/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Request a different broadcast day"})).toBeVisible();
+ await page.getByRole("button",{name:"← Back"}).click();
+ await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
+ await expect(page.getByText("Thursday · 20:00")).toBeVisible();
+ await expect(page.getByRole("button",{name:"Save show"})).toBeVisible();
+ expect(seen).toEqual(["planner","business","planner"]);
+});
+
+test("Saturday network television moves the PPV weekend default to Sunday",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const premium={seriesId:"summer-showdown",name:"Summer Showdown",
+  role:"PREMIUM",eventType:"MAJOR",cadenceWeeks:52,anchorWeek:0,
+  importance:88,active:true};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>r.fulfill({json:{
+  ...planner(4,false),broadcastSlot:{
+   offerCode:"BROADCAST_TV",networkName:"BBS Sports",day:6,hour:20,
+   startWeekIndex:0,endWeekIndex:25
+  },
+  weeks:[{...planner(4,false).weeks[0]!,scheduled:[premium]}]
+ }}));
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Book PPV · Summer Showdown"}).click();
+ const date=page.getByRole("group",{name:"Show day"});
+ await expect(date.getByRole("button",{name:"Sunday"})).toHaveAttribute("aria-pressed","true");
+ await date.getByRole("button",{name:"Friday"}).click();
+ await expect(date.getByRole("button",{name:"Friday"})).toHaveAttribute("aria-pressed","true");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });

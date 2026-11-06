@@ -6,6 +6,7 @@ import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {commercialOffers} from "../domain/commercial-offers.js";
 import {earnedPromotionIdentity} from "../domain/earned-promotion-identity.js";
+import {assessBroadcastNetwork} from "../domain/broadcast-network-review.js";
 import {recentFinanceSql,type FinanceLine,type FinanceEntry} from "./business-financial-activity.js";
 
 export async function readBusinessWorkspace(pool:TransactionPool,scope:{
@@ -32,7 +33,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    commercial_deals:{dealId:string;kind:"BROADCAST"|"SPONSOR";offerCode:string;
     weeklyIncome:number;baselineIncome:number;reachIncrease:number;
     startWeekIndex:number;endWeekIndex:number;source:"HUMAN"|"AI";
-    airingDay:number|null;airingHour:number|null}[];
+    airingDay:number|null;airingHour:number|null;
+    lastSlotChange:number|null}[];
    world_partner_claims:{offerCode:string;promotionId:string;promotionName:string;
     endWeekIndex:number;kind:"BROADCAST"|"SPONSOR"}[];
   }>(`
@@ -84,7 +86,11 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
        d.baseline_income::double precision AS "baselineIncome",
        coalesce(d.agreed_reach-d.baseline_reach,0) AS "reachIncrease",
        d.start_week_index AS "startWeekIndex",d.end_week_index AS "endWeekIndex",
-       d.source,d.airing_day AS "airingDay",d.airing_hour AS "airingHour"
+       d.source,d.airing_day AS "airingDay",d.airing_hour AS "airingHour",
+       (SELECT max((e.payload->>'effectiveWeekIndex')::integer)
+        FROM ppw_ledger_events e
+        WHERE e.world_id=d.world_id AND e.event_type='BROADCAST_SLOT_CHANGED'
+         AND e.payload->>'dealId'=d.deal_id) AS "lastSlotChange"
       FROM ppw_commercial_deals d
       WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
        AND d.status='ACTIVE'
@@ -129,7 +135,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const earned=activity.reduce((sum,line)=>sum+Math.max(0,line.amount),0);
   const spent=activity.reduce((sum,line)=>sum+Math.max(0,-line.amount),0);
   const shows=await tx.query<{
-   show_id:string;year:number;week:number;
+   show_id:string;year:number;week:number;show_day:number|null;
    show_name:string|null;booking_class:string;
    attendance:number;expected_demand:number;
    gate_revenue:string;venue_cost:string;production_cost:string;
@@ -141,7 +147,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    creative_workrate:number;creative_spectacle:number;
    creative_stars:number;creative_stories:number;
   }>(`
-   SELECT e.show_id,e.year,e.week,d.show_name,d.booking_class,
+   SELECT e.show_id,e.year,e.week,d.show_name,d.booking_class,d.show_day,
     e.attendance,e.expected_demand,e.gate_revenue::text,
     e.venue_cost::text,e.production_cost::text,e.travel_cost::text,
     e.appearance_fees::text,e.total_cost::text,e.net_result::text,
@@ -299,7 +305,29 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    lastWeeklyNet:number(w.last_weekly_net),runwayWeeks:w.runway_weeks,
    financialDistress:w.financial_distress,
    spendingPlan:w.spending_plan,
-   commercialAgreements:w.commercial_deals,commercialOffers:earnedOffers,
+   commercialAgreements:w.commercial_deals.map(deal=>{
+    // The same twelve certified results already loaded for this dashboard
+    // are sufficient to assess the latest five contracted weeks.
+    const lastWeek=now-1;
+    const networkReview=deal.kind!=="BROADCAST"||lastWeek<0?null:
+     assessBroadcastNetwork({
+      dealId:deal.dealId,offerCode:deal.offerCode,tier:w.tier,
+      startWeekIndex:Math.max(deal.startWeekIndex,
+       deal.lastSlotChange??deal.startWeekIndex),
+      endWeekIndex:deal.endWeekIndex,
+      airingDay:deal.airingDay,airingHour:deal.airingHour
+     },shows.filter(show=>show.booking_class==="REGULAR"&&
+      (show.year-1)*52+show.week-1>=Math.max(deal.startWeekIndex,
+       deal.lastSlotChange??deal.startWeekIndex,lastWeek-4)&&
+      (show.year-1)*52+show.week-1<=lastWeek).map(show=>({
+       weekIndex:(show.year-1)*52+show.week-1,
+       showId:show.show_id,showDay:show.show_day,
+       audienceFormat:show.audience_format==="TV"?"TV" as const:
+        show.audience_format==="PPV"?"PPV" as const:null,
+       rating:show.tv_household_rating===null?null:Number(show.tv_household_rating)
+      })),lastWeek);
+    return {...deal,networkReview};
+   }),commercialOffers:earnedOffers,
    partnerInventory:w.world_partner_claims,averageTvRating,
    recentTvEpisodes:tvReceipts.length,
    recentAverageCrowd:certified.length?Math.round(
@@ -320,7 +348,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     byCategory:activity},
    recentTransactions:w.finance_recent,
    shows:shows.slice(0,12).map(s=>({
-    showId:s.show_id,year:s.year,week:s.week,
+    showId:s.show_id,year:s.year,week:s.week,showDay:s.show_day,
     name:s.show_name??(s.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
     bookingClass:s.booking_class,attendance:s.attendance,expectedDemand:s.expected_demand,
     gateRevenue:Number(s.gate_revenue),venueCost:Number(s.venue_cost),

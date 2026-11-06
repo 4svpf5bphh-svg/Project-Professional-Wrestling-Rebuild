@@ -1,3 +1,4 @@
+import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {readIndustryWorldHub,readIndustryFeaturedTalent} from "../db/industry-world-hub.js";
 import type {PublicCompletedShow} from "../db/public-completed-show.js";
 import type {readPromotionRecordBook} from "../db/promotion-record-book.js";
@@ -6,7 +7,7 @@ import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world
 import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {certifiedCareerMoment} from "../domain/certified-career-moments.js";
-import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagNewsThread,dirtSheetByline} from "../domain/hot-tag-news.js";
+import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagNewsThread,projectHotTagBroadcasterPost,dirtSheetByline} from "../domain/hot-tag-news.js";
 import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js";
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
@@ -79,7 +80,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   finally{watching=false;render();}
  }
  function renderPublicShow(){
-  root.classList.add("ppw-editor","ppw-industry");
+  activateWorkspaceRoot(root,"ppw-industry");
   root.replaceChildren();
   const section=el("section","ppw-public-results");
   section.append(btn(active==="BROADCASTS"?"← Back to Broadcasts":"← Back to Promotions",()=>{
@@ -287,7 +288,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
  function render(){
   clearLegendRevealPortal();
   if(watching||watched||watchError){renderPublicShow();return;}
-  root.classList.add("ppw-editor","ppw-industry");root.replaceChildren();
+  activateWorkspaceRoot(root,"ppw-industry");root.replaceChildren();
   const head=el("header","ppw-industry-head");
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
   const headings:Record<string,[string,string]>={
@@ -760,11 +761,15 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     content.append(el("div","ppw-hot-tag-brand",
      HOT_TAG_NAME+"  /  "+HOT_TAG_TAGLINE));
     const verified=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
-    const posts=[...(verified?[verified]:[]),...projectHotTagNewsThread(story)];
+    const broadcaster=projectHotTagBroadcasterPost(story);
+    const posts=[...(broadcaster?[broadcaster]:[]),
+     ...(verified?[verified]:[]),...projectHotTagNewsThread(story)];
     for(const post of posts){
      const personId="personId" in post && typeof post.personId==="string"?post.personId:null;
      const wrestler=personId!==null;
-     const card=el("div","ppw-hot-tag-news-post"+(wrestler?" ppw-hot-tag-wrestler":""));
+     const network="networkCode" in post;
+     const card=el("div","ppw-hot-tag-news-post"+
+      (wrestler?" ppw-hot-tag-wrestler":network?" ppw-hot-tag-network":""));
      const avatar=el("span","ppw-hot-tag-avatar",post.avatar);
      if(personId){
       const photo=createWrestlerPortrait(post.displayName,68,personId);
@@ -773,7 +778,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      card.append(avatar);
      const copy=el("div","ppw-hot-tag-news-copy");
      copy.append(el("strong","",post.displayName),
-      el("small","",post.handle+(wrestler?" · Wrestler":" · Fan reaction")),
+      el("small","",post.handle+
+       (wrestler?" · Wrestler":network?" · Verified network":" · Fan reaction")),
       el("p","",post.text),
       el("span","ppw-hot-tag-news-metrics",
        "❤️ "+post.likes.toLocaleString("en-GB")+

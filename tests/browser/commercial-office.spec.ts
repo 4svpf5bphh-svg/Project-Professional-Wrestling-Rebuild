@@ -40,7 +40,12 @@ test("320px Business commercial agreements are optional, readable and consented 
    rollingFourWeeks:{income:0,spending:0,net:0,byCategory:[]},
    commercialAgreements:signed?[{dealId:"broadcast-1",kind:"BROADCAST",
     offerCode:"BROADCAST_GROWTH",weeklyIncome:312000,baselineIncome:300000,
-    reachIncrease:15,startWeekIndex:4,endWeekIndex:29,source:"HUMAN"}]:[],
+    reachIncrease:15,startWeekIndex:4,endWeekIndex:29,source:"HUMAN",
+    airingDay:5,airingHour:20,
+    networkReview:{dealId:"broadcast-1",offerCode:"BROADCAST_GROWTH",
+     reviewWeekIndex:4,target:0.11,rating:0.0,showId:"tv-4",
+     status:"BELOW_TARGET",missedConsecutively:3,previousMisses:2,
+     milestone:"WARNING",bonusEligible:false}}]:[],
    commercialOffers:signed?[]:[offer]
   }});
  });
@@ -59,6 +64,14 @@ test("320px Business commercial agreements are optional, readable and consented 
  await page.getByRole("button",{name:"Sign VibeFlix"}).click();
  await expect(page.getByText(/Commercial agreement signed/)).toBeVisible();
  await expect(page.getByText(/26 weeks left on this agreement/)).toBeVisible();
+ await expect(page.locator(".ppw-commercial-partner-review")).toContainText("AT RISK");
+ await expect(page.locator(".ppw-commercial-partner-review")).toContainText("0.0 TV");
+ await expect(page.getByText("US$312,000 weekly guarantee")).toBeVisible();
+ const catalogue=page.locator(".ppw-commercial-market-browser");
+ await expect(catalogue).not.toHaveAttribute("open","");
+ await catalogue.locator("summary").click();
+ await expect(catalogue).toHaveAttribute("open","");
+ await expect(page.locator(".ppw-commercial-slot")).toContainText("Friday at 20:00");
  await expect(page.getByRole("button",{name:"Sign VibeFlix"})).toHaveCount(0);
  expect(methods).toEqual(["business","signCommercial","business"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

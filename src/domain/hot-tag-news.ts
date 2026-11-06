@@ -4,6 +4,29 @@
  * Fan comments never establish that the rumour is real. */
 export const HOT_TAG_NAME="HOT TAG";
 export const HOT_TAG_TAGLINE="Tag in. Sound off.";
+import {COMMERCIAL_COMPANIES} from "./commercial-offers.js";
+export interface HotTagBroadcasterPost{
+ networkCode:string;handle:string;displayName:string;avatar:string;text:string;
+ likes:number;replies:number;reposts:number;
+}
+/** An official network only speaks when a certified World News statement
+ * already quotes that exact brand. Unverified gossip never impersonates it. */
+export function projectHotTagBroadcasterPost(story:HotTagNewsStory):
+ HotTagBroadcasterPost|null{
+ if(story.desk!=="OFFICIAL")return null;
+ const match=/^broadcast:network:(BROADCAST_[A-Z]+):(warning|final-warning|recovery):/
+  .exec(story.id);
+ if(!match)return null;
+ const code=match[1]!,brand=COMMERCIAL_COMPANIES[code];
+ if(!brand)return null;
+ const quoted=story.summary.match(/responded: "([^"]{1,260})"/)?.[1];
+ if(!quoted)return null;
+ const hash=stableHotTagHash(story.id);
+ return {networkCode:code,displayName:brand.name,avatar:brand.mark,
+  handle:"@"+brand.name.replace(/[^a-zA-Z0-9]/g,""),
+  text:quoted,likes:80+hash%1700,replies:12+(hash>>>8)%250,
+  reposts:6+(hash>>>16)%180};
+}
 export interface HotTagNewsStory{
  id:string;year:number;week:number;title:string;summary:string;
  desk:"OFFICIAL"|"DIRT";promotionName:string;promotionId?:string;sourceKind?:string;
@@ -45,6 +68,7 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  const text=(story.title+" "+story.summary).toLowerCase();
  const rumour=story.desk==="DIRT";
  const kind=rumour?"RUMOUR":
+  story.id.startsWith("broadcast:")?"BROADCAST":
   /challeng|call(?:s|ed)? out|contract sign/.test(text)?"CHALLENGE":
   /champion|title (?:win|chang|loss|defen)|new titleholder/.test(text)?"TITLE":
   /heel turn|face turn|betray|turned on|walkout|stable split/.test(text)?"TURN":
@@ -52,6 +76,19 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
   /attack|assault|ambush|brawl/.test(text)?"ATTACK":
   /\bvs\.?\s|\bversus\b|steals the show|\d(?:\.\d{1,2})?-star match/.test(text)?"MATCH":"OTHER";
  const reactions:Record<typeof kind,string[]>={
+  BROADCAST:[
+   "This is the ratings war I wanted. Same hour, actual viewers on the line. 📺",
+   "A strong card matters, but now you've got to keep that audience next week. 👀",
+   "Three rough TV nights? That network is absolutely watching the numbers. 💀",
+   "You cannot just move a weekly show and expect the audience to find it. 😂",
+   "Nielsen-watchers have entered the group chat. Let's see what happens next. 🍿",
+   "Good wrestling and a reliable schedule. Imagine both at once. 🧐",
+   "The network has spoken. The next broadcast better deliver. 🔥",
+   "Everybody says ratings don't matter until their company loses a head-to-head. 📼",
+   "TV competition without any actual match spoilers? I'm here for it. 📺",
+   "If they won the time slot, give them their flowers. They earned those viewers. 💐",
+   "The numbers are official, which won't stop anybody arguing about them. 😂"
+  ],
   RUMOUR:[
    "The 'sources' on this one are doing some seriously heavy lifting. Show receipts. 🧐",
    "Three versions of the same rumour and zero names on the record. Incredible business. 😂",
@@ -157,6 +194,10 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  // Previously published fan threads stay unchanged. New episodes get
  // additional fictional voices without new requests, timers or Neon writes.
  const expanded:Record<typeof kind,string[]>={
+  BROADCAST:["Networks are about to become the main characters. 📺",
+   "A fixed broadcast night means the fans know where to find you. 🔥",
+   "The partner's reaction is public, and the ratings will be too. 👀",
+   "A big ratings win means nothing if you miss next week's slot. 🍿"],
   RUMOUR:["Somebody's cousin's barber has become an anonymous source. 😂",
    "Six theories and not one screenshot. That's wrestling journalism for you. 👀",
    "The conspiracy board has sixteen strings and zero evidence. 🧵",

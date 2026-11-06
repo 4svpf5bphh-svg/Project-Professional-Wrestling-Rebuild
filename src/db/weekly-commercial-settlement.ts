@@ -8,6 +8,8 @@ import {COMMERCIAL_COMPANIES,type CommercialEvidence}
  from "../domain/commercial-offers.js";
 import {awardAiCommercialPartners} from "../domain/commercial-ai-market.js";
 import {settleRatingsWarWorldWeek} from "./ratings-war-week.js";
+import {reviewWorldBroadcasters} from "./broadcast-network-audit.js";
+import {composeBroadcastWorldNews} from "../domain/broadcast-world-news.js";
 
 export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  year:number,week:number){
@@ -15,7 +17,9 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  if(!worldId||weekIndex<0||week<1||week>52)throw new Error("Invalid commercial settlement");
  // All completed TV shows are now certified: resolve simultaneous audience
  // battles before this week's partner performance bonuses or new AI bids.
- await settleRatingsWarWorldWeek(tx,worldId,year,week);
+ const ratingsWar=await settleRatingsWarWorldWeek(tx,worldId,year,week);
+ const networks=await reviewWorldBroadcasters(tx,worldId,year,week);
+ const withheld=networks.filter(n=>!n.review.bonusEligible).map(n=>n.dealId);
  // A successful broadcast carries recognition to previously visited
  // away markets, but never fabricates an international audience in an unknown
  // region. A current certified show with real crowd response is required.
@@ -118,6 +122,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    AND p.promotion_id=d.promotion_id
   WHERE d.world_id=$1 AND d.status='ACTIVE'
    AND d.start_week_index<=$4 AND d.end_week_index>=$4
+   AND (d.kind<>'BROADCAST' OR NOT(d.deal_id=ANY($5::text[])))
  ), earned AS (
   INSERT INTO ppw_commercial_bonus_receipts(
    world_id,deal_id,promotion_id,year,week,amount,crowd_response)
@@ -139,7 +144,26 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   FROM earned RETURNING event_id
  )
  SELECT promotion_id,amount FROM paid
- `,[worldId,year,week,weekIndex]);
+ `,[worldId,year,week,weekIndex,withheld]);
+ // Publish partner voices and head-to-head winners as genuine World news.
+ // World News has already been published in the very same locked Week
+ // transaction. A direct isolated settlement with no news seal stays safe.
+ const statements=composeBroadcastWorldNews(networks,ratingsWar.highlights);
+ if(statements.length)await tx.query(`
+  INSERT INTO ppw_world_news_items(world_id,year,week,story_key,desk,certainty,
+   promotion_id,promotion_name,show_id,title,summary,source_kind)
+  SELECT $1,$2,$3,s.story_key,s.desk,s.certainty,
+   s.promotion_id,s.promotion_name,s.show_id,s.title,s.summary,s.source_kind
+  FROM jsonb_to_recordset($4::jsonb) AS s(
+   story_key text,desk text,certainty text,promotion_id text,
+   promotion_name text,show_id text,title text,summary text,source_kind text)
+  JOIN ppw_world_news_weeks published ON published.world_id=$1
+   AND published.year=$2 AND published.week=$3
+  ON CONFLICT DO NOTHING
+ `,[worldId,year,week,JSON.stringify(statements.map(s=>({
+  story_key:s.key,desk:s.desk,certainty:s.certainty,
+  promotion_id:s.promotionId,promotion_name:s.promotionName,
+  show_id:s.showId,title:s.title,summary:s.summary,source_kind:s.sourceKind})))]);
  // Close the exact ending week's active deals AFTER the week's financial credit.
  // This also restores the original income and reach baselines, without
  // reverting legitimate territory awareness earned while the deal was live.
