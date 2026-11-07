@@ -94,3 +94,87 @@ test("Model comparisons use identical certified fixture facts and one provider c
    "The model identity must never change match evidence or the factual rubric");
  }
 });
+
+test("20B benchmark recovers from a strict Groq 400 with one verified JSON-mode attempt",async()=>{
+ const {generateGroqReview,classifyGroqBadRequest}=await import("../src/db/ringside-commentary.js");
+ const {DEFAULT_RINGSIDE_SETTINGS}=await import("../src/domain/ringside-settings.js");
+ const {show}=getWrestlingBenchmark("i-quit")!;
+ let calls=0;
+ const result=await generateGroqReview(show,"fixture",async(_url,init)=>{
+  calls++;
+  const request=JSON.parse(String(init?.body));
+  assert.equal(request.model,"openai/gpt-oss-20b");
+  if(calls===1){
+   assert.equal(request.response_format.type,"json_schema");
+   assert.equal(request.response_format.json_schema.strict,true);
+   return new Response(JSON.stringify({error:{
+    type:"invalid_request_error",code:"structured_generation_failed",
+    message:"This provider could not generate strict JSON for the given request"
+   }}),{status:400});
+  }
+  assert.equal(calls,2,"one compatibility retry only");
+  assert.equal(request.response_format.type,"json_object");
+  assert.equal(request.reasoning_format,"hidden");
+  assert.equal(request.response_format.json_schema,undefined);
+  assert.match(request.messages[1].content,/card_N key/);
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"Mercer survives a twenty-five-minute fight",
+   opening:"The cage-free war demanded a spoken surrender.",
+   closing:"The decisive words settled a hard-hitting night.",
+   slots:{card_0:{headline:"Mercer makes Wolfe say it",
+    recap:"After a lengthy, physical I Quit match, Ronan Wolfe finally said I quit into the referee's microphone, giving Jett Mercer the certified victory."}}
+  })}}]}),{status:200});
+ },{...DEFAULT_RINGSIDE_SETTINGS,model:"openai/gpt-oss-20b"},
+ undefined,undefined,"GROQ",true);
+ assert.equal(calls,2);
+ assert.equal(assessWrestlingBenchmark("i-quit",result).certifiedFactsValidated,true);
+ assert.equal(await classifyGroqBadRequest(new Response(JSON.stringify({
+  error:{code:"json_validate_failed",message:"Generated JSON did not match schema"}
+ }),{status:400})),"STRUCTURED_OUTPUT");
+});
+test("20B compatibility is isolated to the benchmark; bad parameters and 429 never retry",async()=>{
+ const {generateGroqReview,RingsideGenerationError,classifyGroqBadRequest}=
+  await import("../src/db/ringside-commentary.js");
+ const {DEFAULT_RINGSIDE_SETTINGS}=await import("../src/domain/ringside-settings.js");
+ const {show}=getWrestlingBenchmark("i-quit")!;
+ const small={...DEFAULT_RINGSIDE_SETTINGS,model:"openai/gpt-oss-20b" as const};
+ for(const data of [
+  {settings:small,benchmark:false,status:400,code:"structured_generation_failed",expected:"PROVIDER_ERROR"},
+  {settings:small,benchmark:true,status:400,code:"invalid_reasoning_effort",expected:"PROVIDER_ERROR"},
+  {settings:small,benchmark:true,status:429,code:"rate_limit_exceeded",expected:"PROVIDER_LIMIT"},
+  {settings:DEFAULT_RINGSIDE_SETTINGS,benchmark:true,status:400,code:"structured_generation_failed",expected:"PROVIDER_ERROR"}
+ ]){
+  let calls=0;
+  await assert.rejects(
+   ()=>generateGroqReview(show,"fixture",async()=>{
+    calls++;
+    return new Response(JSON.stringify({error:{
+     code:data.code,message:data.code==="invalid_reasoning_effort"?
+      "Invalid reasoning_effort parameter":"Sensitive user text MUST NOT appear in the UI"
+    }}),{status:data.status});
+   },data.settings,undefined,undefined,"GROQ",data.benchmark),
+   (error:unknown)=>error instanceof RingsideGenerationError&&error.code===data.expected&&
+    !error.message.includes("Sensitive user text"));
+  assert.equal(calls,1,"rejection outside the compatibility case must not retry");
+ }
+ assert.equal(await classifyGroqBadRequest(new Response(JSON.stringify({
+  error:{code:"invalid_reasoning_effort",message:"Invalid reasoning_effort parameter"}
+ }),{status:400})),"REASONING");
+ assert.equal(await classifyGroqBadRequest(new Response(JSON.stringify({
+  error:{code:"model_not_found",message:"Model not found"}
+ }),{status:400})),"MODEL");
+});
+test("20B benchmark never loops more than twice if compatibility mode is also rejected",async()=>{
+ const {generateGroqReview,RingsideGenerationError}=await import("../src/db/ringside-commentary.js");
+ const {DEFAULT_RINGSIDE_SETTINGS}=await import("../src/domain/ringside-settings.js");
+ const {show}=getWrestlingBenchmark("i-quit")!;
+ const modes:string[]=[];
+ await assert.rejects(()=>generateGroqReview(show,"fixture",async(_url,init)=>{
+  const body=JSON.parse(String(init?.body));
+  modes.push(body.response_format.type);
+  return new Response(JSON.stringify({error:{code:"structured_generation_failed"}}),{status:400});
+ },{...DEFAULT_RINGSIDE_SETTINGS,model:"openai/gpt-oss-20b"},
+ undefined,undefined,"GROQ",true),
+ (e:unknown)=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_ERROR");
+ assert.deepEqual(modes,["json_schema","json_object"]);
+});
