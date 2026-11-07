@@ -154,8 +154,8 @@ test("isolated AI benchmark operator sees the lab, never World or Playtests cont
  });
  await page.route("**/api/admin-preview",route=>{
   const body=route.request().postDataJSON();
-  expect(body.benchmarkId).toBe("steel-cage",
-   "The selected cage fixture must survive the lab's automatic summary refresh");
+  expect(body.benchmarkId,
+   "The selected cage fixture must survive the lab's automatic summary refresh").toBe("steel-cage");
   expect(body.previewProvider).toBe("GROQ");
   expect(body.settings.model).toBe(
    previewCalls===0?"openai/gpt-oss-120b":"openai/gpt-oss-20b");
