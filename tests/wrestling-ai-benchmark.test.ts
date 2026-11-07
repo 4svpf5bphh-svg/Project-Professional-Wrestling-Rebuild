@@ -22,7 +22,9 @@ test("Fifteen deterministic wrestling scenarios provide certified results and no
   assert.ok(!JSON.stringify(first).includes("api_key"));
   const ok={showHeadline:"A story at ringside",opening:"The crowd greeted the bell.",
    closing:"There was plenty to consider after the finish.",slots:[{
-    slotId:entry.slotId,headline:"The main event",recap:"The official victor had their hand raised once the decisive result was reached."}]};
+    slotId:entry.slotId,headline:"The main event",recap:entry.outcome==="VERBAL_SURRENDER"?
+     "The defeated opponent verbally surrendered to the referee after saying I quit.":
+     "The official victor had their hand raised once the decisive result was reached."}]};
   assert.deepEqual(validateRingsideCopy(ok,first.show),ok);
   assert.equal(assessWrestlingBenchmark(meta.id,ok).certifiedFactsValidated,true);
  }
@@ -80,7 +82,9 @@ test("Model comparisons use identical certified fixture facts and one provider c
      showHeadline:"An eventful night",opening:"The crowd watched closely.",
      closing:"The certified result settled the contest.",
      slots:{card_0:{headline:"An orderly finish",
-      recap:"The match unfolded with clear momentum before the documented winning side received the decision."}}
+      recap:id==="i-quit"?
+       "Ronan Wolfe verbally surrendered, saying I quit into the referee microphone.":
+       "The match unfolded with clear momentum before the documented winning side received the decision."}}
     })}}]}),{status:200});
    },{...DEFAULT_RINGSIDE_SETTINGS,model});
    assert.equal(calls,1);
