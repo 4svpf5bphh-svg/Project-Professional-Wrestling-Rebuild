@@ -157,7 +157,8 @@ test("isolated AI benchmark operator sees the lab, never World or Playtests cont
   expect(route.request().headers()["x-ppw-csrf"]).toBe("csrf");
   previewCalls++;
   return route.fulfill({json:{review:aiLabReview,labRunId:aiLabRun.run_id,
-   metrics:{durationMs:1750,providerCalls:1,inputTokens:800,outputTokens:400},
+   metrics:{durationMs:1750,providerCalls:2,inputTokens:null,outputTokens:null,
+    compatibilityJson:true},
    benchmark:{certifiedFactsValidated:true,diagnosticCues:[],humanReviewRequired:true}}});
  });
  await page.goto("/#/home");
@@ -178,6 +179,7 @@ test("isolated AI benchmark operator sees the lab, never World or Playtests cont
  await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
  await expect.poll(()=>previewCalls).toBe(1);
  await expect(page.getByText(/Saved Steel Cage/)).toBeVisible();
+ await expect(page.getByText(/20B JSON compatibility used/)).toBeVisible();
  expect(labReads).toBeGreaterThanOrEqual(2);
  expect(generalAdminReads).toBe(0);
 });
