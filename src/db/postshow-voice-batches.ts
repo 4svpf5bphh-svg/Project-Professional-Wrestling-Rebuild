@@ -72,19 +72,47 @@ async function settle(pool:TransactionPool,scope:Scope,row:Published,
 /** Diagnostic codes contain only fixed enums. Never store or send
  * rejected Groq prose, provider error bodies or private show instructions.
  */
+export type ShortformVoicePartStatus=
+ "ACCEPTED"|"MISSING"|"FORMAT_REJECTED"|"LENGTH_REJECTED"|
+ "FACT_OR_VOICE_REJECTED";
 export type ShortformVoiceDiagnostic={
  category:"ACCEPTED"|"PARTIAL"|"ALL_REJECTED"|"WRONG_SHAPE"|
   "HTTP_REJECTED"|"INVALID_ENVELOPE"|"EMPTY_CONTENT"|
   "INVALID_JSON"|"TRUNCATED"|"OVERSIZED"|"PROVIDER_ERROR";
- news:"ACCEPTED"|"REJECTED"|"MISSING";
- wrestler:"ACCEPTED"|"REJECTED"|"MISSING";
- roadAgent:"ACCEPTED"|"REJECTED"|"MISSING";
+ news:ShortformVoicePartStatus;
+ wrestler:ShortformVoicePartStatus;
+ roadAgent:ShortformVoicePartStatus;
 };
 const emptyDiagnostic=(category:ShortformVoiceDiagnostic["category"]):
  ShortformVoiceDiagnostic=>({category,news:"MISSING",wrestler:"MISSING",
  roadAgent:"MISSING"});
 const isRecord=(value:unknown):value is Record<string,unknown>=>
  !!value&&typeof value==="object"&&!Array.isArray(value);
+/** Non-generative rejection explanation: no model prose is logged or saved. */
+function partStatus(field:"news"|"wrestler"|"roadAgent",
+ source:ReturnType<typeof postShowVoiceBrief>,
+ candidate:Record<string,unknown>,accepted:boolean):ShortformVoicePartStatus{
+ const allowed=field==="news"?!!source.mainEvent:
+  field==="wrestler"?!!source.wrestler:!!source.roadAgent;
+ const original=candidate[field];
+ if(!allowed||original===undefined||original===null)return "MISSING";
+ if(accepted)return "ACCEPTED";
+ if(!isRecord(original))return "FORMAT_REJECTED";
+ const values=field==="news"?
+  [[original.headline,4,19,145],[original.summary,18,80,480]]:
+  field==="wrestler"?[[original.text,8,65,350]]:
+  [[original.note,10,85,470]];
+ if(values.some(([value])=>typeof value!=="string"))
+  return "FORMAT_REJECTED";
+ if(values.some(([value,min,max,limit])=>{
+  const text=value as string;
+  const words=text.trim().split(/\s+/).filter(Boolean).length;
+  return text.length>(limit as number)||words<(min as number)||
+   words>(max as number);
+ }))return "LENGTH_REJECTED";
+ return "FACT_OR_VOICE_REJECTED";
+}
+
 export async function generatePostShowVoiceCopy(show:CompletedShowView,key:string,
  transport:typeof fetch=fetch,pool?:TransactionPool,
  diagnostic?:(result:ShortformVoiceDiagnostic)=>void){
@@ -140,9 +168,7 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
  const copy=validatePostShowVoiceCopy(source,text);
  const fields=["news","wrestler","roadAgent"] as const;
  const statuses=Object.fromEntries(fields.map(field=>[
-  field,
-  text[field]===undefined||text[field]===null?"MISSING":
-   copy?.[field]?"ACCEPTED":"REJECTED"
+  field,partStatus(field,source,text,!!copy?.[field])
  ])) as Pick<ShortformVoiceDiagnostic,"news"|"wrestler"|"roadAgent">;
  const anyPresent=fields.some(field=>text[field]!==undefined&&text[field]!==null);
  const structured=fields.some(field=>isRecord(text[field])||text[field]===null);
