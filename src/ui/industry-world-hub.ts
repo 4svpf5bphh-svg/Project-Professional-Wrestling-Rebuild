@@ -732,7 +732,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     dispatch.append(el("span","ppw-news-eyebrow","THE PROMOTION / POST-SHOW DISPATCHES"));
     for(const voice of news.voices??[]){
      const article=el("article","ppw-news-story ppw-news-voice");
-     article.append(el("span","ppw-news-desk","GROQ / CERTIFIED EVENT"),
+     article.append(el("span","ppw-news-desk","EXCLUSIVE / VERIFIED AFTERMATH"),
       el("strong","ppw-news-story-title",voice.headline),
       el("p","",voice.summary),
       el("small","ppw-industry-muted",voice.promotionName+
