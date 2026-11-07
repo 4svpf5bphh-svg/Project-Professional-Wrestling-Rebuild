@@ -95,7 +95,7 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
  await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
  await expect(page.getByText(/Saved Tag · conventional 2v2/)).toBeVisible();
  await expect(page.getByText(/1 provider call\(s\)/)).toBeVisible();
- await expect(page.getByText(/Ringside Benchmark · Tag · conventional 2v2/)).toBeVisible();
+ await expect(page.getByText(/Ringside Benchmark · Tag · conventional 2v2/)).toHaveCount(2);
  expect(generated).toBe(1);
  expect(historyReads).toBe(2);
 });
