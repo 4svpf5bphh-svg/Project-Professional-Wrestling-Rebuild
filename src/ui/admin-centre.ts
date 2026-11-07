@@ -20,8 +20,10 @@ type LabRun={run_id:string;show_id:string;show_name:string;
  rating:number|null;flags:string[];notes:string;created_at:string};
 type LabDay={day:string;provider:"GROQ"|"OPENAI";calls:number;reserved:number;
  input:string;output:string;failed:number};
+type BenchmarkScenario={id:string;name:string;focus:string;expectation:string;watchFor:string};
 type LabData={usage:LabDay[];runs:LabRun[];scores:{
- provider:string;model:string;total:number;reviewed:number;average_score:number|null}[]};
+ provider:string;model:string;total:number;reviewed:number;average_score:number|null}[];
+ scenarios?:BenchmarkScenario[];providers?:{groq:boolean;openai:boolean}};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
 type Context={csrfToken:string};
@@ -66,6 +68,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  navigation.setAttribute("aria-label","Admin sections");
  let activeTab:"WORLD"|"AI"|"PLAYTESTS"="WORLD";
  let labData:LabData|null=null;
+ let lastBenchmarkNotice="";
  const navButtons=(["WORLD","AI","PLAYTESTS"] as const).map(tab=>{
   const button=el("button","ppw-admin-tab",
    tab==="WORLD"?"World":tab==="AI"?"AI Testing Lab":"Playtests") as HTMLButtonElement;
@@ -149,6 +152,69 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     scores.append(line);
    }else scores.append(el("p","ppw-admin-small",
     "Run a preview and rate it to build your model comparisons."));
+   const benchmark=el("div","ppw-lab-benchmark");
+   benchmark.append(el("h3","","Wrestling IQ Benchmarks"),
+    el("p","ppw-admin-small","Repeat the same fictional match with different models. No World, contracts or published Results change. Each run uses the shared AI allowance."));
+   const scenarios=data.scenarios??[];
+   const scenarioPick=selectControl(scenarios.map(x=>[x.id,x.name]),scenarios[0]?.id??"");
+   const benchmarkModel=selectControl([
+    ["openai/gpt-oss-120b","Groq · 120B"],["openai/gpt-oss-20b","Groq · 20B"]
+   ],"openai/gpt-oss-120b");
+   const benchmarkProvider=selectControl([
+    ["GROQ","Groq · free allowance"],
+    ...(data.providers?.openai?[["OPENAI","OpenAI · paid comparison"] as [string,string]]:[])
+   ],"GROQ");
+   const rubric=el("div","ppw-lab-rubric");
+   const scenarioDescription=()=>{
+    const selected=scenarios.find(item=>item.id===scenarioPick.value);
+    rubric.replaceChildren(el("strong","",selected?.focus??"No benchmark scenarios available."),
+     el("p","","Look for: "+(selected?.expectation??"A complete wrestling article.")),
+     el("p","ppw-admin-small","Watch for: "+(selected?.watchFor??"Invented facts.")));
+   };
+   scenarioPick.onchange=scenarioDescription;
+   scenarioDescription();
+   const benchmarkStatus=el("p","ppw-admin-message",lastBenchmarkNotice);
+   const runBenchmark=el("button","ppw-admin-primary","Run Wrestling IQ benchmark") as HTMLButtonElement;
+   runBenchmark.type="button";
+   runBenchmark.disabled=!scenarios.length||!data.providers?.groq;
+   benchmarkProvider.onchange=()=>{
+    runBenchmark.disabled=!scenarios.length||(benchmarkProvider.value==="GROQ"?
+     !data.providers?.groq:!data.providers?.openai);
+    benchmarkModel.disabled=benchmarkProvider.value==="OPENAI";
+   };
+   runBenchmark.onclick=async()=>{
+    if(runBenchmark.disabled)return;
+    runBenchmark.disabled=true;
+    message(benchmarkStatus,"Generating one private test; the official World remains unchanged.");
+    try{
+     const chosen=scenarios.find(item=>item.id===scenarioPick.value);
+     if(!chosen)throw new Error("Choose a recognised wrestling scenario");
+     const result=await request("/api/admin-preview","POST",ctx.csrfToken,{
+      benchmarkId:chosen.id,previewProvider:benchmarkProvider.value,
+      settings:{model:benchmarkModel.value,voice:"MARTY",detail:"BALANCED",
+       reasoning:"low",creativity:0.92,additionalGuidance:""}
+     }) as {labRunId:string;metrics:{durationMs:number;providerCalls:number;
+      inputTokens:number|null;outputTokens:number|null};
+      benchmark?:{certifiedFactsValidated:boolean;diagnosticCues:string[];
+       humanReviewRequired:boolean}};
+     lastBenchmarkNotice="Saved "+chosen.name+" · "+
+      result.metrics.durationMs+"ms · "+result.metrics.providerCalls+
+      " provider call(s) · "+
+      (result.metrics.inputTokens===null?"tokens not reported":
+       (result.metrics.inputTokens+(result.metrics.outputTokens??0)).toLocaleString("en-GB")+" tokens")+
+      ". Basic result checks passed; assess psychology and tone yourself. "+
+      (result.benchmark?.diagnosticCues.join("; ")??"");
+     labData=null;
+     await loadLab();
+    }catch(e){
+     message(benchmarkStatus,e instanceof Error?e.message:
+      "Benchmark unavailable; no official results changed.",true);
+     runBenchmark.disabled=false;
+    }
+   };
+   benchmark.append(inputField("Wrestling scenario",scenarioPick),rubric,
+    inputField("Benchmark provider",benchmarkProvider),
+    inputField("Groq model",benchmarkModel),runBenchmark,benchmarkStatus);
    const reportButton=el("button","ppw-admin-secondary","Copy AI test report") as HTMLButtonElement;
    reportButton.type="button";
    const reportStatus=el("p","ppw-admin-message","");
@@ -287,7 +353,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    labPanel.replaceChildren(el("h2","","AI Quality Lab"),
     el("p","ppw-admin-sub",
      "Live provider usage, model quality and your playtest notes. No public Results are changed."),
-    overview,todaySummary,usage,scoreTitle,scores,reportButton,
+    benchmark,overview,todaySummary,usage,scoreTitle,scores,reportButton,
     reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
   }catch(e){labData=null;labPanel.replaceChildren(
    el("h2","","AI Quality Lab"),
