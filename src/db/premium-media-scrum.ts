@@ -6,6 +6,7 @@ import {withWorldTransaction} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {readCompletedShowView} from "./show-results-view.js";
 import {premiumScrumQuestions,type ScrumQuestionId} from "../domain/premium-media-scrum.js";
+import {publishablePressEditorial} from "../domain/premium-press-editorial.js";
 export interface PremiumScrumScope{
  worldId:string;promotionId:string;playerId:string;showId:string;
 }
@@ -79,6 +80,41 @@ export async function dismissPremiumScrum(pool:TransactionPool,s:PremiumScrumSco
    WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.player_id=$3 AND c.active
    ON CONFLICT(world_id,show_id,player_id,question_id) DO NOTHING
    RETURNING question_id`,[s.worldId,s.promotionId,s.playerId,s.showId]);
+  // A completed press session contributes to World News only AFTER its
+  // certified week has been published. Replays never duplicate stories.
+  const publishedAnswers=await tx.query<{question_id:ScrumQuestionId|"DISMISSED";
+   answer_index:number;display_name:string|null;promotion_name:string}>(`
+   SELECT a.question_id,a.answer_index,profile.display_name,p.name AS promotion_name
+   FROM ppw_premium_media_scrum_answers a
+   JOIN ppw_promotion_controls c ON c.world_id=a.world_id
+    AND c.promotion_id=a.promotion_id AND c.player_id=a.player_id AND c.active
+   JOIN ppw_memberships m ON m.world_id=c.world_id
+    AND m.player_id=c.player_id AND m.status='ACTIVE'
+   JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+   LEFT JOIN ppw_player_profiles profile ON profile.player_id=a.player_id
+   WHERE a.world_id=$1 AND a.promotion_id=$2 AND a.player_id=$3 AND a.show_id=$4
+   ORDER BY a.question_id LIMIT 4`,
+   [s.worldId,s.promotionId,s.playerId,s.showId]);
+  const picked=new Map<ScrumQuestionId,number>();
+  for(const a of publishedAnswers){
+   if(a.question_id!=="DISMISSED")picked.set(a.question_id,a.answer_index);
+  }
+  const manager=publishedAnswers[0]?.display_name?.trim()||
+   (show.promotionName??"Promotion")+" management";
+  const articles=publishablePressEditorial(show,manager,picked);
+  for(const article of articles){
+   await tx.query(`
+    INSERT INTO ppw_world_news_items(world_id,year,week,story_key,desk,certainty,
+      promotion_id,promotion_name,show_id,title,summary,source_kind)
+    SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'EVENT'
+    WHERE EXISTS(SELECT 1 FROM ppw_world_news_weeks
+     WHERE world_id=$1 AND year=$2 AND week=$3)
+    ON CONFLICT(world_id,year,week,story_key) DO NOTHING`,[
+    s.worldId,show.year,show.week,article.storyKey,article.desk,
+    article.certainty,s.promotionId,
+    publishedAnswers[0]?.promotion_name??show.promotionName??"Promotion",
+    s.showId,article.title,article.summary]);
+  }
   if(rows.length)return {dismissed:true,saved:true};
   const stored=await tx.query<{question_id:string}>(`
    SELECT a.question_id FROM ppw_premium_media_scrum_answers a
