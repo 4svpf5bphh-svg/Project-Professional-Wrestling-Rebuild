@@ -49,7 +49,6 @@ test("320px Business commercial agreements are optional, readable and consented 
    commercialOffers:signed?[]:[offer]
   }});
  });
- await page.goto("/#/business");
  await page.goto("/#/commercials");
  await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
  await expect(page.getByText("VibeFlix",{exact:true})).toBeVisible();

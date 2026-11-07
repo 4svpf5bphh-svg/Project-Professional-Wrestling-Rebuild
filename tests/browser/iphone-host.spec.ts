@@ -99,6 +99,7 @@ test("Home alerts open expiring agreements or pending offers directly without an
   .getByRole("button",{name:/Needs action/})).toHaveAttribute("aria-current","page");
  await expect(page.getByText(/Contracts closest to expiry/)).toBeVisible();
  await page.goto("/#/home");
+ await expect(page.getByRole("button",{name:/RESULTS ARCHIVE|LATEST RESULT/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Offers awaiting decisions/})).toHaveCount(0);
  expect(methods).toEqual(["overview","contracts","overview"]);
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
@@ -1097,9 +1098,8 @@ test("Business event pulse reuses loaded receipts and opens detailed accounts wi
   methods.push(method);
   await route.fulfill({json:method==="business"?business:overview});
  });
- await page.goto("/#/business");
- await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
- await page.getByRole("button",{name:"Events"}).click();
+ await page.goto("/#/business-events");
+ await expect(page.getByRole("heading",{name:"Event Accounts",level:1})).toBeVisible();
  await expect(page.getByText("EVENT RESULT")).toBeVisible();
  await expect(page.locator(".ppw-business-event-stat").filter({hasText:"EVENT RESULT"}).locator("strong")).toContainText("1,000");
  const group=page.getByRole("group",{name:"Event profit and loss"});
