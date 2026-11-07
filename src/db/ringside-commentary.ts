@@ -3,6 +3,8 @@
  */
 import {createHash,randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
+import {requestGroqEditorial} from "./groq-ai-director.js";
+import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
 import {readAdminRingsideSettings} from "./admin-ringside-settings.js";
 import {DEFAULT_RINGSIDE_SETTINGS,ringsideVoiceInstruction,type RingsideSettings}
  from "../domain/ringside-settings.js";
@@ -11,7 +13,7 @@ import {readCompletedShowView} from "./show-results-view.js";
 import {readRingsideMemory,EMPTY_RINGSIDE_MEMORY,type RingsideMemory} from "./ringside-continuity.js";
 import type {CompletedShowView} from "./show-results-view.js";
 import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
- RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_LEGACY_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
+ RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
 export type RingsideResponse={status:"ready";review:RingsideCopy}|
@@ -87,7 +89,11 @@ const validationHint=(message:string)=>message.includes("unowned signature")?
 export async function generateGroqReview(show:CompletedShowView,key:string,
  transport:typeof fetch=fetch,
  settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
- memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY):Promise<RingsideCopy>{
+ memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,
+ budgetPool?:TransactionPool,previewProvider:"GROQ"|"OPENAI"="GROQ"):Promise<RingsideCopy>{
+ if(previewProvider==="OPENAI"&&!budgetPool)
+  throw new RingsideGenerationError("INVALID_OUTPUT",
+   "Paid previews require a server-side usage budget");
  if(JSON.stringify(ringsideBrief(show)).length>26000||
     show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
@@ -120,10 +126,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),18000);
   try{
-   const response=await transport("https://api.groq.com/openai/v1/chat/completions",{
-    method:"POST",signal:controller.signal,
-    headers:{"authorization":"Bearer "+key,"content-type":"application/json"},
-    body:JSON.stringify({model:settings.model,temperature:settings.creativity,
+   const payload={temperature:settings.creativity,
      max_completion_tokens:Math.min(5800,760+show.entries.length*(
       settings.detail==="LONG"?310:settings.detail==="SHORT"?185:245)),
      reasoning_effort:settings.reasoning,
@@ -139,14 +142,24 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        "Use at most one relevant callback per bout; an empty thread means no confirmed connection.\n"+
        (correction?"Quality-control correction required: "+correction+"\n":"")+
        "Records:\n"+facts}]
-    })
-   });
+    };
+   const response=previewProvider==="OPENAI"?
+    await requestOpenAiEditorialPreview({
+     key,enabled:true,transport,signal:controller.signal,
+     pool:budgetPool!,body:payload
+    }):await requestGroqEditorial({
+     task:"RINGSIDE",preferredModel:settings.model,key,transport,
+     signal:controller.signal,pool:budgetPool,body:payload
+    });
    if(!response.ok){
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
      "PROVIDER_AUTH":"PROVIDER_ERROR";
     const retry=Number(response.headers.get("retry-after"));
     const delay=Number.isFinite(retry)&&retry>0?Math.ceil(Math.min(1800,retry)):60;
-    throw new RingsideGenerationError(code,response.status===429?
+    throw new RingsideGenerationError(code,response.status===429&&
+     response.headers.get("x-ppw-budget-exhausted")==="true"?
+     "PPW's daily free AI allowance is exhausted. Previously published writing remains available.":
+     response.status===429?
      "Groq's short-term limit was reached. Retry in about "+delay+
       " seconds; this does not mean the daily allowance is exhausted.":
      code==="PROVIDER_AUTH"?"Groq authentication was rejected. Check the server API configuration.":
@@ -226,14 +239,15 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
    FROM ppw_ringside_reports r
    WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
     AND r.show_id=c.show_id
-    AND (r.prompt_version=$5 OR (r.prompt_version IN ($6,$7) AND r.state='READY'))
+    AND (r.prompt_version=$5 OR (r.prompt_version IN ($6,$7,$8) AND r.state='READY'))
    -- Preserve published v4/v6 articles; do not regenerate old reviewed shows.
-   ORDER BY CASE WHEN r.prompt_version=$7 THEN 0 WHEN r.prompt_version=$6 THEN 1 ELSE 2 END
+   ORDER BY CASE WHEN r.state='READY' THEN 0 ELSE 1 END,
+     CASE WHEN r.prompt_version=$8 THEN 0 WHEN r.prompt_version=$7 THEN 1 WHEN r.prompt_version=$6 THEN 2 ELSE 3 END
    LIMIT 1
   ) r ON TRUE
   WHERE c.world_id=$1 AND c.promotion_id=$3 AND c.show_id=$4
   LIMIT 1`,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,
-   RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_LEGACY_VERSION]));
+   RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION]));
  if(!current.length)throw new Error("Completed show unavailable to this controller");
  const saved=current[0];
  if(saved?.state==="READY"){
@@ -274,7 +288,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
   let memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY;
   try{memory=await readRingsideMemory(pool,scope,show);}
   catch{console.warn("Ringside history unavailable; generating from card facts");}
-  const review=await generateGroqReview(show,key,transport,settings,memory);
+  const review=await generateGroqReview(show,key,transport,settings,memory,pool);
   const write=await withSqlClient(pool,async db=>db.query<{state:string}>(`
    UPDATE ppw_ringside_reports SET state='READY',report_json=$6::jsonb,
     updated_at=now() WHERE world_id=$1 AND promotion_id=$2

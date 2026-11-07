@@ -142,3 +142,102 @@ test("verbatim recap echoes are removed without another paid Groq generation",as
  assert.equal(calls,1);
  assert.equal(result.slots[0]?.recap.match(/One Winged Angel ended/g)?.length,1);
 });
+
+test("AI Director routes small features separately without an extra request",async()=>{
+ const {chooseGroqModel,groqResponseUsage,estimatedGroqTokens}=await import("../src/domain/ai-director.js");
+ const {requestGroqEditorial}=await import("../src/db/groq-ai-director.js");
+ assert.equal(chooseGroqModel("RINGSIDE"),"openai/gpt-oss-120b");
+ assert.equal(chooseGroqModel("RINGSIDE","openai/gpt-oss-20b"),"openai/gpt-oss-20b");
+ assert.equal(chooseGroqModel("SHORT_NEWS"),"openai/gpt-oss-20b");
+ assert.equal(chooseGroqModel("CREATIVE_PITCH"),"openai/gpt-oss-20b");
+ assert.equal(estimatedGroqTokens("x".repeat(300),100),200);
+ assert.throws(()=>estimatedGroqTokens("x".repeat(85001),100),/bounded/);
+ assert.deepEqual(groqResponseUsage({usage:{prompt_tokens:120,completion_tokens:40}}),
+  {inputTokens:120,outputTokens:40});
+ assert.equal(groqResponseUsage({usage:{prompt_tokens:-1,completion_tokens:40}}),null);
+ let calls=0;
+ const response=await requestGroqEditorial({task:"SHORT_NEWS",key:"test",
+  body:{max_completion_tokens:200,messages:[]},transport:async(_url,init)=>{
+   calls++;
+   const payload=JSON.parse(String(init?.body));
+   assert.equal(payload.model,"openai/gpt-oss-20b");
+   assert.equal((init?.headers as Record<string,string>).authorization,"Bearer test");
+   return new Response('{"usage":{"prompt_tokens":1,"completion_tokens":1}}');
+  }});
+ assert.equal(response.status,200);assert.equal(calls,1);
+});
+
+test("Groq receives tag legality and pacing as compact evidence, not extra requests",async()=>{
+ const team:CompletedShowView={...show,entries:[{...show.entries[0]!,
+  matchContext:{format:"2v2",intent:"COMPETITIVE",plannedMinutes:22,
+   sides:[["Kenny Omega","Matt Jackson"],["Dax Harwood","Cash Wheeler"]],
+   winnerNames:["Kenny Omega","Matt Jackson"],championshipContested:false},
+  fallout:{ratingStars:4,actualMinutes:22,injuries:[],eliminations:[]}}]};
+ let calls=0;
+ const response:typeof fetch=async(_url,init)=>{
+  calls++;
+  const request=JSON.parse(String(init?.body));
+  assert.match(request.messages[0].content,/only one wrestler PER TEAM is legal/);
+  assert.match(request.messages[1].content,/"format":"TAG"/);
+  assert.match(request.messages[1].content,/"tempo":"LONG"/);
+  assert.match(request.messages[1].content,/"beat":"tag drama optional"/);
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"The big match",opening:"It felt like a genuine main event.",
+   closing:"The team earned its victory.",
+   slots:{card_0:{headline:"A tag-team test",recap:
+    "The opponents worked the corner before Omega found a way back to the apron. A legal tag changed the momentum, and his team secured the certified clean pin."}}
+  })}}]}));
+ };
+ const article=await generateGroqReview(team,"fixture",response);
+ assert.equal(article.slots.length,1);assert.equal(calls,1);
+});
+test("Groq cannot publish a tag match where both team members remain legal",async()=>{
+ const team:CompletedShowView={...show,entries:[{...show.entries[0]!,
+  matchContext:{format:"2v2",intent:"COMPETITIVE",plannedMinutes:12,
+   sides:[["Kenny Omega","Matt Jackson"],["Dax Harwood","Cash Wheeler"]],
+   winnerNames:["Kenny Omega","Matt Jackson"],championshipContested:false}}]};
+ let attempts=0;
+ await assert.rejects(()=>generateGroqReview(team,"fixture",async()=>{
+  attempts++;
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"The tag bout",opening:"The action stayed brisk.",
+   closing:"One team won.",
+   slots:{card_0:{headline:"Wrong tag mechanics",
+    recap:"Both team partners were legal from start to finish, with no tags required."}}
+  })}}]}));
+ }),error=>error instanceof RingsideGenerationError&&error.code==="FACT_VALIDATION");
+ assert.equal(attempts,2);
+});
+
+test("OpenAI preview uses the same certified Ringside validator with mocked provider",async()=>{
+ const team:CompletedShowView={...show,entries:[{...show.entries[0]!,
+  matchContext:{format:"2v2",intent:"COMPETITIVE",plannedMinutes:12,
+   sides:[["Kenny Omega","Matt Jackson"],["Dax Harwood","Cash Wheeler"]],
+   winnerNames:["Kenny Omega","Matt Jackson"],championshipContested:false}}]};
+ let requests=0;
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-07"}];
+  return [];
+ }})};
+ const transport:typeof fetch=async(url,options)=>{
+  requests++;
+  assert.equal(url,"https://api.openai.com/v1/chat/completions");
+  const body=JSON.parse(String(options?.body));
+  assert.equal(body.model,"gpt-4o-mini");
+  assert.equal(body.store,false);
+  assert.ok(!Object.hasOwn(body,"reasoning_effort"));
+  assert.equal(body.response_format.json_schema.strict,true);
+  return new Response(JSON.stringify({usage:{prompt_tokens:300,completion_tokens:60},
+   choices:[{message:{content:JSON.stringify({
+    showHeadline:"Teams go to war",opening:"A hot crowd awaited.",
+    closing:"A deserved team victory.",
+    slots:{card_0:{headline:"Double trouble",
+     recap:"Each side took turns controlling the corner until a legal tag sparked a comeback. The winners earned the official fall."}}
+   })}}]}));
+ };
+ const article=await generateGroqReview(team,"fixture",transport,undefined,undefined,
+  pool as never,"OPENAI");
+ assert.match(article.showHeadline,/Teams/);
+ assert.equal(requests,1);
+});

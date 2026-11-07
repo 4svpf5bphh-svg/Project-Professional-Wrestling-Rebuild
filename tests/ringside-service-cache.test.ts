@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {loadRingsideCommentary} from "../src/db/ringside-commentary.js";
-import {RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_LEGACY_VERSION}
+import {RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION}
  from "../src/domain/ringside-editorial.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 const scope={worldId:"test-world",playerId:"human",promotionId:"control",showId:"show"};
@@ -14,10 +14,11 @@ const fixture=(mode:"ready"|"no-key"|"denied"|"cooldown")=>{
    calls++;
    assert.match(sql,/JOIN ppw_promotion_controls/);
    assert.match(sql,/JOIN ppw_memberships/);
-   assert.match(sql,/r\.prompt_version=\$5 OR \(r\.prompt_version IN \(\$6,\$7\) AND r\.state='READY'\)/);
-   assert.match(sql,/ORDER BY CASE WHEN r\.prompt_version=\$7 THEN 0 WHEN r\.prompt_version=\$6 THEN 1 ELSE 2 END/);
+   assert.match(sql,/r\.prompt_version=\$5 OR \(r\.prompt_version IN \(\$6,\$7,\$8\) AND r\.state='READY'\)/);
+   assert.match(sql,/ORDER BY CASE WHEN r\.state='READY' THEN 0 ELSE 1 END/);
+   assert.match(sql,/CASE WHEN r\.prompt_version=\$8 THEN 0 WHEN r\.prompt_version=\$7 THEN 1/);
    assert.deepEqual(params,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,
-    RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_LEGACY_VERSION]);
+    RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION]);
    const result=mode==="denied"?[]:mode==="ready"?
     [{state:"READY",model:"openai/gpt-oss-120b",report_json:review,attempts:1}]:
     mode==="cooldown"?

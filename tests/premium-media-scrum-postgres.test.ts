@@ -31,6 +31,8 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
    await addPromotion(tx,worldId,{id:"crown",name:"Crown Wrestling",tier:"LOCAL"});
    await addPromotion(tx,worldId,{id:"rival",name:"Rival Company",tier:"LOCAL"});
    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1),($2)",[owner,rival]);
+   await tx.query("INSERT INTO ppw_player_profiles(player_id,display_name) VALUES($1,'Josh Robinson')",[owner]);
+   await tx.query("INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,1)",[worldId]);
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')",
     [worldId,owner,rival]);
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,'crown'),($1,$3,'rival')",
@@ -80,6 +82,16 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
    /unavailable|controller|permission/i);
   assert.deepEqual(await dismissPremiumScrum(db.pool,scope),{dismissed:true,saved:true});
   assert.deepEqual(await dismissPremiumScrum(db.pool,scope),{dismissed:true,saved:false});
+  const stories=await withWorldTransaction(db.pool,tx=>tx.query<{
+   story_key:string;title:string;summary:string;certainty:string}>(`
+    SELECT story_key,title,summary,certainty FROM ppw_world_news_items
+    WHERE world_id=$1 AND show_id='ppv-one' ORDER BY story_key`,[worldId]));
+  assert.equal(stories.length,2);
+  assert.ok(stories.every(a=>a.title.includes("Josh Robinson")));
+  assert.ok(stories.some(a=>a.certainty==="CONFIRMED"&&
+   a.summary.includes("behind closed doors")));
+  assert.ok(stories.some(a=>a.certainty==="SPECULATION"));
+  assert.ok(stories.every(a=>!a.title.includes("declines")));
   const ended=await readPremiumScrum(db.pool,scope);
   assert.equal(ended.dismissed,true);
   assert.equal(ended.questions[0]?.answerIndex,1);

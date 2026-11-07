@@ -25,7 +25,7 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
   answers:[
    "What happened in that ring speaks for itself. The audience saw it.",
    "There are conversations we'll have behind closed doors. Tonight was important.",
-   "I know what everyone wants me to say. You'll have to wait for the next show."
+   "No comment. You'll have to wait for the next show."
   ]
  },{
   id:"BIG_PICTURE",journalist:"Lewis Reed · Crowd Control",

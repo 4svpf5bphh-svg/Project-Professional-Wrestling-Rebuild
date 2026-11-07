@@ -10,8 +10,18 @@ type LegendPilot={status:"ARMED"|"CONSUMED"|"CANCELLED";promotionId:string;
  armedYear:number;armedWeek:number;consumedYear:number|null;consumedWeek:number|null};
 type AdminData={plan:ActionPlan;settings:RingsideSettings;pilot:LegendPilot|null;
  testKp?:{balance:number;granted:boolean;target:number};
- groqConfigured:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
+ aiUsage?:{call_count:number;reserved_tokens:number;reported_input_tokens:string;
+  reported_output_tokens:string;completed_calls:number;failed_calls:number}|null;
+ groqConfigured:boolean;openAiPreviewEnabled?:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
  editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null}[]};
+type LabRun={run_id:string;show_id:string;show_name:string;
+ provider:"GROQ"|"OPENAI";model:string;duration_ms:number;provider_calls:number;
+ input_tokens:number|null;output_tokens:number|null;
+ rating:number|null;flags:string[];notes:string;created_at:string};
+type LabDay={day:string;provider:"GROQ"|"OPENAI";calls:number;reserved:number;
+ input:string;output:string;failed:number};
+type LabData={usage:LabDay[];runs:LabRun[];scores:{
+ provider:string;model:string;total:number;reviewed:number;average_score:number|null}[]};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
 type Context={csrfToken:string};
@@ -49,12 +59,241 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   el("p","ppw-admin-sub","Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
  const world=el("section","ppw-admin-panel");
  const studio=el("section","ppw-admin-panel");
+ const labPanel=el("section","ppw-admin-panel");
  const legendTrial=el("section","ppw-admin-panel");
  const kpDesk=el("section","ppw-admin-panel");
+ const navigation=el("nav","ppw-admin-tabs");
+ navigation.setAttribute("aria-label","Admin sections");
+ let activeTab:"WORLD"|"AI"|"PLAYTESTS"="WORLD";
+ let labData:LabData|null=null;
+ const navButtons=(["WORLD","AI","PLAYTESTS"] as const).map(tab=>{
+  const button=el("button","ppw-admin-tab",
+   tab==="WORLD"?"World":tab==="AI"?"AI Testing Lab":"Playtests") as HTMLButtonElement;
+  button.type="button";
+  button.onclick=()=>{
+   activeTab=tab;switchTab();
+   if(tab==="AI"&&!labData)void loadLab();
+  };
+  navigation.append(button);return button;
+ });
+ function switchTab(){
+  world.hidden=activeTab!=="WORLD";
+  studio.hidden=activeTab!=="AI";
+  labPanel.hidden=activeTab!=="AI";
+  legendTrial.hidden=activeTab!=="PLAYTESTS";
+  kpDesk.hidden=activeTab!=="PLAYTESTS";
+  navButtons.forEach((button,index)=>{
+   const active=(["WORLD","AI","PLAYTESTS"] as const)[index]===activeTab;
+   button.setAttribute("aria-pressed",String(active));
+   button.classList.toggle("is-active",active);
+  });
+ }
  world.append(el("h2","","World Control"),el("p","ppw-admin-status","Loading verified World state…"));
  studio.append(el("h2","","Ringside AI Studio"),el("p","","Loading editorial controls…"));
- root.append(world,kpDesk,legendTrial,studio);
+ root.append(navigation,world,labPanel,studio,kpDesk,legendTrial);
+ switchTab();
  let busy=false;
+
+ /** AI Lab loads only after the operator opens its tab. General Admin
+  * and ordinary game screens never fetch preview history or token trends. */
+ async function loadLab(){
+  labPanel.replaceChildren(el("h2","","AI Quality Lab"),
+   el("p","ppw-admin-small","Loading seven-day AI usage and saved tests…"));
+  try{
+   const data=await request("/api/admin?aiLab=summary","GET",ctx.csrfToken) as LabData;
+   labData=data;
+   const overview=el("div","ppw-lab-overview");
+   const week=(provider:"GROQ"|"OPENAI")=>data.usage.filter(r=>r.provider===provider);
+   const total=(rows:LabDay[],field:"calls"|"failed")=>
+    rows.reduce((n,row)=>n+row[field],0);
+   const tokens=(rows:LabDay[])=>
+    rows.reduce((n,row)=>n+Number(row.input)+Number(row.output),0);
+   const groq=week("GROQ"),openai=week("OPENAI");
+   const stat=(name:string,value:string)=>{
+    const tile=el("div","ppw-lab-stat");
+    tile.append(el("span","",name),el("strong","",value));return tile;
+   };
+   overview.append(
+    stat("Groq calls · 7 days",String(total(groq,"calls"))),
+    stat("Groq reported tokens",tokens(groq).toLocaleString("en-GB")),
+    stat("OpenAI tests · 7 days",String(total(openai,"calls"))),
+    stat("Provider failures",String(total([...groq,...openai],"failed")))
+   );
+   const today=new Date().toISOString().slice(0,10);
+   const live=groq.find(row=>row.day===today);
+   const todaySummary=el("p","ppw-admin-small",
+    "Today (UTC): "+(live?.calls??0)+"/40 Groq requests · "+
+    (live?.reserved??0).toLocaleString("en-GB")+
+    "/160,000 tokens used or reserved. Provider token totals can be unavailable for failed requests.");
+   const usage=el("div","ppw-lab-periods");
+   for(const day of [...new Set(data.usage.map(row=>row.day))].sort().reverse()){
+    const records=data.usage.filter(r=>r.day===day);
+    const line=el("div","ppw-lab-period");
+    line.append(el("strong","",day));
+    for(const row of records)line.append(el("span","",
+     row.provider+" · "+row.calls+" calls · "+
+      (Number(row.input)+Number(row.output)).toLocaleString("en-GB")+
+      " reported tokens"+(row.failed?" · "+row.failed+" failed":"")));
+    usage.append(line);
+   }
+   if(!data.usage.length)usage.append(el("p","ppw-admin-small",
+    "No recorded provider requests during the last seven days."));
+   const scoreTitle=el("h3","","Editorial scorecard · 30 days");
+   const scores=el("div","ppw-lab-scorecard");
+   if(data.scores.length)for(const row of data.scores){
+    const line=el("div","ppw-lab-period");
+    line.append(el("strong","",row.model),
+     el("span","",row.reviewed?row.average_score+
+      "/5 average from "+row.reviewed+" rated tests":"Not yet rated"),
+     el("span","",row.total+" recorded previews"));
+    scores.append(line);
+   }else scores.append(el("p","ppw-admin-small",
+    "Run a preview and rate it to build your model comparisons."));
+   const reportButton=el("button","ppw-admin-secondary","Copy AI test report") as HTMLButtonElement;
+   reportButton.type="button";
+   const reportStatus=el("p","ppw-admin-message","");
+   const reportFallback=document.createElement("textarea");reportFallback.className="ppw-admin-input";
+   reportFallback.readOnly=true;reportFallback.rows=5;reportFallback.hidden=true;
+   reportButton.onclick=async()=>{
+    const lines=["PPW · AI TEST REPORT (UTC)","Recent 7-day provider usage",
+     ...data.usage.map(x=>x.day+" "+x.provider+
+      " calls="+x.calls+" input="+x.input+" output="+x.output+" failed="+x.failed),
+     "30-day model ratings",
+     ...data.scores.map(x=>x.provider+" "+x.model+" tests="+x.total+
+      " rated="+x.reviewed+" average="+(x.average_score??"unrated")),
+     "Recent manual assessments",
+     ...data.runs.map(x=>x.show_name+" · "+x.provider+" · "+x.model+
+      " · "+x.duration_ms+"ms · "+x.provider_calls+" provider calls · "+
+      (x.input_tokens===null?"tokens unreported":
+       (x.input_tokens+x.output_tokens!).toString()+" tokens")+
+      " · rating="+(x.rating??"unrated")+
+      (x.flags.length?" · flags="+x.flags.join(","):"")+
+      (x.notes?" · notes="+x.notes:""))].join("\n");
+    try{
+     await navigator.clipboard.writeText(lines);
+     message(reportStatus,"Report copied — paste it into our development chat.");
+     reportFallback.hidden=true;
+    }catch{
+     reportFallback.value=lines;reportFallback.hidden=false;reportFallback.focus();
+     reportFallback.select();
+     message(reportStatus,"Select and copy this report to share feedback.");
+    }
+   };
+   const runsHeader=el("h3","","Recent AI tests");
+   const compare=el("div","ppw-lab-compare");
+   const main=el("article","ppw-admin-preview");main.append(el("p","ppw-admin-small",
+    "Open a saved test to read it and record feedback."));
+   const secondary=el("article","ppw-admin-preview");secondary.append(el("p","ppw-admin-small",
+    "Compare another result here. Both columns show completed, non-published samples."));
+   compare.append(main,secondary);
+   const feedbackArea=el("div","ppw-lab-feedback");
+   const reviewTo=(target:HTMLElement,review:Recap,run:LabRun)=>{
+    target.replaceChildren(el("span","ppw-eyebrow",run.provider+" · "+run.model),
+     el("h3","",review.showHeadline),
+     el("p","ppw-admin-small",run.show_name+" · "+run.duration_ms+"ms · "+
+      (run.input_tokens===null?"Tokens not reported":
+      (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")),
+     el("p","",review.opening));
+    for(const slot of review.slots)target.append(
+     el("h4","",slot.headline),el("p","",slot.recap));
+    target.append(el("p","",review.closing));
+   };
+   const flags=[
+    ["WRONG_FINISH","Wrong finish"],["TAG_RULES","Tag rules"],
+    ["INVENTED_FACT","Invented facts"],["REPETITION","Repetitive"],
+    ["CHARACTER_VOICE","Wrong voice"],["FLAT_WRITING","Flat writing"],
+    ["OTHER","Other"]
+   ] as const;
+   const showSaved=async(run:LabRun,side:"MAIN"|"COMPARE")=>{
+    const target=side==="MAIN"?main:secondary;
+    target.replaceChildren(el("p","ppw-admin-small","Loading saved test…"));
+    try{
+     const data=await request("/api/admin?aiLab=review&runId="+
+      encodeURIComponent(run.run_id),"GET",ctx.csrfToken) as {review:Recap};
+     reviewTo(target,data.review,run);
+     if(side==="MAIN"){
+      feedbackArea.replaceChildren(el("h3","","Your assessment"));
+      const stars=el("div","ppw-lab-stars");let rating=run.rating??0;
+      const buttons=Array.from({length:5},(_,i)=>{
+       const b=el("button","ppw-admin-secondary",String(i+1)+" ★") as HTMLButtonElement;
+       b.type="button";
+       b.onclick=()=>{rating=i+1;buttons.forEach((each,j)=>{
+        const chosen=j===i;each.setAttribute("aria-pressed",String(chosen));
+        each.classList.toggle("is-selected",chosen);
+       });};
+       stars.append(b);return b;
+      });
+      buttons.forEach((b,j)=>b.setAttribute("aria-pressed",String(j+1===rating)));
+      buttons.forEach((b,j)=>b.classList.toggle("is-selected",j+1===rating));
+      const selected=new Set(run.flags);
+      const chips=el("div","ppw-lab-flags");
+      for(const [id,label] of flags){
+       const chip=el("button","ppw-lab-chip",label) as HTMLButtonElement;
+       chip.type="button";chip.setAttribute("aria-pressed",String(selected.has(id)));
+       chip.classList.toggle("is-selected",selected.has(id));
+       chip.onclick=()=>{
+        if(selected.has(id))selected.delete(id);else selected.add(id);
+        chip.setAttribute("aria-pressed",String(selected.has(id)));
+        chip.classList.toggle("is-selected",selected.has(id));
+       };
+       chips.append(chip);
+      }
+      const notes=document.createElement("textarea");notes.className="ppw-admin-input";
+      notes.rows=3;notes.maxLength=500;notes.value=run.notes;
+      notes.placeholder="What sounded authentic? What did the model misunderstand?";
+      const save=el("button","ppw-admin-primary","Save assessment") as HTMLButtonElement;
+      save.type="button";
+      const status=el("p","ppw-admin-message","");
+      save.onclick=async()=>{
+       if(!rating)return message(status,"Choose a quality score before saving.",true);
+       save.disabled=true;
+       try{
+        await request("/api/admin","POST",ctx.csrfToken,{
+         action:"RATE_AI_LAB_RUN",runId:run.run_id,
+         rating,flags:[...selected],notes:notes.value});
+        message(status,"Assessment saved to your private AI Lab.");
+        run.rating=rating;run.flags=[...selected];run.notes=notes.value;
+        labData=null;
+       }catch(e){message(status,e instanceof Error?e.message:
+        "Could not save assessment",true);}
+       finally{save.disabled=false;}
+      };
+      feedbackArea.append(el("p","ppw-admin-small",
+       "Rate the overall writing, flag problems, and note what felt right or wrong."),
+       stars,el("p","ppw-admin-small","Specific issues"),chips,
+       inputField("Playtest notes",notes),save,status);
+     }
+    }catch(e){target.replaceChildren(el("p","ppw-admin-error",
+     e instanceof Error?e.message:"Saved preview is unavailable"));}
+   };
+   const history=el("div","ppw-lab-history");
+   if(data.runs.length)for(const run of data.runs){
+    const item=el("div","ppw-lab-history-row");
+    const heading=el("strong","",run.show_name+" · "+run.provider);
+    const facts=el("p","ppw-admin-small",
+     run.model+" · "+run.duration_ms+"ms · "+
+     (run.input_tokens===null?"Tokens not reported":
+      (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
+     " · "+(run.rating?run.rating+"/5":"Unrated")+
+     " · "+run.created_at.slice(0,10));
+    const actions=el("div","ppw-admin-actions");
+    const open=el("button","ppw-admin-secondary","Read & rate") as HTMLButtonElement;
+    open.type="button";open.onclick=()=>void showSaved(run,"MAIN");
+    const compareBtn=el("button","ppw-admin-secondary","Compare") as HTMLButtonElement;
+    compareBtn.type="button";compareBtn.onclick=()=>void showSaved(run,"COMPARE");
+    actions.append(open,compareBtn);item.append(heading,facts,actions);history.append(item);
+   }else history.append(el("p","ppw-admin-small",
+    "No manual tests yet. Run a Ringside preview to save an owner-only sample."));
+   labPanel.replaceChildren(el("h2","","AI Quality Lab"),
+    el("p","ppw-admin-sub",
+     "Live provider usage, model quality and your playtest notes. No public Results are changed."),
+    overview,todaySummary,usage,scoreTitle,scores,reportButton,
+    reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
+  }catch(e){labData=null;labPanel.replaceChildren(
+   el("h2","","AI Quality Lab"),
+   el("p","ppw-admin-error",e instanceof Error?e.message:"AI Lab unavailable"));
+  }
+ }
  let lastNotice="";let lastError=false;
  async function load(){
   const data=await request("/api/admin","GET",ctx.csrfToken) as AdminData;
@@ -198,6 +437,13 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const config={...data.settings};
   studio.replaceChildren(el("h2","","Ringside AI Studio"),
    el("p","ppw-admin-sub","These preferences govern future AI reports. Previously published Ringside reports stay unchanged."));
+  const usage=data.aiUsage;
+  studio.append(el("p","ppw-admin-small",usage?
+   "Groq today · "+usage.call_count+"/40 calls · "+usage.reserved_tokens+
+   "/160,000 reserved tokens · "+
+   (Number(usage.reported_input_tokens)+Number(usage.reported_output_tokens))
+    .toLocaleString("en-GB")+" reported tokens · "+usage.failed_calls+" failures":
+   "Groq today · no requests recorded. Shared daily limit: 40 calls / 160,000 estimated tokens."));
   const form=document.createElement("form");form.className="ppw-admin-form";
   const model=selectControl([["openai/gpt-oss-120b","GPT-OSS 120B · more capable"],["openai/gpt-oss-20b","GPT-OSS 20B · faster"]],config.model);
   const voice=selectControl([["MARTY","Marty Vale · veteran columnist"],["SPORTS","Traditional sports journalism"],["SATIRE","Sharper wrestling satire"]],config.voice);
@@ -238,21 +484,42 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    finally{busy=false;save.disabled=false;}
   };
   form.append(save);
+  const provider=selectControl([
+   ["GROQ","Groq · primary free provider"],
+   ...(data.openAiPreviewEnabled?[
+    ["OPENAI","OpenAI · paid, 2 previews/day"] as [string,string]
+   ]:[])
+  ],"GROQ");
+  const paidNotice=el("p","ppw-admin-small",data.openAiPreviewEnabled?
+   "Paid comparison is operator-only and never publishes or replaces articles. OpenAI requests have a separate daily quota.":
+   "Paid-provider testing is disabled by default. No OpenAI API calls can be made.");
   const previewBtn=el("button","ppw-admin-secondary","Preview this style") as HTMLButtonElement;
-  previewBtn.type="button";previewBtn.disabled=!data.groqConfigured||!data.shows.length;
+  previewBtn.type="button";
+  const previewDisabled=()=>!data.shows.length||
+   (provider.value==="GROQ"&&!data.groqConfigured);
+  previewBtn.disabled=previewDisabled();
+  provider.onchange=()=>{previewBtn.disabled=previewDisabled();};
   const preview=el("article","ppw-admin-preview");preview.hidden=true;
   previewBtn.onclick=async()=>{
    if(busy)return;busy=true;previewBtn.disabled=true;message(aiStatus,"Preparing a one-off preview; no published results will be overwritten.");
    try{
     const out=await request("/api/admin-preview","POST",ctx.csrfToken,{
-     showId:latest.value,settings:selectedSettings()
-    }) as {review:Recap};
+     showId:latest.value,settings:selectedSettings(),previewProvider:provider.value
+    }) as {review:Recap;labRunId?:string;metrics?:{
+     durationMs:number;providerCalls:number;inputTokens:number|null;
+     outputTokens:number|null}};
     preview.hidden=false;preview.replaceChildren(el("span","ppw-eyebrow","UNPUBLISHED SAMPLE"),
      el("h3","",out.review.showHeadline),el("p","",out.review.opening));
     for(const slot of out.review.slots)
      preview.append(el("h4","",slot.headline),el("p","",slot.recap));
     preview.append(el("p","",out.review.closing));
-    message(aiStatus,"Preview complete. No World or published result was changed.");
+    message(aiStatus,"Preview saved to your AI Lab. "+
+     (out.metrics?out.metrics.providerCalls+" model request(s) · "+
+      out.metrics.durationMs+"ms · "+
+      (out.metrics.inputTokens===null?"Tokens not reported":
+       (out.metrics.inputTokens+(out.metrics.outputTokens??0)).toLocaleString("en-GB")+" tokens")+". ":
+      "")+"No World results were changed.");
+    labData=null;void loadLab();
    }catch(e){message(aiStatus,e instanceof Error?e.message:"Preview unavailable",true);}
    finally{busy=false;previewBtn.disabled=false;}
   };
@@ -277,7 +544,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   };
   studio.append(form,el("p","ppw-admin-small",
    "A saved review keeps its original text. New settings cannot change winners, title changes, injuries or scripted angles."),
-   inputField("Try against a completed show",latest),previewBtn,recover,aiStatus,preview);
+   inputField("Try against a completed show",latest),
+   inputField("Preview provider",provider),paidNotice,
+   previewBtn,recover,aiStatus,preview);
  }
  try{await load();}catch(e){
   const error=el("p","ppw-admin-error",e instanceof Error?e.message:"Admin is unavailable");
