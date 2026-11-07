@@ -46,6 +46,8 @@ test("one certified evidence brief contains no private booking instructions",()=
  assert.equal(brief.mainEvent?.finish,"verbal I Quit surrender");
  assert.deepEqual(brief.mainEvent?.winners,["Jett Mercer"]);
  assert.ok(brief.wrestler?.personId);
+ assert.equal(brief.wrestler?.character,"COLD-BLOODED TECHNICIAN");
+ assert.equal(brief.wrestler?.style,"TECHNICAL");
  assert.equal(brief.roadAgent,null);
  const payload=JSON.stringify(postShowVoicePrompt(brief));
  assert.ok(payload.length<5300,"The batch must stay inexpensive");
