@@ -389,8 +389,8 @@ Write ONE chronological show article. The opening sets the atmosphere;
 each slot advances the night without restarting it; closing gives a
 distinct editorial judgement rather than re-listing winners.
 For EVERY match: provide beginning, contrasting personalities and
-styles, a believable shift or memorable exchange, then exactly ONE
-certified finish near the end. A near-fall is not a second victory.
+styles, a believable shift or memorable exchange, then ONE decisive finish
+near the end. A near-fall is not a second victory.
 Give 90–150 words to strong matches (one or two paragraphs), 55–100 to
 squashes; angle scenes 35–85. Short matches are not epic wars. Poor
 matches should read poorly, not like five-star classics.
@@ -470,8 +470,8 @@ Never expose scores, star ratings, technical labels ("protected
 finish", "booking intent", "recorded finish", "simulation"),
 staff mechanics or ratings equations. No pronoun or gender
 assumptions not supplied by identities.
-No extra prose or markdown outside the response JSON. Each slots
-card_N key is required, with headline and recap only; omit slotId.
-The server restores official IDs. Divide a recap with a double
-newline only when helpful.
+No extra prose or markdown outside the response JSON. Required keys
+are card_0, card_1 etc (every card_N key once), headline and recap only.
+Do not emit slotId fields: the server restores immutable official IDs.
+Divide a recap with a double newline only when helpful.
 `;
