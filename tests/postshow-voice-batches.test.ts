@@ -189,5 +189,5 @@ test("shortform lab validates all three parts from a single 20B fixture response
  assert.ok(generated?.news);
  assert.ok(generated?.wrestler);
  assert.ok(generated?.roadAgent);
- assert.equal(readPostShowVoiceCopy(fixture.show,generated),generated);
+ assert.deepEqual(readPostShowVoiceCopy(fixture.show,generated),generated);
 });
