@@ -69,33 +69,90 @@ async function settle(pool:TransactionPool,scope:Scope,row:Published,
 /** An injected transport is used by tests; production always supplies fetch.
  * All response text is transient and never saved if it fails verification.
  */
+/** Diagnostic codes contain only fixed enums. Never store or send
+ * rejected Groq prose, provider error bodies or private show instructions.
+ */
+export type ShortformVoiceDiagnostic={
+ category:"ACCEPTED"|"PARTIAL"|"ALL_REJECTED"|"WRONG_SHAPE"|
+  "HTTP_REJECTED"|"INVALID_ENVELOPE"|"EMPTY_CONTENT"|
+  "INVALID_JSON"|"TRUNCATED"|"OVERSIZED"|"PROVIDER_ERROR";
+ news:"ACCEPTED"|"REJECTED"|"MISSING";
+ wrestler:"ACCEPTED"|"REJECTED"|"MISSING";
+ roadAgent:"ACCEPTED"|"REJECTED"|"MISSING";
+};
+const emptyDiagnostic=(category:ShortformVoiceDiagnostic["category"]):
+ ShortformVoiceDiagnostic=>({category,news:"MISSING",wrestler:"MISSING",
+ roadAgent:"MISSING"});
+const isRecord=(value:unknown):value is Record<string,unknown>=>
+ !!value&&typeof value==="object"&&!Array.isArray(value);
 export async function generatePostShowVoiceCopy(show:CompletedShowView,key:string,
- transport:typeof fetch=fetch,pool?:TransactionPool){
+ transport:typeof fetch=fetch,pool?:TransactionPool,
+ diagnostic?:(result:ShortformVoiceDiagnostic)=>void){
  const source=postShowVoiceBrief(show);
  if(!source.mainEvent&&!source.wrestler&&!source.roadAgent)return null;
  const messages=postShowVoicePrompt(source);
- const body={model:MODEL,temperature:0.58,reasoning_effort:"low",
+ const body={model:MODEL,temperature:0.55,reasoning_effort:"low",
   reasoning_format:"hidden",max_completion_tokens:650,
   response_format:{type:"json_object"},messages};
  const request=await requestGroqEditorial({
   task:"SHORT_NEWS",key,transport,pool,body,
   signal:AbortSignal.timeout(16000)
  });
- if(!request.ok)return null; // no fallback request on 400, 429 or 5xx
+ if(!request.ok){
+  diagnostic?.(emptyDiagnostic("HTTP_REJECTED"));
+  return null;
+ }
  const raw=await request.text();
- if(raw.length>12000)return null;
+ if(raw.length>12000){
+  diagnostic?.(emptyDiagnostic("OVERSIZED"));
+  return null;
+ }
  let decoded:unknown;
- try{decoded=JSON.parse(raw);}catch{return null;}
- const envelope=decoded&&typeof decoded==="object"?decoded as Record<string,unknown>:{};
+ try{decoded=JSON.parse(raw);}catch{
+  diagnostic?.(emptyDiagnostic("INVALID_ENVELOPE"));
+  return null;
+ }
+ const envelope=isRecord(decoded)?decoded:{};
  const choices=Array.isArray(envelope.choices)?envelope.choices:[];
- const reply=choices[0]&&typeof choices[0]==="object"?choices[0] as {
-  finish_reason?:unknown;message?:{content?:unknown}}:{};
- if(reply.finish_reason==="length"||typeof reply.message?.content!=="string"||
-  reply.message.content.length>4000)return null;
+ const reply=isRecord(choices[0])?choices[0]:{};
+ if(reply.finish_reason==="length"){
+  diagnostic?.(emptyDiagnostic("TRUNCATED"));
+  return null;
+ }
+ const message=isRecord(reply.message)?reply.message:{};
+ if(typeof message.content!=="string"||!message.content.trim()){
+  diagnostic?.(emptyDiagnostic("EMPTY_CONTENT"));
+  return null;
+ }
+ if(message.content.length>4000){
+  diagnostic?.(emptyDiagnostic("OVERSIZED"));
+  return null;
+ }
  let text:unknown;
- try{text=JSON.parse(reply.message.content);}catch{return null;}
- return validatePostShowVoiceCopy(source,text);
+ try{text=JSON.parse(message.content);}catch{
+  diagnostic?.(emptyDiagnostic("INVALID_JSON"));
+  return null;
+ }
+ if(!isRecord(text)){
+  diagnostic?.(emptyDiagnostic("WRONG_SHAPE"));
+  return null;
+ }
+ const copy=validatePostShowVoiceCopy(source,text);
+ const fields=["news","wrestler","roadAgent"] as const;
+ const statuses=Object.fromEntries(fields.map(field=>[
+  field,
+  text[field]===undefined||text[field]===null?"MISSING":
+   copy?.[field]?"ACCEPTED":"REJECTED"
+ ])) as Pick<ShortformVoiceDiagnostic,"news"|"wrestler"|"roadAgent">;
+ const anyPresent=fields.some(field=>text[field]!==undefined&&text[field]!==null);
+ const structured=fields.some(field=>isRecord(text[field])||text[field]===null);
+ const category:ShortformVoiceDiagnostic["category"]=!anyPresent||!structured?
+  "WRONG_SHAPE":!copy?"ALL_REJECTED":
+  fields.some(field=>statuses[field]==="REJECTED")?"PARTIAL":"ACCEPTED";
+ diagnostic?.({category,...statuses});
+ return copy;
 }
+
 /** Called only when the manual resolution driver reports PUBLISHED.
  * A failed provider or isolated player receipt does not block World progress.
  * Each eligible show has a durable one-shot claim, so an operator retry will
