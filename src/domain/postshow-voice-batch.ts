@@ -95,7 +95,17 @@ const object=(v:unknown):Record<string,unknown>=>v&&typeof v==="object"&&!Array.
  v as Record<string,unknown>:{};
 const has=(haystack:string,needle:string)=>!!needle&&haystack.toLowerCase()
  .includes(needle.toLowerCase());
-const factTokens=/\b(?:win|victor|defeat|pin|three.count|submission|surrender|i quit|fall|eliminat|retriev|count.out|disqualif|decis|result)\b/i;
+const factTokens=/\b(?:win|won|winning|victor(?:y|ious)?|defeat(?:ed)?|pinn?(?:ed|ing|fall)?|three.count|submission|submit(?:ted)?|surrender(?:ed)?|i quit|falls?|eliminat(?:ed|ion)|retriev(?:ed|al)|count.out|disqualif(?:ied|ication)|decis(?:ion|ive)|result|prevailed)\b/i;
+function unverifiedWin(summary:string,source:PostShowVoiceBrief):boolean{
+ const match=source.mainEvent;
+ if(!match)return true;
+ const winners=new Set(match.winners.map(v=>v.toLowerCase()));
+ const text=summary.toLowerCase();
+ return match.opponents.flat().filter(name=>!winners.has(name.toLowerCase()))
+  .some(name=>[" defeated"," beat"," pinned"," submitted"," won"," prevailed",
+   " secured the victory"].some(verb=>text.includes(name.toLowerCase()+verb)));
+}
+const unsourcedNews=/\b(?:injur(?:ed|y|ies)|concussion|blood(?:ied|y)|hospital|broken (?:bone|neck)|new champion|title change|signed|suspended|arrested|contract negotiation|backstage fight)\b/i;
 /** Reject a false result instead of spending a second Groq request.
  * Partial success is deliberate: one unsuitable field cannot erase good copy.
  */
@@ -107,7 +117,7 @@ export function validatePostShowVoiceCopy(
  const headline=words(news.headline,4,19,145),summary=words(news.summary,18,80,480);
  if(headline&&summary&&source.mainEvent&&source.mainEvent.winners.some(n=>
   has(summary,n))&&factTokens.test(summary)&&
-  !/\b(?:lost by|was pinned by|submitted to|tapped to)\b/i.test(summary)){
+  !unverifiedWin(summary,source)&&!unsourcedNews.test(summary)){
   const winner=source.mainEvent.winners[0]!;
   // Do not invert the main-event finish or pass off a submission as a pin.
   const outcome=source.mainEvent.finish;
