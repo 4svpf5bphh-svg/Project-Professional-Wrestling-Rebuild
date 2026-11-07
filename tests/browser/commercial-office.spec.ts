@@ -162,11 +162,11 @@ for(const width of [320,390]){
      obligation:"Keep staging shows."}]
    }});
   });
-  await page.goto("/#/business");
+  // Each independently addressable Business desk should request data once.
+  // Avoid the old intermediate Company route, which added a redundant read.
   await page.goto("/#/finances");
   await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
   await expect(page.locator(".ppw-finance-bank")).toContainText("US$5,000,000");
-  await page.getByRole("button",{name:"← Business"}).click();
   await page.goto("/#/ratings-war");
   const war=page.locator(".ppw-ratings-war-desk");
   await expect(war.getByRole("heading",{name:"Ratings War"})).toBeVisible();
@@ -175,7 +175,6 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-ratings-war-result")).toContainText(
    "Rival Wrestling leads by 0.4 rating points.");
   await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(1);
-  await page.getByRole("button",{name:"← Business"}).click();
   await page.goto("/#/commercials");
   await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Ratings war"})).toHaveCount(0);
