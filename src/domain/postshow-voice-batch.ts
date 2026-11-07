@@ -208,7 +208,7 @@ function wrestlerMisattributesSurrender(post:string,source:PostShowVoiceBrief):b
    "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
   const attributed=new RegExp(
    "\\b"+escaped+"\\b[^.!?]{0,85}\\b"+
-   "(?:said|shouted|screamed|yelled|uttered|admitted|conceded|to\\s+say)"+
+   "(?:say|says|said|shouted|screamed|yelled|uttered|admitted|conceded|to\\s+say)"+
    "\\s+(?:the\\s+words\\s+)?[\"'“‘]?I\\s+quit\\b","gi");
   remaining=remaining.replace(attributed,name+" surrendered");
  }
