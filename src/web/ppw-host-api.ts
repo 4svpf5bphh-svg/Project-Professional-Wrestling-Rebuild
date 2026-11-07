@@ -446,7 +446,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    const result=await loadRingsideCommentary(pool,{
     worldId:cfg.worldId,playerId:user.playerId,
     promotionId:body.promotionId,showId:body.showId},
-    process.env.GROQ_API_KEY);
+    process.env.PPW_AI_BENCHMARK_PREVIEW==="YES"?
+     undefined:process.env.GROQ_API_KEY);
    return json(result.status==="pending"?202:200,result);
   }catch{return json(404,{error:"No completed show available"});}
  }
