@@ -46,8 +46,7 @@ for(const width of [320,390])for(const size of [4,8] as const){
     worldName:"Genesis",year:1,week:5,viewerPromotionId:"home",titles:[]
    }:{}});
   });
-  await page.goto("/#/championships");
-  await page.getByRole("button",{name:/Tournaments/}).click();
+  await page.goto("/#/tournaments");
   await expect(page.getByRole("heading",{name:"The Road to the Final"})).toBeVisible();
   await page.getByRole("textbox",{name:"Tournament name"}).fill("King's Crown");
   await page.getByRole("combobox",{name:"Draw size"}).selectOption(String(size));
@@ -103,8 +102,7 @@ for(const width of [320,390]){
    return r.fulfill({json:input.method==="championships"?{
     worldName:"Genesis",year:4,week:10,viewerPromotionId:"home",titles:[]}:{}});
   });
-  await page.goto("/#/championships");
-  await page.getByRole("button",{name:/Tournaments/}).click();
+  await page.goto("/#/tournaments");
   await expect(page.getByRole("heading",{name:"The Tournament Record Book"})).toBeVisible();
   await expect(page.getByText("ANNUAL FIXTURE")).toBeVisible();
   await expect(page.getByText("3 completed editions")).toBeVisible();

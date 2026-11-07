@@ -727,6 +727,22 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      section.append(archive);
     }
    }
+   if(official&&news?.voices?.length){
+    const dispatch=el("section","ppw-news-voices");
+    dispatch.append(el("span","ppw-news-eyebrow","THE PROMOTION / POST-SHOW DISPATCHES"));
+    for(const voice of news.voices??[]){
+     const article=el("article","ppw-news-story ppw-news-voice");
+     article.append(el("span","ppw-news-desk","EXCLUSIVE / VERIFIED AFTERMATH"),
+      el("strong","ppw-news-story-title",voice.headline),
+      el("p","",voice.summary),
+      el("small","ppw-industry-muted",voice.promotionName+
+       " · "+voice.showName+" · Year "+voice.year+" · Week "+voice.week));
+     if(port.openOwnResults)
+      article.append(btn("Read the completed show",()=>port.openOwnResults?.(voice.showId)));
+     dispatch.append(article);
+    }
+    section.append(dispatch);
+   }
    const published=(news?.stories??[]).filter(s=>s.desk===(official?"OFFICIAL":"DIRT"));
    if(!newsBusy&&!published.length&&(!official||!view.headlines.length))
     section.append(el("p","ppw-industry-empty",official?

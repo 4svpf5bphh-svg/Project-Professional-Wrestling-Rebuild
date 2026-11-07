@@ -36,6 +36,7 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
  });
  await page.goto("/#/business");
  await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
+ await page.getByRole("button",{name:"Finances",exact:true}).click();
  await expect(page.locator(".ppw-business-pulse>summary")).toHaveText("Talent Manager · Financial outlook");
  await page.locator(".ppw-business-pulse>summary").click();
  await expect(page.locator(".ppw-business-pulse-headline")).toContainText("US$250,000");
@@ -63,20 +64,24 @@ test("iPhone Business retains authentic home market, broadcast reach and no-fetc
   expect(rect!.height).toBeGreaterThan(14);
   expect(await item.evaluate(el=>getComputedStyle(el).visibility)).toBe("visible");
  }
+ await page.getByRole("button",{name:"← Business"}).click();
  await page.getByRole("button",{name:"Standing"}).click();
  await expect(page.getByRole("heading",{name:"Company standing"})).toBeVisible();
  await expect(page.getByText("82 / 100")).toHaveCount(2);
  await expect(page.getByText("78 / 100")).toBeVisible();
  await expect(page.getByText("74 / 100")).toBeVisible();
  await expect(page.getByText(/first annual review has not taken place/)).toBeVisible();
+ await page.getByRole("button",{name:"← Business"}).click();
  await page.getByRole("button",{name:"Activity"}).click();
  await expect(page.getByRole("heading",{name:"Four-week activity"})).toBeVisible();
  await expect(page.getByText("Ticket sales")).toHaveCount(2);
  await expect(page.getByText("Venue hire")).toBeVisible();
  await expect(page.getByText("Ticket sales · Y1 W5",{exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"← Business"}).click();
  await page.getByRole("button",{name:"Territories"}).click();
  await expect(page.getByRole("heading",{name:"Your markets"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Territory 0 · Home market"})).toBeVisible();
+ await page.getByRole("button",{name:"← Business"}).click();
  await page.getByRole("button",{name:"Finances"}).click();
  await expect(page.getByText("BROADCAST REACH")).toBeVisible();
  expect(methods).toEqual(["business"]);
@@ -112,6 +117,7 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
   }});
  });
  await page.goto("/#/business");
+ await page.getByRole("button",{name:"Finances",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Set your spending limits"})).toHaveCount(0);
  await page.getByRole("button",{name:"Manage spending limits"}).click();

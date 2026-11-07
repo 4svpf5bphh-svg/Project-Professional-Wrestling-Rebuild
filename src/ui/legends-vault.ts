@@ -308,7 +308,7 @@ export function drawLegendsVault(
    view.entries.filter(x=>x.collected).length+" cards collected · "+
    view.curated+" historic legends catalogued"),
   el("p","ppw-legend-context",
-   "At most one ordinary Legend enters the World every three certified weeks. Higher tiers take longer to emerge, even once a milestone is earned."));
+   "Legends are earned by the achievements of this World alone. Discoveries arrive gradually; existing unlocks remain yours."));
  const collectionLink=document.createElement("a");
  collectionLink.className="ppw-legend-button ppw-collection-back";
  collectionLink.href="#/collection";collectionLink.textContent="Open My Collection →";
@@ -415,7 +415,7 @@ export function drawLegendsVault(
       item.exactProgress+" / "+item.target+" · "+item.progress+"%":
       item.progress+"% of the hidden milestone"));
     if(item.challengeReady)n.append(el("p","ppw-legend-pending",
-     "Milestone complete — awaiting the next eligible World reveal. No contract has been granted."));
+     "Achievement earned. Waiting for a future World debut — not yet unlocked or available to sign."));
    }
    grid.append(n);
   }

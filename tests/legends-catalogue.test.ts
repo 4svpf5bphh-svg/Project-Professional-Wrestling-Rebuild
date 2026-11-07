@@ -60,15 +60,18 @@ test("four curated tiers, real team and women's legends, authentic named cards n
 });
 test("real achievement evidence, never speculative or tier-based match advantage",()=>{
  const eddie=findLegend("eddie-guerrero")!;
- assert.equal(legendUnlockEligible(eddie,{DIRTY_FINISHES:11}),false);
- assert.equal(legendUnlockEligible(eddie,{DIRTY_FINISHES:12}),true);
+ assert.ok(eddie.target!>12);
+ assert.equal(legendUnlockEligible(eddie,{DIRTY_FINISHES:eddie.target!-1}),false);
+ assert.equal(legendUnlockEligible(eddie,{DIRTY_FINISHES:eddie.target!}),true);
  const trish=findLegend("trish-stratus")!;
- assert.equal(legendUnlockEligible(trish,{CLASSICS:900,WOMENS_CLASSICS:9}),false);
- assert.equal(legendUnlockEligible(trish,{WOMENS_CLASSICS:10}),true);
- assert.equal(legendUnlockEligible(findLegend("bret-hart")!,{MASTERPIECES:49}),false);
- assert.equal(legendUnlockEligible(findLegend("bret-hart")!,{MASTERPIECES:50}),true);
- assert.equal(legendUnlockEligible(findLegend("sabu")!,{HARDCORE_CLASSICS:7}),false);
- assert.equal(legendUnlockEligible(findLegend("sabu")!,{HARDCORE_CLASSICS:8}),true);
+ assert.ok(trish.target!>10);
+ assert.equal(legendUnlockEligible(trish,{CLASSICS:900,WOMENS_CLASSICS:trish.target!-1}),false);
+ assert.equal(legendUnlockEligible(trish,{WOMENS_CLASSICS:trish.target!}),true);
+ for(const id of ["bret-hart","sabu"]){
+  const legend=findLegend(id)!;
+  assert.equal(legendUnlockEligible(legend,{[legend.metric!]:legend.target!-1}),false);
+  assert.equal(legendUnlockEligible(legend,{[legend.metric!]:legend.target!}),true);
+ }
  for(const wrestler of LIVE_LEGENDS.flatMap(x=>x.roster)){
   assert.ok(wrestler.ring>=0&&wrestler.ring<=100);
   assert.ok(wrestler.age>=20&&wrestler.age<=45);

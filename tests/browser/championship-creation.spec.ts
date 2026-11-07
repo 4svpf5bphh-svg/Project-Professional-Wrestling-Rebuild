@@ -36,13 +36,13 @@ test("320px My Championships can create independent women's and secondary titles
   return r.fulfill({json:{}});
  });
  await page.goto("/#/championships");
- await page.getByText("+ Create championship").click();
- await expect(page.getByLabel("Championship type")).toBeVisible();
- await expect(page.getByLabel("New championship name")).toContainText("");
+ await page.getByRole("button",{name:/Create Championship/}).click();
+ await expect(page.getByRole("group",{name:"Championship division"})).toBeVisible();
+ await expect(page.getByLabel("Championship name")).toHaveValue(/Intercontinental/);
  await page.getByRole("button",{name:"Create vacant title"}).click();
  await expect(page.getByText("Chaotic Wrestling Alliance Intercontinental Championship")).toBeVisible();
- await page.getByText("+ Create championship").click();
- await page.getByLabel("Championship type").selectOption("WOMEN_SINGLES");
+ await page.getByRole("button",{name:/Create Championship/}).click();
+ await page.getByRole("button",{name:"Women\'s singles",exact:true}).click();
  await page.getByRole("button",{name:"Create vacant title"}).click();
  await expect(page.getByText("Chaotic Wrestling Alliance Women's Championship")).toBeVisible();
  expect(posted).toEqual(["SECONDARY_MEN","WOMEN_SINGLES"]);

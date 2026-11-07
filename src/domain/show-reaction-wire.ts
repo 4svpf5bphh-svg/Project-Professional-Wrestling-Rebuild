@@ -94,6 +94,9 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
      bout+" was the kind of wrestling worth clearing an evening for. I already want the rematch.",
      "The little things in "+bout+" were terrific. Wrestling rewards people who actually watch it.",
     ],key,4)};
+  if(entry.outcome==="VERBAL_SURRENDER"&&entry.crowdResponse>=65)
+   return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"FINISH",priority:80,
+    text:(winner??"The winner")+" heard those two words: 'I quit'. Nobody had to count three."};
   if(entry.outcome==="SUBMISSION"&&entry.crowdResponse>=65)
    return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"FINISH",priority:80,
     text:(winner??"The winner")+" forced the submission, and the place came unglued. Sometimes a tap-out says everything."};
@@ -181,6 +184,41 @@ function fanVoiceForGenericMatch(
  }
  return null;
 }
+/** Different wrestling perspectives on the *same* certified rivalry, rather
+ * than changing @FeudEnjoyer's handle on duplicated copy. No new match,
+ * backstage event, momentum change or wrestler statement is implied.
+ */
+function fanVoiceForRivalry(voice:ReactionVoice,entry:ShowResultEntry):string|null{
+ const signal=entry.fallout?.programmeSignal;
+ const bout=contender(entry);
+ if(signal==="HOT_PROGRAMME"){
+  const lines:Record<ReactionVoice,string>={
+   "THE FRONT ROW":"That reaction when "+bout+" came around? The building was ready for another chapter.",
+   "THE SKEPTICAL SMARK":"I'll give "+bout+" this: the audience bought the conflict. Now the next beat has to earn it.",
+   "THE TAPE TRADER":"I want to rewatch "+bout+" before calling the feud's best chapter. The crowd certainly voted.",
+   "THE DIEHARD":"I came for "+bout+" and that crowd gave the feud exactly the noise it needed. More, please.",
+   "THE HEEL DEFENDER":"Who says the bad guys can't keep a feud hot? "+bout+" had the entire room arguing.",
+   "THE CONCERNED FAN":"Loved how invested the audience was in "+bout+". Hope the wrestlers can keep that intensity.",
+   "THE RIVALRY ADDICT":"That's the sort of response a rivalry needs. "+bout+" has me watching what happens next.",
+   "THE BACK ROW":"People were standing through "+bout+". Hard to pretend that feud isn't connecting."
+  };
+  return lines[voice];
+ }
+ if(signal==="PROGRAMME_REPETITION"){
+  const lines:Record<ReactionVoice,string>={
+   "THE FRONT ROW":"I've seen "+bout+" more than once now. Give us a twist worth shouting about.",
+   "THE SKEPTICAL SMARK":"Even a good feud needs a new chapter. "+bout+" is getting awfully familiar.",
+   "THE TAPE TRADER":"The tape collection already has plenty of "+bout+". I'd like some fresh stakes.",
+   "THE DIEHARD":"I'll still watch "+bout+", but I want something new to take home next time.",
+   "THE HEEL DEFENDER":"Maybe the bad guys have a point. "+bout+" keeps circling the same argument.",
+   "THE CONCERNED FAN":"The people in "+bout+" deserve a proper next chapter, not just another replay.",
+   "THE RIVALRY ADDICT":"I'm still following "+bout+", but an escalation would do wonders for this feud.",
+   "THE BACK ROW":"My section is starting to predict "+bout+" before the bell. Please surprise us."
+  };
+  return lines[voice];
+ }
+ return null;
+}
 /** Most important distinct *recorded* slots; no synthetic accounts, no polling.
  * Caller can click the source slot in the already-loaded broadcast.
  */
@@ -208,14 +246,15 @@ export function showReactionWire(
    if(replacement){
     // The same generic text assigned to five unrelated voices is robotic.
     // Rephrase only when the certified evidence supports that voice.
-    if(reaction.source==="MATCH"){
+    if(reaction.source==="MATCH"||reaction.source==="RIVALRY"){
      const entry=show.entries.find(e=>e.slotId===reaction.slotId);
-     const copy=entry&&fanVoiceForGenericMatch(replacement,reaction.mood,entry);
+     const copy=entry&&(reaction.source==="RIVALRY"?
+      fanVoiceForRivalry(replacement,entry):
+      fanVoiceForGenericMatch(replacement,reaction.mood,entry));
      if(copy){reaction.voice=replacement;reaction.text=copy;}
-    }else{
-     // A title change, injury or other major event has its own natural
-     // speaker: keep that speaker instead of relabelling a specific opinion.
     }
+    // A championship change, injury or other major factual event keeps
+    // its specialist speaker if no safe authored alternative exists.
    }
   }
   used.add(reaction.voice);

@@ -10,11 +10,45 @@ type LegendPilot={status:"ARMED"|"CONSUMED"|"CANCELLED";promotionId:string;
  armedYear:number;armedWeek:number;consumedYear:number|null;consumedWeek:number|null};
 type AdminData={plan:ActionPlan;settings:RingsideSettings;pilot:LegendPilot|null;
  testKp?:{balance:number;granted:boolean;target:number};
- groqConfigured:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
+ aiUsage?:{call_count:number;reserved_tokens:number;reported_input_tokens:string;
+  reported_output_tokens:string;completed_calls:number;failed_calls:number}|null;
+ groqConfigured:boolean;openAiPreviewEnabled?:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
  editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null}[]};
+type LabRun={run_id:string;show_id:string;show_name:string;
+ provider:"GROQ"|"OPENAI";model:string;duration_ms:number;provider_calls:number;
+ input_tokens:number|null;output_tokens:number|null;
+ rating:number|null;flags:string[];notes:string;created_at:string;
+ status?:"READY"|"FAILED";error_code?:string|null};
+type LabDay={day:string;provider:"GROQ"|"OPENAI";calls:number;reserved:number;
+ input:string;output:string;failed:number;
+ provider_rpd_limit?:number|null;provider_rpd_remaining?:number|null;
+ provider_tpm_limit?:number|null;provider_tpm_remaining?:number|null;
+ provider_last_model?:string|null;provider_limit_observed_at?:string|null};
+type BenchmarkScenario={id:string;name:string;focus:string;expectation:string;watchFor:string};
+type ShortformCopy={
+ version:number;news:{slotId:string;headline:string;summary:string}|null;
+ wrestler:{slotId:string;personId:string;text:string}|null;
+ roadAgent:{slotId:string;note:string}|null;
+};
+type ShortformLabDiagnostic={category:string;news:string;wrestler:string;
+ roadAgent:string;wrestlerReason?:string};
+type ShortformLabRun={runId:string;scenarioId:string;scenarioName:string;
+ model:string;status:"READY"|"FAILED";errorCode:string|null;
+ durationMs:number;providerCalls:number;inputTokens:number|null;
+ outputTokens:number|null;createdAt:string;copy:ShortformCopy|null;
+ displayCopy?:ShortformCopy|null;
+ origins?:{news:string;wrestler:string;roadAgent:string};
+ diagnostic?:ShortformLabDiagnostic|null};
+type LabData={usage:LabDay[];runs:LabRun[];scores:{
+ provider:string;model:string;total:number;reviewed:number;average_score:number|null;
+ successful?:number;failed?:number}[];
+ scenarios?:BenchmarkScenario[];
+ shortformScenarios?:{id:string;name:string;expectation:string}[];
+ shortformRuns?:ShortformLabRun[];
+ providers?:{groq:boolean;openai:boolean}};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
-type Context={csrfToken:string};
+type Context={csrfToken:string;benchmarkOnly?:boolean};
 const el=(tag:string,cls="",text="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=text;return n;
 };
@@ -45,16 +79,515 @@ const message=(box:HTMLElement,s:string,isError=false)=>{
 export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  root.classList.add("ppw-admin-centre");
  root.replaceChildren(el("span","ppw-eyebrow","PPW / ADMINISTRATOR"),
-  el("h1","","Control Room"),
-  el("p","ppw-admin-sub","Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
+  el("h1","",ctx.benchmarkOnly?"Wrestling IQ Lab":"Control Room"),
+  el("p","ppw-admin-sub",ctx.benchmarkOnly?
+   "Private, fictional Groq comparisons. No World advancement or published Results change.":
+   "Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
  const world=el("section","ppw-admin-panel");
  const studio=el("section","ppw-admin-panel");
+ const labPanel=el("section","ppw-admin-panel");
  const legendTrial=el("section","ppw-admin-panel");
  const kpDesk=el("section","ppw-admin-panel");
+ const navigation=el("nav","ppw-admin-tabs");
+ navigation.setAttribute("aria-label","Admin sections");
+ let activeTab:"WORLD"|"AI"|"PLAYTESTS"=ctx.benchmarkOnly?"AI":"WORLD";
+ let labData:LabData|null=null;
+ let lastBenchmarkNotice="";
+ let lastVoiceNotice="";
+ let selectedVoiceScenario="i-quit";
+ // The entire lab is re-rendered after each completed test. Keep the chosen
+ // fictional scenario and model in this component, not in discarded controls.
+ let benchmarkScenarioChoice="";
+ let benchmarkModelChoice:"openai/gpt-oss-120b"|"openai/gpt-oss-20b"="openai/gpt-oss-120b";
+ let benchmarkProviderChoice:"GROQ"|"OPENAI"="GROQ";
+ const tabs:readonly ("WORLD"|"AI"|"PLAYTESTS")[]=
+  ctx.benchmarkOnly?["AI"]:["WORLD","AI","PLAYTESTS"];
+ const navButtons=tabs.map(tab=>{
+  const button=el("button","ppw-admin-tab",
+   tab==="WORLD"?"World":tab==="AI"?"AI Testing Lab":"Playtests") as HTMLButtonElement;
+  button.type="button";
+  button.onclick=()=>{
+   activeTab=tab;switchTab();
+   if(tab==="AI"&&!labData)void loadLab();
+  };
+  navigation.append(button);return button;
+ });
+ function switchTab(){
+  world.hidden=activeTab!=="WORLD";
+  studio.hidden=!!ctx.benchmarkOnly||activeTab!=="AI";
+  labPanel.hidden=activeTab!=="AI";
+  legendTrial.hidden=activeTab!=="PLAYTESTS";
+  kpDesk.hidden=activeTab!=="PLAYTESTS";
+  navButtons.forEach((button,index)=>{
+   const active=tabs[index]===activeTab;
+   button.setAttribute("aria-pressed",String(active));
+   button.classList.toggle("is-active",active);
+  });
+ }
  world.append(el("h2","","World Control"),el("p","ppw-admin-status","Loading verified World state…"));
  studio.append(el("h2","","Ringside AI Studio"),el("p","","Loading editorial controls…"));
- root.append(world,kpDesk,legendTrial,studio);
+ root.append(navigation,world,labPanel,studio,kpDesk,legendTrial);
+ switchTab();
  let busy=false;
+
+ /** AI Lab loads only after the operator opens its tab. General Admin
+  * and ordinary game screens never fetch preview history or token trends. */
+ async function loadLab(){
+  labPanel.replaceChildren(el("h2","","AI Quality Lab"),
+   el("p","ppw-admin-small","Loading seven-day AI usage and saved tests…"));
+  try{
+   const data=await request("/api/admin?aiLab=summary","GET",ctx.csrfToken) as LabData;
+   labData=data;
+   const overview=el("div","ppw-lab-overview");
+   const week=(provider:"GROQ"|"OPENAI")=>data.usage.filter(r=>r.provider===provider);
+   const total=(rows:LabDay[],field:"calls"|"failed")=>
+    rows.reduce((n,row)=>n+row[field],0);
+   const tokens=(rows:LabDay[])=>
+    rows.reduce((n,row)=>n+Number(row.input)+Number(row.output),0);
+   const groq=week("GROQ"),openai=week("OPENAI");
+   const stat=(name:string,value:string)=>{
+    const tile=el("div","ppw-lab-stat");
+    tile.append(el("span","",name),el("strong","",value));return tile;
+   };
+   overview.append(
+    stat("Groq calls · 7 days",String(total(groq,"calls"))),
+    stat("Groq reported tokens",tokens(groq).toLocaleString("en-GB")),
+    stat("OpenAI tests · 7 days",String(total(openai,"calls"))),
+    stat("Provider failures",String(total([...groq,...openai],"failed")))
+   );
+   const today=new Date().toISOString().slice(0,10);
+   const live=groq.find(row=>row.day===today);
+   const todaySummary=el("p","ppw-admin-small",
+    "Today (UTC): "+(live?.calls??0)+"/40 Groq requests · "+
+    (live?.reserved??0).toLocaleString("en-GB")+
+    "/160,000 tokens used or reserved. Provider token totals can be unavailable for failed requests.");
+   const lastGroqLimit=groq.find(day=>
+    day.provider_rpd_limit!=null&&day.provider_tpm_limit!=null);
+   const providerSnapshot=el("p","ppw-admin-small",
+    lastGroqLimit?
+    "Groq's last reported limits ("+(lastGroqLimit.provider_last_model??"model")+
+     ", "+(lastGroqLimit.provider_limit_observed_at??lastGroqLimit.day).slice(0,16)+
+     " UTC): "+lastGroqLimit.provider_rpd_remaining+
+     "/"+lastGroqLimit.provider_rpd_limit+" requests left that day · "+
+     lastGroqLimit.provider_tpm_remaining+
+     "/"+lastGroqLimit.provider_tpm_limit+
+     " tokens left that minute. Historical snapshot, not a live account balance.":
+    "Groq provider allowance: no verified response-header snapshot yet. "+
+    "The PPW safety budget above is not Groq's account limit.");
+   const usage=el("div","ppw-lab-periods");
+   for(const day of [...new Set(data.usage.map(row=>row.day))].sort().reverse()){
+    const records=data.usage.filter(r=>r.day===day);
+    const line=el("div","ppw-lab-period");
+    line.append(el("strong","",day));
+    for(const row of records)line.append(el("span","",
+     row.provider+" · "+row.calls+" calls · "+
+      (Number(row.input)+Number(row.output)).toLocaleString("en-GB")+
+      " reported tokens"+(row.failed?" · "+row.failed+" failed":"")));
+    usage.append(line);
+   }
+   if(!data.usage.length)usage.append(el("p","ppw-admin-small",
+    "No recorded provider requests during the last seven days."));
+   const scoreTitle=el("h3","","Editorial scorecard · 30 days");
+   const scores=el("div","ppw-lab-scorecard");
+   if(data.scores.length)for(const row of data.scores){
+    const line=el("div","ppw-lab-period");
+    line.append(el("strong","",row.model),
+     el("span","",row.reviewed?row.average_score+
+      "/5 average from "+row.reviewed+" rated tests":"Not yet rated"),
+     el("span","",row.total+" recorded tests · "+
+      (row.successful??row.total)+" readable · "+(row.failed??0)+" failed"));
+    scores.append(line);
+   }else scores.append(el("p","ppw-admin-small",
+    "Run a preview and rate it to build your model comparisons."));
+   // Uses the already fetched, bounded metadata. No extra Neon query.
+   const scenarioScores=el("div","ppw-lab-scorecard");
+   const scenarioGroups=new Map<string,LabRun[]>();
+   for(const run of data.runs){
+    if(!run.show_id.startsWith("benchmark:"))continue;
+    const grouped=scenarioGroups.get(run.show_id)??[];
+    grouped.push(run);scenarioGroups.set(run.show_id,grouped);
+   }
+   for(const [id,runs] of scenarioGroups){
+    const box=el("div","ppw-lab-period");
+    box.append(el("strong","",(data.scenarios??[]).find(x=>"benchmark:"+x.id===id)?.name??
+     id.slice("benchmark:".length)));
+    for(const groupKey of [...new Set(runs.map(x=>x.provider+" · "+x.model))]){
+     const group=runs.filter(x=>x.provider+" · "+x.model===groupKey);
+     const successes=group.filter(x=>x.status!=="FAILED");
+     const failed=group.length-successes.length;
+     const rated=successes.filter(x=>x.rating!==null);
+     const average=rated.length?
+      (rated.reduce((sum,x)=>sum+x.rating!,0)/rated.length).toFixed(1)+"/5":
+      "Unrated";
+     const callTotal=group.reduce((n,x)=>n+x.provider_calls,0);
+     const known=group.filter(x=>x.input_tokens!==null&&x.output_tokens!==null);
+     const tokens=known.reduce((n,x)=>n+x.input_tokens!+x.output_tokens!,0);
+     box.append(el("span","",groupKey+" · "+average+" · "+
+      successes.length+" valid / "+group.length+" attempts · "+failed+
+      " failed · "+callTotal+" API calls · "+
+      (known.length===group.length?tokens.toLocaleString("en-GB")+" tokens":
+       "partial token totals")));
+    }
+    scenarioScores.append(box);
+   }
+   if(!scenarioGroups.size)scenarioScores.append(
+    el("p","ppw-admin-small",
+     "Run the same scenario with both models, then rate each saved article to compare performance."));
+   const voiceLab=el("section","ppw-lab-benchmark");
+   voiceLab.append(el("h3","","Post-show voices · Groq 20B"),
+    el("p","ppw-admin-small",
+     "One fictional show, one 20B request. PPW supplies factual backup for "+
+     "any AI voice that fails verification; safe copy never requires a "+
+     "second paid call. Nothing is published or changes your save."));
+   const voiceScenarios=data.shortformScenarios??[];
+   const voiceChoice=selectControl(voiceScenarios.map(x=>[x.id,x.name]),
+    voiceScenarios.some(x=>x.id===selectedVoiceScenario)?
+     selectedVoiceScenario:voiceScenarios[0]?.id??"");
+   selectedVoiceScenario=voiceChoice.value;
+   const voiceExplanation=el("p","ppw-admin-small","");
+   const describeVoice=()=>{
+    voiceExplanation.textContent=voiceScenarios.find(x=>x.id===voiceChoice.value)
+     ?.expectation??"Select one fictional completed show.";
+   };
+   voiceChoice.onchange=()=>{
+    selectedVoiceScenario=voiceChoice.value;
+    describeVoice();
+   };
+   describeVoice();
+   const voiceButton=el("button","ppw-admin-primary",
+    "Run 20B voice batch") as HTMLButtonElement;
+   voiceButton.type="button";
+   voiceButton.disabled=!voiceScenarios.length||!data.providers?.groq;
+   const voiceStatus=el("p","ppw-admin-message",lastVoiceNotice);
+   voiceButton.onclick=async()=>{
+    if(voiceButton.disabled)return;
+    voiceButton.disabled=true;
+    selectedVoiceScenario=voiceChoice.value;
+    message(voiceStatus,"Testing all three voices in one Groq request. No World changes.");
+    try{
+     const outcome=await request("/api/admin-preview","POST",ctx.csrfToken,{
+      shortformBenchmarkId:selectedVoiceScenario
+     }) as {runId:string|null;metrics:{durationMs:number;
+      providerCalls:number;inputTokens:number|null;outputTokens:number|null}};
+     const tokens=outcome.metrics.inputTokens===null?"token count unavailable":
+      (outcome.metrics.inputTokens+(outcome.metrics.outputTokens??0)).toLocaleString("en-GB")+
+      " tokens";
+     lastVoiceNotice="Saved the 20B voice batch · "+outcome.metrics.providerCalls+
+      " Groq request · "+tokens+" · "+outcome.metrics.durationMs+
+      "ms. Read each accepted voice below and judge its realism.";
+    }catch(e){
+     lastVoiceNotice="Voice batch failed: "+(e instanceof Error?e.message:
+      "No accepted result.");
+    }
+    labData=null;
+    await loadLab();
+   };
+   voiceLab.append(inputField("Fictional post-show scenario",voiceChoice),
+    voiceExplanation,voiceButton,voiceStatus);
+   const copyCard=(label:string,body:string)=>{
+    const card=el("article","ppw-lab-period");
+    card.append(el("strong","",label),el("p","",body));
+    return card;
+   };
+   const savedVoices=data.shortformRuns??[];
+   if(savedVoices.length){
+    voiceLab.append(el("h4","","Saved voice comparisons"));
+    for(const sample of savedVoices.slice(0,8)){
+     const line=el("article","ppw-admin-preview");
+     const tokenCount=sample.inputTokens===null?"usage not reported":
+      (sample.inputTokens+(sample.outputTokens??0)).toLocaleString("en-GB")+" tokens";
+     line.append(el("strong","",sample.scenarioName+" · "+sample.status),
+      el("p","ppw-admin-small",
+       sample.providerCalls+" Groq request(s) · "+tokenCount+
+       " · "+sample.durationMs+"ms"));
+     if(sample.diagnostic){
+      const d=sample.diagnostic;
+      const readable:Record<string,string>={
+       ACCEPTED:"Verified",PARTIAL:"Partially verified",
+       ALL_REJECTED:"All three texts rejected",WRONG_SHAPE:"Unexpected JSON fields",
+       HTTP_REJECTED:"Groq rejected the request",
+       INVALID_ENVELOPE:"Invalid provider response",
+       EMPTY_CONTENT:"Empty model response",INVALID_JSON:"Invalid model JSON",
+       TRUNCATED:"Model ran out of output space",
+       OVERSIZED:"Model response too long",PROVIDER_ERROR:"Provider connection failed"
+      };
+      line.append(el("p","ppw-admin-small",
+       "Quality check: "+(readable[d.category]??"Unclassified")+
+       " · News "+d.news+" · Wrestler "+d.wrestler+
+       (d.wrestlerReason?" ("+d.wrestlerReason.replace(/_/g," ").toLowerCase()+")":"")+
+       " · Road Agent "+d.roadAgent));
+     }
+     const presented=sample.displayCopy??sample.copy;
+     const origin=(key:"news"|"wrestler"|"roadAgent")=>
+      sample.origins?.[key]==="PPW"?" · PPW factual backup":
+      sample.origins?.[key]==="GROQ"?" · verified Groq":"";
+     if(presented){
+      if(presented.news)line.append(
+       copyCard("OFFICIAL NEWS"+origin("news")+" · "+presented.news.headline,
+        presented.news.summary));
+      else line.append(copyCard("Official News","No certified news source."));
+      line.append(copyCard("WRESTLER REACTION"+origin("wrestler"),
+       presented.wrestler?.text??"No eligible wrestler source."));
+      line.append(copyCard("ROAD AGENT"+origin("roadAgent"),
+       presented.roadAgent?.note??"No recorded staff observation."));
+     }else line.append(el("p","ppw-admin-small",
+      "No suitable certified source was available for these voices."));
+     voiceLab.append(line);
+    }
+   }else voiceLab.append(el("p","ppw-admin-small",
+    "No 20B voice tests yet. Run one to see all accepted voices here."));
+   const benchmark=el("div","ppw-lab-benchmark");
+   benchmark.append(el("h3","","Wrestling IQ Benchmarks"),
+    el("p","ppw-admin-small","Repeat the same fictional match with different models. No World, contracts or published Results change. Each run uses the shared AI allowance."));
+   const scenarios=data.scenarios??[];
+   const scenarioPick=selectControl(scenarios.map(x=>[x.id,x.name]),
+    scenarios.some(x=>x.id===benchmarkScenarioChoice)?
+     benchmarkScenarioChoice:scenarios[0]?.id??"");
+   benchmarkScenarioChoice=scenarioPick.value;
+   const benchmarkModel=selectControl([
+    ["openai/gpt-oss-120b","Groq · 120B"],["openai/gpt-oss-20b","Groq · 20B"]
+   ],benchmarkModelChoice);
+   const benchmarkProvider=selectControl([
+    ["GROQ","Groq · free allowance"],
+    ...(data.providers?.openai?[["OPENAI","OpenAI · paid comparison"] as [string,string]]:[])
+   ],data.providers?.openai?benchmarkProviderChoice:"GROQ");
+   benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
+   const rubric=el("div","ppw-lab-rubric");
+   const scenarioDescription=()=>{
+    const selected=scenarios.find(item=>item.id===scenarioPick.value);
+    rubric.replaceChildren(el("strong","",selected?.focus??"No benchmark scenarios available."),
+     el("p","","Look for: "+(selected?.expectation??"A complete wrestling article.")),
+     el("p","ppw-admin-small","Watch for: "+(selected?.watchFor??"Invented facts.")));
+   };
+   scenarioPick.onchange=()=>{
+    benchmarkScenarioChoice=scenarioPick.value;
+    scenarioDescription();
+   };
+   benchmarkModel.onchange=()=>{
+    benchmarkModelChoice=benchmarkModel.value as typeof benchmarkModelChoice;
+   };
+   scenarioDescription();
+   const benchmarkStatus=el("p","ppw-admin-message",lastBenchmarkNotice);
+   const runBenchmark=el("button","ppw-admin-primary","Run Wrestling IQ benchmark") as HTMLButtonElement;
+   runBenchmark.type="button";
+   runBenchmark.disabled=!scenarios.length||!data.providers?.groq;
+   benchmarkProvider.onchange=()=>{
+    benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
+    runBenchmark.disabled=!scenarios.length||(benchmarkProvider.value==="GROQ"?
+     !data.providers?.groq:!data.providers?.openai);
+    benchmarkModel.disabled=benchmarkProvider.value==="OPENAI";
+   };
+   runBenchmark.onclick=async()=>{
+    if(runBenchmark.disabled)return;
+    runBenchmark.disabled=true;
+    message(benchmarkStatus,"Generating one private test; the official World remains unchanged.");
+    try{
+     const chosen=scenarios.find(item=>item.id===scenarioPick.value);
+     if(!chosen)throw new Error("Choose a recognised wrestling scenario");
+     benchmarkScenarioChoice=chosen.id;
+     benchmarkModelChoice=benchmarkModel.value as typeof benchmarkModelChoice;
+     benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
+     const result=await request("/api/admin-preview","POST",ctx.csrfToken,{
+      benchmarkId:chosen.id,previewProvider:benchmarkProvider.value,
+      settings:{model:benchmarkModel.value,voice:"MARTY",detail:"BALANCED",
+       reasoning:"low",creativity:0.92,additionalGuidance:""}
+     }) as {labRunId:string;metrics:{durationMs:number;providerCalls:number;
+      inputTokens:number|null;outputTokens:number|null;compatibilityJson?:boolean};
+      benchmark?:{certifiedFactsValidated:boolean;diagnosticCues:string[];
+       humanReviewRequired:boolean}};
+     lastBenchmarkNotice="Saved "+chosen.name+" · "+
+      (benchmarkProviderChoice==="GROQ"?
+       (benchmarkModelChoice==="openai/gpt-oss-20b"?"20B":"120B"):
+       "OpenAI")+" · "+
+      (result.metrics.compatibilityJson?"20B JSON mode · ":"")+
+      result.metrics.durationMs+"ms · "+result.metrics.providerCalls+
+      " provider call(s) · "+
+      (result.metrics.inputTokens===null?"tokens not reported":
+       (result.metrics.inputTokens+(result.metrics.outputTokens??0)).toLocaleString("en-GB")+" tokens")+
+      ". Basic result checks passed; assess psychology and tone yourself. "+
+      (result.benchmark?.diagnosticCues.join("; ")??"");
+     labData=null;
+     await loadLab();
+    }catch(e){
+     lastBenchmarkNotice="Benchmark failed: "+(e instanceof Error?e.message:
+      "No valid model article")+
+      ". Any provider attempt will appear in the AI Lab failure history. Official results were not changed.";
+     labData=null;
+     await loadLab();
+    }
+   };
+   benchmark.append(inputField("Wrestling scenario",scenarioPick),rubric,
+    inputField("Benchmark provider",benchmarkProvider),
+    inputField("Groq model",benchmarkModel),runBenchmark,benchmarkStatus);
+   const reportButton=el("button","ppw-admin-secondary","Copy AI test report") as HTMLButtonElement;
+   reportButton.type="button";
+   const reportStatus=el("p","ppw-admin-message","");
+   const reportFallback=document.createElement("textarea");reportFallback.className="ppw-admin-input";
+   reportFallback.readOnly=true;reportFallback.rows=5;reportFallback.hidden=true;
+   reportButton.onclick=async()=>{
+    const lines=["PPW · AI TEST REPORT (UTC)","Recent 7-day provider usage",
+     ...data.usage.map(x=>x.day+" "+x.provider+
+      " calls="+x.calls+" input="+x.input+" output="+x.output+" failed="+x.failed),
+     "30-day model ratings",
+     ...data.scores.map(x=>x.provider+" "+x.model+" tests="+x.total+
+      " valid="+(x.successful??x.total)+" failures="+(x.failed??0)+
+      " rated="+x.reviewed+" average="+(x.average_score??"unrated")),
+     "Recent manual assessments",
+     ...data.runs.map(x=>x.show_name+" · "+x.provider+" · "+x.model+
+      " · "+x.duration_ms+"ms · "+x.provider_calls+" provider calls · "+
+      (x.input_tokens===null?"tokens unreported":
+       (x.input_tokens+x.output_tokens!).toString()+" tokens")+
+      " · status="+(x.status??"READY")+
+      (x.error_code?" · failure_code="+x.error_code:"")+
+      " · rating="+(x.rating??"unrated")+
+      (x.flags.length?" · flags="+x.flags.join(","):"")+
+      (x.notes?" · notes="+x.notes:""))].join("\n");
+    try{
+     await navigator.clipboard.writeText(lines);
+     message(reportStatus,"Report copied — paste it into our development chat.");
+     reportFallback.hidden=true;
+    }catch{
+     reportFallback.value=lines;reportFallback.hidden=false;reportFallback.focus();
+     reportFallback.select();
+     message(reportStatus,"Select and copy this report to share feedback.");
+    }
+   };
+   const runsHeader=el("h3","","Recent AI tests");
+   const compare=el("div","ppw-lab-compare");
+   const main=el("article","ppw-admin-preview");main.append(el("p","ppw-admin-small",
+    "Open a saved test to read it and record feedback."));
+   const secondary=el("article","ppw-admin-preview");secondary.append(el("p","ppw-admin-small",
+    "Compare another result here. Both columns show completed, non-published samples."));
+   compare.append(main,secondary);
+   const feedbackArea=el("div","ppw-lab-feedback");
+   const reviewTo=(target:HTMLElement,review:Recap,run:LabRun)=>{
+    target.replaceChildren(el("span","ppw-eyebrow",run.provider+" · "+run.model),
+     el("h3","",review.showHeadline),
+     el("p","ppw-admin-small",run.show_name+" · "+run.duration_ms+"ms · "+
+      (run.input_tokens===null?"Tokens not reported":
+      (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")),
+     el("p","",review.opening));
+    for(const slot of review.slots)target.append(
+     el("h4","",slot.headline),el("p","",slot.recap));
+    target.append(el("p","",review.closing));
+   };
+   const flags=[
+    ["WRONG_FINISH","Wrong finish"],["TAG_RULES","Tag rules"],
+    ["INVENTED_FACT","Invented facts"],["REPETITION","Repetitive"],
+    ["CHARACTER_VOICE","Wrong voice"],["FLAT_WRITING","Flat writing"],
+    ["OTHER","Other"]
+   ] as const;
+   const showSaved=async(run:LabRun,side:"MAIN"|"COMPARE")=>{
+    const target=side==="MAIN"?main:secondary;
+    target.replaceChildren(el("p","ppw-admin-small","Loading saved test…"));
+    try{
+     const data=await request("/api/admin?aiLab=review&runId="+
+      encodeURIComponent(run.run_id),"GET",ctx.csrfToken) as {review:Recap};
+     reviewTo(target,data.review,run);
+     if(side==="MAIN"){
+      feedbackArea.replaceChildren(el("h3","","Your assessment"));
+      const stars=el("div","ppw-lab-stars");let rating=run.rating??0;
+      const buttons=Array.from({length:5},(_,i)=>{
+       const b=el("button","ppw-admin-secondary",String(i+1)+" ★") as HTMLButtonElement;
+       b.type="button";
+       b.onclick=()=>{rating=i+1;buttons.forEach((each,j)=>{
+        const chosen=j===i;each.setAttribute("aria-pressed",String(chosen));
+        each.classList.toggle("is-selected",chosen);
+       });};
+       stars.append(b);return b;
+      });
+      buttons.forEach((b,j)=>b.setAttribute("aria-pressed",String(j+1===rating)));
+      buttons.forEach((b,j)=>b.classList.toggle("is-selected",j+1===rating));
+      const selected=new Set(run.flags);
+      const chips=el("div","ppw-lab-flags");
+      for(const [id,label] of flags){
+       const chip=el("button","ppw-lab-chip",label) as HTMLButtonElement;
+       chip.type="button";chip.setAttribute("aria-pressed",String(selected.has(id)));
+       chip.classList.toggle("is-selected",selected.has(id));
+       chip.onclick=()=>{
+        if(selected.has(id))selected.delete(id);else selected.add(id);
+        chip.setAttribute("aria-pressed",String(selected.has(id)));
+        chip.classList.toggle("is-selected",selected.has(id));
+       };
+       chips.append(chip);
+      }
+      const notes=document.createElement("textarea");notes.className="ppw-admin-input";
+      notes.rows=3;notes.maxLength=500;notes.value=run.notes;
+      notes.placeholder="What sounded authentic? What did the model misunderstand?";
+      const save=el("button","ppw-admin-primary","Save assessment") as HTMLButtonElement;
+      save.type="button";
+      const status=el("p","ppw-admin-message","");
+      save.onclick=async()=>{
+       if(!rating)return message(status,"Choose a quality score before saving.",true);
+       save.disabled=true;
+       try{
+        await request("/api/admin","POST",ctx.csrfToken,{
+         action:"RATE_AI_LAB_RUN",runId:run.run_id,
+         rating,flags:[...selected],notes:notes.value});
+        message(status,"Assessment saved to your private AI Lab.");
+        run.rating=rating;run.flags=[...selected];run.notes=notes.value;
+        labData=null;
+       }catch(e){message(status,e instanceof Error?e.message:
+        "Could not save assessment",true);}
+       finally{save.disabled=false;}
+      };
+      feedbackArea.append(el("p","ppw-admin-small",
+       "Rate the overall writing, flag problems, and note what felt right or wrong."),
+       stars,el("p","ppw-admin-small","Specific issues"),chips,
+       inputField("Playtest notes",notes),save,status);
+     }
+    }catch(e){target.replaceChildren(el("p","ppw-admin-error",
+     e instanceof Error?e.message:"Saved preview is unavailable"));}
+   };
+   const history=el("div","ppw-lab-history");
+   if(data.runs.length)for(const [index,run] of data.runs.entries()){
+    const item=el("div","ppw-lab-history-row");
+    item.hidden=index>=8;
+    const heading=el("strong","",run.show_name+" · "+run.provider);
+    const failed=run.status==="FAILED";
+    const facts=el("p","ppw-admin-small",
+     run.model+" · "+run.duration_ms+"ms · "+run.provider_calls+
+     " call(s) · "+(run.input_tokens===null?"Tokens not reported":
+      (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
+     " · "+(failed?"FAILED: "+(run.error_code??"Unknown safe error"):
+      run.rating?run.rating+"/5":"Unrated")+
+     " · "+run.created_at.slice(0,10));
+    const actions=el("div","ppw-admin-actions");
+    if(!failed){
+     const open=el("button","ppw-admin-secondary","Read & rate") as HTMLButtonElement;
+     open.type="button";open.onclick=()=>void showSaved(run,"MAIN");
+     const compareBtn=el("button","ppw-admin-secondary","Compare") as HTMLButtonElement;
+     compareBtn.type="button";compareBtn.onclick=()=>void showSaved(run,"COMPARE");
+     actions.append(open,compareBtn);
+    }else actions.append(el("p","ppw-admin-small",
+     "No article was published or saved. Check this error against the competing model."));
+    item.append(heading,facts,actions);history.append(item);
+   }else history.append(el("p","ppw-admin-small",
+    "No manual tests yet. Run a Ringside preview to save an owner-only sample."));
+   if(data.runs.length>8){
+    const more=el("button","ppw-admin-secondary",
+     "Show "+(data.runs.length-8)+" older tests") as HTMLButtonElement;
+    more.type="button";let expanded=false;
+    more.onclick=()=>{
+     expanded=!expanded;
+     [...history.querySelectorAll<HTMLElement>(".ppw-lab-history-row")]
+      .forEach((item,i)=>{item.hidden=!expanded&&i>=8;});
+     more.textContent=expanded?"Hide older tests":
+      "Show "+(data.runs.length-8)+" older tests";
+    };
+    history.append(more);
+   }
+   labPanel.replaceChildren(el("h2","","AI Quality Lab"),
+    el("p","ppw-admin-sub",
+     "Live provider usage, model quality and your playtest notes. No public Results are changed."),
+    voiceLab,benchmark,overview,todaySummary,providerSnapshot,usage,scoreTitle,scores,
+    el("h3","","Scenario-by-scenario model scores"),scenarioScores,reportButton,
+    reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
+  }catch(e){labData=null;labPanel.replaceChildren(
+   el("h2","","AI Quality Lab"),
+   el("p","ppw-admin-error",e instanceof Error?e.message:"AI Lab unavailable"));
+  }
+ }
  let lastNotice="";let lastError=false;
  async function load(){
   const data=await request("/api/admin","GET",ctx.csrfToken) as AdminData;
@@ -198,6 +731,13 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const config={...data.settings};
   studio.replaceChildren(el("h2","","Ringside AI Studio"),
    el("p","ppw-admin-sub","These preferences govern future AI reports. Previously published Ringside reports stay unchanged."));
+  const usage=data.aiUsage;
+  studio.append(el("p","ppw-admin-small",usage?
+   "Groq today · "+usage.call_count+"/40 calls · "+usage.reserved_tokens+
+   "/160,000 reserved tokens · "+
+   (Number(usage.reported_input_tokens)+Number(usage.reported_output_tokens))
+    .toLocaleString("en-GB")+" reported tokens · "+usage.failed_calls+" failures":
+   "Groq today · no requests recorded. Shared daily limit: 40 calls / 160,000 estimated tokens."));
   const form=document.createElement("form");form.className="ppw-admin-form";
   const model=selectControl([["openai/gpt-oss-120b","GPT-OSS 120B · more capable"],["openai/gpt-oss-20b","GPT-OSS 20B · faster"]],config.model);
   const voice=selectControl([["MARTY","Marty Vale · veteran columnist"],["SPORTS","Traditional sports journalism"],["SATIRE","Sharper wrestling satire"]],config.voice);
@@ -238,21 +778,42 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    finally{busy=false;save.disabled=false;}
   };
   form.append(save);
+  const provider=selectControl([
+   ["GROQ","Groq · primary free provider"],
+   ...(data.openAiPreviewEnabled?[
+    ["OPENAI","OpenAI · paid, 2 previews/day"] as [string,string]
+   ]:[])
+  ],"GROQ");
+  const paidNotice=el("p","ppw-admin-small",data.openAiPreviewEnabled?
+   "Paid comparison is operator-only and never publishes or replaces articles. OpenAI requests have a separate daily quota.":
+   "Paid-provider testing is disabled by default. No OpenAI API calls can be made.");
   const previewBtn=el("button","ppw-admin-secondary","Preview this style") as HTMLButtonElement;
-  previewBtn.type="button";previewBtn.disabled=!data.groqConfigured||!data.shows.length;
+  previewBtn.type="button";
+  const previewDisabled=()=>!data.shows.length||
+   (provider.value==="GROQ"&&!data.groqConfigured);
+  previewBtn.disabled=previewDisabled();
+  provider.onchange=()=>{previewBtn.disabled=previewDisabled();};
   const preview=el("article","ppw-admin-preview");preview.hidden=true;
   previewBtn.onclick=async()=>{
    if(busy)return;busy=true;previewBtn.disabled=true;message(aiStatus,"Preparing a one-off preview; no published results will be overwritten.");
    try{
     const out=await request("/api/admin-preview","POST",ctx.csrfToken,{
-     showId:latest.value,settings:selectedSettings()
-    }) as {review:Recap};
+     showId:latest.value,settings:selectedSettings(),previewProvider:provider.value
+    }) as {review:Recap;labRunId?:string;metrics?:{
+     durationMs:number;providerCalls:number;inputTokens:number|null;
+     outputTokens:number|null}};
     preview.hidden=false;preview.replaceChildren(el("span","ppw-eyebrow","UNPUBLISHED SAMPLE"),
      el("h3","",out.review.showHeadline),el("p","",out.review.opening));
     for(const slot of out.review.slots)
      preview.append(el("h4","",slot.headline),el("p","",slot.recap));
     preview.append(el("p","",out.review.closing));
-    message(aiStatus,"Preview complete. No World or published result was changed.");
+    message(aiStatus,"Preview saved to your AI Lab. "+
+     (out.metrics?out.metrics.providerCalls+" model request(s) · "+
+      out.metrics.durationMs+"ms · "+
+      (out.metrics.inputTokens===null?"Tokens not reported":
+       (out.metrics.inputTokens+(out.metrics.outputTokens??0)).toLocaleString("en-GB")+" tokens")+". ":
+      "")+"No World results were changed.");
+    labData=null;void loadLab();
    }catch(e){message(aiStatus,e instanceof Error?e.message:"Preview unavailable",true);}
    finally{busy=false;previewBtn.disabled=false;}
   };
@@ -277,8 +838,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   };
   studio.append(form,el("p","ppw-admin-small",
    "A saved review keeps its original text. New settings cannot change winners, title changes, injuries or scripted angles."),
-   inputField("Try against a completed show",latest),previewBtn,recover,aiStatus,preview);
+   inputField("Try against a completed show",latest),
+   inputField("Preview provider",provider),paidNotice,
+   previewBtn,recover,aiStatus,preview);
  }
+ if(ctx.benchmarkOnly){await loadLab();return;}
  try{await load();}catch(e){
   const error=el("p","ppw-admin-error",e instanceof Error?e.message:"Admin is unavailable");
   root.append(error);

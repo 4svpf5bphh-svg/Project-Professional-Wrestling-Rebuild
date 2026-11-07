@@ -39,8 +39,6 @@ for(const width of [320,390]){
   await page.route("**/api/results-commentary",route=>route.fulfill({json:{status:"unavailable"}}));
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
-  await page.getByRole("button",{name:"Read the Full Show"}).click();
-  await page.getByRole("button",{name:"Broadcast play-by-play"}).click();
   const recaps=page.locator(".ppw-rivalry-at-ringside");
   await expect(recaps).toHaveCount(2);
   await expect(recaps.first()).toContainText("Samoa Joe vs Matt Riddle");
@@ -49,8 +47,8 @@ for(const width of [320,390]){
   await expect(recaps.last()).toContainText("on-screen chapter");
   await expect(recaps.last()).not.toContainText("This chapter went to");
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await expect(page.locator(".ppw-road-agent-continuity"))
-   .toContainText("Samoa Joe and Matt Riddle have history");
+  await expect(page.locator(".ppw-road-agent-observation"))
+   .toContainText("Samoa Joe defeats Matt Riddle earned 4.00 stars");
   expect(resultsCalls).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);

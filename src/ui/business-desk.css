@@ -460,3 +460,20 @@
 .ppw-commercial-market-trigger:focus-visible{outline:3px solid #9ae7f6;outline-offset:-4px}
 .ppw-commercial-market-body{padding:0 12px 12px;min-width:0}
 .ppw-commercial-market-body .ppw-commercial-offer{min-width:0}
+
+/* Phase 38: Business is a destination menu, not a crowded tab strip. */
+.ppw-business-hub{display:grid;gap:12px}
+.ppw-business-hub h2{margin:2px 0 0;font-size:clamp(21px,5vw,27px)}
+.ppw-business-hub>p{margin:0 0 6px}
+.ppw-business-hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ppw-business .ppw-business-hub-choice{display:flex;flex-direction:column;
+ align-items:flex-start;justify-content:center;text-align:left;gap:8px;
+ min-width:0;min-height:110px;padding:15px;border-radius:16px;font-size:16px;
+ color:#f4faff;background:linear-gradient(140deg,#22465e,#13283c);
+ border:1px solid #507a90;white-space:normal}
+.ppw-business-hub-choice small{font:500 12px/1.35 system-ui;color:#c4daea}
+.ppw-business-hub-choice:focus-visible{outline:3px solid #8ee9f3;outline-offset:2px}
+.ppw-business-back-nav{margin:0 0 16px}
+.ppw-business-back-nav button{min-height:44px;background:#253e54}
+@media(min-width:700px){.ppw-business-hub-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:350px){.ppw-business .ppw-business-hub-choice{font-size:14px;padding:12px;min-height:108px}}

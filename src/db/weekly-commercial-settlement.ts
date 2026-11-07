@@ -167,11 +167,11 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // Close the exact ending week's active deals AFTER the week's financial credit.
  // This also restores the original income and reach baselines, without
  // reverting legitimate territory awareness earned while the deal was live.
- const expired=await tx.query<{promotion_id:string;kind:string}>(`
+ const expired=await tx.query<{promotion_id:string;kind:string;deal_id:string;offer_code:string}>(`
  WITH closing AS (
   UPDATE ppw_commercial_deals d SET status='EXPIRED'
   WHERE d.world_id=$1 AND d.status='ACTIVE' AND d.end_week_index<=$2
-  RETURNING d.promotion_id,d.kind,d.baseline_income,d.baseline_reach
+  RETURNING d.promotion_id,d.kind,d.deal_id,d.offer_code,d.baseline_income,d.baseline_reach
  ), aggregate AS (
   SELECT promotion_id,
    max(baseline_income) FILTER(WHERE kind='BROADCAST') AS media,
@@ -186,7 +186,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   FROM aggregate WHERE p.world_id=$1 AND p.promotion_id=aggregate.promotion_id
   RETURNING p.promotion_id
  )
- SELECT closing.promotion_id,closing.kind FROM closing
+ SELECT closing.promotion_id,closing.kind,closing.deal_id,closing.offer_code FROM closing
  `,[worldId,weekIndex]);
  // Expired terms are published to the already-existing, dismissible
  // Business Wire. One batched journal write only when an agreement actually
@@ -194,8 +194,10 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  if(expired.length)await tx.query(`
   INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
   SELECT $1,$2,$3,'COMMERCIAL_DEAL_EXPIRED',
-   jsonb_build_object('promotionId',deal.promotion_id,'kind',deal.kind)
-  FROM jsonb_to_recordset($4::jsonb) AS deal(promotion_id text,kind text)
+   jsonb_build_object('promotionId',deal.promotion_id,'kind',deal.kind,
+    'dealId',deal.deal_id,'offerCode',deal.offer_code)
+  FROM jsonb_to_recordset($4::jsonb) AS deal(promotion_id text,kind text,
+   deal_id text,offer_code text)
  `,[worldId,year,week,JSON.stringify(expired)]);
  // One bounded set of AI promotions; recent verified shows only. Separate
  // human-controlled companies are never entered into automatic agreements.

@@ -69,6 +69,7 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  const rumour=story.desk==="DIRT";
  const kind=rumour?"RUMOUR":
   story.id.startsWith("broadcast:")?"BROADCAST":
+  story.id.startsWith("press:")?"PRESS":
   /challeng|call(?:s|ed)? out|contract sign/.test(text)?"CHALLENGE":
   /champion|title (?:win|chang|loss|defen)|new titleholder/.test(text)?"TITLE":
   /heel turn|face turn|betray|turned on|walkout|stable split/.test(text)?"TURN":
@@ -76,6 +77,12 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
   /attack|assault|ambush|brawl/.test(text)?"ATTACK":
   /\bvs\.?\s|\bversus\b|steals the show|\d(?:\.\d{1,2})?-star match/.test(text)?"MATCH":"OTHER";
  const reactions:Record<typeof kind,string[]>={
+  PRESS:[
+   "A press conference and the internet is treating every word like a conspiracy. 🎤",
+   "The quote is right there. Let's not invent backstage facts from it. 🧐",
+   "One actual answer and seventeen completely different theories. 😂",
+   "A wrestling press scrum has become its own main event. 🍿"
+  ],
   BROADCAST:[
    "This is the ratings war I wanted. Same hour, actual viewers on the line. 📺",
    "A strong card matters, but now you've got to keep that audience next week. 👀",
@@ -194,6 +201,9 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  // Previously published fan threads stay unchanged. New episodes get
  // additional fictional voices without new requests, timers or Neon writes.
  const expanded:Record<typeof kind,string[]>={
+  PRESS:["A promoter said something and my timeline is on fire. 🎤",
+   "Just wait until the journalists ask about the next show. 👀",
+   "I trust the transcript more than the anonymous 'sources'. 🧐"],
   BROADCAST:["Networks are about to become the main characters. 📺",
    "A fixed broadcast night means the fans know where to find you. 🔥",
    "The partner's reaction is public, and the ratings will be too. 👀",

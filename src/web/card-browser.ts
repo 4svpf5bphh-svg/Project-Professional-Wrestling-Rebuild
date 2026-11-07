@@ -10,10 +10,15 @@ import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 import {plannerCardHash,hostSectionHash,type HostSection,type ContractFocus,
  type HomeAttentionFocus,legendsVaultHash} from "./host-navigation.js";
 import {mountShowResults} from "../ui/show-results.js";
+import {mountPremiumPressScrum,type PremiumPressView} from "../ui/premium-press-screen.js";
+import "../ui/premium-press-screen.css";
+import type {CompletedShowView} from "../db/show-results-view.js";
+const resultExitControllers=new WeakMap<HTMLElement,AbortController>();
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
 import {mountChampionshipDesk,type ChampionshipPort} from "../ui/championship-desk.js";
+import {mountTournamentDesk,type TournamentPort} from "../ui/tournament-desk.js";
 import {mountTagTeamDesk,type TagTeamPort} from "../ui/tag-team-desk.js";
 import {mountContractDesk,type ContractDeskPort} from "../ui/contract-desk.js";
 import {mountRosterMarket,type RosterMarketPort} from "../ui/roster-market.js";
@@ -237,7 +242,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
 
 /** Public World title records; each reign page is a separate, bounded read. */
 export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
- onBack?:()=>void,initialScope:"WORLD"|"MINE"="WORLD"){
+ onBack?:()=>void,initialScope:"WORLD"|"MINE"="MINE"){
  const call=createCardClient(scope);
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
@@ -256,6 +261,17 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
   }
  };
  return mountChampionshipDesk(root,port,onBack,initialScope);
+}
+
+/** Independent Promotion tournament route; all mutations remain server-authoritative. */
+export function mountTournamentsPage(root:HTMLElement,scope:Scope,onBack:()=>void){
+ const call=createCardClient(scope);
+ const port:TournamentPort={
+  loadTournaments:()=>call("tournaments"),
+  createTournament:input=>call("createTournament",input),
+  cancelTournament:input=>call("cancelTournament",input)
+ };
+ return mountTournamentDesk(root,port,onBack);
 }
 
 function contractPort(call:ReturnType<typeof createCardClient>,
@@ -435,6 +451,7 @@ function businessPort(root:HTMLElement,scope:Scope,
   openResults:showId=>{void mountResultsPage(root,{...scope,showId},
     ()=>mountBusinessDesk(root,businessPort(root,scope,call)),"business");},
   openRoster:()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER"),
+  openStaff:()=>{window.location.hash=hostSectionHash("staff");},
   openContracts:()=>mountContractDesk(root,contractPort(call,root,scope),
    ()=>mountBusinessDesk(root,businessPort(root,scope,call))),
   back:onBack??(scope.showId?()=>mountBookingPage(root,scope):
@@ -457,7 +474,7 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
  }:undefined;
  const port=businessPort(root,scope,call,goBack);
  if(goBack)port.returnToResults=goBack;
- return mountBusinessDesk(root,port,isRatings?"RATINGS":"FINANCES");
+ return mountBusinessDesk(root,port,isRatings?"RATINGS":"OVERVIEW");
 }
 function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{
@@ -587,22 +604,62 @@ async function scrumRequest(scope:Scope,fields:Record<string,unknown>){
 /** Host may open the resolved-show broadcast without any write capability. */
 export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  backLabel="programmes"){
+ resultExitControllers.get(root)?.abort();
+ const resultExitController=new AbortController();
+ resultExitControllers.set(root,resultExitController);
+ let loadedShow:CompletedShowView|null=null,leaving=false;
+ const pressPort={
+  read:()=>scrumRequest(scope,{action:"READ"}) as Promise<PremiumPressView>,
+  answer:(questionId:import("../domain/premium-media-scrum.js").ScrumQuestionId,
+   answerIndex:number)=>scrumRequest(scope,{
+    action:"ANSWER",questionId,answerIndex}) as Promise<{answerIndex:number}>,
+  dismiss:()=>scrumRequest(scope,{action:"DISMISS"}) as Promise<{dismissed:boolean}>
+ };
+ async function leave(next:()=>void,replay=false){
+  if(leaving)return;
+  if(loadedShow?.bookingClass!=="PREMIUM"){next();return;}
+  const proceed=()=>{
+   if(!replay){
+    delete root.dataset.ppwPremiumExit;
+    resultExitController.abort();
+   }
+   next();
+  };
+  leaving=true;
+  try{
+   const session=await pressPort.read();
+   if(!replay&&(session.dismissed||session.questions.every(q=>q.answerIndex!==null))){
+    leaving=false;proceed();return;
+   }
+   if(!root.isConnected){leaving=false;return;}
+   const prior=Array.from(root.childNodes);
+   mountPremiumPressScrum(root,pressPort,session,()=>{
+    leaving=false;
+    if(replay)root.replaceChildren(...prior);
+    else proceed();
+   });
+  }catch{
+   leaving=false;proceed(); // An unavailable press service must not block Results.
+  }
+ }
  await mountShowResults(root,{
-  load:async()=>createCardClient(scope)("results"),
-  openNext:destination=>{window.location.hash=hostSectionHash(destination);},
-  openRatings:()=>{
+  load:async()=>{
+   const view=await createCardClient(scope)("results") as CompletedShowView;
+   loadedShow=view;
+   if(view.bookingClass==="PREMIUM")root.dataset.ppwPremiumExit="true";
+   else delete root.dataset.ppwPremiumExit;
+   return view;
+  },
+  openPress:()=>void leave(()=>{},true),
+  openNext:destination=>void leave(()=>{window.location.hash=hostSectionHash(destination);}),
+  openRatings:()=>void leave(()=>{
    if(scope.showId)pendingResultsRatingsOrigin={
     worldId:scope.worldId,promotionId:scope.promotionId,
     showId:scope.showId,onBack};
    window.location.hash="#/business/ratings";
-  },
+  }),
   openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
   openProgrammes:personId=>openFocusedProgrammes(root,scope,personId),
-  mediaScrum:{
-   read:()=>scrumRequest(scope,{action:"READ"}),
-   answer:(questionId,answerIndex)=>scrumRequest(scope,{
-    action:"ANSWER",questionId,answerIndex})
-  },
   commentary:async()=>{
    const res=await fetch("/api/results-commentary",{
     method:"POST",credentials:"same-origin",
@@ -614,13 +671,18 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
    return res.json();
   }
  });
+ root.addEventListener("ppw:results-exit",event=>{
+  const target=(event as CustomEvent<{targetHash:string}>).detail?.targetHash;
+  if(typeof target==="string"&&/^#\/[a-z/-]+$/.test(target))
+   void leave(()=>{window.location.hash=target;});
+ },{signal:resultExitController.signal});
  if(onBack){
   const back=document.createElement("button");
   back.type="button";back.textContent="← Back";
-  back.className="ppw-programme-action";back.onclick=onBack;
+  back.className="ppw-programme-action";
+  back.onclick=()=>void leave(onBack);
   root.prepend(back);
  }
-
 }
 
 /** A modal dossier preserves the working card, negotiation or rivalry underneath.

@@ -14,17 +14,21 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
  const main=matches.at(-1);
  const opener=matches[0];
  return [{
-  id:"MAIN_EVENT",journalist:"Ringside Press",
+  id:"MAIN_EVENT",journalist:"Mara Finch · The Final Bell",
   question:main?
-   `The cameras are still rolling after ${event}. Your main event was "${main.headline}". What's your reaction to that finish?`:
+   `The cameras are still rolling after ${event}. Your main event was "${main.headline}". ${main.fallout?.title?.changed?
+    "A championship changed hands — what's your reaction?":
+    main.outcome==="FOREIGN_OBJECT"||main.outcome==="DISQUALIFICATION"?
+     "That finish will divide opinion. Do you stand behind it?":
+     "What's your reaction to that finish?"}`:
    `After ${event}, how do you assess the final moments of the night?`,
   answers:[
    "What happened in that ring speaks for itself. The audience saw it.",
    "There are conversations we'll have behind closed doors. Tonight was important.",
-   "I know what everyone wants me to say. You'll have to wait for the next show."
+   "No comment. You'll have to wait for the next show."
   ]
  },{
-  id:"BIG_PICTURE",journalist:"The Wrestling Wire",
+  id:"BIG_PICTURE",journalist:"Lewis Reed · Crowd Control",
   question:opener?
    `From "${opener.headline}" onwards, ${event} gave fans plenty to discuss. What do you want people to remember?`:
    `What do you want wrestling fans to remember about ${event}?`,
@@ -34,7 +38,7 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
    "People will still be arguing about this show for weeks. Good."
   ]
  },{
-  id:"NEXT_CHAPTER",journalist:"Behind the Curtain",
+  id:"NEXT_CHAPTER",journalist:"Dana Cross · Behind the Curtain",
   question:`Now that ${event} is in the books, what should the fans expect next?`,
   answers:[
    "The next chapter starts as soon as we walk through the curtain.",

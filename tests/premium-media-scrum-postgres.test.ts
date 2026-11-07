@@ -4,7 +4,7 @@ import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
-import {readPremiumScrum,answerPremiumScrum} from "../src/db/premium-media-scrum.js";
+import {readPremiumScrum,answerPremiumScrum,dismissPremiumScrum} from "../src/db/premium-media-scrum.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("certified PPV scrum records first owner response once, preserves outcomes and rejects rival access",{
@@ -31,6 +31,8 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
    await addPromotion(tx,worldId,{id:"crown",name:"Crown Wrestling",tier:"LOCAL"});
    await addPromotion(tx,worldId,{id:"rival",name:"Rival Company",tier:"LOCAL"});
    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1),($2)",[owner,rival]);
+   await tx.query("INSERT INTO ppw_player_profiles(player_id,display_name) VALUES($1,'Josh Robinson')",[owner]);
+   await tx.query("INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,1)",[worldId]);
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')",
     [worldId,owner,rival]);
    await tx.query("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,'crown'),($1,$3,'rival')",
@@ -48,6 +50,7 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
     [worldId]);
   });
   const initial=await readPremiumScrum(db.pool,scope);
+  assert.equal(initial.dismissed,false);
   assert.equal(initial.showName,"Starlight PPV");
   assert.deepEqual(initial.questions.map(q=>q.id),
    ["MAIN_EVENT","BIG_PICTURE","NEXT_CHAPTER"]);
@@ -74,6 +77,34 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
    WHERE world_id=$1 AND show_id=$2 AND player_id=$3`,
    [worldId,scope.showId,owner]));
   assert.deepEqual(recorded,[{count:"1",answer_index:1}]);
+  // Skipping is private, idempotent and preserves the published answer.
+  await assert.rejects(dismissPremiumScrum(db.pool,{...scope,playerId:rival}),
+   /unavailable|controller|permission/i);
+  assert.deepEqual(await dismissPremiumScrum(db.pool,scope),{dismissed:true,saved:true});
+  assert.deepEqual(await dismissPremiumScrum(db.pool,scope),{dismissed:true,saved:false});
+  const stories=await withWorldTransaction(db.pool,tx=>tx.query<{
+   story_key:string;title:string;summary:string;certainty:string}>(`
+    SELECT story_key,title,summary,certainty FROM ppw_world_news_items
+    WHERE world_id=$1 AND show_id='ppv-one' ORDER BY story_key`,[worldId]));
+  assert.equal(stories.length,2);
+  assert.ok(stories.every(a=>a.title.includes("Josh Robinson")));
+  assert.ok(stories.some(a=>a.certainty==="CONFIRMED"&&
+   a.summary.includes("behind closed doors")));
+  assert.ok(stories.some(a=>a.certainty==="SPECULATION"));
+  assert.ok(stories.every(a=>!a.title.includes("declines")));
+  const ended=await readPremiumScrum(db.pool,scope);
+  assert.equal(ended.dismissed,true);
+  assert.equal(ended.questions[0]?.answerIndex,1);
+  assert.equal(ended.questions[1]?.answerIndex,null);
+  const marker=await withWorldTransaction(db.pool,tx=>tx.query<{
+   question_id:string;answer_index:number}>(`
+   SELECT question_id,answer_index FROM ppw_premium_media_scrum_answers
+   WHERE world_id=$1 AND show_id=$2 AND player_id=$3
+   ORDER BY question_id`,[worldId,scope.showId,owner]));
+  assert.deepEqual(marker,[
+   {question_id:"DISMISSED",answer_index:0},
+   {question_id:"MAIN_EVENT",answer_index:1}
+  ]);
   const immutable=await withWorldTransaction(db.pool,tx=>tx.query<{
    crowd_response:number;actual_finish:string}>(`
    SELECT c.crowd_response::double precision AS crowd_response,m.actual_finish FROM ppw_completed_shows c

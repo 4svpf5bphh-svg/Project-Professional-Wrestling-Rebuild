@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,RINGSIDE_STYLE_GUIDE} from "../src/domain/ringside-editorial.js";
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,RINGSIDE_STYLE_GUIDE,ringsideStipulationNote,RINGSIDE_PROMPT_VERSION} from "../src/domain/ringside-editorial.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 const example:CompletedShowView={showId:"show-1",showName:"Omega Night",year:1,week:1,
  crowdResponse:83,matchCount:1,angleCount:1,entries:[
@@ -121,4 +121,117 @@ test("repeat sentences are discarded while distinct editorial observations survi
  const clean=removeVerbatimRecapEchoes(prose);
  assert.equal(clean.match(/A big boot flattened/g)?.length,1);
  assert.match(clean,/referee looked impressed/);
+});
+
+
+test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls",()=>{
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v8");
+ assert.match(ringsideStipulationNote("I Quit Match · SINGLES")!.winningCondition,/VERBALLY/);
+ assert.match(ringsideStipulationNote("Steel Cage · SINGLES")!.plausibleAction,/Steel mesh/);
+ const quit:CompletedShowView={...example,entries:[{
+  ...example.entries[0]!,outcome:"VERBAL_SURRENDER",
+  matchContext:{...example.entries[0]!.matchContext!,format:"I Quit Match · SINGLES"}
+ },example.entries[1]!]};
+ assert.equal(ringsideBrief(quit).slots[0]!.match!.stipulationRules!.stipulation,"I_QUIT");
+ const spoken={...valid,slots:[{...valid.slots[0],
+  recap:"Omega stretched the hold as the referee raised the microphone. The challenger verbally surrendered."},
+  valid.slots[1]]};
+ assert.doesNotThrow(()=>validateRingsideCopy(spoken,quit));
+ assert.throws(()=>validateRingsideCopy({...spoken,slots:[{
+  ...spoken.slots[0],recap:"The challenger tapped out to end it."},spoken.slots[1]]},quit),
+  /verbal surrender/);
+ const cage:CompletedShowView={...example,entries:[{
+  ...example.entries[0]!,
+  matchContext:{...example.entries[0]!.matchContext!,format:"Steel Cage · SINGLES"}
+ },example.entries[1]!]};
+ assert.throws(()=>validateRingsideCopy({...valid,slots:[{...valid.slots[0],
+  recap:"Kenny Omega escaped the cage for the win."},valid.slots[1]]},cage),/Cage escape/);
+ assert.equal(ringsideStipulationNote("SINGLES"),null);
+});
+
+test("Wrestling IQ supplies legal singles, tags and multi-party rules without a provider call",()=>{
+ const singles=ringsideBrief(example).slots[0]!.match!.wrestlingIQ!;
+ assert.equal(singles.format,"SINGLES");
+ assert.equal(singles.tempo,"STANDARD");
+ assert.match(RINGSIDE_STYLE_GUIDE,/No tags or tag partners|Do not insert a tag or a tag partner/);
+ const team={...example.entries[0]!,matchContext:{
+  ...example.entries[0]!.matchContext!,format:"2v2",sides:[
+   ["The Gunns' Austin","The Gunns' Colten"],["FTR's Dax","FTR's Cash"]],
+  winnerNames:["The Gunns' Austin","The Gunns' Colten"]}};
+ const tag:CompletedShowView={...example,entries:[team,example.entries[1]!]};
+ const tagIQ=ringsideBrief(tag).slots[0]!.match!.wrestlingIQ!;
+ assert.equal(tagIQ.format,"TAG");
+ assert.equal(tagIQ.beat,"tag drama optional");
+ assert.equal(tagIQ.tempo,"STANDARD");
+ assert.match(RINGSIDE_STYLE_GUIDE,/only one wrestler PER TEAM is legal/);
+ const trios={...team,matchContext:{...team.matchContext,format:"3v3",
+  sides:[["A","B","C"],["D","E","F"]],winnerNames:["A","B","C"]}};
+ assert.equal(ringsideBrief({...tag,entries:[trios]}).slots[0]!.match!.wrestlingIQ!.format,"TAG");
+ const many={...team,matchContext:{...team.matchContext,format:"3-team 2v2",
+  sides:[["A","B"],["C","D"],["E","F"]],winnerNames:["A","B"]}};
+ assert.equal(ringsideBrief({...tag,entries:[many]}).slots[0]!.match!.wrestlingIQ!.format,"MULTI_TEAM");
+ const triple={...team,matchContext:{...team.matchContext,format:"TRIPLE-WAY",
+  sides:[["A"],["B"],["C"]],winnerNames:["A"]}};
+ const iq=ringsideBrief({...tag,entries:[triple]}).slots[0]!.match!.wrestlingIQ!;
+ assert.equal(iq.format,"MULTI_PERSON");
+ assert.match(RINGSIDE_STYLE_GUIDE,/there are NO tags/);
+ const battle={...team,matchContext:{...team.matchContext,format:"BATTLE ROYAL",
+  sides:Array.from({length:12},(_,i)=>["Competitor "+i]),winnerNames:["Competitor 0"]}};
+ const ringIQ=ringsideBrief({...tag,entries:[battle]}).slots[0]!.match!.wrestlingIQ!;
+ assert.equal(ringIQ.format,"BATTLE_ROYAL");
+ assert.equal(battle.matchContext.sides.flat().length,12);
+ assert.match(RINGSIDE_STYLE_GUIDE,/For EVERY match/);
+});
+test("Ringside rejects proven invalid tag mechanics but not an optional hot tag",()=>{
+ const entry=example.entries[0]!;
+ const bad={...valid,slots:[{...valid.slots[0],
+  recap:"Kenny Omega made the hot tag before landing the One Winged Angel."},valid.slots[1]]};
+ assert.throws(()=>validateRingsideCopy(bad,example),/tag-team mechanics/);
+ const tag={...entry,matchContext:{...entry.matchContext!,format:"2v2",
+  sides:[["Kenny Omega","Matt Jackson"],["Opponent","Partner"]],
+  winnerNames:["Kenny Omega","Matt Jackson"]}};
+ const card:CompletedShowView={...example,entries:[tag,example.entries[1]!]};
+ const invalid={...valid,slots:[{...valid.slots[0],
+  recap:"Both team partners were legal throughout, and Omega pinned the opponent."},valid.slots[1]]};
+ assert.throws(()=>validateRingsideCopy(invalid,card),/tag-team legality/);
+ const good={...valid,slots:[{...valid.slots[0],
+  recap:"Omega reached his corner for a tag. A burst of offence set up a legal cover for their team."},valid.slots[1]]};
+ assert.doesNotThrow(()=>validateRingsideCopy(good,card));
+ const noHot={...valid,slots:[{...valid.slots[0],
+  recap:"The winners cut off the ring and settled the contest before their opponents could build momentum."},valid.slots[1]]};
+ assert.doesNotThrow(()=>validateRingsideCopy(noHot,card));
+});
+
+test("Ringside catches live-observed 20B submission-as-pin and star-rating leakage",()=>{
+ const baseline=valid.slots[0]!;
+ const bad=String.raw`The climax arrived when Omega locked the opponent in a decisive submission, forcing a clean pin and sealing a 4.5‑star performance.`;
+ const article=(recap:string)=>({...valid,slots:[{...baseline,recap},valid.slots[1]!]});
+ assert.throws(()=>validateRingsideCopy(article(bad),example),/numerical score/);
+ const mechanics=bad.replace("4.5‑star performance","fine performance");
+ assert.throws(()=>validateRingsideCopy(article(mechanics),example),/submission cannot itself/);
+ for(const stars of ["4.5-star","4.5‑star","five-star match".replace("five","5"),"5 stars"]){
+  assert.throws(()=>validateRingsideCopy(article("The "+stars+" verdict was deserved."),example),/numerical score/);
+ }
+ // A submission attempt is legitimate match action before an unrelated clean pin.
+ const legal="Omega attempted a submission hold, but the opponent escaped. Later a V-Trigger opened the door to the One Winged Angel for the pinfall.";
+ assert.doesNotThrow(()=>validateRingsideCopy(article(legal),example));
+});
+test("Ringside avoids invented steel-cage roofs without banning actual mesh contact",()=>{
+ const cage={...example,entries:[{
+  ...example.entries[0]!,matchContext:{
+   ...example.entries[0]!.matchContext!,format:"Steel Cage · SINGLES"}
+ },example.entries[1]!]};
+ const article=(recap:string)=>({...valid,slots:[{
+  ...valid.slots[0]!,recap
+ },valid.slots[1]!]});
+ for(const bad of [
+  "Omega leapt but barely cleared the cage’s low ceiling before pinning the opponent.",
+  "Omega struck the cage's roof before winning by pinfall.",
+  "The cage ceiling stopped the leap; Omega got the cover.",
+  "A lowered ceiling trapped Omega, who eventually won."
+ ]){
+  assert.throws(()=>validateRingsideCopy(article(bad),cage),/roof or ceiling/);
+ }
+ const possible="Omega pushed the opponent into the chain-link mesh, then dragged them to the mat for a legal three-count.";
+ assert.doesNotThrow(()=>validateRingsideCopy(article(possible),cage));
 });

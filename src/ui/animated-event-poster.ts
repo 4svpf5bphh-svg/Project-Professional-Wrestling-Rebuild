@@ -6,7 +6,7 @@ import {eventPosterByStyle,type EventPosterStyle} from "../domain/event-poster-s
 import "./animated-event-poster.css";
 export interface EventPosterOptions{
  style:string|null|undefined;eventName:string;promotionName:string;
- mainEvent?:string|null;compact?:boolean;
+ mainEvent?:string|null;compact?:boolean;completed?:boolean;
 }
 const text=(tag:string,cls:string,content:string)=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -84,8 +84,10 @@ export function createAnimatedEventPoster(options:EventPosterOptions):HTMLElemen
  const line=text("span","ppw-ep-tagline",TAGLINES[design.style]);
  middle.append(heading,line);
  const foot=text("div","ppw-ep-footer","");
- foot.append(text("span","ppw-ep-main-label",options.mainEvent?"MAIN EVENT":"MATCH CARD"),
-  text("strong","ppw-ep-main",options.mainEvent??"TO BE ANNOUNCED"));
+ foot.append(text("span","ppw-ep-main-label",
+  options.mainEvent?"MAIN EVENT":options.completed?"OFFICIAL RESULT":"MATCH CARD"),
+  text("strong","ppw-ep-main",
+   options.mainEvent??(options.completed?"SHOW COMPLETE":"TO BE ANNOUNCED")));
  poster.append(top,middle,foot);
  pauseOutsideViewport(poster);
  return poster;

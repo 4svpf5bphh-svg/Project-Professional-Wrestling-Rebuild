@@ -1,4 +1,5 @@
 import {reviewedLegendExpansion} from "./reviewed-legend-expansion.js";
+import {paceWorldLegendCatalogue} from "./legend-progression.js";
 /** Historic Legends: certified World unlocks and hand-curated prime-era identities.
  * Artwork rights remain unverified in this hobby build; missing/review-pending card files are never purchasable.
  */
@@ -273,9 +274,10 @@ export const LEGENDS_EXPANSION_RELEASED:boolean=true;
 const originalLegendsWithCards:readonly LegendDefinition[]=[...active,...curated].map(x=>({
  ...x,cardAsset:x.cardAsset??"/assets/legends/"+x.id+"-"+x.tier.toLowerCase()+"-card.webp"
 }));
-export const LEGENDS_CATALOGUE:readonly LegendDefinition[]=Object.freeze([
- ...originalLegendsWithCards,...(LEGENDS_EXPANSION_RELEASED?reviewedLegendExpansion():[])
-]);
+export const LEGENDS_CATALOGUE:readonly LegendDefinition[]=Object.freeze(
+ paceWorldLegendCatalogue([
+  ...originalLegendsWithCards,...(LEGENDS_EXPANSION_RELEASED?reviewedLegendExpansion():[])
+ ]));
 export const LIVE_LEGENDS=LEGENDS_CATALOGUE.filter(x=>x.status==="ACTIVE");
 export const LEGEND_TIER_PRICES:Readonly<Record<LegendTier,number>>={
  CULT:750,LEGEND:1400,ICON:2200,IMMORTAL:4000

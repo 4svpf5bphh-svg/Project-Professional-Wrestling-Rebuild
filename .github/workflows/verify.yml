@@ -600,6 +600,78 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0131_ratings_war_audience.sql
+      - name: Apply owner-scoped PPV press completion marker
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0132_premium_press_dismissal.sql
+      - name: Confirm PPV press completion migration is retry-safe
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0132_premium_press_dismissal.sql
+      - name: Apply global Groq daily allowance ledger (disposable database)
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0133_groq_daily_budget.sql
+      - name: Verify Groq ledger migration remains retry-safe
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0133_groq_daily_budget.sql
+      - name: Apply opt-in paid OpenAI preview ledger (disposable database)
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0134_openai_preview_budget.sql
+      - name: Verify optional provider migration is retry-safe
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0134_openai_preview_budget.sql
+      - name: Apply operator AI testing lab history (disposable database)
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0135_ai_quality_lab.sql
+      - name: Verify AI lab migration is retry-safe
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0135_ai_quality_lab.sql
+      - name: Apply safe AI Lab failed-attempt evidence (disposable database)
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0136_ai_lab_failed_samples.sql
+      - name: Verify AI Lab failure migration remains retry-safe
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0136_ai_lab_failed_samples.sql
+      - name: Apply provider-reported Groq limits snapshot (disposable database)
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0137_groq_provider_limits.sql
+      - name: Verify Groq provider snapshot migration is retry-safe
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0137_groq_provider_limits.sql
+      - name: Apply owner-scoped certified shortform voice cache
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0138_postshow_voice_batches.sql
+      - name: Verify cached voice migration remains safe on retry
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0138_postshow_voice_batches.sql
+      - name: Add owner-only 20B voice quality lab on disposable PostgreSQL
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0139_shortform_voice_quality_lab.sql
+      - name: Verify shortform quality lab migration is retry-safe
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0139_shortform_voice_quality_lab.sql
+      - name: Apply bounded shortform rejection diagnostics to PostgreSQL
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0140_shortform_voice_lab_diagnostics.sql
+      - name: Verify rejection diagnostics migration is repeatable
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0140_shortform_voice_lab_diagnostics.sql
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
