@@ -372,8 +372,9 @@ test("PPW local voices backfill rejected Groq slots without a second call",async
    news:valid.news,roadAgent:valid.roadAgent,wrestler:null
   });
   const merged=blendPostShowVoiceCopy(fixture.show,accepted);
-  assert.deepEqual(merged?.news,accepted?.news);
-  assert.deepEqual(merged?.roadAgent,accepted?.roadAgent);
+  assert.deepEqual(merged?.news,accepted?.news??local?.news,
+   "A different fixture's news cannot override this certified match");
+  assert.deepEqual(merged?.roadAgent,accepted?.roadAgent??local?.roadAgent);
   assert.deepEqual(merged?.wrestler,local?.wrestler);
  }
  const bare=fixture();
