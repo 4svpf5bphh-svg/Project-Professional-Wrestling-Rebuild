@@ -302,7 +302,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    return json(400,{error:"Choose a completed show"});
   let tracked:null|{
    showId:string;showName:string;model:string;started:number;
-   calls:number;input:number;output:number;reported:boolean
+   calls:number;input:number;output:number;reported:boolean;
+   compatibilityJson:boolean
   }=null;
   try{
    const safeSettings=body.settings?validateRingsideSettings(body.settings):null;
@@ -335,10 +336,17 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    // HTTP requests, and calls that throw before a response is received.
    tracked={showId:show.showId,showName:show.showName??"Completed show",
     model:previewProvider==="OPENAI"?OPENAI_PREVIEW_MODEL:effective.model,
-    started:Date.now(),calls:0,input:0,output:0,reported:true};
+    started:Date.now(),calls:0,input:0,output:0,reported:true,
+    compatibilityJson:false};
    const meter=tracked;
    const instrumentedTransport:typeof fetch=async(url,init)=>{
     meter.calls++;
+    // Inspect only our own outbound format marker; never store prompts or keys.
+    try{
+     const outbound=JSON.parse(String(init?.body)) as {response_format?:{type?:string}};
+     if(outbound.response_format?.type==="json_object")
+      meter.compatibilityJson=true;
+    }catch{/* Unreadable request shape remains an upstream error. */}
     let response:Response;
     try{response=await fetch(url,init);}
     catch(error){meter.reported=false;throw error;}
@@ -350,7 +358,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     return response;
    };
    const review=await generateGroqReview(show,providerKey,instrumentedTransport,
-    effective,memory,pool,previewProvider);
+    effective,memory,pool,previewProvider,!!fixture);
    const durationMs=Date.now()-meter.started;
    const benchmark=fixture?assessWrestlingBenchmark(fixture.scenario.id,review):null;
    const recorded=await saveAiLabPreview(pool,{
@@ -365,7 +373,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     ...(benchmark?{benchmark}:{}),
     metrics:{durationMs,providerCalls:meter.calls,
      inputTokens:meter.reported?meter.input:null,
-     outputTokens:meter.reported?meter.output:null}});
+     outputTokens:meter.reported?meter.output:null,
+     compatibilityJson:meter.compatibilityJson}});
   }catch(e){
    // An invalid model response is meaningful evidence. Save ONLY a fixed,
    // safe error code and measured usage, never rejected prose or raw errors.
