@@ -25,7 +25,7 @@ test("Groq daily allowance atomically caps concurrent multiplayer calls",{
    input:"1000",output:"200"});
   let invoked=false;
   const response=await requestGroqEditorial({task:"RINGSIDE",key:"unused",
-   pool:db.pool,body:{max_completion_tokens:800,messages:[]},
+   pool:db.pool,body:{max_completion_tokens:8000,messages:[]},
    transport:async()=>{invoked=true;return new Response("Not called");}});
   assert.equal(response.status,429);
   assert.equal(response.headers.get("x-ppw-budget-exhausted"),"true");
