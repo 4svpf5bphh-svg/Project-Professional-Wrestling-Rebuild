@@ -6,7 +6,10 @@ import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
 import {loadRingsideCommentary,generateGroqReview,RingsideGenerationError} from "../db/ringside-commentary.js";
-import {paidPreviewEnabled} from "../db/openai-editorial-preview.js";
+import {paidPreviewEnabled,OPENAI_PREVIEW_MODEL} from "../db/openai-editorial-preview.js";
+import {groqResponseUsage} from "../domain/ai-director.js";
+import {readAiLabDashboard,readAiLabReview,saveAiLabPreview,saveAiLabFeedback}
+ from "../db/ai-quality-lab.js";
 import {readRingsideMemory} from "../db/ringside-continuity.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {withSqlClient} from "../db/postgres.js";
@@ -166,6 +169,18 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
    return json(403,{error:"Admin access requires the designated World operator"});
   if(post&&!csrf(req,user))return json(403,{error:"Invalid admin session"});
+  if(path==="/api/admin"&&get&&routeUrl.searchParams.get("aiLab")){
+   const view=routeUrl.searchParams.get("aiLab");
+   try{
+    if(view==="summary")return json(200,await readAiLabDashboard(pool,cfg.worldId,user.playerId));
+    if(view==="review"){
+     const runId=routeUrl.searchParams.get("runId")??"";
+     return json(200,{review:await readAiLabReview(pool,cfg.worldId,user.playerId,runId)});
+    }
+    return json(400,{error:"Unknown AI lab view"});
+   }catch(e){return json(503,{error:e instanceof Error&&e.message.includes("unavailable")?
+     "That private AI sample is unavailable":"AI test history is unavailable"});}
+  }
   if(path==="/api/admin"&&get){
    try{
     const [plan,settings,shows,pilot,testKp,aiUsage]=await Promise.all([
@@ -220,6 +235,14 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
      await cancelLegendPilot(pool,cfg.worldId,user.playerId));}
     catch(e){return json(409,{error:e instanceof Error?e.message:"Legend pilot rejected"});}
    }
+   if(body.action==="RATE_AI_LAB_RUN"){
+    if(typeof body.runId!=="string"||body.runId.length>100)
+     return json(400,{error:"Choose a recorded AI preview"});
+    try{return json(200,await saveAiLabFeedback(pool,cfg.worldId,
+     user.playerId,body.runId,{rating:body.rating,flags:body.flags,notes:body.notes}));}
+    catch(e){return json(409,{error:e instanceof Error?e.message:
+      "AI preview feedback was not saved"});}
+   }
    if(body.action==="RETRY_FAILED_RINGSIDE"){
     if(typeof body.showId!=="string"||body.showId.length>200)
      return json(400,{error:"Select a completed show"});
@@ -270,9 +293,34 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
     showId:body.showId},show);}
    catch{console.warn("Ringside history unavailable; previewing card facts");}
-   const review=await generateGroqReview(show,providerKey,fetch,effective,memory,pool,
-    previewProvider);
-   return json(200,{review,preview:true});
+   // Capture the provider's genuine token usage for the *whole* preview,
+   // including a second factual-validation attempt. No extra model call.
+   let providerCalls=0,inputTokens=0,outputTokens=0,fullyReported=true;
+   const instrumentedTransport:typeof fetch=async(url,init)=>{
+    const response=await fetch(url,init);providerCalls++;
+    let usage=null;
+    if(response.ok)try{usage=groqResponseUsage(await response.clone().json());}
+    catch{/* Provider omitted or changed usage details. */}
+    if(usage){inputTokens+=usage.inputTokens;outputTokens+=usage.outputTokens;}
+    else fullyReported=false;
+    return response;
+   };
+   const began=Date.now();
+   const review=await generateGroqReview(show,providerKey,instrumentedTransport,
+    effective,memory,pool,previewProvider);
+   const durationMs=Date.now()-began;
+   const recorded=await saveAiLabPreview(pool,{
+    worldId:cfg.worldId,playerId:user.playerId,showId:body.showId,
+    showName:show.showName??"Completed show",provider:previewProvider,
+    model:previewProvider==="OPENAI"?OPENAI_PREVIEW_MODEL:effective.model,
+    durationMs,providerCalls,
+    inputTokens:fullyReported?inputTokens:null,
+    outputTokens:fullyReported?outputTokens:null,review
+   });
+   return json(200,{review,preview:true,labRunId:recorded.runId,
+    metrics:{durationMs,providerCalls,
+     inputTokens:fullyReported?inputTokens:null,
+     outputTokens:fullyReported?outputTokens:null}});
   }catch(e){
    console.error("Admin Ringside preview failed",e instanceof Error?e.message:"unknown");
    const safe=e instanceof RingsideGenerationError?e.message:
