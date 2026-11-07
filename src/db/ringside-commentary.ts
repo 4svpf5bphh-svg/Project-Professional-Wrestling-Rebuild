@@ -232,7 +232,8 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
     AND r.show_id=c.show_id
     AND (r.prompt_version=$5 OR (r.prompt_version IN ($6,$7,$8) AND r.state='READY'))
    -- Preserve published v4/v6 articles; do not regenerate old reviewed shows.
-   ORDER BY CASE WHEN r.prompt_version=$5 THEN 0 WHEN r.prompt_version=$6 THEN 1 WHEN r.prompt_version=$7 THEN 2 ELSE 3 END
+   ORDER BY CASE WHEN r.state='READY' THEN 0 ELSE 1 END,
+     CASE WHEN r.prompt_version=$8 THEN 0 WHEN r.prompt_version=$7 THEN 1 WHEN r.prompt_version=$6 THEN 2 ELSE 3 END
    LIMIT 1
   ) r ON TRUE
   WHERE c.world_id=$1 AND c.promotion_id=$3 AND c.show_id=$4
