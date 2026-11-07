@@ -727,10 +727,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      section.append(archive);
     }
    }
-   if(official&&news?.voices.length){
+   if(official&&news?.voices?.length){
     const dispatch=el("section","ppw-news-voices");
     dispatch.append(el("span","ppw-news-eyebrow","THE PROMOTION / POST-SHOW DISPATCHES"));
-    for(const voice of news.voices){
+    for(const voice of news.voices??[]){
      const article=el("article","ppw-news-story ppw-news-voice");
      article.append(el("span","ppw-news-desk","GROQ / CERTIFIED EVENT"),
       el("strong","ppw-news-story-title",voice.headline),
