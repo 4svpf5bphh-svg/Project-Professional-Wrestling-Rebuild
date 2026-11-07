@@ -178,7 +178,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
  if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result)\b/i.test(fullStory))
   throw new Error("Ringside leaked technical simulation terminology");
- if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b/i.test(fullStory))
+ if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b|\b[0-5](?:\.\d{1,2})?[\s\-\u2010-\u2015]*stars?\b/i.test(fullStory))
   throw new Error("Ringside leaked numerical score into editorial");
  for(const [i,slot] of slots.entries()){
   const source=show.entries[i]!;
@@ -227,6 +227,12 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
      "VERBAL_SURRENDER","FIRST_BLOOD","CASKET_CLOSE"].includes(finish)&&
     /\b(?:won by (?:pinfall|submission)|pinned (?:him|her|them) for (?:the )?win|tapped out for (?:the )?win|three-count (?:secured|decided|won))\b/i.test(prose))
     throw new Error("Stipulation result replaced by an invalid finish");
+   if(["CLEAN_PIN","FLASH_PIN"].includes(finish)&&
+    /\b(?:decisive|winning|match[- ]ending|finish(?:ing)?)\s+(?:submission|tap[- ]out)\b|\b(?:submission|tap[- ]out)\b[^.!?;]{0,75}\b(?:forc(?:e|ed|ing)|caus(?:e|ed|ing)|result(?:s|ed|ing)? in|produced?|deliver(?:s|ed|ing)?|sealed)\b[^.!?;]{0,35}\b(?:a\s+)?(?:clean\s+)?(?:pin(?:fall)?|three[- ]count)\b/i.test(prose))
+    throw new Error("A submission cannot itself secure the recorded pinfall");
+   if(stipulated.startsWith("Steel Cage")&&
+    /\b(?:cage(?:'s|’s)?|steel\s+cage)(?:\s+(?:had|has|with|beneath|under|above|its|the))?\s+(?:(?:low|closed|lowered|solid)\s+)?(?:roof|ceiling)\b|\b(?:cage(?:'s|’s)?\s+)?(?:low|lowered)\s+ceiling\b/i.test(prose))
+    throw new Error("Steel Cage review invented an unsupported roof or ceiling");
    if(finish==="CLEAN_PIN"||finish==="FLASH_PIN"){
     const winners=new Set(source.matchContext?.winnerNames??[]);
     for(const p of source.performerIdentities??[]){
@@ -502,6 +508,9 @@ spoken surrender, with no invented diagnosed injury or actual blood.
 Steel Cage needs the enclosure to matter: the wall, mesh, restricted escape
 routes and impact against the steel can supply believable nonconsequential
 spots, but escaping the cage CANNOT win and no outsiders appear.
+A standard Steel Cage is open-topped; never invent a low ceiling, overhead cage
+roof or a wrestler being blocked by the ceiling. Do not misuse words such as
+"chain-link holds" as if the steel itself were a technical wrestling move.
 An Iron Man match is decided by the MOST FALLS when time expires, not
 a single pin; don't invent exact intermediate scores. Two of Three Falls
 ends with the second fall to the winner. First Blood ends at the first
@@ -525,7 +534,13 @@ near-fall, receipt, babyface fire, go-home stretch, pop, squash, selling.
 Never print game language: 'protected finish', 'foreign object',
 'booking intent', 'scored compatibility', 'execution quality',
 'crowd score', 'recorded finish', 'simulation'. No numeric
-scores in the prose, fabricated debut history, or empty hype.
+scores in the prose, including 4.5-star or five-star match ratings; the
+official Results screen already displays them. Never use "submission" as
+the move that forces a pinfall: a hold may create a separate opening for a
+cover, but submission and pinfall are DIFFERENT winning methods. Avoid
+gendering competitors whose identities do not include that fact; use
+their names or "opponents" rather than "both men" or "each man".
+No fabricated debut history or empty hype.
 Be worth reading, not wordy. All slots in original order.
 Return only the strict JSON requested by the provider schema. The slots
 object has REQUIRED card_0, card_1 etc properties, each with headline and
