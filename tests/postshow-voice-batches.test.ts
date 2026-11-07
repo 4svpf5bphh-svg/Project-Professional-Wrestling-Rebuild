@@ -326,6 +326,13 @@ test("earlier certified news and generic HOT TAG remain visible as historical re
  assert.ok(cached?.news);
  assert.ok(cached?.wrestler);
  assert.equal(cached.roadAgent,null);
+ const oldNegation=readPostShowVoiceCopy(show,{version:1,
+  news:{slotId:brief.mainEvent!.slotId,
+   headline:"Mercer gets the final answer",
+   summary:"Jett Mercer defeated Ronan Wolfe by a verbal I Quit surrender at the completed show. The official result records Wolfe's spoken concession, not a pinfall or tap-out."},
+  wrestler:null,roadAgent:null});
+ assert.ok(oldNegation?.news,
+  "Negating an unbooked pinfall is not the same as falsely claiming one");
 });
 
 test("certified wrestler turn can produce a real event reaction with no invented opponent",()=>{
