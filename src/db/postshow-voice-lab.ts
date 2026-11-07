@@ -43,7 +43,8 @@ export async function saveShortformVoiceLabRun(pool:TransactionPool,input:Input)
   "INVALID_ENVELOPE","EMPTY_CONTENT","INVALID_JSON","TRUNCATED",
   "OVERSIZED","PROVIDER_ERROR"
  ];
- const labels=["ACCEPTED","REJECTED","MISSING"];
+ const labels=["ACCEPTED","MISSING","FORMAT_REJECTED","LENGTH_REJECTED",
+  "FACT_OR_VOICE_REJECTED"];
  const d=input.diagnostic;
  if(d&&(!categories.includes(d.category)||!labels.includes(d.news)||
   !labels.includes(d.wrestler)||!labels.includes(d.roadAgent)))
