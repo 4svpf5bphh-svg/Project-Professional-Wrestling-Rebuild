@@ -36,6 +36,8 @@ type ShortformLabRun={runId:string;scenarioId:string;scenarioName:string;
  model:string;status:"READY"|"FAILED";errorCode:string|null;
  durationMs:number;providerCalls:number;inputTokens:number|null;
  outputTokens:number|null;createdAt:string;copy:ShortformCopy|null;
+ displayCopy?:ShortformCopy|null;
+ origins?:{news:string;wrestler:string;roadAgent:string};
  diagnostic?:ShortformLabDiagnostic|null};
 type LabData={usage:LabDay[];runs:LabRun[];scores:{
  provider:string;model:string;total:number;reviewed:number;average_score:number|null;
@@ -234,9 +236,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    const voiceLab=el("section","ppw-lab-benchmark");
    voiceLab.append(el("h3","","Post-show voices · Groq 20B"),
     el("p","ppw-admin-small",
-     "One fictional show, one 20B request: a verified news report, "+
-     "a character-specific wrestler reaction and a practical Road Agent note. "+
-     "Nothing is published or changes your save."));
+     "One fictional show, one 20B request. PPW supplies factual backup for "+
+     "any AI voice that fails verification; safe copy never requires a "+
+     "second paid call. Nothing is published or changes your save."));
    const voiceScenarios=data.shortformScenarios??[];
    const voiceChoice=selectControl(voiceScenarios.map(x=>[x.id,x.name]),
     voiceScenarios.some(x=>x.id===selectedVoiceScenario)?
@@ -315,17 +317,21 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
        (d.wrestlerReason?" ("+d.wrestlerReason.replace(/_/g," ").toLowerCase()+")":"")+
        " · Road Agent "+d.roadAgent));
      }
-     if(sample.copy){
-      if(sample.copy.news)line.append(
-       copyCard("OFFICIAL NEWS · "+sample.copy.news.headline,
-        sample.copy.news.summary));
-      else line.append(copyCard("Official News","Not accepted — original PPW copy remains."));
-      line.append(copyCard("WRESTLER REACTION",
-       sample.copy.wrestler?.text??"Not accepted — original HOT TAG reaction remains."));
-      line.append(copyCard("ROAD AGENT",
-       sample.copy.roadAgent?.note??"Not accepted — original Road Agent note remains."));
+     const presented=sample.displayCopy??sample.copy;
+     const origin=(key:"news"|"wrestler"|"roadAgent")=>
+      sample.origins?.[key]==="PPW"?" · PPW factual backup":
+      sample.origins?.[key]==="GROQ"?" · verified Groq":"";
+     if(presented){
+      if(presented.news)line.append(
+       copyCard("OFFICIAL NEWS"+origin("news")+" · "+presented.news.headline,
+        presented.news.summary));
+      else line.append(copyCard("Official News","No certified news source."));
+      line.append(copyCard("WRESTLER REACTION"+origin("wrestler"),
+       presented.wrestler?.text??"No eligible wrestler source."));
+      line.append(copyCard("ROAD AGENT"+origin("roadAgent"),
+       presented.roadAgent?.note??"No recorded staff observation."));
      }else line.append(el("p","ppw-admin-small",
-      "No verified output accepted; existing PPW writing remains unchanged."));
+      "No suitable certified source was available for these voices."));
      voiceLab.append(line);
     }
    }else voiceLab.append(el("p","ppw-admin-small",

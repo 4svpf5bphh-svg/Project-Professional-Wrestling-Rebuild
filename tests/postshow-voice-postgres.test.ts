@@ -64,6 +64,12 @@ test("postshow cache stays owner-scoped and a published receipt gets only one Gr
   assert.equal(savedPartial.status,"READY");
   const allSamples=await readShortformVoiceLabRuns(db.pool,world,owner);
   assert.equal(allSamples.length,2);
+  assert.ok(allSamples[0]?.displayCopy?.wrestler,
+   "A rejected Groq wrestler line must have a grounded local alternative");
+  assert.deepEqual(allSamples[0]?.origins,
+   {news:"GROQ",wrestler:"PPW",roadAgent:"GROQ"});
+  assert.deepEqual(allSamples[1]?.origins,
+   {news:"GROQ",wrestler:"GROQ",roadAgent:"GROQ"});
   assert.deepEqual(allSamples[0]?.copy,partialCopy);
   assert.deepEqual(allSamples[0]?.diagnostic,{
    category:"PARTIAL",news:"ACCEPTED",

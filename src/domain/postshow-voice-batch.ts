@@ -179,6 +179,12 @@ function wrestlerEventSpecific(post:string,source:PostShowVoiceBrief):boolean{
  if(!wrestler)return false;
  if(wrestler.opponentNames.some(name=>has(post,name)))return true;
  const format=wrestler.matchType?.toLowerCase()??"";
+ // A verified tag win can be specific without repeating every opponent's
+ // full name. Recognise tag vocabulary tied to that match and its result.
+ if(/\b(?:[2-9]v[2-9]|tag|trios)\b/i.test(format)&&
+  /\b(?:tag|team|partner|corner|together|tandem)\b/i.test(post)&&
+  /\b(?:win|won|victory|result|beat|earned|outlasted|prevailed)\b/i.test(post))
+  return true;
  if(format.includes("i quit"))return /\bi quit match\b|\bi quit bout\b/i.test(post);
  if(format.includes("steel cage"))return /\b(?:steel )?cage\b/i.test(post);
  if(format.includes("iron man"))return /\biron man\b/i.test(post);
@@ -239,6 +245,121 @@ export function wrestlerVoiceRejectionReason(
  const post=words(text,8,65,350);
  return post?(wrestlerIssue(post,source)??"UNCLASSIFIED"):"BLOCKED_PROSE";
 }
+
+/** PPW owns the facts. These short, deterministic passages are the safe
+ * presentation layer whenever a provider field is absent or unsuitable.
+ * They are never charged to Groq, never invented facts, and never call SQL.
+ */
+export function localPostShowVoiceCopy(show:CompletedShowView):PostShowVoiceCopy|null{
+ const brief=postShowVoiceBrief(show);
+ const main=brief.mainEvent,voice=brief.wrestler,staff=brief.roadAgent;
+ const winning=main?.winners??[];
+ const opposition=main?.opponents.flat()
+  .filter(n=>!winning.includes(n))??[];
+ const isTag=!!voice&&/\b(?:[2-9]v[2-9]|tag|trios)\b/i.test(voice.matchType??"");
+ const seed=Array.from(show.showId+":"+(voice?.slotId??""))
+  .reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,13);
+ const choose=(options:readonly string[])=>options[seed%options.length]!;
+ let news:Record<string,string>|null=null;
+ if(main&&winning.length&&opposition.length){
+  const firstTwo=winning.slice(0,2).join(" and ");
+  const winners=winning.slice(0,3).join(" and ");
+  const others=opposition.slice(0,3).join(" and ");
+  const format=/i quit/i.test(main.matchType)?"the I Quit match":
+   /steel cage/i.test(main.matchType)?"the Steel Cage match":
+   /\b(?:[2-9]v[2-9]|tag|trios)\b/i.test(main.matchType)?"a tag-team match":
+   /iron man/i.test(main.matchType)?"the Iron Man match":
+   "the scheduled match";
+  const finish=/I Quit/.test(main.finish)?"by verbal I Quit surrender":
+   /pinfall/i.test(main.finish)?"by pinfall":
+   /submission/i.test(main.finish)?"by submission":
+   /disqualification/i.test(main.finish)?"by disqualification":
+   /retrieval/i.test(main.finish)?"by prize retrieval":
+   /ten-count/i.test(main.finish)?"by ten-count knockout":
+   /elimination/i.test(main.finish)?"by elimination":
+   "in the recorded decision";
+  const crowd=main.crowd==="strong"?"The match drew a strong reaction from the crowd.":
+   main.crowd==="mixed-positive"?"The crowd responded positively to the contest.":
+   main.crowd==="mixed"?"The crowd response was mixed.":
+   "The crowd response was subdued.";
+  news={
+   headline:/\b(?:[2-9]v[2-9]|tag|trios)\b/i.test(main.matchType)?
+    firstTwo+" claim the tag-team victory":
+    winning[0]+" secures the match victory",
+   summary:winners+" defeated "+others+" "+finish+" in "+format+". "+crowd
+  };
+ }
+ let wrestler:Record<string,string>|null=null;
+ if(voice){
+  const opponent=voice.opponentNames[0]??null;
+  const opponents=voice.opponentNames.slice(0,2).join(" and ");
+  const kind=voice.eventKind?.toUpperCase();
+  let options:string[]=[];
+  if(isTag){
+   options=opponent?[
+    "I saw "+opponents+" across from us. Our team earned the tag win together, and I am proud of that result.",
+    "I respect "+opponents+", but we worked as a team and got the win. That is what matters to me tonight."
+   ]:[
+    "I trusted my partner in that tag match. Our team earned the win together, and I will remember that feeling."
+   ];
+  }else if(opponent&&/i quit/i.test(voice.matchType??"")){
+   options=[
+    "I heard "+opponent+" concede. I got the win, and those words decided the contest for everyone watching.",
+    opponent+" gave the verbal surrender. I left with the victory, and no one can take that result from me."
+   ];
+  }else if(opponent&&/steel cage/i.test(voice.matchType??"")){
+   options=[
+    "I shared that cage with "+opponent+". I got the three-count in the ring, not by escaping the steel.",
+    "I did not need an escape route against "+opponent+". My win came by pinfall inside the cage."
+   ];
+  }else if(opponent){
+   options=[
+    "I faced "+opponent+" and came out with the decision. I worked for that result, and I intend to build on it.",
+    "I know "+opponent+" came to compete. I still earned the result in the ring, and I stand by it."
+   ];
+  }else if(kind==="TURN"){
+   options=["I made my choice in front of everybody. That turn was mine to make, and I am not taking it back."];
+  }else if(kind==="ATTACK"||kind==="POST_MATCH_ASSAULT"){
+   options=["I made my point with that attack. The crowd saw what happened, and I stand by my decision."];
+  }else if(kind==="DEBUT"){
+   options=["I made my debut tonight. That first appearance mattered to me, and I am ready for what comes next."];
+  }
+  if(options.length)wrestler={text:choose(options)};
+ }
+ let roadAgent:Record<string,string>|null=null;
+ if(staff){
+  const note=staff.issue==="overrun"?
+   "The match exceeded its planned time. Shorten the next card or reserve more minutes for the pairing; the finish needs room.":
+   staff.issue==="standout"?
+   "The crowd responded strongly to that result. Consider a response angle from the defeated side next week instead of immediately repeating the stipulation.":
+   staff.issue==="execution"?
+   "The match execution needs a cleaner structure. Give the next bout a simpler sequence and protect enough time for its closing stretch.":
+   staff.issue==="chemistry"?
+   "The pairing showed a chemistry concern. Consider a different opponent or adjust the roles before asking them to repeat this match.":
+   staff.issue==="injury"?
+   "There was a medical concern. Check the Doctor's clearance before booking the affected wrestler again; protect the next card with a safer alternative.":
+   "That rivalry advanced tonight. Book a different follow-up angle next week rather than repeating the same match and diluting the payoff.";
+  roadAgent={note};
+ }
+ return validatePostShowVoiceCopy(brief,{
+  news,wrestler,roadAgent
+ });
+}
+/** Preserve every validated AI field; backfill only the holes. A provider
+ * rejection never blocks public-facing writing or creates another request.
+ * Call after the immutable receipt and ownership validation, never as an
+ * alternative to certifying results.
+ */
+export function blendPostShowVoiceCopy(
+ show:CompletedShowView,verifiedAi:PostShowVoiceCopy|null):PostShowVoiceCopy|null{
+ const local=localPostShowVoiceCopy(show);
+ if(!verifiedAi&&!local)return null;
+ return {version:SHORTFORM_VOICE_VERSION,
+  news:verifiedAi?.news??local?.news??null,
+  wrestler:verifiedAi?.wrestler??local?.wrestler??null,
+  roadAgent:verifiedAi?.roadAgent??local?.roadAgent??null};
+}
+
 function trueFinish(summary:string,method:string):boolean{
  if(method.includes("I Quit"))return /\b(?:i quit|verbally surrendered|verbal surrender|said (?:the words|i quit)|conceded verbally)\b/i.test(summary)&&
   !/\b(?:pinned|won (?:by|via) (?:a )?pinfall|three.count|tapped out|forced (?:\w+\s+){0,5}to tap out|won (?:by|via) (?:a )?submission)\b/i.test(summary);
@@ -259,6 +380,22 @@ function unverifiedWin(summary:string,source:PostShowVoiceBrief):boolean{
    " secured the victory"].some(verb=>text.includes(name.toLowerCase()+verb)));
 }
 const unsourcedNews=/\b(?:injur(?:ed|y|ies)|concussion|blood(?:ied|y)|hospital|broken (?:bone|neck)|new champion|title change|signed|suspended|arrested|contract negotiation|backstage fight)\b/i;
+/** Reject booking two verified same-side partners AGAINST each other as a
+ * "rematch." Such advice was incorrectly passed in a real 20B tag trial.
+ */
+function proposesTeammateRematch(note:string,source:PostShowVoiceBrief):boolean{
+ if(!source.mainEvent||source.roadAgent?.slotId!==source.mainEvent.slotId)
+  return false;
+ const copy=note.toLowerCase();
+ if(!/\b(?:match|rematch|bout|fight)\b/.test(copy))return false;
+ return source.mainEvent.opponents.some(side=>side.length>1&&
+  side.some((a,i)=>side.some((b,j)=>j>i&&[
+   "between "+a+" and "+b,
+   "between "+b+" and "+a,
+   a+" against "+b,b+" against "+a,
+   a+" vs "+b,b+" vs "+a
+  ].some(phrase=>copy.includes(phrase.toLowerCase())))));
+}
 /** Reject a false result instead of spending a second Groq request.
  * Partial success is deliberate: one unsuitable field cannot erase good copy.
  */
@@ -296,7 +433,8 @@ export function validatePostShowVoiceCopy(
    &&source.roadAgent.issue!=="chemistry")&&
   /\b(?:next|consider|watch|avoid|plan|book|give|keep|check|try|focus|allow|cut|protect|space|revisit|monitor|adjust|schedule|shorten|change|follow.up|instead|reserve|vary|shift)\b/i.test(note)&&
   
-  !/\b(?:I spoke to|told me backstage|secret conversation|we diagnosed)\b/i.test(note)?
+  !/\b(?:I spoke to|told me backstage|secret conversation|we diagnosed)\b/i.test(note)&&
+  !proposesTeammateRematch(note,source)?
   {slotId:source.roadAgent.slotId,note}:null;
  if(!newsPart&&!postPart&&!agentPart)return null;
  return {version:SHORTFORM_VOICE_VERSION,news:newsPart,

@@ -5,7 +5,7 @@ import {randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {getPostShowVoiceBenchmark} from "../domain/postshow-voice-lab.js";
-import {readPostShowVoiceCopy,type PostShowVoiceCopy}
+import {readPostShowVoiceCopy,blendPostShowVoiceCopy,type PostShowVoiceCopy}
  from "../domain/postshow-voice-batch.js";
 import type {ShortformVoiceDiagnostic} from "./postshow-voice-batches.js";
 
@@ -94,12 +94,18 @@ export async function readShortformVoiceLabRuns(pool:TransactionPool,
   const fixture=getPostShowVoiceBenchmark(row.scenario_id);
   const copy=fixture&&row.status==="READY"?
    readPostShowVoiceCopy(fixture.show,row.copy_json):null;
+  const displayCopy=fixture?blendPostShowVoiceCopy(fixture.show,copy):copy;
+  const origins={
+   news:displayCopy?.news?(copy?.news?"GROQ":"PPW"):"NONE",
+   wrestler:displayCopy?.wrestler?(copy?.wrestler?"GROQ":"PPW"):"NONE",
+   roadAgent:displayCopy?.roadAgent?(copy?.roadAgent?"GROQ":"PPW"):"NONE"
+  };
   return {runId:row.run_id,scenarioId:row.scenario_id,
    scenarioName:fixture?.scenario.name??"Unknown fictional test",
    model:row.model,status:row.status,errorCode:row.error_code,
    durationMs:row.duration_ms,providerCalls:row.provider_calls,
    inputTokens:row.input_tokens,outputTokens:row.output_tokens,
-   createdAt:row.created_at,copy,
+   createdAt:row.created_at,copy,displayCopy,origins,
    diagnostic:row.diagnostics_json as ShortformVoiceDiagnostic|null};
  });
 }

@@ -3,7 +3,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import type {RoadAgentReport} from "../domain/road-agent-report.js";
-import {readPostShowVoiceCopy,type PostShowVoiceCopy} from "../domain/postshow-voice-batch.js";
+import {readPostShowVoiceCopy,blendPostShowVoiceCopy,type PostShowVoiceCopy} from "../domain/postshow-voice-batch.js";
 import {readMatchStipulation,stipulationLabel} from "../domain/match-stipulations.js";
 import type {GorillaShowLog} from "../domain/gorilla-position.js";
 import {withSqlClient} from "./postgres.js";
@@ -420,7 +420,10 @@ export async function readCompletedShowView(
    angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report,
    gorillaLog:rows[0]!.gorilla_log,
    resultsSkin:rows[0]!.results_skin==="TERRITORY_TV"||rows[0]!.results_skin==="FIGHT_NIGHT"||rows[0]!.results_skin==="UNDERGROUND_ZINE"||rows[0]!.results_skin==="RETRO_BOOKER_02"?rows[0]!.results_skin:null};
-  show.shortform=readPostShowVoiceCopy(show,rows[0]!.shortform_json);
+  const accepted=readPostShowVoiceCopy(show,rows[0]!.shortform_json);
+  // Only an already-accepted owner-scoped bundle receives local backfill.
+  // No Groq, publication, or extra database read occurs on a Results GET.
+  show.shortform=accepted?blendPostShowVoiceCopy(show,accepted):null;
   return show;
  });
 }

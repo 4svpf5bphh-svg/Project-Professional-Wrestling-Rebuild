@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {getWrestlingBenchmark} from "../src/domain/wrestling-ai-benchmark.js";
 import {postShowVoiceBrief,postShowVoicePrompt,
- validatePostShowVoiceCopy,readPostShowVoiceCopy}
+ validatePostShowVoiceCopy,readPostShowVoiceCopy,
+ localPostShowVoiceCopy,blendPostShowVoiceCopy}
  from "../src/domain/postshow-voice-batch.js";
 import {postShowVoiceEnabled,generatePostShowVoiceCopy}
  from "../src/db/postshow-voice-batches.js";
@@ -338,6 +339,46 @@ test("20B wrestler rejection explains the actual guard without retaining prose",
   assert.equal((diagnosis as Record<string,string>|null)?.wrestlerReason,sample.reason);
   assert.equal(JSON.stringify(diagnosis).includes(sample.text),false);
  }
+});
+
+
+test("tag reaction can describe its team and result without naming every opponent",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const brief=getPostShowVoiceBenchmark("tag-standard")!.brief;
+ const accepted=validatePostShowVoiceCopy(brief,{wrestler:{
+  text:"I trusted my partner in that tag match. We stood together and earned the team victory tonight."
+ }});
+ assert.ok(accepted?.wrestler);
+ const disallowed=validatePostShowVoiceCopy(brief,{roadAgent:{note:
+  "Consider scheduling a rematch between Rey Sol and Marcus Drake in the next event to capitalize on the overrun and keep momentum."
+ }});
+ assert.equal(disallowed?.roadAgent??null,null,
+  "Verified partners cannot be proposed as opposing sides of their own rematch");
+});
+test("PPW local voices backfill rejected Groq slots without a second call",async()=>{
+ const {getPostShowVoiceBenchmark,POSTSHOW_VOICE_SCENARIOS}=
+  await import("../src/domain/postshow-voice-lab.js");
+ for(const scenario of POSTSHOW_VOICE_SCENARIOS){
+  const fixture=getPostShowVoiceBenchmark(scenario.id)!;
+  const local=localPostShowVoiceCopy(fixture.show);
+  assert.ok(local?.news,scenario.id+" safe news");
+  assert.ok(local?.wrestler,scenario.id+" safe wrestler");
+  assert.ok(local?.roadAgent,scenario.id+" safe Road Agent");
+  assert.deepEqual(readPostShowVoiceCopy(fixture.show,local),local,
+   "All local passages must also pass immutable identity and fact checks");
+  assert.deepEqual(localPostShowVoiceCopy(fixture.show),local,
+   "Local fallback is stable across refreshes");
+  const accepted=validatePostShowVoiceCopy(fixture.brief,{
+   news:valid.news,roadAgent:valid.roadAgent,wrestler:null
+  });
+  const merged=blendPostShowVoiceCopy(fixture.show,accepted);
+  assert.deepEqual(merged?.news,accepted?.news);
+  assert.deepEqual(merged?.roadAgent,accepted?.roadAgent);
+  assert.deepEqual(merged?.wrestler,local?.wrestler);
+ }
+ const bare=fixture();
+ const local=localPostShowVoiceCopy(bare);
+ assert.equal(local?.roadAgent,null,"Staff voice needs an actual report");
 });
 
 test("Road Agent advises on the certified issue without invented injury or chemistry",()=>{
