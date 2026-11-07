@@ -221,7 +221,7 @@ export function validatePostShowVoiceCopy(
  const post=words(wrestler.text,8,65,350);
  const postPart=post&&source.wrestler&&
   (options.preserveHistoricStyle||wrestlerEventSpecific(post,source))&&
-  !/\bI (?:quit|surrendered|tapped out|got pinned)\b/i.test(post)&&
+  !/\bI quit\b(?!\s+(?:match|bout|stipulation))|\bI (?:surrendered|tapped out|got pinned)\b/i.test(post)&&
   /\b(?:I|I'm|I've|my|we|our|me)\b/i.test(post)&&
   !/\b(?:I (?:lost|got pinned|tapped out|was beaten)|we (?:lost|got pinned))\b/i.test(post)&&
   post!==source.wrestler.recordedPost?
