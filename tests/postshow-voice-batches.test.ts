@@ -215,6 +215,16 @@ test("20B failures expose only categorical diagnostics and never retain rejected
    wrestler:string;roadAgent:string}|null;
   assert.equal(d?.category,sample.expected);
   assert.ok(d);
+  if(sample.expected==="WRONG_SHAPE"){
+   assert.equal(d.news,"FORMAT_REJECTED");
+   assert.equal(d.wrestler,"FORMAT_REJECTED");
+   assert.equal(d.roadAgent,"FORMAT_REJECTED");
+  }
+  if(sample.expected==="ALL_REJECTED"){
+   assert.equal(d.news,"LENGTH_REJECTED");
+   assert.equal(d.wrestler,"LENGTH_REJECTED");
+   assert.equal(d.roadAgent,"LENGTH_REJECTED");
+  }
   assert.deepEqual(Object.keys(d).sort(),
    ["category","news","wrestler","roadAgent"].sort(),
    "Diagnostics contain no Groq prose, error body, names or content");
