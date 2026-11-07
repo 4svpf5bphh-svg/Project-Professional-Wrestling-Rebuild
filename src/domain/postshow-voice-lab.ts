@@ -21,6 +21,11 @@ export function getPostShowVoiceBenchmark(id:string):
  if(!scenario||!sample)return null;
  const show:CompletedShowView={...sample.show,entries:sample.show.entries.map(e=>({
   ...e,matchContext:e.matchContext?{...e.matchContext,
+   // The fictional tag match overruns its planned slot by six minutes,
+   // providing a real, non-medical Road Agent cue at a sub-four-star rating.
+   plannedMinutes:scenario.id==="tag-standard"?
+    Math.max(2,(e.fallout?.actualMinutes??e.matchContext.plannedMinutes??18)-6):
+    e.matchContext.plannedMinutes,
    sideParticipants:e.matchContext.sides.map((side,i)=>
     side.map((name,j)=>({personId:"fixture-"+String(
      e.matchContext!.sides.slice(0,i).reduce((n,team)=>n+team.length,0)+j),name})))}:undefined
