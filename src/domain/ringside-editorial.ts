@@ -13,11 +13,12 @@ export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 /** Compact, provider-neutral vocabulary. No additional model request, database
  * read or invented permanent event; the recorded winning method stays final. */
 const STIPULATION_NOTES:Partial<Readonly<Record<MatchStipulation,{
- win:string;texture:string}>>>={
+ win:string;texture:string;storyBeats?:string}>>>={
  HARDCORE:{win:"Pinned or submitted under no-disqualification rules.",
   texture:"An uncompromising fight that may spill outside and use ringside objects, but invent no decisive weapon or medical fallout."},
  STEEL_CAGE:{win:"Pinfall or submission inside the cage; escape is NOT a winning method.",
-  texture:"Steel mesh looming over the ring, bodies pressed against the wall, rattling panels and restricted space. No invented outsiders."},
+  texture:"Steel mesh looming over the ring, bodies pressed against the wall, rattling panels and restricted space. No invented outsiders.",
+  storyBeats:"Make the enclosure change the wrestling: cramped movement, a plausible brush or impact against the steel, then a weary closing stretch ending in the certified pin inside the cage. Do not claim escaping won."},
  LADDER:{win:"Climb a ladder and retrieve the suspended prize; a pin cannot win.",
   texture:"Ladders erected and toppled, interrupted climbs, precarious reaches. Do not invent serious falls or injuries."},
  TABLES:{win:"Send the opponent through a table; no three-count.",
@@ -29,13 +30,15 @@ const STIPULATION_NOTES:Partial<Readonly<Record<MatchStipulation,{
  SUBMISSION:{win:"Tap-out or referee stoppage from a submission hold; no pinfall.",
   texture:"Grip changes, limb pressure, crawling to ropes and struggles to escape a hold."},
  IRON_MAN:{win:"Most certified falls when the time limit expires; don't invent an exact score.",
-  texture:"The clock, stamina, tactical adjustments and exhaustion across successive falls."},
+  texture:"The clock, stamina, tactical adjustments and exhaustion across successive falls.",
+  storyBeats:"Tell the clock-pressure story: pacing early, the physical cost of multiple falls, and urgency as time runs down; the clock expires with the recorded winner ahead, without invented scores."},
  TWO_OUT_OF_THREE:{win:"The second winning fall decides the bout; no fabricated earlier fall-by-fall score.",
   texture:"Wrestlers adjust tactics through the contest as the final fall becomes urgent."},
  FALLS_COUNT_ANYWHERE:{win:"Pin or submission can count beyond the ring; no count-out.",
   texture:"Ringside floor, ramp and arena boundaries can become part of the action."},
  I_QUIT:{win:"The opponent must VERBALLY surrender to the referee, normally into a microphone; a tap-out, pin or referee stoppage cannot win.",
-  texture:"Escalating pressure and psychology, threats of another painful hold, a microphone held close while the opponent refuses before finally speaking. No automatic blood, weapons or injury."},
+  texture:"Escalating pressure and psychology, threats of another painful hold, a microphone held close while the opponent refuses before finally speaking. No automatic blood, weapons or injury.",
+  storyBeats:"Write a physical escalation, not a generic technical match: a defiant refusal to give in, another plausible cruel use of pressure or the ring environment, then the referee offering the microphone as tension peaks. ONLY the losing wrestler finally says I quit. No invented weapon, blood or lasting injury."},
  FIRST_BLOOD:{win:"First opponent made to bleed loses; no three-count or submission win.",
   texture:"The apprehension of a cut ending the match; don't turn blood into a diagnosed or lasting injury."},
  BACKSTAGE_BRAWL:{win:"Recorded pin or submission decides a fight in a backstage area.",
@@ -48,7 +51,8 @@ export function ringsideStipulationNote(format:string){
   format.startsWith(s.label+" · "));
  const note=stip?STIPULATION_NOTES[stip.value]:null;
  return stip&&note?{stipulation:stip.value,winningCondition:note.win,
-  plausibleAction:note.texture}:null;
+  plausibleAction:note.texture,
+  ...(note.storyBeats?{dramaticBeats:note.storyBeats}:{})}:null;
 }
 
 export interface RingsideCopy{
@@ -477,6 +481,14 @@ over-the-top-rope elimination, not conventional pinfall. Do not casually
 assert a disqualification, illegal partner intervention, count-out or rope
 break if this bout's stipulated rules forbid them.
 For special stipulations, the winning condition is real, not merely billing.
+Prioritise each slot's optional stipulationRules.dramaticBeats when present.
+That is a scene-by-scene writing DIRECTION, not evidence that the suggested
+spots occurred. Make special matches feel physically and psychologically
+different from conventional singles; don't list stipulation rules or say
+"psychological warfare" without showing what is happening.
+Keep invented spots plausible, incidental and free of durable consequences.
+Do not reuse the same stock spot or generic adjectives across match types.
+
 RETRIEVAL means a ladder climb and retrieving the suspended prize in Ladder/TLC;
 no pin or tap wins it. TABLE_BREAK means sending an opponent through a table;
 no three-count. TEN_COUNT means the opponent fails a referee's ten-count.
