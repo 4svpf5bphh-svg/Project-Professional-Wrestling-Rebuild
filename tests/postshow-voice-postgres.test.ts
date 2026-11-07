@@ -51,7 +51,27 @@ test("postshow cache stays owner-scoped and a published receipt gets only one Gr
    category:"ACCEPTED",news:"ACCEPTED",wrestler:"ACCEPTED",
    roadAgent:"ACCEPTED"
   });
+  // The private Lab persists only the approved categorical reason, never
+  // discarded model prose; historical accepted records remain intact.
+  const partialCopy={...labCopy,wrestler:null};
+  const savedPartial=await saveShortformVoiceLabRun(db.pool,{
+   worldId:world,playerId:owner,scenarioId:"i-quit",durationMs:776,
+   providerCalls:1,inputTokens:947,outputTokens:181,copy:partialCopy,
+   diagnostic:{category:"PARTIAL",news:"ACCEPTED",
+    wrestler:"FACT_OR_VOICE_REJECTED",roadAgent:"ACCEPTED",
+    wrestlerReason:"NO_VERIFIED_EVENT"}
+  });
+  assert.equal(savedPartial.status,"READY");
+  const allSamples=await readShortformVoiceLabRuns(db.pool,world,owner);
+  assert.equal(allSamples.length,2);
+  assert.deepEqual(allSamples[0]?.copy,partialCopy);
+  assert.deepEqual(allSamples[0]?.diagnostic,{
+   category:"PARTIAL",news:"ACCEPTED",
+   wrestler:"FACT_OR_VOICE_REJECTED",roadAgent:"ACCEPTED",
+   wrestlerReason:"NO_VERIFIED_EVENT"});
+  assert.deepEqual(allSamples[1]?.copy,labCopy);
   assert.deepEqual(await readShortformVoiceLabRuns(db.pool,world,"outsider"),[]);
+
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`
     INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,
