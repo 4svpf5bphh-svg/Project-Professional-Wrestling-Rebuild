@@ -248,8 +248,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    const facts=el("div","ppw-business-company-facts");
    for(const [label,value] of [
     ["BANK",money(view.cash)],["DEBT",money(view.debt)],
-    ["WEEKLY MEDIA",money(view.weeklyMediaIncome)],
-    ["WEEKLY SPONSORS",money(view.weeklySponsorIncome)]
+    ["WEEKLY MEDIA",view.weeklyMediaIncome===null?"—":money(view.weeklyMediaIncome)],
+    ["WEEKLY SPONSORS",view.weeklySponsorIncome===null?"—":money(view.weeklySponsorIncome)]
    ] as const){
     const cell=el("div","ppw-business-company-fact");
     cell.append(el("small","",label),el("strong","",value));
