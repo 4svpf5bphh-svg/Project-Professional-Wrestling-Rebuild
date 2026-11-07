@@ -11,8 +11,8 @@ import {groqResponseUsage} from "../domain/ai-director.js";
 import {getWrestlingBenchmark,assessWrestlingBenchmark,WRESTLING_BENCHMARKS}
  from "../domain/wrestling-ai-benchmark.js";
 import {DEFAULT_RINGSIDE_SETTINGS} from "../domain/ringside-settings.js";
-import {readAiLabDashboard,readAiLabReview,saveAiLabPreview,saveAiLabFeedback}
- from "../db/ai-quality-lab.js";
+import {readAiLabDashboard,readAiLabReview,saveAiLabPreview,saveAiLabFeedback,
+ saveAiLabFailure,type AiLabErrorCode} from "../db/ai-quality-lab.js";
 import {readRingsideMemory} from "../db/ringside-continuity.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {withSqlClient} from "../db/postgres.js";
@@ -292,6 +292,10 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(!fixture&&(typeof body.showId!=="string"||
    body.showId.length>200||!body.showId))
    return json(400,{error:"Choose a completed show"});
+  let tracked:null|{
+   showId:string;showName:string;model:string;started:number;
+   calls:number;input:number;output:number;reported:boolean
+  }=null;
   try{
    const safeSettings=body.settings?validateRingsideSettings(body.settings):null;
    // Every benchmark uses exactly the same presentation settings except the
@@ -319,37 +323,60 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
      showId:body.showId as string},show);}
     catch{console.warn("Ringside history unavailable; previewing card facts");}
    }
-   // Capture the provider's genuine token usage for the *whole* preview,
-   // including a second factual-validation attempt. No extra model call.
-   let providerCalls=0,inputTokens=0,outputTokens=0,fullyReported=true;
+   // Capture actual provider attempts, including validation retries, failed
+   // HTTP requests, and calls that throw before a response is received.
+   tracked={showId:show.showId,showName:show.showName??"Completed show",
+    model:previewProvider==="OPENAI"?OPENAI_PREVIEW_MODEL:effective.model,
+    started:Date.now(),calls:0,input:0,output:0,reported:true};
+   const meter=tracked;
    const instrumentedTransport:typeof fetch=async(url,init)=>{
-    const response=await fetch(url,init);providerCalls++;
+    meter.calls++;
+    let response:Response;
+    try{response=await fetch(url,init);}
+    catch(error){meter.reported=false;throw error;}
     let usage=null;
     if(response.ok)try{usage=groqResponseUsage(await response.clone().json());}
     catch{/* Provider omitted or changed usage details. */}
-    if(usage){inputTokens+=usage.inputTokens;outputTokens+=usage.outputTokens;}
-    else fullyReported=false;
+    if(usage){meter.input+=usage.inputTokens;meter.output+=usage.outputTokens;}
+    else meter.reported=false;
     return response;
    };
-   const began=Date.now();
    const review=await generateGroqReview(show,providerKey,instrumentedTransport,
     effective,memory,pool,previewProvider);
-   const durationMs=Date.now()-began;
-   const recorded=await saveAiLabPreview(pool,{
-    worldId:cfg.worldId,playerId:user.playerId,showId:show.showId,
-    showName:show.showName??"Completed show",provider:previewProvider,
-    model:previewProvider==="OPENAI"?OPENAI_PREVIEW_MODEL:effective.model,
-    durationMs,providerCalls,
-    inputTokens:fullyReported?inputTokens:null,
-    outputTokens:fullyReported?outputTokens:null,review
-   });
+   const durationMs=Date.now()-meter.started;
    const benchmark=fixture?assessWrestlingBenchmark(fixture.scenario.id,review):null;
+   const recorded=await saveAiLabPreview(pool,{
+    worldId:cfg.worldId,playerId:user.playerId,showId:meter.showId,
+    showName:meter.showName,provider:previewProvider,model:meter.model,
+    durationMs,providerCalls:meter.calls,
+    inputTokens:meter.reported?meter.input:null,
+    outputTokens:meter.reported?meter.output:null,review
+   });
+   tracked=null;
    return json(200,{review,preview:true,labRunId:recorded.runId,
     ...(benchmark?{benchmark}:{}),
-    metrics:{durationMs,providerCalls,
-     inputTokens:fullyReported?inputTokens:null,
-     outputTokens:fullyReported?outputTokens:null}});
+    metrics:{durationMs,providerCalls:meter.calls,
+     inputTokens:meter.reported?meter.input:null,
+     outputTokens:meter.reported?meter.output:null}});
   }catch(e){
+   // An invalid model response is meaningful evidence. Save ONLY a fixed,
+   // safe error code and measured usage, never rejected prose or raw errors.
+   if(tracked){
+    const audit=tracked;
+    const code:AiLabErrorCode=e instanceof RingsideGenerationError?
+     e.code==="PROVIDER_LIMIT"||e.code==="PROVIDER_AUTH"||
+     e.code==="PROVIDER_ERROR"||e.code==="FACT_VALIDATION"||
+     e.code==="INVALID_OUTPUT"||e.code==="OUTPUT_INCOMPLETE"?
+      e.code:"UNKNOWN":"UNKNOWN";
+    try{await saveAiLabFailure(pool,{
+     worldId:cfg.worldId,playerId:user.playerId,showId:audit.showId,
+     showName:audit.showName,provider:previewProvider,model:audit.model,
+     durationMs:Math.min(180000,Date.now()-audit.started),
+     providerCalls:audit.calls,
+     inputTokens:audit.reported?audit.input:null,
+     outputTokens:audit.reported?audit.output:null,errorCode:code
+    });}catch{console.warn("AI Lab could not save failed preview telemetry");}
+   }
    console.error("Admin Ringside preview failed",e instanceof Error?e.message:"unknown");
    const safe=e instanceof RingsideGenerationError?e.message:
     "AI editorial failed a factual safety check. No published review was changed.";

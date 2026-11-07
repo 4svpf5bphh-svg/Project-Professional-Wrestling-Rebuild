@@ -25,11 +25,16 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
   show_name:"Ringside Benchmark · Tag · conventional 2v2",
   provider:"GROQ",model:"openai/gpt-oss-20b",
   duration_ms:1750,provider_calls:1,input_tokens:700,output_tokens:420,
-  rating:null,flags:[],notes:"",created_at:"2026-11-07 10:00:00+00"};
+  rating:null,flags:[],notes:"",status:"READY",error_code:null,
+  created_at:"2026-11-07 10:00:00+00"};
+ const failedSample={...sample,run_id:"00000000-0000-4000-8000-000000000043",
+  model:"openai/gpt-oss-120b",status:"FAILED",error_code:"FACT_VALIDATION",
+  duration_ms:3220,provider_calls:2,input_tokens:2800,output_tokens:1150,
+  created_at:"2026-11-07 09:55:00+00"};
  await page.route("**/api/admin?aiLab=summary",route=>{
   historyReads++;
   return route.fulfill({json:{
-   usage:[],runs:generated?[sample]:[],scores:[],
+   usage:[],runs:generated?[sample,failedSample]:[failedSample],scores:[],
    providers:{groq:true,openai:false},
    scenarios:[
     {id:"singles-technical",name:"Singles · technical classic",
@@ -71,6 +76,10 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
  await page.getByRole("button",{name:"AI Testing Lab"}).click();
  await expect(page.getByRole("heading",{name:"Wrestling IQ Benchmarks"})).toBeVisible();
  expect(generated).toBe(0); // Opening the AI Lab must never spend AI tokens.
+ await expect(page.getByText(/FAILED: FACT_VALIDATION/)).toBeVisible();
+ await expect(page.locator(".ppw-lab-history-row").filter({
+  hasText:"FAILED: FACT_VALIDATION"
+ }).getByRole("button",{name:/Read & rate|Compare/})).toHaveCount(0);
  await expect(page.getByLabel("Benchmark provider").locator("option")).toHaveCount(1);
  await page.getByLabel("Wrestling scenario").selectOption("tag-standard");
  await expect(page.getByText(/Both partners legal simultaneously/)).toBeVisible();
@@ -78,7 +87,7 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
  await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
  await expect(page.getByText(/Saved Tag · conventional 2v2/)).toBeVisible();
  await expect(page.getByText(/1 provider call\(s\)/)).toBeVisible();
- await expect(page.getByText(/Ringside Benchmark · Tag · conventional 2v2/)).toBeVisible();
+ await expect(page.getByText(/Ringside Benchmark · Tag · conventional 2v2/)).toHaveCount(2);
  expect(generated).toBe(1);
  expect(historyReads).toBe(2);
 });
