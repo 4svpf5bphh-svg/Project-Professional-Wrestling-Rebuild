@@ -20,7 +20,10 @@ type LabRun={run_id:string;show_id:string;show_name:string;
  rating:number|null;flags:string[];notes:string;created_at:string;
  status?:"READY"|"FAILED";error_code?:string|null};
 type LabDay={day:string;provider:"GROQ"|"OPENAI";calls:number;reserved:number;
- input:string;output:string;failed:number};
+ input:string;output:string;failed:number;
+ provider_rpd_limit?:number|null;provider_rpd_remaining?:number|null;
+ provider_tpm_limit?:number|null;provider_tpm_remaining?:number|null;
+ provider_last_model?:string|null;provider_limit_observed_at?:string|null};
 type BenchmarkScenario={id:string;name:string;focus:string;expectation:string;watchFor:string};
 type LabData={usage:LabDay[];runs:LabRun[];scores:{
  provider:string;model:string;total:number;reviewed:number;average_score:number|null;
@@ -130,6 +133,19 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     "Today (UTC): "+(live?.calls??0)+"/40 Groq requests · "+
     (live?.reserved??0).toLocaleString("en-GB")+
     "/160,000 tokens used or reserved. Provider token totals can be unavailable for failed requests.");
+   const lastGroqLimit=groq.find(day=>
+    day.provider_rpd_limit!=null&&day.provider_tpm_limit!=null);
+   const providerSnapshot=el("p","ppw-admin-small",
+    lastGroqLimit?
+    "Groq's last reported limits ("+(lastGroqLimit.provider_last_model??"model")+
+     ", "+(lastGroqLimit.provider_limit_observed_at??lastGroqLimit.day).slice(0,16)+
+     " UTC): "+lastGroqLimit.provider_rpd_remaining+
+     "/"+lastGroqLimit.provider_rpd_limit+" requests left that day · "+
+     lastGroqLimit.provider_tpm_remaining+
+     "/"+lastGroqLimit.provider_tpm_limit+
+     " tokens left that minute. Historical snapshot, not a live account balance.":
+    "Groq provider allowance: no verified response-header snapshot yet. "+
+    "The PPW safety budget above is not Groq's account limit.");
    const usage=el("div","ppw-lab-periods");
    for(const day of [...new Set(data.usage.map(row=>row.day))].sort().reverse()){
     const records=data.usage.filter(r=>r.day===day);
@@ -415,7 +431,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    labPanel.replaceChildren(el("h2","","AI Quality Lab"),
     el("p","ppw-admin-sub",
      "Live provider usage, model quality and your playtest notes. No public Results are changed."),
-    benchmark,overview,todaySummary,usage,scoreTitle,scores,
+    benchmark,overview,todaySummary,providerSnapshot,usage,scoreTitle,scores,
     el("h3","","Scenario-by-scenario model scores"),scenarioScores,reportButton,
     reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
   }catch(e){labData=null;labPanel.replaceChildren(

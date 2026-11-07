@@ -101,17 +101,31 @@ export async function readAiLabDashboard(pool:TransactionPool,worldId:string,pla
  const [usage,runs,scores]=await Promise.all([
   withSqlClient(pool,db=>db.query<{
    day:string;provider:LabProvider;calls:number;reserved:number;
-   input:string;output:string;failed:number}>(`
+   input:string;output:string;failed:number;
+   provider_rpd_limit:number|null;provider_rpd_remaining:number|null;
+   provider_tpm_limit:number|null;provider_tpm_remaining:number|null;
+   provider_last_model:string|null;provider_limit_observed_at:string|null}>(`
     SELECT usage_day::text AS day,'GROQ' AS provider,
      call_count AS calls,reserved_tokens AS reserved,
      reported_input_tokens::text AS input,reported_output_tokens::text AS output,
-     failed_calls AS failed FROM ppw_groq_daily_usage
+     failed_calls AS failed,
+     provider_rpd_limit,provider_rpd_remaining,provider_tpm_limit,
+     provider_tpm_remaining,provider_last_model,
+     provider_limit_observed_at::text
+    FROM ppw_groq_daily_usage
     WHERE usage_day>=timezone('UTC',now())::date-6
     UNION ALL
     SELECT usage_day::text AS day,'OPENAI' AS provider,
      call_count AS calls,reserved_tokens AS reserved,
      reported_input_tokens::text AS input,reported_output_tokens::text AS output,
-     failed_calls AS failed FROM ppw_openai_preview_daily_usage
+     failed_calls AS failed,
+     NULL::integer AS provider_rpd_limit,
+     NULL::integer AS provider_rpd_remaining,
+     NULL::integer AS provider_tpm_limit,
+     NULL::integer AS provider_tpm_remaining,
+     NULL::text AS provider_last_model,
+     NULL::text AS provider_limit_observed_at
+    FROM ppw_openai_preview_daily_usage
     WHERE usage_day>=timezone('UTC',now())::date-6
     ORDER BY day DESC,provider LIMIT 14`,[])),
   withSqlClient(pool,db=>db.query<{

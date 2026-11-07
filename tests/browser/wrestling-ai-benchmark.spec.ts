@@ -34,7 +34,13 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
  await page.route("**/api/admin?aiLab=summary",route=>{
   historyReads++;
   return route.fulfill({json:{
-   usage:[],runs:generated?[sample,failedSample]:[failedSample],scores:[],
+   usage:[{day:"2026-11-07",provider:"GROQ",calls:3,reserved:6000,
+    input:"3000",output:"1400",failed:1,
+    provider_rpd_limit:1000,provider_rpd_remaining:970,
+    provider_tpm_limit:8000,provider_tpm_remaining:4500,
+    provider_last_model:"openai/gpt-oss-20b",
+    provider_limit_observed_at:"2026-11-07 09:28:00+00"}],
+   runs:generated?[sample,failedSample]:[failedSample],scores:[],
    providers:{groq:true,openai:false},
    scenarios:[
     {id:"singles-technical",name:"Singles · technical classic",
@@ -75,6 +81,8 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
   "button",{name:/Admin/}).click();
  await page.getByRole("button",{name:"AI Testing Lab"}).click();
  await expect(page.getByRole("heading",{name:"Wrestling IQ Benchmarks"})).toBeVisible();
+ await expect(page.getByText(/970\/1000 requests left that day/)).toBeVisible();
+ await expect(page.getByText(/4500\/8000 tokens left that minute/)).toBeVisible();
  expect(generated).toBe(0); // Opening the AI Lab must never spend AI tokens.
  await expect(page.getByText(/FAILED: FACT_VALIDATION/)).toBeVisible();
  await expect(page.locator(".ppw-lab-history-row").filter({
