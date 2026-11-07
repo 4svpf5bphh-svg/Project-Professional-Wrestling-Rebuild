@@ -3,6 +3,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import type {RoadAgentReport} from "../domain/road-agent-report.js";
+import {readPostShowVoiceCopy,type PostShowVoiceCopy} from "../domain/postshow-voice-batch.js";
 import {readMatchStipulation,stipulationLabel} from "../domain/match-stipulations.js";
 import type {GorillaShowLog} from "../domain/gorilla-position.js";
 import {withSqlClient} from "./postgres.js";
@@ -54,6 +55,8 @@ export interface CompletedShowView {
  /** Owned named PPV branding takes precedence over account-wide Results Skin. */
  eventPosterStyle?:string|null;
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
+ /** One saved event-time 20B bundle; never triggers generation when read. */
+ shortform?:PostShowVoiceCopy|null;
  audience?:{format:"TV"|"PPV";householdRating:number|null;
   estimatedViewers:number|null;ppvBuys:number|null;
   ratingsWarChange?:number|null;ratingsWarOpponents?:number|null}|null;
@@ -83,7 +86,8 @@ export async function readCompletedShowView(
     attendance:number|null;gate_revenue:string|null;venue_cost:string|null;
     production_cost:string|null;travel_cost:string|null;
     appearance_fees:string|null;total_cost:string|null;
-    net_result:string|null;incremental_cash:string|null}>(`
+    net_result:string|null;incremental_cash:string|null;
+    shortform_json:unknown|null}>(`
    SELECT c.receipt_json,d.show_name,d.booking_class,skin.style AS results_skin,
     series_art.style AS event_poster_style,
     bpack.style AS broadcast_package, identity.name AS promotion_name,
@@ -95,7 +99,12 @@ export async function readCompletedShowView(
     economics.appearance_fees::text,economics.total_cost::text,
     economics.net_result::text,economics.incremental_cash::text,
     report.analysis_json AS staff_report,
-    gorilla.log_json AS gorilla_log FROM ppw_completed_shows c
+    gorilla.log_json AS gorilla_log,
+    voices.copy_json AS shortform_json FROM ppw_completed_shows c
+   LEFT JOIN ppw_postshow_voice_batches voices ON
+    voices.world_id=c.world_id AND voices.promotion_id=c.promotion_id
+    AND voices.show_id=c.show_id AND voices.player_id=$2
+    AND voices.receipt_digest=c.receipt_digest AND voices.state='READY'
    LEFT JOIN ppw_kp_results_skins skin ON skin.player_id=$2
    LEFT JOIN ppw_kp_broadcast_packages bpack ON bpack.player_id=$2
    LEFT JOIN ppw_staff_show_reports report
@@ -379,7 +388,7 @@ export async function readCompletedShowView(
       .map(x=>x.personId))});
   }
   entries.sort((a,b)=>a.position-b.position);
-  return {showId:input.showId,year:receipt.year,week:receipt.week,
+  const show:CompletedShowView={showId:input.showId,year:receipt.year,week:receipt.week,
    promotionName:rows[0]!.promotion_name,broadcastPackage:rows[0]!.broadcast_package,
    eventPosterStyle:rows[0]!.booking_class==="PREMIUM"?rows[0]!.event_poster_style:null,
    showName:rows[0]!.show_name??(rows[0]!.booking_class==="PREMIUM"?
@@ -411,5 +420,7 @@ export async function readCompletedShowView(
    angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report,
    gorillaLog:rows[0]!.gorilla_log,
    resultsSkin:rows[0]!.results_skin==="TERRITORY_TV"||rows[0]!.results_skin==="FIGHT_NIGHT"||rows[0]!.results_skin==="UNDERGROUND_ZINE"||rows[0]!.results_skin==="RETRO_BOOKER_02"?rows[0]!.results_skin:null};
+  show.shortform=readPostShowVoiceCopy(show,rows[0]!.shortform_json);
+  return show;
  });
 }
