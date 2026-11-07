@@ -654,21 +654,23 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  expect((await manifest.json()).theme_color).toBe("#101225");
  const appIcon=await request.get("/icon.svg");
  expect(appIcon.ok()).toBeTruthy();
- expect(await appIcon.text()).toContain("#ff3679");
+ expect(await appIcon.text()).toContain("data:image/webp;base64,");
  const worker=await request.get("/sw.js");
  expect(worker.ok()).toBeTruthy();
  expect(await worker.text()).toContain('url.pathname.startsWith("/api/")');
  // A refreshed shell must evict the old cache-first portrait entries; the
  // original 48 Legends retain their URL paths across this release.
- expect(await worker.text()).toContain('ppw-static-shell-v6');
- expect(await worker.text()).toContain('"/branding/ppw-hero.svg"');
- expect(await worker.text()).toContain('"/branding/ppw-header.svg"');
- const hero=await request.get("/branding/ppw-hero.svg");
- const header=await request.get("/branding/ppw-header.svg");
- const badge=await request.get("/branding/ppw-badge.svg");
- expect(hero.ok()&&header.ok()&&badge.ok()).toBeTruthy();
- for(const result of [hero,header,badge])expect(await result.text()).toContain('class="word"');
- expect(await hero.text()).toContain("PROJECT PROFESSIONAL WRESTLING");
+ expect(await worker.text()).toContain('ppw-static-shell-v8');
+ for(const path of ["ppw-showcase-hero.webp","ppw-showcase-header.webp",
+  "ppw-showcase-badge.webp","news-official.webp","news-dirt.webp",
+  "award-match.webp","award-angle.webp"]){
+  expect(await worker.text()).toContain('"/branding/'+path+'"');
+  const image=await request.get("/branding/"+path);
+  expect(image.ok()).toBeTruthy();
+  const bytes=await image.body();
+  expect(bytes.subarray(0,4).toString()).toBe("RIFF");
+  expect(bytes.subarray(8,12).toString()).toBe("WEBP");
+ }
  expect(await worker.text()).toContain('url.pathname.startsWith("/assets/legends/")');
  expect(await worker.text()).toContain('const updated=await fetch(req)');
  expect(await worker.text()).toContain('key!==CACHE');
@@ -692,7 +694,7 @@ test("small iPhones have only the five department drawers at the bottom without 
  const menu=page.getByRole("button",{name:"Open World menu"});
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
  await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("alt","PPW");
- await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("src","/branding/ppw-header.svg");
+ await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("src","/branding/ppw-showcase-header.webp");
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("AEW");
  expect(await page.locator(".ppw-account-banner").evaluate(el=>
   getComputedStyle(el).paddingTop)).toMatch(/px$/);

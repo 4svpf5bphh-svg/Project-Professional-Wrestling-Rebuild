@@ -77,7 +77,26 @@ assert.equal(taz.portraits[0].sha256,
 assert.ok(existsSync("dist/web/assets/legends/undertaker-immortal-card.webp"),
  "The original Undertaker pilot must remain intact");
 const sw=readFileSync("dist/web/sw.js","utf8");
-assert.match(sw,/ppw-static-shell-v6/);
+assert.match(sw,/ppw-static-shell-v8/);
+const approvedBrandAssets=new Map([
+ ["/branding/ppw-showcase-hero.webp","2360f899774c45e59e3e9f956e0e6e5e401cef98371c96d2a7a23cbe2b1065bc"],
+ ["/branding/ppw-showcase-header.webp","dc6b76bf628a4a7dd32b2734b3df18dda62a564a8c069c7f90b6c58f3222086d"],
+ ["/branding/ppw-showcase-badge.webp","a24205e297e87e0d795bcd6c3629cd57d73e9a478191a7bb012bc68fb934b467"],
+ ["/branding/news-official.webp","7f29dc4a176ef67182aa3ef7801917e28be9f94cf21a2db92e206ffcb180b92d"],
+ ["/branding/news-dirt.webp","990e1f34a155ee9da94d4962da1b386f2844c06e1fa14bcdbe39a94a5c3f4691"],
+ ["/branding/award-match.webp","470711a34170d670d9ccaf32817d94f860b42cd33cfc3cb97250fefe5917f8cf"],
+ ["/branding/award-angle.webp","169137392d18c2da40962cf3775d515e4dd4b6ff0c57785a611fc0487aff4e6c"]
+]);
+for(const [asset,expected] of approvedBrandAssets){
+ const bundled="dist/web"+asset;
+ assert.ok(existsSync(bundled),"Missing owner-selected art: "+asset);
+ const bytes=readFileSync(bundled);
+ assert.equal(createHash("sha256").update(bytes).digest("hex"),expected,
+  "The deployable PPW artwork differs from approved crop: "+asset);
+ assert.equal(bytes.toString("ascii",0,4),"RIFF");
+ assert.equal(bytes.toString("ascii",8,12),"WEBP");
+ assert.ok(sw.includes('"' + asset + '"'),"New PWA cache misses "+asset);
+}
 assert.match(sw,/assets\/legends\//);
 console.log("READY: deployable build contains all 95 approved original Legends assets, "+
  "including the correct Taz image; Undertaker pilot retained and iPhone cache rotated.");

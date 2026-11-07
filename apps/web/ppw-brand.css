@@ -1,12 +1,12 @@
-/* PPW: one transparent, cacheable vector wordmark for every game surface. */
+/* PPW: one owner-approved cinematic logo system with three exact crops. */
 #account .ppw-shell-logo{
- display:block;flex:none;width:64px;height:36px;object-fit:contain;
+ display:block;flex:none;width:82px;height:38px;object-fit:contain;
  padding:0;border:0;border-radius:0;background:transparent;transform:none;
  box-shadow:none;filter:drop-shadow(0 3px 6px #05081d99)
 }
 #game .ppw-access-mark{
  display:block;width:min(80vw,350px);height:auto;min-height:96px;
- max-height:126px;object-fit:contain;max-width:100%;
+ max-height:164px;object-fit:contain;max-width:100%;
  padding:0;border:0;background:transparent;box-shadow:none;border-radius:0;
  margin:0 auto 18px;filter:drop-shadow(0 8px 16px #05081d99)
 }
@@ -18,5 +18,5 @@
 .ppw-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;
  padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;
  white-space:nowrap!important;border:0!important}
-@media(max-width:345px){#account .ppw-shell-logo{width:52px;height:30px}}
+@media(max-width:345px){#account .ppw-shell-logo{width:65px;height:30px}}
 @media(prefers-reduced-motion:reduce){.ppw-opening-logo{animation:none!important}}

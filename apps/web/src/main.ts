@@ -65,10 +65,11 @@ function confirmLeavingBooking(next:HostSection){
 const el=(tag:string,cls="",value="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=value;return x;
 };
-/** The same vector letters power sign-in, the live shell and the opening. */
+/** Exact owner-selected raster logos power sign-in, the live shell and opening. */
 function ppwLogo(cls:string,variant:"hero"|"header"="hero"){
  const img=document.createElement("img");img.className=cls;
- img.src=variant==="header"?"/branding/ppw-header.svg":"/branding/ppw-hero.svg";
+ img.src=variant==="header"?"/branding/ppw-showcase-header.webp":
+  "/branding/ppw-showcase-hero.webp";
  img.alt="PPW";
  img.decoding="async";return img;
 }

@@ -1,9 +1,10 @@
 /* Static install shell only: never cache authenticated requests or World data. */
 // Asset names are stable across Legends artwork upgrades; rotate the shell
 // cache with each curated art replacement so old portraits are never served.
-const CACHE="ppw-static-shell-v7";
+const CACHE="ppw-static-shell-v8";
 const CORE=["/offline.html","/icon.svg","/manifest.webmanifest",
- "/branding/ppw-hero.svg","/branding/ppw-header.svg","/branding/ppw-badge.svg",
+ "/branding/ppw-showcase-hero.webp","/branding/ppw-showcase-header.webp",
+ "/branding/ppw-showcase-badge.webp",
  "/branding/news-official.webp","/branding/news-dirt.webp",
  "/branding/award-match.webp","/branding/award-angle.webp"];
 self.addEventListener("install",event=>{
