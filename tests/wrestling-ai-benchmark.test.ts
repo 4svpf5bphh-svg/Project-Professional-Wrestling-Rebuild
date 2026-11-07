@@ -178,3 +178,58 @@ test("20B benchmark never loops more than twice if compatibility mode is also re
  (e:unknown)=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_ERROR");
  assert.deepEqual(modes,["json_schema","json_object"]);
 });
+
+test("stipulation drama briefs put a concrete escalation near the verified match data",()=>{
+ for(const [id,motif,finish] of [
+  ["i-quit",/refus|microphone|physical escalation/i,/ONLY the losing wrestler finally says I quit/],
+  ["steel-cage",/cramped movement|impact against the steel/i,/certified pin inside the cage/],
+  ["iron-man",/clock-pressure|time runs down/i,/without invented scores/]
+ ] as const){
+  const {show}=getWrestlingBenchmark(id)!;
+  const rule=ringsideBrief(show).slots[0]!.match!.stipulationRules!;
+  assert.ok(rule.dramaticBeats,"A high-stakes stipulation should have a distinct scene arc");
+  assert.match(rule.dramaticBeats,motif);
+  assert.match(rule.dramaticBeats,finish);
+  assert.ok(rule.dramaticBeats.length<360,"Keep the free Groq prompt economical");
+ }
+ const generic=getWrestlingBenchmark("singles-technical")!.show;
+ assert.equal(ringsideBrief(generic).slots[0]!.match!.stipulationRules,undefined);
+});
+test("quality diagnostics distinguish bare surrender from a physical I Quit story without altering result validation",()=>{
+ const {show}=getWrestlingBenchmark("i-quit")!;
+ const slotId=show.entries[0]!.slotId;
+ const copy=(recap:string)=>({
+  showHeadline:"The night belonged to Mercer",
+  opening:"The crowd knew the battle would demand courage.",
+  closing:"The final words settled the contest.",
+  slots:[{slotId,headline:"A hard-fought surrender",recap}]
+ });
+ const generic=copy("After 25 minutes Ronan Wolfe said I quit, and Jett Mercer won the match.");
+ const dramatic=copy("Mercer twisted Wolfe's arm until the pressure forced another agonising struggle. Wolfe refused to quit, gritting his teeth while the referee pushed the microphone close. After another painful stretch, Ronan Wolfe finally said I quit aloud, handing Jett Mercer the victory.");
+ const plain=assessWrestlingBenchmark("i-quit",generic);
+ const vivid=assessWrestlingBenchmark("i-quit",dramatic);
+ assert.equal(plain.certifiedFactsValidated,true);
+ assert.equal(vivid.certifiedFactsValidated,true);
+ assert.equal(plain.humanReviewRequired,true);
+ assert.equal(vivid.humanReviewRequired,true);
+ assert.ok(vivid.diagnosticCues.length>plain.diagnosticCues.length);
+ assert.ok(vivid.diagnosticCues.includes("Resistance before surrender is described"));
+ assert.ok(vivid.diagnosticCues.includes("Referee's surrender question is dramatized"));
+ assert.ok(vivid.diagnosticCues.includes("Escalating physical pressure is described"));
+});
+test("cage context diagnostics distinguish backdrop mentions from impact against steel",()=>{
+ const {show}=getWrestlingBenchmark("steel-cage")!;
+ const slotId=show.entries[0]!.slotId;
+ const sample=(recap:string)=>assessWrestlingBenchmark("steel-cage",{
+  showHeadline:"Mason Holt holds firm",
+  opening:"The enclosed ring heightened anticipation.",
+  closing:"Holt took the certified victory.",
+  slots:[{slotId,headline:"Holt finishes the contest",recap}]
+ });
+ const bare=sample("Inside the cage, Mason Holt defeated Isaiah King with a clean pin.");
+ const physical=sample("With the crowd roaring, Holt slammed King against the cage mesh before working the closing stretch. Mason Holt then secured the verified pinfall inside the cage.");
+ assert.equal(bare.certifiedFactsValidated,true);
+ assert.equal(physical.certifiedFactsValidated,true);
+ assert.ok(physical.diagnosticCues.includes("Steel enclosure affects the action"));
+ assert.ok(!bare.diagnosticCues.includes("Steel enclosure affects the action"));
+});
