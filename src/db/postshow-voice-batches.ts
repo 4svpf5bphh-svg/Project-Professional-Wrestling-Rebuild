@@ -131,9 +131,13 @@ export async function publishPostShowVoiceBatches(pool:TransactionPool,scope:Sco
     const show=await readCompletedShowView(pool,{
      worldId:scope.worldId,promotionId:row.promotion_id,
      showId:row.show_id,playerId:row.player_id});
-    called=true;
-    const valid=await generatePostShowVoiceCopy(show,key,transport,pool);
-    await settle(pool,scope,row,valid,1);
+    // A budget-denied 429 may never reach the network. Report actual
+    // outbound provider attempts, not simply "generator invoked".
+    const measured:typeof fetch=async(url,init)=>{
+     called=true;return transport(url,init);
+    };
+    const valid=await generatePostShowVoiceCopy(show,key,measured,pool);
+    await settle(pool,scope,row,valid,called?1:0);
     if(valid)generated++;else failed++;
    }catch{
     if(owned){
