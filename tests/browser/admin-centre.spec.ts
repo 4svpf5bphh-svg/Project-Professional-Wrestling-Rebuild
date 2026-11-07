@@ -194,7 +194,7 @@ test("isolated AI benchmark operator sees the lab, never World or Playtests cont
  await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
  await expect.poll(()=>previewCalls).toBe(2);
  await expect(page.getByText(/Saved Steel Cage.*20B/)).toBeVisible();
- await expect(page.getByText(/20B JSON compatibility used/)).toBeVisible();
+ await expect(page.getByText(/20B JSON mode/)).toBeVisible();
  await expect(page.getByLabel("Wrestling scenario")).toHaveValue("steel-cage");
  await expect(page.getByLabel("Groq model")).toHaveValue("openai/gpt-oss-20b");
  expect(labReads).toBeGreaterThanOrEqual(3);
