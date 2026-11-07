@@ -251,10 +251,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       settings:{model:benchmarkModel.value,voice:"MARTY",detail:"BALANCED",
        reasoning:"low",creativity:0.92,additionalGuidance:""}
      }) as {labRunId:string;metrics:{durationMs:number;providerCalls:number;
-      inputTokens:number|null;outputTokens:number|null};
+      inputTokens:number|null;outputTokens:number|null;compatibilityJson?:boolean};
       benchmark?:{certifiedFactsValidated:boolean;diagnosticCues:string[];
        humanReviewRequired:boolean}};
      lastBenchmarkNotice="Saved "+chosen.name+" · "+
+      (result.metrics.compatibilityJson?"20B JSON compatibility used · ":"")+
       result.metrics.durationMs+"ms · "+result.metrics.providerCalls+
       " provider call(s) · "+
       (result.metrics.inputTokens===null?"tokens not reported":
