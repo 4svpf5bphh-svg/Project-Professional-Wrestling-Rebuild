@@ -203,7 +203,9 @@ function wrestlerEventSpecific(post:string,source:PostShowVoiceBrief):boolean{
  */
 function wrestlerMisattributesSurrender(post:string,source:PostShowVoiceBrief):boolean{
  let remaining=post;
- for(const name of source.wrestler?.opponentNames??[]){
+ const certifiedSurrender=source.mainEvent?.finish.includes("I Quit")&&
+  source.wrestler?.slotId===source.mainEvent?.slotId;
+ for(const name of certifiedSurrender?source.wrestler?.opponentNames??[]:[]){
   const escaped=name.split("").map(ch=>
    "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
   const attributed=new RegExp(
