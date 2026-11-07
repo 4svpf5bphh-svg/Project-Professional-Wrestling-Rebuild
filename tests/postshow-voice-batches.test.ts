@@ -220,6 +220,16 @@ test("20B failures expose only categorical diagnostics and never retain rejected
    "Diagnostics contain no Groq prose, error body, names or content");
   assert.equal(!!result,sample.expected==="ACCEPTED");
  }
+ let partial:unknown=null;
+ const newsOnly=await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>
+  new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   news:valid.news,wrestler:null,roadAgent:null})}}]}),{status:200}),
+  undefined,diagnosis=>{partial=diagnosis;});
+ assert.ok(newsOnly?.news);
+ assert.equal(newsOnly?.wrestler,null);
+ assert.equal(newsOnly?.roadAgent,null);
+ assert.deepEqual(partial,{category:"PARTIAL",news:"ACCEPTED",
+  wrestler:"MISSING",roadAgent:"MISSING"});
  let diagnosis:unknown;
  await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>
   new Response("provider unavailable",{status:400}),undefined,
