@@ -60,3 +60,33 @@ test("Benchmark gate rejects decisive impossible finishes and untagged legal com
  assert.doesNotThrow(good);
  assert.equal(good().diagnosticCues[0],"Some tag-team mechanics mentioned");
 });
+
+test("Model comparisons use identical certified fixture facts and one provider call each",async()=>{
+ const {generateGroqReview}=await import("../src/db/ringside-commentary.js");
+ const {DEFAULT_RINGSIDE_SETTINGS}=await import("../src/domain/ringside-settings.js");
+ const samples=["tag-standard","i-quit","steel-cage","singles-squash"];
+ for(const id of samples){
+  const {show}=getWrestlingBenchmark(id)!;
+  const payloads:string[]=[];
+  for(const model of ["openai/gpt-oss-120b","openai/gpt-oss-20b"] as const){
+   let calls=0;
+   const review=await generateGroqReview(show,"fixture",async(_url,init)=>{
+    calls++;
+    const body=JSON.parse(String(init?.body));
+    assert.equal(body.model,model);
+    assert.equal(body.response_format.json_schema.strict,true);
+    payloads.push(body.messages[1].content);
+    return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+     showHeadline:"An eventful night",opening:"The crowd watched closely.",
+     closing:"The certified result settled the contest.",
+     slots:{card_0:{headline:"An orderly finish",
+      recap:"The match unfolded with clear momentum before the documented winning side received the decision."}}
+    })}}]}),{status:200});
+   },{...DEFAULT_RINGSIDE_SETTINGS,model});
+   assert.equal(calls,1);
+   assert.equal(assessWrestlingBenchmark(id,review).certifiedFactsValidated,true);
+  }
+  assert.deepEqual(payloads[0],payloads[1],
+   "The model identity must never change match evidence or the factual rubric");
+ }
+});
