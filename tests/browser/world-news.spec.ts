@@ -68,6 +68,14 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByRole("button",{name:"Promotions"})).toHaveCount(0);
  // Opening the News root fetches the weekly public desk once.
  await page.getByRole("button",{name:"Official News"}).click();
+ const officialMark=page.locator(".ppw-news-official .ppw-news-masthead-art");
+ await expect(officialMark).toBeVisible();
+ await expect(officialMark).toHaveAttribute("src","/branding/news-official.webp");
+ expect(await officialMark.evaluate((img)=> (img as HTMLImageElement).naturalWidth)).toBe(420);
+ await expect(page.locator('.ppw-news-poster[data-kind="match"]')).toHaveCSS(
+  "background-image",/award-match\.webp/);
+ await expect(page.locator('.ppw-news-poster[data-kind="angle"]')).toHaveCSS(
+  "background-image",/award-angle\.webp/);
  await expect(page.getByText("MATCH OF THE WEEK")).toBeVisible();
  await expect(page.getByText("ANGLE OF THE WEEK")).toBeVisible();
  await expect(page.getByText("4.75 ★")).toBeVisible();
@@ -115,6 +123,11 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  expect(rect!.x).toBeGreaterThanOrEqual(0);
  expect(rect!.x+rect!.width).toBeLessThanOrEqual(391);
  await page.getByRole("button",{name:"Dirt Sheets"}).click();
+ const dirtMark=page.locator(".ppw-news-dirt .ppw-news-masthead-art");
+ await expect(dirtMark).toBeVisible();
+ await expect(dirtMark).toHaveAttribute("src","/branding/news-dirt.webp");
+ expect(await dirtMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(420);
+
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"Creative shake-up?"})).toBeVisible();
  await expect(page.getByText("RUMOUR / NOT CONFIRMED")).toBeVisible();
  await expect(page.getByText("UNVERIFIED / DISPUTED REPORT 👀")).toBeVisible();

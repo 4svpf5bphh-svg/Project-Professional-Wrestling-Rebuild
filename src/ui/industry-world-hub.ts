@@ -669,12 +669,22 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    const section=el("section","ppw-industry-list ppw-news");
    const official=active==="OFFICIAL";
    section.classList.add(official?"ppw-news-official":"ppw-news-dirt");
-   section.append(el("span","ppw-news-eyebrow",official?
-    "PPW WIRE / CERTIFIED WORLD REPORTING":"THE GRAPEVINE / BEHIND THE CURTAIN"),
-    el("h2","",official?"Official News":"Dirt Sheets"),
+   // These are the actual owner-approved game-ready title images, cropped
+   // only to remove the old REBUILD wording. All world data stays DOM text.
+   const masthead=el("div","ppw-news-masthead");
+   const art=document.createElement("img");
+   art.className="ppw-news-masthead-art";
+   art.src=official?"/branding/news-official.webp":"/branding/news-dirt.webp";
+   art.alt=official?"Official News · The PPW Wire":"Dirt Sheets · The Rumour Mill";
+   art.width=420;art.height=official?95:140;
+   art.decoding="async";art.loading="eager";
+   art.onerror=()=>{masthead.classList.add("ppw-news-masthead-failed");};
+   masthead.append(art);
+   section.append(masthead,
+    el("h2","ppw-news-masthead-fallback",official?"Official News":"Dirt Sheets"),
     el("p","ppw-industry-muted",official?
-     "What actually happened in the wrestling world. Awards and reports come from certified completed shows.":
-     "Backstage gossip, theories, insider sources and the stories everyone is talking about."));
+     "Verified highlights, award winners and reports from completed shows.":
+     "Backstage gossip, insider sources and the stories everyone is talking about."));
    if(newsBusy)section.append(el("p","ppw-industry-muted","Opening this week's news desk…"));
    if(newsError)section.append(el("p","ppw-alert ppw-error",newsError),
     btn("Retry",()=>void loadNews()));
