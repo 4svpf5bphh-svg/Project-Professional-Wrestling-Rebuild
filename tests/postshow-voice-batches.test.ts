@@ -90,7 +90,7 @@ test("one 20B request writes all eligible shortform voices without repeated page
   assert.equal(payload.model,"openai/gpt-oss-20b");
   assert.equal(payload.response_format.type,"json_object");
   assert.equal(payload.reasoning_format,"hidden");
-  assert.equal(payload.max_completion_tokens,330);
+  assert.equal(payload.max_completion_tokens,650);
   assert.ok(String(payload.messages[1].content).includes(show.showId));
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(valid)}}]}),{status:200});
  });
@@ -152,4 +152,42 @@ test("verified pinfall can be reported naturally, but the defeated wrestler cann
  assert.ok(validatePostShowVoiceCopy(brief,{news:{headline,summary:lawful}})?.news);
  assert.equal(validatePostShowVoiceCopy(brief,{news:{headline,summary:wrong}}),null);
  assert.equal(validatePostShowVoiceCopy(brief,{news:{headline,summary:invented}}),null);
+});
+
+test("fictional 20B voice lab uses matched identities and all three grounded sources",async()=>{
+ const {getPostShowVoiceBenchmark,POSTSHOW_VOICE_SCENARIOS}=
+  await import("../src/domain/postshow-voice-lab.js");
+ for(const scenario of POSTSHOW_VOICE_SCENARIOS){
+  const fixture=getPostShowVoiceBenchmark(scenario.id);
+  assert.ok(fixture);
+  assert.equal(fixture.scenario.id,scenario.id);
+  assert.ok(fixture.brief.mainEvent?.winners.length);
+  assert.ok(fixture.brief.wrestler?.personId);
+  assert.ok(fixture.brief.wrestler?.character);
+  assert.ok(fixture.brief.roadAgent?.recordedObservation);
+  assert.match(fixture.brief.roadAgent!.recordedObservation,/stars|exceeded|execution/i);
+  assert.equal(fixture.show.showId,"benchmark:"+scenario.id);
+ }
+ assert.equal(getPostShowVoiceBenchmark("another-show"),null);
+});
+test("shortform lab validates all three parts from a single 20B fixture response",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const fixture=getPostShowVoiceBenchmark("i-quit")!;
+ let count=0;
+ const generated=await generatePostShowVoiceCopy(fixture.show,"dummy",
+  async(_url,init)=>{
+   count++;
+   const body=JSON.parse(String(init?.body));
+   assert.equal(body.max_completion_tokens,650);
+   assert.equal(body.response_format.type,"json_object");
+   assert.equal(body.model,"openai/gpt-oss-20b");
+   assert.match(body.messages[1].content,/Ronan Wolfe/);
+   return new Response(JSON.stringify({choices:[{message:{
+    content:JSON.stringify(valid)}}]}),{status:200});
+  });
+ assert.equal(count,1);
+ assert.ok(generated?.news);
+ assert.ok(generated?.wrestler);
+ assert.ok(generated?.roadAgent);
+ assert.equal(readPostShowVoiceCopy(fixture.show,generated),generated);
 });
