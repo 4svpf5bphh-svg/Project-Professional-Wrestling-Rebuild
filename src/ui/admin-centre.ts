@@ -152,6 +152,32 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     scores.append(line);
    }else scores.append(el("p","ppw-admin-small",
     "Run a preview and rate it to build your model comparisons."));
+   // Uses the already fetched, bounded metadata. No extra Neon query.
+   const scenarioScores=el("div","ppw-lab-scorecard");
+   const scenarioGroups=new Map<string,LabRun[]>();
+   for(const run of data.runs){
+    if(!run.show_id.startsWith("benchmark:"))continue;
+    const grouped=scenarioGroups.get(run.show_id)??[];
+    grouped.push(run);scenarioGroups.set(run.show_id,grouped);
+   }
+   for(const [id,runs] of scenarioGroups){
+    const box=el("div","ppw-lab-period");
+    box.append(el("strong","",(data.scenarios??[]).find(x=>"benchmark:"+x.id===id)?.name??
+     id.slice("benchmark:".length)));
+    for(const groupKey of [...new Set(runs.map(x=>x.provider+" · "+x.model))]){
+     const group=runs.filter(x=>x.provider+" · "+x.model===groupKey);
+     const rated=group.filter(x=>x.rating!==null);
+     const average=rated.length?
+      (rated.reduce((sum,x)=>sum+x.rating!,0)/rated.length).toFixed(1)+"/5":
+      "Unrated";
+     box.append(el("span","",groupKey+" · "+average+" · "+
+      group.length+" sample(s)"));
+    }
+    scenarioScores.append(box);
+   }
+   if(!scenarioGroups.size)scenarioScores.append(
+    el("p","ppw-admin-small",
+     "Run the same scenario with both models, then rate each saved article to compare performance."));
    const benchmark=el("div","ppw-lab-benchmark");
    benchmark.append(el("h3","","Wrestling IQ Benchmarks"),
     el("p","ppw-admin-small","Repeat the same fictional match with different models. No World, contracts or published Results change. Each run uses the shared AI allowance."));
@@ -333,8 +359,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      e instanceof Error?e.message:"Saved preview is unavailable"));}
    };
    const history=el("div","ppw-lab-history");
-   if(data.runs.length)for(const run of data.runs){
+   if(data.runs.length)for(const [index,run] of data.runs.entries()){
     const item=el("div","ppw-lab-history-row");
+    item.hidden=index>=8;
     const heading=el("strong","",run.show_name+" · "+run.provider);
     const facts=el("p","ppw-admin-small",
      run.model+" · "+run.duration_ms+"ms · "+
@@ -350,10 +377,24 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     actions.append(open,compareBtn);item.append(heading,facts,actions);history.append(item);
    }else history.append(el("p","ppw-admin-small",
     "No manual tests yet. Run a Ringside preview to save an owner-only sample."));
+   if(data.runs.length>8){
+    const more=el("button","ppw-admin-secondary",
+     "Show "+(data.runs.length-8)+" older tests") as HTMLButtonElement;
+    more.type="button";let expanded=false;
+    more.onclick=()=>{
+     expanded=!expanded;
+     [...history.querySelectorAll<HTMLElement>(".ppw-lab-history-row")]
+      .forEach((item,i)=>{item.hidden=!expanded&&i>=8;});
+     more.textContent=expanded?"Hide older tests":
+      "Show "+(data.runs.length-8)+" older tests";
+    };
+    history.append(more);
+   }
    labPanel.replaceChildren(el("h2","","AI Quality Lab"),
     el("p","ppw-admin-sub",
      "Live provider usage, model quality and your playtest notes. No public Results are changed."),
-    benchmark,overview,todaySummary,usage,scoreTitle,scores,reportButton,
+    benchmark,overview,todaySummary,usage,scoreTitle,scores,
+    el("h3","","Scenario-by-scenario model scores"),scenarioScores,reportButton,
     reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
   }catch(e){labData=null;labPanel.replaceChildren(
    el("h2","","AI Quality Lab"),
