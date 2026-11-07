@@ -2,6 +2,7 @@
 import type {CompletedShowView} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
+import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // Updated editorial is versioned independently. Published v4 remains immutable.
 export const RINGSIDE_PROMPT_VERSION="ringside-v7";
@@ -189,6 +190,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   if(!hadInterference&&/\b(?:outside interference|run-in (?:decided|cost|secured)|(?:manager|referee) (?:interfered|attacked)|(?:third party|outsider) interfered)\b/i.test(prose))
    throw new Error("Invented interference");
   if(source.type==="MATCH"){
+   validateWrestlingMechanics(source,prose);
    // A generated near-fall is fine; declaring that the defeated wrestler
    // actually pinned/submitted the recorded winner is not.
    const winners=source.matchContext?.winnerNames??[];
@@ -338,6 +340,7 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
    summary:e.summary,
    ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
    ...(e.matchContext?{match:{format:e.matchContext.format,
+    ...(wrestlingMatchIQ(e)?{wrestlingIQ:wrestlingMatchIQ(e)}:{}),
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
     titleContested:e.matchContext.championshipContested,
     ...(ringsideStipulationNote(e.matchContext.format)?{
@@ -448,6 +451,23 @@ injuries and titles, regardless of any history.
 Use PROVIDED wrestler signature and finisher moves with precision, especially
 when they naturally fit the decisive result. A name in the supplied repertoire
 is evidence that wrestler can use it; it is not proof it caused every finish.
+For EVERY match, honour the match.wrestlingIQ rules on legal participants,
+tags, pace, psychology and ONE officially certified finish. Treat the
+storySpine and possibleSpots as a palette of POSSIBILITIES, not logged
+moves or proof of which individual made a fall. For an ordinary singles match,
+both opponents are legal; the referee enforces rope breaks, three-count
+covers and submissions. Do not insert a tag or a tag partner.
+For conventional two-sided tag matches, only one wrestler PER TEAM is legal
+at a time. Teammates wait for a tag in the corner; a hot tag may be earned
+after an isolation stretch, but it is NOT mandatory. Squashes can end without
+one. A partner on the apron cannot score a pin; the winning TEAM in the
+records is not proof which teammate scored the official fall. Trios and
+larger teams likewise tag in, but don't invent multi-team entry/rotation
+rules or elimination order. In triple threats and four-ways ALL individual
+competitors may be legal; there are NO tags. A battle royal is driven by
+over-the-top-rope elimination, not conventional pinfall. Do not casually
+assert a disqualification, illegal partner intervention, count-out or rope
+break if this bout's stipulated rules forbid them.
 For special stipulations, the winning condition is real, not merely billing.
 RETRIEVAL means a ladder climb and retrieving the suspended prize in Ladder/TLC;
 no pin or tap wins it. TABLE_BREAK means sending an opponent through a table;
