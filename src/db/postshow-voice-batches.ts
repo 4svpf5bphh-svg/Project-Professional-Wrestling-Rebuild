@@ -75,7 +75,7 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
  if(!source.mainEvent&&!source.wrestler&&!source.roadAgent)return null;
  const messages=postShowVoicePrompt(source);
  const body={model:MODEL,temperature:0.58,reasoning_effort:"low",
-  reasoning_format:"hidden",max_completion_tokens:330,
+  reasoning_format:"hidden",max_completion_tokens:650,
   response_format:{type:"json_object"},messages};
  const request=await requestGroqEditorial({
   task:"SHORT_NEWS",key,transport,pool,body,
