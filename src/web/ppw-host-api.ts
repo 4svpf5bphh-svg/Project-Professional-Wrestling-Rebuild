@@ -12,7 +12,8 @@ import {getWrestlingBenchmark,assessWrestlingBenchmark,WRESTLING_BENCHMARKS}
  from "../domain/wrestling-ai-benchmark.js";
 import {POSTSHOW_VOICE_SCENARIOS,getPostShowVoiceBenchmark}
  from "../domain/postshow-voice-lab.js";
-import {generatePostShowVoiceCopy} from "../db/postshow-voice-batches.js";
+import {generatePostShowVoiceCopy,
+ type ShortformVoiceDiagnostic} from "../db/postshow-voice-batches.js";
 import {saveShortformVoiceLabRun,readShortformVoiceLabRuns}
  from "../db/postshow-voice-lab.js";
 import {DEFAULT_RINGSIDE_SETTINGS} from "../domain/ringside-settings.js";
@@ -311,8 +312,15 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     return response;
    };
    let copy=null,code:"NO_ACCEPTED_COPY"|"PROVIDER_ERROR"="NO_ACCEPTED_COPY";
-   try{copy=await generatePostShowVoiceCopy(fixture.show,key,meter,pool);}
-   catch{code="PROVIDER_ERROR";}
+   let diagnostic:ShortformVoiceDiagnostic|null=null;
+   try{
+    copy=await generatePostShowVoiceCopy(fixture.show,key,meter,pool,
+     result=>{diagnostic=result;});
+   }catch{
+    code="PROVIDER_ERROR";
+    diagnostic={category:"PROVIDER_ERROR",news:"MISSING",
+     wrestler:"MISSING",roadAgent:"MISSING"};
+   }
    const durationMs=Math.min(180000,Date.now()-start);
    const metrics={durationMs,providerCalls,
     inputTokens:providerCalls&&reported?inputTokens:null,
@@ -321,14 +329,14 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    try{
     const saved=await saveShortformVoiceLabRun(pool,{
      worldId:cfg.worldId,playerId:user.playerId,scenarioId:fixture.scenario.id,
-     ...metrics,copy,errorCode:copy?undefined:code
+     ...metrics,copy,errorCode:copy?undefined:code,diagnostic
     });
     runId=saved.runId;
    }catch{console.warn("Shortform Lab could not save private sample");}
    if(!copy)return json(422,{error:"No verified shortform copy was accepted. "+
     "The existing PPW writing remains the fallback; no World data changed.",
-    runId,metrics,code});
-   return json(200,{copy,brief:fixture.brief,runId,metrics});
+    runId,metrics,code,diagnostic});
+   return json(200,{copy,brief:fixture.brief,runId,metrics,diagnostic});
   }
   if(benchmarkOperator&&(typeof body.benchmarkId!=="string"||
     !body.benchmarkId||body.showId!==undefined))
