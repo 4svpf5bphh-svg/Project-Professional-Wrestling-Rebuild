@@ -161,8 +161,8 @@ test("Wrestling IQ supplies legal singles, tags and multi-party rules without a 
  const tag:CompletedShowView={...example,entries:[team,example.entries[1]!]};
  const tagIQ=ringsideBrief(tag).slots[0]!.match!.wrestlingIQ!;
  assert.equal(tagIQ.format,"TAG");
- assert.equal(tagIQ.competitors,4);
- assert.match(tagIQ.storyCue,/do not force a hot tag/);
+ assert.equal(tagIQ.beat,"tag drama optional");
+ assert.equal(tagIQ.tempo,"STANDARD");
  assert.match(RINGSIDE_STYLE_GUIDE,/only one wrestler PER TEAM is legal/);
  const trios={...team,matchContext:{...team.matchContext,format:"3v3",
   sides:[["A","B","C"],["D","E","F"]],winnerNames:["A","B","C"]}};

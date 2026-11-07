@@ -180,7 +180,7 @@ test("Groq receives tag legality and pacing as compact evidence, not extra reque
   assert.match(request.messages[0].content,/only one wrestler PER TEAM is legal/);
   assert.match(request.messages[1].content,/"format":"TAG"/);
   assert.match(request.messages[1].content,/"tempo":"LONG"/);
-  assert.match(request.messages[1].content,/do not force a hot tag/);
+  assert.match(request.messages[1].content,/"beat":"tag drama optional"/);
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
    showHeadline:"The big match",opening:"It felt like a genuine main event.",
    closing:"The team earned its victory.",

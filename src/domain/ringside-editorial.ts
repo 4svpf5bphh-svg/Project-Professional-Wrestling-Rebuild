@@ -336,17 +336,18 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
     "the wrestlers\u0027 distinct personalities","wrestling spectacle"][
      (i+[...show.showId].reduce((sum,ch)=>sum+ch.charCodeAt(0),0))%5],
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
-    previous:i?{type:show.entries[i-1]!.type,headline:show.entries[i-1]!.headline}:null,
-    next:show.entries[i+1]?{type:show.entries[i+1]!.type,headline:show.entries[i+1]!.headline}:null,
    summary:e.summary,
    ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
    ...(e.matchContext?{match:{format:e.matchContext.format,
     ...(wrestlingMatchIQ(e)?{wrestlingIQ:{
      format:wrestlingMatchIQ(e)!.format,
-     competitors:wrestlingMatchIQ(e)!.competitors,
      tempo:(e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)<7?"BRIEF":
       (e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)>=20?"LONG":"STANDARD",
-     storyCue:wrestlingMatchIQ(e)!.storySpine[1]
+     beat:wrestlingMatchIQ(e)!.format==="TAG"?"tag drama optional":
+      wrestlingMatchIQ(e)!.format==="MULTI_TEAM"?"team tags; no guessed rotation":
+      wrestlingMatchIQ(e)!.format==="BATTLE_ROYAL"?"survive, over-rope eliminations":
+      wrestlingMatchIQ(e)!.format==="MULTI_PERSON"?"break covers; no tags":
+      "build to one legal finish"
     }}:{}),
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
     titleContested:e.matchContext.championshipContested,
