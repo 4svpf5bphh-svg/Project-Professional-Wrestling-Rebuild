@@ -17,12 +17,14 @@ type AdminData={plan:ActionPlan;settings:RingsideSettings;pilot:LegendPilot|null
 type LabRun={run_id:string;show_id:string;show_name:string;
  provider:"GROQ"|"OPENAI";model:string;duration_ms:number;provider_calls:number;
  input_tokens:number|null;output_tokens:number|null;
- rating:number|null;flags:string[];notes:string;created_at:string};
+ rating:number|null;flags:string[];notes:string;created_at:string;
+ status?:"READY"|"FAILED";error_code?:string|null};
 type LabDay={day:string;provider:"GROQ"|"OPENAI";calls:number;reserved:number;
  input:string;output:string;failed:number};
 type BenchmarkScenario={id:string;name:string;focus:string;expectation:string;watchFor:string};
 type LabData={usage:LabDay[];runs:LabRun[];scores:{
- provider:string;model:string;total:number;reviewed:number;average_score:number|null}[];
+ provider:string;model:string;total:number;reviewed:number;average_score:number|null;
+ successful?:number;failed?:number}[];
  scenarios?:BenchmarkScenario[];providers?:{groq:boolean;openai:boolean}};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
@@ -148,7 +150,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     line.append(el("strong","",row.model),
      el("span","",row.reviewed?row.average_score+
       "/5 average from "+row.reviewed+" rated tests":"Not yet rated"),
-     el("span","",row.total+" recorded previews"));
+     el("span","",row.total+" recorded tests · "+
+      (row.successful??row.total)+" readable · "+(row.failed??0)+" failed"));
     scores.append(line);
    }else scores.append(el("p","ppw-admin-small",
     "Run a preview and rate it to build your model comparisons."));
@@ -166,12 +169,20 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      id.slice("benchmark:".length)));
     for(const groupKey of [...new Set(runs.map(x=>x.provider+" · "+x.model))]){
      const group=runs.filter(x=>x.provider+" · "+x.model===groupKey);
-     const rated=group.filter(x=>x.rating!==null);
+     const successes=group.filter(x=>x.status!=="FAILED");
+     const failed=group.length-successes.length;
+     const rated=successes.filter(x=>x.rating!==null);
      const average=rated.length?
       (rated.reduce((sum,x)=>sum+x.rating!,0)/rated.length).toFixed(1)+"/5":
       "Unrated";
+     const callTotal=group.reduce((n,x)=>n+x.provider_calls,0);
+     const known=group.filter(x=>x.input_tokens!==null&&x.output_tokens!==null);
+     const tokens=known.reduce((n,x)=>n+x.input_tokens!+x.output_tokens!,0);
      box.append(el("span","",groupKey+" · "+average+" · "+
-      group.length+" sample(s)"));
+      successes.length+" valid / "+group.length+" attempts · "+failed+
+      " failed · "+callTotal+" API calls · "+
+      (known.length===group.length?tokens.toLocaleString("en-GB")+" tokens":
+       "partial token totals")));
     }
     scenarioScores.append(box);
    }
@@ -233,9 +244,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      labData=null;
      await loadLab();
     }catch(e){
-     message(benchmarkStatus,e instanceof Error?e.message:
-      "Benchmark unavailable; no official results changed.",true);
-     runBenchmark.disabled=false;
+     lastBenchmarkNotice="Benchmark failed: "+(e instanceof Error?e.message:
+      "No valid model article")+
+      ". Any provider attempt will appear in the AI Lab failure history. Official results were not changed.";
+     labData=null;
+     await loadLab();
     }
    };
    benchmark.append(inputField("Wrestling scenario",scenarioPick),rubric,
@@ -252,12 +265,15 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       " calls="+x.calls+" input="+x.input+" output="+x.output+" failed="+x.failed),
      "30-day model ratings",
      ...data.scores.map(x=>x.provider+" "+x.model+" tests="+x.total+
+      " valid="+(x.successful??x.total)+" failures="+(x.failed??0)+
       " rated="+x.reviewed+" average="+(x.average_score??"unrated")),
      "Recent manual assessments",
      ...data.runs.map(x=>x.show_name+" · "+x.provider+" · "+x.model+
       " · "+x.duration_ms+"ms · "+x.provider_calls+" provider calls · "+
       (x.input_tokens===null?"tokens unreported":
        (x.input_tokens+x.output_tokens!).toString()+" tokens")+
+      " · status="+(x.status??"READY")+
+      (x.error_code?" · failure_code="+x.error_code:"")+
       " · rating="+(x.rating??"unrated")+
       (x.flags.length?" · flags="+x.flags.join(","):"")+
       (x.notes?" · notes="+x.notes:""))].join("\n");
@@ -363,18 +379,24 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     const item=el("div","ppw-lab-history-row");
     item.hidden=index>=8;
     const heading=el("strong","",run.show_name+" · "+run.provider);
+    const failed=run.status==="FAILED";
     const facts=el("p","ppw-admin-small",
-     run.model+" · "+run.duration_ms+"ms · "+
-     (run.input_tokens===null?"Tokens not reported":
+     run.model+" · "+run.duration_ms+"ms · "+run.provider_calls+
+     " call(s) · "+(run.input_tokens===null?"Tokens not reported":
       (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
-     " · "+(run.rating?run.rating+"/5":"Unrated")+
+     " · "+(failed?"FAILED: "+(run.error_code??"Unknown safe error"):
+      run.rating?run.rating+"/5":"Unrated")+
      " · "+run.created_at.slice(0,10));
     const actions=el("div","ppw-admin-actions");
-    const open=el("button","ppw-admin-secondary","Read & rate") as HTMLButtonElement;
-    open.type="button";open.onclick=()=>void showSaved(run,"MAIN");
-    const compareBtn=el("button","ppw-admin-secondary","Compare") as HTMLButtonElement;
-    compareBtn.type="button";compareBtn.onclick=()=>void showSaved(run,"COMPARE");
-    actions.append(open,compareBtn);item.append(heading,facts,actions);history.append(item);
+    if(!failed){
+     const open=el("button","ppw-admin-secondary","Read & rate") as HTMLButtonElement;
+     open.type="button";open.onclick=()=>void showSaved(run,"MAIN");
+     const compareBtn=el("button","ppw-admin-secondary","Compare") as HTMLButtonElement;
+     compareBtn.type="button";compareBtn.onclick=()=>void showSaved(run,"COMPARE");
+     actions.append(open,compareBtn);
+    }else actions.append(el("p","ppw-admin-small",
+     "No article was published or saved. Check this error against the competing model."));
+    item.append(heading,facts,actions);history.append(item);
    }else history.append(el("p","ppw-admin-small",
     "No manual tests yet. Run a Ringside preview to save an owner-only sample."));
    if(data.runs.length>8){
