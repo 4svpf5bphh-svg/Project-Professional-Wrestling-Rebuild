@@ -277,7 +277,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       (benchmarkProviderChoice==="GROQ"?
        (benchmarkModelChoice==="openai/gpt-oss-20b"?"20B":"120B"):
        "OpenAI")+" · "+
-      (result.metrics.compatibilityJson?"20B JSON compatibility used · ":"")+
+      (result.metrics.compatibilityJson?"20B JSON mode · ":"")+
       result.metrics.durationMs+"ms · "+result.metrics.providerCalls+
       " provider call(s) · "+
       (result.metrics.inputTokens===null?"tokens not reported":
