@@ -9,6 +9,9 @@ import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readIndustryWorldNews} from "../src/db/industry-news.js";
 import {publishPostShowVoiceBatches} from "../src/db/postshow-voice-batches.js";
+import {saveShortformVoiceLabRun,readShortformVoiceLabRuns}
+ from "../src/db/postshow-voice-lab.js";
+import {getPostShowVoiceBenchmark} from "../src/domain/postshow-voice-lab.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("postshow cache stays owner-scoped and a published receipt gets only one Groq claim",{
@@ -23,6 +26,26 @@ test("postshow cache stays owner-scoped and a published receipt gets only one Gr
    requestId:"voice-join",expectedRevision:0})).status,"APPLIED");
   assert.equal((await submitPromotionClaim(db.pool,{worldId:world,playerId:owner,
    promotionId:promotion,requestId:"voice-claim",expectedRevision:1})).status,"APPLIED");
+  const labFixture=getPostShowVoiceBenchmark("i-quit")!;
+  const labCopy={
+   version:1 as const,
+   news:{slotId:"benchmark-main-event",headline:"Mercer gets the final answer",
+    summary:"Jett Mercer defeated Ronan Wolfe by a verbal I Quit surrender at the completed show. The official result records Wolfe's spoken concession, not a pinfall or tap-out."},
+   wrestler:{slotId:"benchmark-main-event",personId:"fixture-0",
+    text:"I demanded the answer inside that ring. You heard the same words I did and you know who earned the result tonight."},
+   roadAgent:{slotId:"benchmark-main-event",
+    note:"Next show, resist repeating a punishing stipulation immediately. Protect the payoff by booking a distinctive development rather than trying to reproduce the exact finish."}
+  };
+  assert.ok(labFixture.brief.roadAgent);
+  const savedLab=await saveShortformVoiceLabRun(db.pool,{
+   worldId:world,playerId:owner,scenarioId:"i-quit",durationMs:1020,
+   providerCalls:1,inputTokens:780,outputTokens:268,copy:labCopy
+  });
+  assert.equal(savedLab.status,"READY");
+  const ownerSamples=await readShortformVoiceLabRuns(db.pool,world,owner);
+  assert.equal(ownerSamples.length,1);
+  assert.deepEqual(ownerSamples[0]?.copy,labCopy);
+  assert.deepEqual(await readShortformVoiceLabRuns(db.pool,world,"outsider"),[]);
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`
     INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,
@@ -72,7 +95,7 @@ test("postshow cache stays owner-scoped and a published receipt gets only one Gr
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
-    "ppw_postshow_voice_batches","ppw_world_news_items","ppw_world_news_awards",
+    "ppw_shortform_ai_lab_runs","ppw_postshow_voice_batches","ppw_world_news_items","ppw_world_news_awards",
     "ppw_world_news_weeks","ppw_completed_match_report_facts",
     "ppw_tournament_bouts","ppw_tournaments","ppw_completed_show_segments",
     "ppw_championship_contests","ppw_championship_reigns",
