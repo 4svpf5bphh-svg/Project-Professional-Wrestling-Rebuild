@@ -191,7 +191,7 @@ for(const width of [320,390]){
   const heldSponsor=page.locator(".ppw-commercial-offer[data-availability='TAKEN']");
   await expect(heldSponsor).toContainText("Jack's Crematorium");
   await expect(heldSponsor).toContainText("Rival Wrestling");
-  expect(calls).toEqual(["business","business","business","business"]);
+  expect(calls).toEqual(["business","business","business"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

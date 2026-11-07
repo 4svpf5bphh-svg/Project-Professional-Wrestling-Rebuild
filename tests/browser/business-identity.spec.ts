@@ -116,7 +116,6 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
    commercialOffers:[],commercialAgreements:[]
   }});
  });
- await page.goto("/#/business");
  await page.goto("/#/finances");
  await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"Set your spending limits"})).toHaveCount(0);
