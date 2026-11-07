@@ -169,12 +169,28 @@ export function assessWrestlingBenchmark(id:string,copy:RingsideCopy){
   if(/\b(?:tag|tagging|corner|apron|legal (?:man|partner|wrestler)|isolation|cut (?:the )?ring)\b/i.test(text))
    cues.push("Some tag-team mechanics mentioned");
  }
- if(rule?.stipulation==="I_QUIT"&&/\b(?:quit|verbal|concede|surrender|microphone)\b/i.test(text))
-  cues.push("Verbal submission language appears");
- if(rule?.stipulation==="STEEL_CAGE"&&/\b(?:cage|mesh|steel wall|chain.link)\b/i.test(text))
-  cues.push("Cage environment mentioned");
- if(rule?.stipulation==="IRON_MAN"&&/\b(?:clock|thirty.minutes|30.minutes|time limit|falls)\b/i.test(text))
-  cues.push("Timed multi-fall language appears");
+ if(rule?.stipulation==="I_QUIT"){
+  if(/\b(?:quit|verbal|concede|surrender|microphone)\b/i.test(text))
+   cues.push("Verbal surrender language appears");
+  if(/\b(?:microphone|referee.{0,35}(?:ask|demand)|mic\b)/i.test(text))
+   cues.push("Referee's surrender question is dramatized");
+  if(/\b(?:refus(?:e|ed|al)|defian(?:t|ce)|wouldn.t quit|won.t quit|not giv(?:e|ing) (?:in|up)|still resist|kept fighting)\b/i.test(text))
+   cues.push("Resistance before surrender is described");
+  if(/\b(?:painful|agony|agonis(?:ing|ed)|agoniz(?:ing|ed)|torqu(?:e|ed)|crank(?:ed|ing)?|wrench(?:ed|ing)?|twist(?:ed|ing)?|pressure|punish(?:ed|ment)|battered|brutal)\b/i.test(text))
+   cues.push("Escalating physical pressure is described");
+ }
+ if(rule?.stipulation==="STEEL_CAGE"){
+  if(/\b(?:cage|mesh|steel wall|chain.link)\b/i.test(text))
+   cues.push("Cage environment mentioned");
+  if(/\b(?:crash(?:ed|ing)?|slam(?:med|ming)?|rattl(?:e|ed|ing)|scrap(?:e|ed|ing)|press(?:ed|ing)?)\b.{0,65}\b(?:cage|mesh|steel|wall)\b|\b(?:cage|mesh|steel wall)\b.{0,65}\b(?:crash|slam|rattle|scrap|press)\b/i.test(text))
+   cues.push("Steel enclosure affects the action");
+ }
+ if(rule?.stipulation==="IRON_MAN"){
+  if(/\b(?:clock|thirty.minutes|30.minutes|time limit|falls)\b/i.test(text))
+   cues.push("Timed multi-fall language appears");
+  if(/\b(?:clock|time|seconds|minutes)\b.{0,65}\b(?:expire|wind|tick|remaining|ran out|run out|end)\b|\b(?:expire|wind|tick|remaining)\b.{0,65}\b(?:clock|time|seconds|minutes)\b/i.test(text))
+   cues.push("Time-limit pressure is dramatized");
+ }
  if(iq?.format==="BATTLE_ROYAL"&&/\b(?:rope|elimination|survivor|last (?:one|man|woman))\b/i.test(text))
   cues.push("Battle-royal mechanics mentioned");
  return {scenario:scenario.id,certifiedFactsValidated:true,
