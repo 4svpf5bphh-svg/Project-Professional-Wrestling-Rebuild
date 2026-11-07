@@ -24,3 +24,46 @@
 .ppw-admin-preview h4{font-size:15px;color:#fdd8ed;margin:18px 0 4px}
 .ppw-admin-preview p{white-space:pre-line;line-height:1.55;font-size:14px;color:#ecdfef}
 @media(min-width:650px){.ppw-admin-form{grid-template-columns:1fr 1fr}.ppw-admin-form .ppw-admin-field:last-of-type{grid-column:1 / -1}}
+/* Clear admin sections and thumb-sized, mobile-first quality controls. */
+.ppw-admin-panel[hidden]{display:none!important}
+.ppw-admin-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:17px 0 12px}
+.ppw-admin-tab{min-width:0;min-height:46px;padding:8px 5px;border-radius:12px;
+ background:#282037;border:1px solid #795888;color:#f9e8fc;font-size:12px;
+ font-weight:800;cursor:pointer}
+.ppw-admin-tab.is-active{background:linear-gradient(120deg,#bb268e,#7235a8);
+ border-color:#ff8bd6;color:#fff}
+.ppw-admin-tab:focus-visible,.ppw-lab-chip:focus-visible,
+.ppw-lab-stars button:focus-visible{outline:3px solid #ffb5ec;outline-offset:2px}
+.ppw-lab-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:15px 0}
+.ppw-lab-stat{display:grid;gap:7px;min-width:0;padding:12px;border-radius:12px;
+ border:1px solid #63517e;background:#2e2342}
+.ppw-lab-stat span{font-size:11px;font-weight:750;color:#dbc6ea}
+.ppw-lab-stat strong{font-size:clamp(19px,4.8vw,26px);font-variant-numeric:tabular-nums;color:#fff}
+.ppw-lab-periods,.ppw-lab-scorecard{display:grid;gap:7px;margin:12px 0}
+.ppw-lab-period{display:flex;flex-wrap:wrap;gap:5px 12px;padding:9px 11px;
+ border:1px solid #5d4b78;border-radius:10px;background:#231c38;font-size:12px;line-height:1.45}
+.ppw-lab-period strong{color:#fff;flex-basis:100%}
+.ppw-lab-period span{color:#e0cfed}
+.ppw-admin-panel h3{font-size:16px;color:#f0c2e3;margin:23px 0 10px}
+.ppw-lab-history{display:grid;gap:9px}
+.ppw-lab-history-row{padding:12px;border:1px solid #5a4777;border-radius:12px;background:#211c34}
+.ppw-lab-history-row>strong{color:#fff;font-size:14px}
+.ppw-lab-history-row p{margin:8px 0}
+.ppw-lab-history-row .ppw-admin-actions{margin:8px 0 0}
+.ppw-lab-history-row button{min-height:42px}
+.ppw-lab-compare{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start;margin-top:15px}
+.ppw-lab-compare>.ppw-admin-preview{min-width:0;margin:0;overflow-wrap:anywhere}
+.ppw-lab-compare .ppw-admin-preview h3{font-size:19px;line-height:1.2}
+.ppw-lab-feedback{display:grid;gap:10px}
+.ppw-lab-stars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.ppw-lab-stars button{padding:10px 0;min-height:44px;font-size:13px}
+.ppw-lab-stars .is-selected,.ppw-lab-chip.is-selected{border-color:#ffa1df;
+ background:#81316b;color:#fff}
+.ppw-lab-flags{display:flex;flex-wrap:wrap;gap:8px}
+.ppw-lab-chip{min-height:42px;padding:8px 12px;border:1px solid #786192;
+ border-radius:12px;background:#282039;color:#fbeaf9;font-size:12px;font-weight:800;cursor:pointer}
+@media(min-width:650px){
+ .ppw-admin-tab{font-size:14px}
+ .ppw-lab-overview{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .ppw-lab-compare{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
