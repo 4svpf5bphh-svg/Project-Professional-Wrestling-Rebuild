@@ -35,7 +35,7 @@ type SessionView={
   membership:"ACTIVE"|"INACTIVE"|"NONE";
   promotion:null|{id:string;name:string};
  };
- canManualAdvance?:boolean;
+ canManualAdvance?:boolean;canAiBenchmark?:boolean;
  availablePromotions:{id:string;name:string;tier:string;
   homeMarketName?:string|null;rosterSize?:number}[];
 };
@@ -207,7 +207,7 @@ function renderNavigation(section:HostSection){
  head.append(closeButton);drawer.append(head);
  const entries=el("div","ppw-nav-drawer-entries");
  for(const [index,[id,label,description]] of root.destinations.entries()){
-  if(id==="admin"&&!session?.canManualAdvance)continue;
+  if(id==="admin"&&!session?.canManualAdvance&&!session?.canAiBenchmark)continue;
   const entry=button("",()=>openSection(id as HostSection));
   entry.className="ppw-nav-drawer-entry";
   entry.append(el("span","ppw-nav-entry-index",String(index+1).padStart(2,"0")));
@@ -241,7 +241,7 @@ function renderSection(){
  if(!session?.overview?.promotion)return;
  document.documentElement.dataset.ppwPromotion=promotionBrand(session.overview.promotion.name).key;
  const section=readHostSection(location.hash);
- if(section==="admin"&&!session.canManualAdvance){location.hash=hostSectionHash("home");return;}
+ if(section==="admin"&&!session.canManualAdvance&&!session.canAiBenchmark){location.hash=hostSectionHash("home");return;}
  if(section!=="card"){bookingDirty=false;activeBooking=null;}
  if(section!=="card"&&section!=="planner")clearBookingFocus();
  const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
@@ -334,7 +334,8 @@ function renderSection(){
   case "contracts":mountContractsPage(view,scope,readContractFocus(location.hash));break;
   case "business":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
-  case "admin":void mountAdminCentre(view,{csrfToken:session.csrfToken});break;
+  case "admin":void mountAdminCentre(view,{csrfToken:session.csrfToken,
+    benchmarkOnly:!session.canManualAdvance&&!!session.canAiBenchmark});break;
   case "industry":
   case "promotions":
   case "broadcasts":

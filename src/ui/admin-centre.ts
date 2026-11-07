@@ -31,7 +31,7 @@ type LabData={usage:LabDay[];runs:LabRun[];scores:{
  scenarios?:BenchmarkScenario[];providers?:{groq:boolean;openai:boolean}};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
-type Context={csrfToken:string};
+type Context={csrfToken:string;benchmarkOnly?:boolean};
 const el=(tag:string,cls="",text="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=text;return n;
 };
@@ -62,8 +62,10 @@ const message=(box:HTMLElement,s:string,isError=false)=>{
 export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  root.classList.add("ppw-admin-centre");
  root.replaceChildren(el("span","ppw-eyebrow","PPW / ADMINISTRATOR"),
-  el("h1","","Control Room"),
-  el("p","ppw-admin-sub","Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
+  el("h1","",ctx.benchmarkOnly?"Wrestling IQ Lab":"Control Room"),
+  el("p","ppw-admin-sub",ctx.benchmarkOnly?
+   "Private, fictional Groq comparisons. No World advancement or published Results change.":
+   "Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
  const world=el("section","ppw-admin-panel");
  const studio=el("section","ppw-admin-panel");
  const labPanel=el("section","ppw-admin-panel");
@@ -71,10 +73,17 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  const kpDesk=el("section","ppw-admin-panel");
  const navigation=el("nav","ppw-admin-tabs");
  navigation.setAttribute("aria-label","Admin sections");
- let activeTab:"WORLD"|"AI"|"PLAYTESTS"="WORLD";
+ let activeTab:"WORLD"|"AI"|"PLAYTESTS"=ctx.benchmarkOnly?"AI":"WORLD";
  let labData:LabData|null=null;
  let lastBenchmarkNotice="";
- const navButtons=(["WORLD","AI","PLAYTESTS"] as const).map(tab=>{
+ // The entire lab is re-rendered after each completed test. Keep the chosen
+ // fictional scenario and model in this component, not in discarded controls.
+ let benchmarkScenarioChoice="";
+ let benchmarkModelChoice:"openai/gpt-oss-120b"|"openai/gpt-oss-20b"="openai/gpt-oss-120b";
+ let benchmarkProviderChoice:"GROQ"|"OPENAI"="GROQ";
+ const tabs:readonly ("WORLD"|"AI"|"PLAYTESTS")[]=
+  ctx.benchmarkOnly?["AI"]:["WORLD","AI","PLAYTESTS"];
+ const navButtons=tabs.map(tab=>{
   const button=el("button","ppw-admin-tab",
    tab==="WORLD"?"World":tab==="AI"?"AI Testing Lab":"Playtests") as HTMLButtonElement;
   button.type="button";
@@ -86,12 +95,12 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  });
  function switchTab(){
   world.hidden=activeTab!=="WORLD";
-  studio.hidden=activeTab!=="AI";
+  studio.hidden=!!ctx.benchmarkOnly||activeTab!=="AI";
   labPanel.hidden=activeTab!=="AI";
   legendTrial.hidden=activeTab!=="PLAYTESTS";
   kpDesk.hidden=activeTab!=="PLAYTESTS";
   navButtons.forEach((button,index)=>{
-   const active=(["WORLD","AI","PLAYTESTS"] as const)[index]===activeTab;
+   const active=tabs[index]===activeTab;
    button.setAttribute("aria-pressed",String(active));
    button.classList.toggle("is-active",active);
   });
@@ -209,14 +218,18 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    benchmark.append(el("h3","","Wrestling IQ Benchmarks"),
     el("p","ppw-admin-small","Repeat the same fictional match with different models. No World, contracts or published Results change. Each run uses the shared AI allowance."));
    const scenarios=data.scenarios??[];
-   const scenarioPick=selectControl(scenarios.map(x=>[x.id,x.name]),scenarios[0]?.id??"");
+   const scenarioPick=selectControl(scenarios.map(x=>[x.id,x.name]),
+    scenarios.some(x=>x.id===benchmarkScenarioChoice)?
+     benchmarkScenarioChoice:scenarios[0]?.id??"");
+   benchmarkScenarioChoice=scenarioPick.value;
    const benchmarkModel=selectControl([
     ["openai/gpt-oss-120b","Groq · 120B"],["openai/gpt-oss-20b","Groq · 20B"]
-   ],"openai/gpt-oss-120b");
+   ],benchmarkModelChoice);
    const benchmarkProvider=selectControl([
     ["GROQ","Groq · free allowance"],
     ...(data.providers?.openai?[["OPENAI","OpenAI · paid comparison"] as [string,string]]:[])
-   ],"GROQ");
+   ],data.providers?.openai?benchmarkProviderChoice:"GROQ");
+   benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
    const rubric=el("div","ppw-lab-rubric");
    const scenarioDescription=()=>{
     const selected=scenarios.find(item=>item.id===scenarioPick.value);
@@ -224,13 +237,20 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      el("p","","Look for: "+(selected?.expectation??"A complete wrestling article.")),
      el("p","ppw-admin-small","Watch for: "+(selected?.watchFor??"Invented facts.")));
    };
-   scenarioPick.onchange=scenarioDescription;
+   scenarioPick.onchange=()=>{
+    benchmarkScenarioChoice=scenarioPick.value;
+    scenarioDescription();
+   };
+   benchmarkModel.onchange=()=>{
+    benchmarkModelChoice=benchmarkModel.value as typeof benchmarkModelChoice;
+   };
    scenarioDescription();
    const benchmarkStatus=el("p","ppw-admin-message",lastBenchmarkNotice);
    const runBenchmark=el("button","ppw-admin-primary","Run Wrestling IQ benchmark") as HTMLButtonElement;
    runBenchmark.type="button";
    runBenchmark.disabled=!scenarios.length||!data.providers?.groq;
    benchmarkProvider.onchange=()=>{
+    benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
     runBenchmark.disabled=!scenarios.length||(benchmarkProvider.value==="GROQ"?
      !data.providers?.groq:!data.providers?.openai);
     benchmarkModel.disabled=benchmarkProvider.value==="OPENAI";
@@ -242,15 +262,22 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     try{
      const chosen=scenarios.find(item=>item.id===scenarioPick.value);
      if(!chosen)throw new Error("Choose a recognised wrestling scenario");
+     benchmarkScenarioChoice=chosen.id;
+     benchmarkModelChoice=benchmarkModel.value as typeof benchmarkModelChoice;
+     benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
      const result=await request("/api/admin-preview","POST",ctx.csrfToken,{
       benchmarkId:chosen.id,previewProvider:benchmarkProvider.value,
       settings:{model:benchmarkModel.value,voice:"MARTY",detail:"BALANCED",
        reasoning:"low",creativity:0.92,additionalGuidance:""}
      }) as {labRunId:string;metrics:{durationMs:number;providerCalls:number;
-      inputTokens:number|null;outputTokens:number|null};
+      inputTokens:number|null;outputTokens:number|null;compatibilityJson?:boolean};
       benchmark?:{certifiedFactsValidated:boolean;diagnosticCues:string[];
        humanReviewRequired:boolean}};
      lastBenchmarkNotice="Saved "+chosen.name+" · "+
+      (benchmarkProviderChoice==="GROQ"?
+       (benchmarkModelChoice==="openai/gpt-oss-20b"?"20B":"120B"):
+       "OpenAI")+" · "+
+      (result.metrics.compatibilityJson?"20B JSON mode · ":"")+
       result.metrics.durationMs+"ms · "+result.metrics.providerCalls+
       " provider call(s) · "+
       (result.metrics.inputTokens===null?"tokens not reported":
@@ -693,6 +720,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    inputField("Preview provider",provider),paidNotice,
    previewBtn,recover,aiStatus,preview);
  }
+ if(ctx.benchmarkOnly){await loadLab();return;}
  try{await load();}catch(e){
   const error=el("p","ppw-admin-error",e instanceof Error?e.message:"Admin is unavailable");
   root.append(error);

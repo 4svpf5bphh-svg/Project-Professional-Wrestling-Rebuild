@@ -37,3 +37,16 @@ test("all host routes are deployed and the Hobby plan stays below twelve functio
  assert.match(host,/searchParams\.get\("route"\)/,
   "Shared Vercel function must restore the original authorised route");
 });
+
+test("AI benchmark preview has a fixture-only admin path; non-benchmark writes remain blocked",()=>{
+ const host=readFileSync("src/web/ppw-host-api.ts","utf8");
+ assert.match(host,/benchmarkOperator&&body\.action!=="RATE_AI_LAB_RUN"/);
+ assert.match(host,/benchmarkOperator&&\(typeof body\.benchmarkId!=="string"/);
+ assert.match(host,/!normalOperator&&!benchmarkOperator/);
+ assert.match(host,/if\(!manualPlaytestEnabled\(process\.env,cfg\.worldId,user\.playerId\)\)/,
+  "Manual World advancement must retain the main-only permission");
+ const deployment=JSON.parse(readFileSync("vercel.json","utf8")) as {
+  git?:{deploymentEnabled?:Record<string,boolean>}};
+ assert.equal(deployment.git?.deploymentEnabled?.["**"],false,
+  "Feature branches must not deploy automatically");
+});

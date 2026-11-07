@@ -128,3 +128,75 @@ test("ordinary manager cannot discover the Admin department or route",async({pag
  await expect(page).toHaveURL(/#\/home$/);
  expect(calls).toBe(0);
 });
+
+test("isolated AI benchmark operator sees the lab, never World or Playtests controls",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"genesis",playerId:"operator",csrfToken:"csrf",overview,
+  canManualAdvance:false,canAiBenchmark:true,availablePromotions:[]}}));
+ await page.route("**/api/card",route=>route.fulfill({json:overview}));
+ let generalAdminReads=0,labReads=0,previewCalls=0;
+ await page.route("**/api/admin?aiLab=*",route=>{
+  labReads++;
+  return route.fulfill({json:{
+   usage:[],runs:[],scores:[],providers:{groq:true,openai:false},
+   scenarios:[
+    {id:"singles-technical",name:"Singles · technical classic",
+     focus:"Good technical singles",expectation:"Accurate clean pin",watchFor:"Invented submission win"},
+    {id:"steel-cage",name:"Steel Cage · singles",
+     focus:"Wrestling inside a cage",expectation:"The cage affects psychology",
+     watchFor:"Invented escape win"}]
+  }});
+ });
+ await page.route("**/api/admin",route=>{
+  generalAdminReads++;
+  return route.fulfill({status:403,json:{error:"Unexpected general admin request"}});
+ });
+ await page.route("**/api/admin-preview",route=>{
+  const body=route.request().postDataJSON();
+  expect(body.benchmarkId,
+   "The selected cage fixture must survive the lab's automatic summary refresh").toBe("steel-cage");
+  expect(body.previewProvider).toBe("GROQ");
+  expect(body.settings.model).toBe(
+   previewCalls===0?"openai/gpt-oss-120b":"openai/gpt-oss-20b");
+  expect(body.showId).toBeUndefined();
+  expect(route.request().headers()["x-ppw-csrf"]).toBe("csrf");
+  previewCalls++;
+  return route.fulfill({json:{review:aiLabReview,labRunId:aiLabRun.run_id,
+   metrics:{durationMs:1750,providerCalls:previewCalls===1?1:2,
+    inputTokens:previewCalls===1?800:null,outputTokens:previewCalls===1?400:null,
+    compatibilityJson:previewCalls===2},
+   benchmark:{certifiedFactsValidated:true,diagnosticCues:[],humanReviewRequired:true}}});
+ });
+ await page.goto("/#/home");
+ await page.getByRole("button",{name:"Open Business menu"}).click();
+ const nav=page.getByRole("navigation",{name:"Promotion navigation"});
+ await expect(nav.getByRole("button",{name:/Admin/})).toBeVisible();
+ await nav.getByRole("button",{name:/Admin/}).click();
+ await expect(page.getByRole("heading",{name:"Wrestling IQ Lab"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"AI Quality Lab"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"AI Testing Lab"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Playtests"})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"World",exact:true})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Advance Week"})).toHaveCount(0);
+ await expect(page.getByRole("heading",{name:"Ringside AI Studio"})).toHaveCount(0);
+ expect(generalAdminReads).toBe(0);
+ expect(previewCalls).toBe(0);
+ await expect(page.getByLabel("Wrestling scenario")).toHaveValue("singles-technical");
+ await page.getByLabel("Wrestling scenario").selectOption("steel-cage");
+ await expect(page.getByLabel("Groq model")).toHaveValue("openai/gpt-oss-120b");
+ await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
+ await expect.poll(()=>previewCalls).toBe(1);
+ await expect(page.getByText(/Saved Steel Cage.*120B/)).toBeVisible();
+ await expect(page.getByLabel("Wrestling scenario")).toHaveValue("steel-cage");
+ await expect(page.getByLabel("Groq model")).toHaveValue("openai/gpt-oss-120b");
+ await page.getByLabel("Groq model").selectOption("openai/gpt-oss-20b");
+ await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
+ await expect.poll(()=>previewCalls).toBe(2);
+ await expect(page.getByText(/Saved Steel Cage.*20B/)).toBeVisible();
+ await expect(page.getByText(/20B JSON mode/)).toBeVisible();
+ await expect(page.getByLabel("Wrestling scenario")).toHaveValue("steel-cage");
+ await expect(page.getByLabel("Groq model")).toHaveValue("openai/gpt-oss-20b");
+ expect(labReads).toBeGreaterThanOrEqual(3);
+ expect(generalAdminReads).toBe(0);
+});

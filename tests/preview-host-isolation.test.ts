@@ -48,3 +48,34 @@ test("CI and local execution remain unrestricted by hosted Vercel guard",()=>{
   },"postgresql://some-other-host/legacy","disposable-test-world"));
  }
 });
+
+test("dedicated benchmark preview only connects to its independently named host",()=>{
+ const preview={
+  ...main,VERCEL_ENV:"preview",
+  VERCEL_GIT_COMMIT_REF:"phase43-ai-benchmark-safe-preview",
+  PPW_AI_BENCHMARK_PREVIEW:"YES",
+  PPW_AI_BENCHMARK_WORLD_ID:"world-20261017",
+  PPW_AI_BENCHMARK_DB_HOST:"isolated-benchmark.db.example",
+  PPW_AI_BENCHMARK_DB_NAME:"neondb"
+ };
+ const isolated="postgresql://test:secret@isolated-benchmark.db.example/neondb?sslmode=require";
+ assert.doesNotThrow(()=>requireIsolatedPreviewHost(preview,isolated,"world-20261017"));
+ for(const patch of [
+  {PPW_AI_BENCHMARK_PREVIEW:undefined},
+  {PPW_AI_BENCHMARK_PREVIEW:"NO"},
+  {PPW_AI_BENCHMARK_WORLD_ID:"other-world"},
+  {PPW_AI_BENCHMARK_DB_HOST:"rebuild-main.db.example"},
+  {PPW_AI_BENCHMARK_DB_HOST:undefined},
+  {PPW_AI_BENCHMARK_DB_NAME:"other"}
+ ])assert.throws(()=>requireIsolatedPreviewHost({...preview,...patch},
+  isolated,"world-20261017"),/benchmark/);
+ for(const bad of [
+  db,"postgresql://test@isolated-benchmark.db.example/wrong",
+  "postgresql://test@isolated-benchmark.db.example/neondb?host=rebuild-main.db.example",
+  "postgresql://test@isolated-benchmark.db.example/neondb?dbname=other"
+ ])assert.throws(()=>requireIsolatedPreviewHost(preview,bad,"world-20261017"),/benchmark/);
+ assert.throws(()=>requireIsolatedPreviewHost({...preview,VERCEL_ENV:"production"},
+  isolated,"world-20261017"),/hosted main World/);
+ assert.throws(()=>requireIsolatedPreviewHost({...preview,
+  VERCEL_GIT_COMMIT_REF:"some-other-branch"},isolated,"world-20261017"),/hosted main World/);
+});

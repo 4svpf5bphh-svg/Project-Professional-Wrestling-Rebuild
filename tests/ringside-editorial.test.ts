@@ -201,3 +201,37 @@ test("Ringside rejects proven invalid tag mechanics but not an optional hot tag"
   recap:"The winners cut off the ring and settled the contest before their opponents could build momentum."},valid.slots[1]]};
  assert.doesNotThrow(()=>validateRingsideCopy(noHot,card));
 });
+
+test("Ringside catches live-observed 20B submission-as-pin and star-rating leakage",()=>{
+ const baseline=valid.slots[0]!;
+ const bad=String.raw`The climax arrived when Omega locked the opponent in a decisive submission, forcing a clean pin and sealing a 4.5‑star performance.`;
+ const article=(recap:string)=>({...valid,slots:[{...baseline,recap},valid.slots[1]!]});
+ assert.throws(()=>validateRingsideCopy(article(bad),example),/numerical score/);
+ const mechanics=bad.replace("4.5‑star performance","fine performance");
+ assert.throws(()=>validateRingsideCopy(article(mechanics),example),/submission cannot itself/);
+ for(const stars of ["4.5-star","4.5‑star","five-star match".replace("five","5"),"5 stars"]){
+  assert.throws(()=>validateRingsideCopy(article("The "+stars+" verdict was deserved."),example),/numerical score/);
+ }
+ // A submission attempt is legitimate match action before an unrelated clean pin.
+ const legal="Omega attempted a submission hold, but the opponent escaped. Later a V-Trigger opened the door to the One Winged Angel for the pinfall.";
+ assert.doesNotThrow(()=>validateRingsideCopy(article(legal),example));
+});
+test("Ringside avoids invented steel-cage roofs without banning actual mesh contact",()=>{
+ const cage={...example,entries:[{
+  ...example.entries[0]!,matchContext:{
+   ...example.entries[0]!.matchContext!,format:"Steel Cage · SINGLES"}
+ },example.entries[1]!]};
+ const article=(recap:string)=>({...valid,slots:[{
+  ...valid.slots[0]!,recap
+ },valid.slots[1]!]});
+ for(const bad of [
+  "Omega leapt but barely cleared the cage’s low ceiling before pinning the opponent.",
+  "Omega struck the cage's roof before winning by pinfall.",
+  "The cage ceiling stopped the leap; Omega got the cover.",
+  "A lowered ceiling trapped Omega, who eventually won."
+ ]){
+  assert.throws(()=>validateRingsideCopy(article(bad),cage),/roof or ceiling/);
+ }
+ const possible="Omega pushed the opponent into the chain-link mesh, then dragged them to the mat for a legal three-count.";
+ assert.doesNotThrow(()=>validateRingsideCopy(article(possible),cage));
+});
