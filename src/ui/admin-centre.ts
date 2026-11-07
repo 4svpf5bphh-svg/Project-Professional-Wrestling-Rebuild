@@ -25,10 +25,22 @@ type LabDay={day:string;provider:"GROQ"|"OPENAI";calls:number;reserved:number;
  provider_tpm_limit?:number|null;provider_tpm_remaining?:number|null;
  provider_last_model?:string|null;provider_limit_observed_at?:string|null};
 type BenchmarkScenario={id:string;name:string;focus:string;expectation:string;watchFor:string};
+type ShortformCopy={
+ version:number;news:{slotId:string;headline:string;summary:string}|null;
+ wrestler:{slotId:string;personId:string;text:string}|null;
+ roadAgent:{slotId:string;note:string}|null;
+};
+type ShortformLabRun={runId:string;scenarioId:string;scenarioName:string;
+ model:string;status:"READY"|"FAILED";errorCode:string|null;
+ durationMs:number;providerCalls:number;inputTokens:number|null;
+ outputTokens:number|null;createdAt:string;copy:ShortformCopy|null};
 type LabData={usage:LabDay[];runs:LabRun[];scores:{
  provider:string;model:string;total:number;reviewed:number;average_score:number|null;
  successful?:number;failed?:number}[];
- scenarios?:BenchmarkScenario[];providers?:{groq:boolean;openai:boolean}};
+ scenarios?:BenchmarkScenario[];
+ shortformScenarios?:{id:string;name:string;expectation:string}[];
+ shortformRuns?:ShortformLabRun[];
+ providers?:{groq:boolean;openai:boolean}};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
 type Context={csrfToken:string;benchmarkOnly?:boolean};
@@ -76,6 +88,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  let activeTab:"WORLD"|"AI"|"PLAYTESTS"=ctx.benchmarkOnly?"AI":"WORLD";
  let labData:LabData|null=null;
  let lastBenchmarkNotice="";
+ let lastVoiceNotice="";
+ let selectedVoiceScenario="i-quit";
  // The entire lab is re-rendered after each completed test. Keep the chosen
  // fictional scenario and model in this component, not in discarded controls.
  let benchmarkScenarioChoice="";
@@ -214,6 +228,88 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    if(!scenarioGroups.size)scenarioScores.append(
     el("p","ppw-admin-small",
      "Run the same scenario with both models, then rate each saved article to compare performance."));
+   const voiceLab=el("section","ppw-lab-benchmark");
+   voiceLab.append(el("h3","","Post-show voices · Groq 20B"),
+    el("p","ppw-admin-small",
+     "One fictional show, one 20B request: a verified news report, "+
+     "a character-specific wrestler reaction and a practical Road Agent note. "+
+     "Nothing is published or changes your save."));
+   const voiceScenarios=data.shortformScenarios??[];
+   const voiceChoice=selectControl(voiceScenarios.map(x=>[x.id,x.name]),
+    voiceScenarios.some(x=>x.id===selectedVoiceScenario)?
+     selectedVoiceScenario:voiceScenarios[0]?.id??"");
+   selectedVoiceScenario=voiceChoice.value;
+   const voiceExplanation=el("p","ppw-admin-small","");
+   const describeVoice=()=>{
+    voiceExplanation.textContent=voiceScenarios.find(x=>x.id===voiceChoice.value)
+     ?.expectation??"Select one fictional completed show.";
+   };
+   voiceChoice.onchange=()=>{
+    selectedVoiceScenario=voiceChoice.value;
+    describeVoice();
+   };
+   describeVoice();
+   const voiceButton=el("button","ppw-admin-primary",
+    "Run 20B voice batch") as HTMLButtonElement;
+   voiceButton.type="button";
+   voiceButton.disabled=!voiceScenarios.length||!data.providers?.groq;
+   const voiceStatus=el("p","ppw-admin-message",lastVoiceNotice);
+   voiceButton.onclick=async()=>{
+    if(voiceButton.disabled)return;
+    voiceButton.disabled=true;
+    selectedVoiceScenario=voiceChoice.value;
+    message(voiceStatus,"Testing all three voices in one Groq request. No World changes.");
+    try{
+     const outcome=await request("/api/admin-preview","POST",ctx.csrfToken,{
+      shortformBenchmarkId:selectedVoiceScenario
+     }) as {runId:string|null;metrics:{durationMs:number;
+      providerCalls:number;inputTokens:number|null;outputTokens:number|null}};
+     const tokens=outcome.metrics.inputTokens===null?"token count unavailable":
+      (outcome.metrics.inputTokens+(outcome.metrics.outputTokens??0)).toLocaleString("en-GB")+
+      " tokens";
+     lastVoiceNotice="Saved the 20B voice batch · "+outcome.metrics.providerCalls+
+      " Groq request · "+tokens+" · "+outcome.metrics.durationMs+
+      "ms. Read each accepted voice below and judge its realism.";
+    }catch(e){
+     lastVoiceNotice="Voice batch failed: "+(e instanceof Error?e.message:
+      "No accepted result")+"; existing game copy is unaffected.";
+    }
+    labData=null;
+    await loadLab();
+   };
+   voiceLab.append(inputField("Fictional post-show scenario",voiceChoice),
+    voiceExplanation,voiceButton,voiceStatus);
+   const copyCard=(label:string,body:string)=>{
+    const card=el("article","ppw-lab-period");
+    card.append(el("strong","",label),el("p","",body));
+    return card;
+   };
+   const savedVoices=data.shortformRuns??[];
+   if(savedVoices.length){
+    voiceLab.append(el("h4","","Saved voice comparisons"));
+    for(const sample of savedVoices.slice(0,8)){
+     const line=el("article","ppw-admin-preview");
+     const tokenCount=sample.inputTokens===null?"usage not reported":
+      (sample.inputTokens+(sample.outputTokens??0)).toLocaleString("en-GB")+" tokens";
+     line.append(el("strong","",sample.scenarioName+" · "+sample.status),
+      el("p","ppw-admin-small",
+       sample.providerCalls+" Groq request(s) · "+tokenCount+
+       " · "+sample.durationMs+"ms"));
+     if(sample.copy){
+      if(sample.copy.news)line.append(
+       copyCard("OFFICIAL NEWS · "+sample.copy.news.headline,
+        sample.copy.news.summary));
+      else line.append(copyCard("Official News","Not accepted — original PPW copy remains."));
+      line.append(copyCard("WRESTLER REACTION",
+       sample.copy.wrestler?.text??"Not accepted — original HOT TAG reaction remains."));
+      line.append(copyCard("ROAD AGENT",
+       sample.copy.roadAgent?.note??"Not accepted — original Road Agent note remains."));
+     }else line.append(el("p","ppw-admin-small",
+      "No verified output accepted; existing PPW writing remains unchanged."));
+     voiceLab.append(line);
+    }
+   }else voiceLab.append(el("p","ppw-admin-small",
+    "No 20B voice tests yet. Run one to see all accepted voices here."));
    const benchmark=el("div","ppw-lab-benchmark");
    benchmark.append(el("h3","","Wrestling IQ Benchmarks"),
     el("p","ppw-admin-small","Repeat the same fictional match with different models. No World, contracts or published Results change. Each run uses the shared AI allowance."));
@@ -458,7 +554,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    labPanel.replaceChildren(el("h2","","AI Quality Lab"),
     el("p","ppw-admin-sub",
      "Live provider usage, model quality and your playtest notes. No public Results are changed."),
-    benchmark,overview,todaySummary,providerSnapshot,usage,scoreTitle,scores,
+    voiceLab,benchmark,overview,todaySummary,providerSnapshot,usage,scoreTitle,scores,
     el("h3","","Scenario-by-scenario model scores"),scenarioScores,reportButton,
     reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
   }catch(e){labData=null;labPanel.replaceChildren(
