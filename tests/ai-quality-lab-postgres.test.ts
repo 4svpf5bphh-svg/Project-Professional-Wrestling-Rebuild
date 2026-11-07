@@ -5,7 +5,7 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld} from "../src/db/world-operations.js";
 import {readAiLabDashboard,readAiLabReview,saveAiLabFeedback,
- saveAiLabPreview,validateLabFeedback} from "../src/db/ai-quality-lab.js";
+ saveAiLabPreview,saveAiLabFailure,validateLabFeedback} from "../src/db/ai-quality-lab.js";
 const url=process.env.PPW_NEON_TEST_URL;
 const review={showHeadline:"A dramatic final bell",
  opening:"The crowd was invested.",closing:"A strong end.",
@@ -47,6 +47,28 @@ test("AI Lab saves bounded private comparisons and prevents rival reading or rat
   assert.deepEqual(updated.runs[0]?.flags,["REPETITION"]);
   assert.equal(updated.scores[0]?.reviewed,1);
   assert.equal(updated.scores[0]?.average_score,4);
+  const failure=await saveAiLabFailure(db.pool,{
+   worldId,playerId:user,showId:"benchmark:i-quit",
+   showName:"Ringside Benchmark · I Quit",provider:"GROQ",
+   model:"openai/gpt-oss-20b",durationMs:3456,providerCalls:2,
+   inputTokens:2500,outputTokens:1100,errorCode:"FACT_VALIDATION"});
+  const final=await readAiLabDashboard(db.pool,worldId,user);
+  assert.equal(final.runs.length,2);
+  assert.equal(final.runs[0]?.status,"FAILED");
+  assert.equal(final.runs[0]?.error_code,"FACT_VALIDATION");
+  assert.equal(final.runs[0]?.provider_calls,2);
+  assert.equal(final.runs[0]?.input_tokens,2500);
+  assert.equal(final.scores.find(s=>s.model==="openai/gpt-oss-20b")?.failed,1);
+  assert.equal(final.scores.find(s=>s.model==="openai/gpt-oss-20b")?.reviewed,0);
+  await assert.rejects(readAiLabReview(db.pool,worldId,user,failure.runId),/unavailable/);
+  await assert.rejects(saveAiLabFeedback(db.pool,worldId,user,failure.runId,
+   {rating:5,flags:[],notes:"False success"}),/unavailable/);
+  assert.deepEqual((await readAiLabDashboard(db.pool,worldId,rival)).runs,[]);
+  await assert.rejects(saveAiLabFailure(db.pool,{
+   worldId,playerId:user,showId:"test",showName:"Test",
+   provider:"GROQ",model:"openai/gpt-oss-20b",durationMs:10,
+   providerCalls:0,inputTokens:null,outputTokens:null,
+   errorCode:"SECRET_VALUE" as never}),/Unknown AI failure code/);
  }finally{
   await withWorldTransaction(db.pool,tx=>tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]))
    .finally(()=>db.close());
