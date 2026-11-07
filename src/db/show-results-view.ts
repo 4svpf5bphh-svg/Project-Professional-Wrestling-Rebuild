@@ -87,7 +87,7 @@ export async function readCompletedShowView(
     production_cost:string|null;travel_cost:string|null;
     appearance_fees:string|null;total_cost:string|null;
     net_result:string|null;incremental_cash:string|null;
-    shortform_json:unknown|null}>(`
+    shortform_json:unknown|null;shortform_state:string|null}>(`
    SELECT c.receipt_json,d.show_name,d.booking_class,skin.style AS results_skin,
     series_art.style AS event_poster_style,
     bpack.style AS broadcast_package, identity.name AS promotion_name,
@@ -100,11 +100,13 @@ export async function readCompletedShowView(
     economics.net_result::text,economics.incremental_cash::text,
     report.analysis_json AS staff_report,
     gorilla.log_json AS gorilla_log,
-    voices.copy_json AS shortform_json FROM ppw_completed_shows c
+    voices.copy_json AS shortform_json,
+    voices.state AS shortform_state FROM ppw_completed_shows c
    LEFT JOIN ppw_postshow_voice_batches voices ON
     voices.world_id=c.world_id AND voices.promotion_id=c.promotion_id
     AND voices.show_id=c.show_id AND voices.player_id=$2
-    AND voices.receipt_digest=c.receipt_digest AND voices.state='READY'
+    AND voices.receipt_digest=c.receipt_digest
+    AND voices.state IN ('READY','FAILED')
    LEFT JOIN ppw_kp_results_skins skin ON skin.player_id=$2
    LEFT JOIN ppw_kp_broadcast_packages bpack ON bpack.player_id=$2
    LEFT JOIN ppw_staff_show_reports report
@@ -421,9 +423,12 @@ export async function readCompletedShowView(
    gorillaLog:rows[0]!.gorilla_log,
    resultsSkin:rows[0]!.results_skin==="TERRITORY_TV"||rows[0]!.results_skin==="FIGHT_NIGHT"||rows[0]!.results_skin==="UNDERGROUND_ZINE"||rows[0]!.results_skin==="RETRO_BOOKER_02"?rows[0]!.results_skin:null};
   const accepted=readPostShowVoiceCopy(show,rows[0]!.shortform_json);
-  // Only an already-accepted owner-scoped bundle receives local backfill.
-  // No Groq, publication, or extra database read occurs on a Results GET.
-  show.shortform=accepted?blendPostShowVoiceCopy(show,accepted):null;
+  // A matching, immutable owner-scoped receipt is the warrant for local
+  // backfill, including a fully failed provider response. Historical shows
+  // without a batch keep their original presentation unchanged.
+  // No Groq call, publication or extra SQL occurs on a Results GET.
+  show.shortform=rows[0]!.shortform_state?
+   blendPostShowVoiceCopy(show,accepted):null;
   return show;
  });
 }
