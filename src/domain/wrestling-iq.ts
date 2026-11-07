@@ -25,7 +25,7 @@ export function wrestlingMatchIQ(entry:ShowResultEntry):WrestlingMatchIQ|null {
  const group=m.sides.length===2&&size===1?"SINGLES":
   size>1&&m.sides.every(side=>side.length===size)?
    m.sides.length===2?"TAG":"MULTI_TEAM":
-  clean(m.format)==="BATTLE_ROYAL"||m.format.startsWith("BATTLE_ROYAL")?"BATTLE_ROYAL":"MULTI_PERSON";
+  /^(?:BATTLE_ROYAL|BATTLE_ROYAL_MATCH)$/.test(clean(m.format).trim().toUpperCase().replace(/\s+/g,"_"))?"BATTLE_ROYAL":"MULTI_PERSON";
  const format:WrestlingFormat=group;
  const minutes=entry.fallout?.actualMinutes??m.plannedMinutes;
  const pace=minutes!==null&&minutes!==undefined&&minutes<7?
