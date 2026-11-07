@@ -4,7 +4,7 @@
  */
 import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
-import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
+import {manualPlaytestEnabled,aiBenchmarkPreviewOperatorEnabled} from "../domain/manual-playtest-permission.js";
 import {loadRingsideCommentary,generateGroqReview,RingsideGenerationError} from "../db/ringside-commentary.js";
 import {paidPreviewEnabled,OPENAI_PREVIEW_MODEL} from "../db/openai-editorial-preview.js";
 import {groqResponseUsage} from "../domain/ai-director.js";
@@ -169,7 +169,10 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
  }
 
  if(path==="/api/admin"||path==="/api/admin-preview"){
-  if(!manualPlaytestEnabled(process.env,cfg.worldId,user.playerId))
+  const normalOperator=manualPlaytestEnabled(process.env,cfg.worldId,user.playerId);
+  const benchmarkOperator=aiBenchmarkPreviewOperatorEnabled(process.env,
+   cfg.worldId,user.playerId);
+  if(!normalOperator&&!benchmarkOperator)
    return json(403,{error:"Admin access requires the designated World operator"});
   if(post&&!csrf(req,user))return json(403,{error:"Invalid admin session"});
   if(path==="/api/admin"&&get&&routeUrl.searchParams.get("aiLab")){
@@ -229,6 +232,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   const body=await limitedBody(req);
   if(!body)return json(400,{error:"Invalid admin request"});
   if(path==="/api/admin"){
+   if(benchmarkOperator&&body.action!=="RATE_AI_LAB_RUN")
+    return json(403,{error:"Benchmark preview permits AI quality ratings only"});
    if(!allow("admin-settings:"+cfg.worldId,12,60*60_000))
     return json(429,{error:"Admin settings rate limit reached"});
    if(body.action==="GRANT_PLAYTEST_KP"){
@@ -269,6 +274,9 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     return json(200,{settings:saved});
    }catch(e){return json(409,{error:e instanceof Error?e.message:"Settings rejected"});}
   }
+  if(benchmarkOperator&&(typeof body.benchmarkId!=="string"||
+    !body.benchmarkId||body.showId!==undefined))
+   return json(403,{error:"Benchmark preview permits fixed AI fixtures only"});
   if(!allow("admin-preview:"+cfg.worldId,3,60*60_000))
    return json(429,{error:"AI preview limit: three reviews per hour"});
 
