@@ -70,7 +70,7 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
   "button",{name:/Admin/}).click();
  await page.getByRole("button",{name:"AI Testing Lab"}).click();
  await expect(page.getByRole("heading",{name:"Wrestling IQ Benchmarks"})).toBeVisible();
- expect(generated).toBe(0,"Opening the AI Lab must not spend AI tokens");
+ expect(generated).toBe(0); // Opening the AI Lab must never spend AI tokens.
  await expect(page.getByLabel("Benchmark provider").locator("option")).toHaveCount(1);
  await page.getByLabel("Wrestling scenario").selectOption("tag-standard");
  await expect(page.getByText(/Both partners legal simultaneously/)).toBeVisible();
