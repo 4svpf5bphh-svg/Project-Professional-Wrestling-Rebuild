@@ -20,10 +20,10 @@ const fixture=()=>{
 };
 const source=()=>postShowVoiceBrief(fixture());
 const valid={
- news:{headline:"Mercer forces the words out of Wolfe",
-  summary:"Jett Mercer secured a verbal I Quit surrender against Ronan Wolfe at the completed show. The technical aggressor increased the pressure until Wolfe finally conceded, giving Mercer the certified win."},
- wrestler:{text:"I went through the ropes ready for a fight, and I earned the decision. Everybody saw what happened between the bells."},
- roadAgent:{note:"Check the condition and pacing before their next demanding singles bout; give the rivalry some room to breathe rather than repeating this exact match next week."}
+ news:{headline:"Wolfe Finally Says the Words Against Mercer",
+  summary:"Ronan Wolfe held out against Jett Mercer in the I Quit match, but the stubborn resistance finally gave way. Wolfe's verbal surrender handed Mercer a hard-earned victory."},
+ wrestler:{text:"Ronan Wolfe fought the answer, but I kept the pressure on until he said it. That's why I'm the technician and he's the footnote."},
+ roadAgent:{note:"Consider a short Wolfe response segment before another fight; let the I Quit surrender carry weight instead of repeating the same stipulation immediately."}
 };
 test("shortform AI can only run on the expressly approved main World after manual publish",()=>{
  const env={VERCEL_ENV:"production",VERCEL_GIT_COMMIT_REF:"main",
@@ -146,7 +146,7 @@ test("Road Agent only gets a voice with an actual staff report and concrete obse
 test("verified pinfall can be reported naturally, but the defeated wrestler cannot become winner",()=>{
  const brief=postShowVoiceBrief(getWrestlingBenchmark("steel-cage")!.show);
  const headline="Holt has the last word inside the cage";
- const lawful="Mason Holt won by pinfall over Isaiah King in the completed Steel Cage contest. The walls restricted their movement and the closing cover ended the encounter in the ring, exactly as the official result states.";
+ const lawful="Mason Holt won by pinfall over Isaiah King in the Steel Cage match. The imposing walls kept the fight enclosed, and a decisive three-count gave Holt the victory without an escape.";
  const wrong="Isaiah King defeated Mason Holt by a pinfall in the completed Steel Cage contest. The crowd roared for the underdog as the official result gave the decision to King instead of Holt.";
  const invented="Mason Holt won by pinfall over Isaiah King at the completed show, but was hospitalised with a concussion after the referee raised his hand at ringside.";
  assert.ok(validatePostShowVoiceCopy(brief,{news:{headline,summary:lawful}})?.news);
@@ -165,7 +165,7 @@ test("fictional 20B voice lab uses matched identities and all three grounded sou
   assert.ok(fixture.brief.wrestler?.personId);
   assert.ok(fixture.brief.wrestler?.character);
   assert.ok(fixture.brief.roadAgent?.recordedObservation);
-  assert.match(fixture.brief.roadAgent!.recordedObservation,/stars|exceeded|execution/i);
+  assert.match(fixture.brief.roadAgent!.recordedObservation,/strong reaction|exceeded|execution|stood out/i);
   assert.equal(fixture.show.showId,"benchmark:"+scenario.id);
  }
  assert.equal(getPostShowVoiceBenchmark("another-show"),null);
@@ -253,4 +253,77 @@ test("20B prompt explicitly requires nested JSON fields and a bounded concise re
  assert.match(prompt[0]!.content,/"wrestler":\{"text"/);
  assert.match(prompt[0]!.content,/"roadAgent":\{"note"/);
  assert.match(prompt[0]!.content,/use null for that field/);
+});
+
+test("news avoids technical game copy yet respects an I Quit finish",()=>{
+ const brief=source();
+ assert.ok(brief.mainEvent);
+ assert.doesNotMatch(brief.mainEvent!.summary,/No other winning method applies/i,
+  "Technical validator warnings must not leak into the journalism input");
+ assert.equal(brief.mainEvent!.matchType,"I Quit Match · SINGLES");
+ assert.ok(validatePostShowVoiceCopy(brief,valid)?.news);
+ assert.equal(validatePostShowVoiceCopy(brief,{
+  news:{headline:"Mercer Claims the I Quit Victory",
+   summary:"Jett Mercer forced Ronan Wolfe to say I quit in the main event. No other winning method applied, confirming Mercer's victory as the official result."}
+ }),null,"Reject stilted technical narration rather than publishing it");
+ assert.equal(validatePostShowVoiceCopy(brief,{
+  news:{headline:"Mercer Takes a Three-Count Win",
+   summary:"Jett Mercer pinned Ronan Wolfe in a gripping three-count victory. The official announced Mercer's pinfall after a bruising contest that left the crowd stunned."}
+ }),null,"Cannot turn a spoken I Quit surrender into a pinfall");
+});
+test("wrestler reaction must mention a recorded opponent or distinctive match event",()=>{
+ const brief=source();
+ assert.deepEqual(brief.wrestler?.opponentNames,["Ronan Wolfe"]);
+ const good=validatePostShowVoiceCopy(brief,{wrestler:valid.wrestler});
+ assert.ok(good?.wrestler);
+ assert.equal(validatePostShowVoiceCopy(brief,{wrestler:{
+  text:"I keep my composure, deliver precise strikes, and always win when the opponent quits."
+ }}),null,"Unanchored generic HOT TAG boasts should not replace certified reactions");
+ assert.ok(validatePostShowVoiceCopy(brief,{wrestler:{
+  text:"I came into that I Quit match ready for a test. I left having earned every inch of that result."
+ }})?.wrestler,"A specific certified stipulation is sufficient without naming a wrestler");
+ assert.equal(validatePostShowVoiceCopy(brief,{wrestler:{
+  text:"I quit tonight because the pressure was unbearable, and the match simply got away from me."
+ }}),null,"The winning wrestler cannot claim to have surrendered");
+});
+test("Road Agent advises on the certified issue without invented injury or chemistry",()=>{
+ const show=fixture();
+ const relevant={...show,staffReport:{
+  reporter:"Morgan Reed",staffId:null,headline:"Post-show performance report",
+  praise:"Strong reactions",concern:"Avoid repeating the stipulation",
+  recommendation:"Give the next appearance a purpose",
+  strongestMatchId:show.entries[0]!.slotId,reviewedMatches:1
+ }} as CompletedShowView;
+ const agentBrief=postShowVoiceBrief(relevant);
+ assert.equal(agentBrief.roadAgent?.issue,"standout");
+ assert.ok(agentBrief.roadAgent?.suggestedNextStep.includes("response angle"));
+ assert.doesNotMatch(agentBrief.roadAgent!.recordedObservation,/4\.00 stars/i);
+ assert.ok(validatePostShowVoiceCopy(agentBrief,{
+  roadAgent:valid.roadAgent
+ })?.roadAgent);
+ assert.equal(validatePostShowVoiceCopy(agentBrief,{roadAgent:{note:
+  "Consider a medical examination because Wolfe suffered a concussion during the fight. Give him six weeks away and book a comeback angle."
+ }}),null);
+ assert.equal(validatePostShowVoiceCopy(agentBrief,{roadAgent:{note:
+  "I spotted poor chemistry between Mercer and Wolfe throughout the bout. Book a new partner immediately to repair their problem."
+ }}),null);
+});
+
+test("earlier certified news and generic HOT TAG remain visible as historical records",()=>{
+ const show=fixture(),brief=postShowVoiceBrief(show);
+ const archived={
+  news:{headline:"Jett Mercer Wins I Quit Match",
+   summary:"Jett Mercer secured victory when Ronan Wolfe verbally surrendered, conceding the I Quit match. No other winning method applied, confirming Mercer's triumph."},
+  wrestler:{text:"I keep my composure, deliver precise strikes, and always win when the opponent quits."},
+  roadAgent:null
+ };
+ assert.equal(validatePostShowVoiceCopy(brief,archived),null,
+  "New editorial standards apply to future generation");
+ const cached=readPostShowVoiceCopy(show,{version:1,
+  news:{...archived.news,slotId:brief.mainEvent!.slotId},
+  wrestler:{...archived.wrestler,slotId:brief.wrestler!.slotId,
+   personId:brief.wrestler!.personId},roadAgent:null});
+ assert.ok(cached?.news);
+ assert.ok(cached?.wrestler);
+ assert.equal(cached.roadAgent,null);
 });
