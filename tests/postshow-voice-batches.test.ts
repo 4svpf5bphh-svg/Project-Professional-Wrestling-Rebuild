@@ -8,7 +8,16 @@ import {postShowVoiceEnabled,generatePostShowVoiceCopy}
  from "../src/db/postshow-voice-batches.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 
-const fixture=()=>getWrestlingBenchmark("i-quit")!.show;
+const fixture=()=>{
+ const show=getWrestlingBenchmark("i-quit")!.show;
+ // In production the five-read completed-show projection supplies identity
+ // bearing sideParticipants. Synthetic Lab fixtures only carry side names.
+ const entry=show.entries[0]!;
+ if(entry.matchContext)
+  entry.matchContext.sideParticipants=entry.matchContext.sides.map((side,i)=>
+   side.map((name,j)=>({personId:"fixture-"+(i+j),name})));
+ return show;
+};
 const source=()=>postShowVoiceBrief(fixture());
 const valid={
  news:{headline:"Mercer forces the words out of Wolfe",
