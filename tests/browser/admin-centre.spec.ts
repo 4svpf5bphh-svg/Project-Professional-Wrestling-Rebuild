@@ -140,9 +140,12 @@ test("isolated AI benchmark operator sees the lab, never World or Playtests cont
   labReads++;
   return route.fulfill({json:{
    usage:[],runs:[],scores:[],providers:{groq:true,openai:false},
-   scenarios:[{id:"steel-cage",name:"Steel Cage · singles",
-    focus:"Wrestling inside a cage",expectation:"The cage affects psychology",
-    watchFor:"Invented escape win"}]
+   scenarios:[
+    {id:"singles-technical",name:"Singles · technical classic",
+     focus:"Good technical singles",expectation:"Accurate clean pin",watchFor:"Invented submission win"},
+    {id:"steel-cage",name:"Steel Cage · singles",
+     focus:"Wrestling inside a cage",expectation:"The cage affects psychology",
+     watchFor:"Invented escape win"}]
   }});
  });
  await page.route("**/api/admin",route=>{
@@ -151,14 +154,18 @@ test("isolated AI benchmark operator sees the lab, never World or Playtests cont
  });
  await page.route("**/api/admin-preview",route=>{
   const body=route.request().postDataJSON();
-  expect(body).toMatchObject({benchmarkId:"steel-cage",previewProvider:"GROQ",
-   settings:{model:"openai/gpt-oss-20b"}});
+  expect(body.benchmarkId).toBe("steel-cage",
+   "The selected cage fixture must survive the lab's automatic summary refresh");
+  expect(body.previewProvider).toBe("GROQ");
+  expect(body.settings.model).toBe(
+   previewCalls===0?"openai/gpt-oss-120b":"openai/gpt-oss-20b");
   expect(body.showId).toBeUndefined();
   expect(route.request().headers()["x-ppw-csrf"]).toBe("csrf");
   previewCalls++;
   return route.fulfill({json:{review:aiLabReview,labRunId:aiLabRun.run_id,
-   metrics:{durationMs:1750,providerCalls:2,inputTokens:null,outputTokens:null,
-    compatibilityJson:true},
+   metrics:{durationMs:1750,providerCalls:previewCalls===1?1:2,
+    inputTokens:previewCalls===1?800:null,outputTokens:previewCalls===1?400:null,
+    compatibilityJson:previewCalls===2},
    benchmark:{certifiedFactsValidated:true,diagnosticCues:[],humanReviewRequired:true}}});
  });
  await page.goto("/#/home");
@@ -175,11 +182,21 @@ test("isolated AI benchmark operator sees the lab, never World or Playtests cont
  await expect(page.getByRole("heading",{name:"Ringside AI Studio"})).toHaveCount(0);
  expect(generalAdminReads).toBe(0);
  expect(previewCalls).toBe(0);
- await page.getByLabel("Groq model").selectOption("openai/gpt-oss-20b");
+ await expect(page.getByLabel("Wrestling scenario")).toHaveValue("singles-technical");
+ await page.getByLabel("Wrestling scenario").selectOption("steel-cage");
+ await expect(page.getByLabel("Groq model")).toHaveValue("openai/gpt-oss-120b");
  await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
  await expect.poll(()=>previewCalls).toBe(1);
- await expect(page.getByText(/Saved Steel Cage/)).toBeVisible();
+ await expect(page.getByText(/Saved Steel Cage.*120B/)).toBeVisible();
+ await expect(page.getByLabel("Wrestling scenario")).toHaveValue("steel-cage");
+ await expect(page.getByLabel("Groq model")).toHaveValue("openai/gpt-oss-120b");
+ await page.getByLabel("Groq model").selectOption("openai/gpt-oss-20b");
+ await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
+ await expect.poll(()=>previewCalls).toBe(2);
+ await expect(page.getByText(/Saved Steel Cage.*20B/)).toBeVisible();
  await expect(page.getByText(/20B JSON compatibility used/)).toBeVisible();
- expect(labReads).toBeGreaterThanOrEqual(2);
+ await expect(page.getByLabel("Wrestling scenario")).toHaveValue("steel-cage");
+ await expect(page.getByLabel("Groq model")).toHaveValue("openai/gpt-oss-20b");
+ expect(labReads).toBeGreaterThanOrEqual(3);
  expect(generalAdminReads).toBe(0);
 });
