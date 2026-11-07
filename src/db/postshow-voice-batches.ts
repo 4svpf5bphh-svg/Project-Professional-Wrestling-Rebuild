@@ -146,9 +146,12 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
  ])) as Pick<ShortformVoiceDiagnostic,"news"|"wrestler"|"roadAgent">;
  const anyPresent=fields.some(field=>text[field]!==undefined&&text[field]!==null);
  const structured=fields.some(field=>isRecord(text[field])||text[field]===null);
+ const expected={news:!!source.mainEvent,wrestler:!!source.wrestler,
+  roadAgent:!!source.roadAgent};
  const category:ShortformVoiceDiagnostic["category"]=!anyPresent||!structured?
   "WRONG_SHAPE":!copy?"ALL_REJECTED":
-  fields.some(field=>statuses[field]==="REJECTED")?"PARTIAL":"ACCEPTED";
+  fields.some(field=>expected[field]&&statuses[field]!=="ACCEPTED")?
+   "PARTIAL":"ACCEPTED";
  diagnostic?.({category,...statuses});
  return copy;
 }
