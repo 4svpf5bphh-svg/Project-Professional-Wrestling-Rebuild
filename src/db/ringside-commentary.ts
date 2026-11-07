@@ -75,32 +75,6 @@ function decodeEditorialResponse(input:unknown,show:CompletedShowView):unknown{
    return {slotId:entry.slotId,headline:fields.headline,recap:fields.recap};
   })};
 }
-/** Return only a fixed diagnostic category. Provider errors are untrusted and
- * can echo input; never retain or surface their raw text or JSON structure.
- */
-export async function classifyGroqBadRequest(response:Response):
- Promise<"STRUCTURED_OUTPUT"|"MODEL"|"REASONING"|"PARAMETER"|"UNKNOWN">{
- if(response.status!==400)return "UNKNOWN";
- let raw="";
- try{raw=(await response.clone().text()).slice(0,2500);}catch{return "UNKNOWN";}
- let message=raw;
- try{
-  const parsed=JSON.parse(raw) as {error?:{code?:unknown;message?:unknown;type?:unknown}};
-  if(parsed?.error&&typeof parsed.error==="object")
-   message=[parsed.error.code,parsed.error.type,parsed.error.message].filter(
-    v=>typeof v==="string").join(" ");
- }catch{/* A non-JSON error body is never exposed. */}
- const m=message.toLowerCase();
- if(/json[_ -]?validate|structured[_ -]?(output|generation)|json[_ -]?schema|schema|response[_ -]?format|constrained[_ -]?decod|json[_ -]?mode/.test(m))
-  return "STRUCTURED_OUTPUT";
- if(/reasoning[_ -]?(effort|format)|reasoning not supported/.test(m))
-  return "REASONING";
- if(/invalid model|model[_ -]?not[_ -]?found|model not found|model unavailable|unsupported model/.test(m))
-  return "MODEL";
- if(/temperature|invalid parameter|unsupported parameter|unsupported value/.test(m))
-  return "PARAMETER";
- return "UNKNOWN";
-}
 const validationHint=(message:string)=>message.includes("unowned signature")?
  "Only use a named signature or finisher in the entry containing its owner; otherwise use generic move descriptions.":
  message.includes("Untrusted ringside review shape")||message.includes("changed card order")?
@@ -148,11 +122,12 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  if(facts.length>26000)throw new RingsideGenerationError("INVALID_OUTPUT",
   "Verified Ringside facts exceed the bounded article size.");
  const schema=ringsideResponseSchema(show);
- // Strict decoding is still the default for every model. Groq can return a
- // 400 while constraining 20B on a valid JSON schema. Only an explicitly
- // requested, fictional AI Lab comparison may try one compatibility request.
- // The existing factual validator remains mandatory for both output modes.
- let compatibilityJson=false;
+ // Player Results and 120B use strict provider schemas as before. On
+ // fictional AI Lab fixtures only, 20B uses JSON object mode directly:
+ // observed strict-output 400s otherwise doubled calls without better prose.
+ // The exact same certified-fact validator applies to both formats.
+ const compatibilityJson=benchmarkFixture&&previewProvider==="GROQ"&&
+  settings.model==="openai/gpt-oss-20b";
  let correction="";
  for(let attempt=0;attempt<2;attempt++){
   const controller=new AbortController();
@@ -189,19 +164,6 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      signal:controller.signal,pool:budgetPool,body:payload
     });
    if(!response.ok){
-    if(benchmarkFixture&&previewProvider==="GROQ"&&
-     settings.model==="openai/gpt-oss-20b"&&
-     response.status===400&&attempt===0){
-     // Do not retry a known bad model/parameter configuration. Never display,
-     // persist or log the provider's raw error body.
-     const reason=await classifyGroqBadRequest(response);
-     if(reason==="STRUCTURED_OUTPUT"||reason==="UNKNOWN"){
-      compatibilityJson=true;
-      correction="The strict-output service rejected the first attempt. "+
-       "Produce the same factually accurate, fully populated JSON article.";
-      continue;
-     }
-    }
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
      "PROVIDER_AUTH":"PROVIDER_ERROR";
     const retry=Number(response.headers.get("retry-after"));
@@ -214,7 +176,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
       " seconds; this does not mean the daily allowance is exhausted.":
      code==="PROVIDER_AUTH"?"Groq authentication was rejected. Check the server API configuration.":
      "Groq rejected the request (HTTP "+response.status+"). "+
-      (compatibilityJson?"The 20B JSON compatibility attempt was not accepted.":
+      (compatibilityJson?"The 20B JSON benchmark request was not accepted.":
       "Try a different model or reasoning setting."),
      response.status===429?delay:undefined);
    }
