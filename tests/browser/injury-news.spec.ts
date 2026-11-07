@@ -26,7 +26,7 @@ test("iPhone shows verified match injury without fabricating current medical cle
     injuryNews:dismissed?[]:[injury]}}}:{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByRole("heading",{name:"Recent match injuries"})).toBeVisible();
  await expect(page.getByText("Alice suffered an injury")).toBeVisible();
  await expect(page.getByText(/original report estimated 6 weeks out/)).toBeVisible();
@@ -63,7 +63,7 @@ test("iPhone clears mixed injury and title news without touching mandatory actio
     titleNews:dismissed?[]:[title],injuryNews:dismissed?[]:[injury]}}}:{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Alice won World Championship")).toBeVisible();
  await expect(page.getByText("Alice suffered an injury")).toBeVisible();
  await page.getByRole("button",{name:"Clear all resolved updates"}).click();
@@ -95,7 +95,7 @@ test("iPhone lets a booker open and dismiss genuine return-to-ring clearance",as
    attention:{...intro.promotion.attention,medicalClearances:dismissed?[]:[clearance]}}}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByRole("heading",{name:"Cleared to return"})).toBeVisible();
  await expect(page.getByText("Alice is available again")).toBeVisible();
  await expect(page.getByText(/Cleared at Year 1, Week 8/)).toBeVisible();

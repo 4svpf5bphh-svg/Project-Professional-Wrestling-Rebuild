@@ -263,7 +263,7 @@ test("The signed TV night has an accessible route to request a broadcaster chang
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Plan weekly show"}).click();
  await page.getByRole("button",{name:"Request another broadcast day"}).click();
- await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
  await expect(page.getByText(/Your contracted TV night.*Thursday at 20:00/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Request a different broadcast day"})).toBeVisible();
  await page.getByRole("button",{name:"← Back"}).click();

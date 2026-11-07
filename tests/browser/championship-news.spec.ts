@@ -23,7 +23,7 @@ test("iPhone publishes only verified championship history and links to the title
     worldName:"Genesis",year:1,week:5,viewerPromotionId:"local",titles:[]} :{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByRole("heading",{name:"New champions"})).toBeVisible();
  await expect(page.getByText("Alice won World Championship")).toBeVisible();
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
@@ -52,7 +52,7 @@ test("iPhone clears confirmed title and business news but never the unprepared s
   return route.fulfill({json:req.method==="overview"?fresh():{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Alice won World Championship")).toBeVisible();
  await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
  await page.getByRole("button",{name:"Clear all resolved updates"}).click();

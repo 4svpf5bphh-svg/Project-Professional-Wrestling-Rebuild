@@ -122,7 +122,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.locator(".ppw-news-dirt")).toHaveCount(1);
  await expect(page.locator(".ppw-news-dirt .ppw-news-voice"),
   "Owner's certified report does not appear in unverified Dirt Sheets").toHaveCount(0);
- await expect(page.getByText("Fictional in-game wrestling reporting.",{exact:false}).first()).toBeVisible();
+ await expect(page.getByText("Fictional in-game wrestling reporting.",{exact:false})).toHaveCount(0);
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"Did Alice walk out after Fight Night"})).toBeVisible();
  const threads=page.locator(".ppw-news-dirt .ppw-hot-tag-thread");
  await expect(threads).toHaveCount(2);

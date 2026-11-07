@@ -38,7 +38,7 @@ test("iPhone shows genuine year-end/finance notices with private dismissal and p
   return route.fulfill({json:{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByRole("heading",{name:"Company updates"})).toBeVisible();
  await expect(page.getByText("Your annual company review is in")).toBeVisible();
  await expect(page.getByText("Your financial outlook has changed")).toBeVisible();
@@ -51,7 +51,7 @@ test("iPhone shows genuine year-end/finance notices with private dismissal and p
  await expect(page.getByText("Your financial outlook has changed")).toBeVisible();
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
  await page.reload();
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Your annual company review is in")).toHaveCount(0);
  await expect(page.getByText("Your financial outlook has changed")).toBeVisible();
  await page.getByRole("button",{name:"Open Business",exact:true}).click();
@@ -82,7 +82,7 @@ test("iPhone clears mixed contract, backstage and company notices without hiding
   return route.fulfill({json:{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await page.getByRole("button",{name:"Clear all resolved updates"}).click();
  await expect(page.getByText("Company updates")).toHaveCount(0);
  await expect(page.getByText("Decisions received")).toHaveCount(0);

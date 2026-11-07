@@ -713,7 +713,7 @@ test("small iPhones have only the five department drawers at the bottom without 
  }
  await nav.getByRole("button",{name:/Commercials/}).click();
  await expect(page).toHaveURL(/#\/commercials$/);
- await expect(page.getByRole("heading",{name:"Commercials"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
  await page.getByRole("button",{name:"Open Business menu"}).click();
  await nav.getByRole("button",{name:/Finances/}).click();
  await expect(page).toHaveURL(/#\/finances$/);
