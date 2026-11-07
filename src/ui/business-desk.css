@@ -477,3 +477,16 @@
 .ppw-business-back-nav button{min-height:44px;background:#253e54}
 @media(min-width:700px){.ppw-business-hub-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:350px){.ppw-business .ppw-business-hub-choice{font-size:14px;padding:12px;min-height:108px}}
+
+/* Company identity remains a concise record, not a duplicate grid menu. */
+.ppw-business-company{border:1px solid #51617d;border-radius:18px;
+ padding:18px;background:linear-gradient(135deg,#172d48,#211e3c)}
+.ppw-business-company h2{font-size:clamp(23px,6vw,33px);margin:9px 0 3px}
+.ppw-business-company-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;margin:17px 0}
+.ppw-business-company-fact{padding:11px;border:1px solid #536483;
+ border-radius:12px;background:#0c1f35;min-width:0}
+.ppw-business-company-fact small{display:block;color:#a5d3e6;font-size:10px;
+ font-weight:850;letter-spacing:.06em}
+.ppw-business-company-fact strong{display:block;font-size:clamp(14px,3.9vw,20px);
+ color:#f2f7ff;overflow-wrap:anywhere;margin-top:6px}

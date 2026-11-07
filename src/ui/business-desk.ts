@@ -238,33 +238,26 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
   if(commercialNotice)root.append(el("p","ppw-alert ppw-success",commercialNotice));
   if(!view){if(!loading)root.append(button("Retry",()=>void refresh()));return;}
   if(pane==="OVERVIEW"){
-   const hub=el("section","ppw-business-hub");
-   hub.append(el("h2","","Choose your desk"),
-    el("p","ppw-business-muted","Your promotion's money, partners and performance in one place."));
-   const destinations=el("div","ppw-business-hub-grid");
-   const sections=[
-    ["FINANCES","Finances","Bank, spending plan and event accounts"],
-    ["COMMERCIAL","Commercials","Networks, streaming and sponsors"],
-    ["RATINGS","Ratings War","Audiences, rivals and head-to-head results"],
-    ["STAFF","Staff Admin","Your team, roles and staff decisions"],
-    ["STANDING","Standing","Company status and progress"],
-    ["ACTIVITY","Activity","Income and expenditure history"],
-    ["EVENTS","Events","Show takings and business results"],
-    ["TERRITORIES","Territories","Where your audience is growing"]
-   ] as const;
-   for(const [id,title,description] of sections){
-    const choice=button(title,()=>{
-     if(id==="STAFF"){if(port.openStaff)port.openStaff();return;}
-     pane=id;draw();
-    },id==="STAFF"&&!port.openStaff);
-    choice.classList.add("ppw-business-hub-choice");
-    // Keep the brief supporting text visible while giving VoiceOver and
-    // automation a stable, concise control name on a 320px phone.
-    choice.setAttribute("aria-label",title);
-    choice.append(el("small","",description));
-    destinations.append(choice);
+   // The eight dedicated desks are reached from the Business drawer. The
+   // company page is for identity and a concise snapshot, not another menu.
+   const company=el("section","ppw-business-company");
+   company.append(el("span","ppw-business-kicker","YOUR PROMOTION"),
+    el("h2","",view.name),
+    el("p","ppw-business-muted",
+     [view.tier,view.homeMarketName??""].filter(Boolean).join(" · ")));
+   const facts=el("div","ppw-business-company-facts");
+   for(const [label,value] of [
+    ["BANK",money(view.cash)],["DEBT",money(view.debt)],
+    ["WEEKLY MEDIA",money(view.weeklyMediaIncome)],
+    ["WEEKLY SPONSORS",money(view.weeklySponsorIncome)]
+   ] as const){
+    const cell=el("div","ppw-business-company-fact");
+    cell.append(el("small","",label),el("strong","",value));
+    facts.append(cell);
    }
-   hub.append(destinations);root.append(hub);return;
+   company.append(facts,el("p","ppw-business-muted",
+    "Open the Business menu below for Finances, Commercials, Ratings War, Staff Office and your other reports."));
+   root.append(company);return;
   }
   if(pane!=="RATINGS"){
    const nav=el("nav","ppw-business-back-nav");

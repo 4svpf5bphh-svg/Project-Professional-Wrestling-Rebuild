@@ -440,6 +440,28 @@ test("Roster dossiers preserve filters and expanded cards without reloading the 
  expect(methods.filter(x=>x==="wrestlerProfile").length).toBe(1);
 });
 
+test("Home suppresses expired sponsorship noise and outgoing offers while retaining booking",async({page})=>{
+ const home={...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:1,unpreparedShow:true,pendingBackstage:false,
+  expiringTalent:false,pendingContractOffers:true,
+  contractAlerts:[{contractId:"old",personId:"p-a",name:"Alex",
+   kind:"DATES_EXHAUSTED",weeksRemaining:25,waiting:true}],
+  businessUpdates:[{id:"business-update:77",kind:"COMMERCIAL_EXPIRED",
+   year:1,week:4,prestigeDelta:null,before:null,after:null,
+   dealKind:"SPONSOR",endedOfferCode:"legacy",replacementOfferCode:"active"}]
+ }}};
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>route.fulfill({json:
+  route.request().postDataJSON().method==="overview"?home:{}}));
+ await page.goto("/#/home");
+ await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
+ await expect(page.getByText(/1825d/)).toHaveCount(0); // Fixture deadline differs; never fabricate it.
+ await expect(page.getByText(/negotiation pending/i)).toHaveCount(0);
+ await expect(page.getByText(/Offers awaiting decisions/)).toHaveCount(0);
+ await expect(page.getByText(/Previous sponsorship deal ended/)).toHaveCount(0);
+ await expect(page.locator(".ppw-home-notification-inbox")).toHaveCount(0);
+});
+
 test("Home contract wire dismisses one resolved offer without suppressing show obligations or refetching",async({page})=>{
  const methods:string[]=[];
  const attention={plannedShows:0,unpreparedShow:false,pendingBackstage:false,
