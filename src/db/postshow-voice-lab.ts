@@ -45,12 +45,18 @@ export async function saveShortformVoiceLabRun(pool:TransactionPool,input:Input)
  ];
  const labels=["ACCEPTED","MISSING","FORMAT_REJECTED","LENGTH_REJECTED",
   "FACT_OR_VOICE_REJECTED"];
+ const wrestlerReasons=["NO_SOURCE","NO_VERIFIED_EVENT","SELF_SURRENDER",
+  "FALSE_LOSS","NO_FIRST_PERSON","DUPLICATE","BLOCKED_PROSE","UNCLASSIFIED"];
  const d=input.diagnostic;
  if(d&&(!categories.includes(d.category)||!labels.includes(d.news)||
-  !labels.includes(d.wrestler)||!labels.includes(d.roadAgent)))
+  !labels.includes(d.wrestler)||!labels.includes(d.roadAgent)||
+  (d.wrestlerReason!==undefined&&
+   (d.wrestler!=="FACT_OR_VOICE_REJECTED"||
+    !wrestlerReasons.includes(d.wrestlerReason)))))
   throw new Error("Invalid categorical voice diagnostic");
  const diagnostics=d?JSON.stringify({
-  category:d.category,news:d.news,wrestler:d.wrestler,roadAgent:d.roadAgent
+  category:d.category,news:d.news,wrestler:d.wrestler,roadAgent:d.roadAgent,
+  ...(d.wrestlerReason?{wrestlerReason:d.wrestlerReason}:{})
  }):null;
  const runId=randomUUID();
  await withSqlClient(pool,db=>db.query(`

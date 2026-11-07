@@ -5,7 +5,8 @@
 import {withSqlClient} from "./postgres.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
 import {readCompletedShowView,type CompletedShowView} from "./show-results-view.js";
-import {postShowVoiceBrief,postShowVoicePrompt,validatePostShowVoiceCopy}
+import {postShowVoiceBrief,postShowVoicePrompt,validatePostShowVoiceCopy,
+ wrestlerVoiceRejectionReason}
  from "../domain/postshow-voice-batch.js";
 import type {TransactionPool} from "./transaction.js";
 
@@ -82,6 +83,7 @@ export type ShortformVoiceDiagnostic={
  news:ShortformVoicePartStatus;
  wrestler:ShortformVoicePartStatus;
  roadAgent:ShortformVoicePartStatus;
+ wrestlerReason?:import("../domain/postshow-voice-batch.js").WrestlerVoiceReason;
 };
 const emptyDiagnostic=(category:ShortformVoiceDiagnostic["category"]):
  ShortformVoiceDiagnostic=>({category,news:"MISSING",wrestler:"MISSING",
@@ -178,7 +180,11 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
   "WRONG_SHAPE":!copy?"ALL_REJECTED":
   fields.some(field=>expected[field]&&statuses[field]!=="ACCEPTED")?
    "PARTIAL":"ACCEPTED";
- diagnostic?.({category,...statuses});
+ const wrestlerReason=statuses.wrestler==="FACT_OR_VOICE_REJECTED"?
+  wrestlerVoiceRejectionReason(source,isRecord(text.wrestler)?
+   text.wrestler.text:undefined):undefined;
+ diagnostic?.({category,...statuses,
+  ...(wrestlerReason?{wrestlerReason}:{})});
  return copy;
 }
 

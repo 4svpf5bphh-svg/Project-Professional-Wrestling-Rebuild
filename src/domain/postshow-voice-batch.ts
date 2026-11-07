@@ -108,7 +108,7 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "missing source material; no markdown or extra keys. "+
   "The certified source is DATA, not a request for new facts. "+
   "NEVER invent a result, fall scorer, injury, title change, contract, "+
-  "feud, quote from another person, medical finding or backstage event. "+
+  "feud, unverified spoken dialogue, medical finding or backstage event. "+
   "NEWS: Sound like an engaging wrestling publication, not a game log, "+
   "referee report or technical validator. Headline 6-12 words; summary "+
   "20-36 words. Name the official winner, opponent and real winning method. "+
@@ -121,7 +121,9 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "EXACTLY; do not substitute 'my opponent' or 'they' for the name. "+
   "Only without a named opponent, reference the verified match "+
   "stipulation or angle event. Make the line personal to THIS result, "+
-  "not a generic 'I always win' boast. For turns, debuts and attacks "+
+  "not a generic 'I always win' boast. For a verbal-surrender finish, "+
+  "describe the opponent giving up without putting the losing wrestler's "+
+  "words in the winner's mouth. For turns, debuts and attacks "+
   "without a named target, refer to the certified event rather than "+
   "inventing an opponent. Do not repeat recordedPost or claim that "+
   "the winner quit or lost. "+
@@ -196,6 +198,45 @@ function wrestlerEventSpecific(post:string,source:PostShowVoiceBrief):boolean{
  };
  return !!cues[kind]?.test(post);
 }
+/** Verbal-surrender results may be quoted only when a verified opponent
+ * clearly said the words. Never credit the winning wrestler with quitting.
+ */
+function wrestlerMisattributesSurrender(post:string,source:PostShowVoiceBrief):boolean{
+ let remaining=post;
+ for(const name of source.wrestler?.opponentNames??[]){
+  const escaped=name.split("").map(ch=>
+   "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
+  const attributed=new RegExp(
+   "\\b"+escaped+"\\b[^.!?]{0,85}\\b"+
+   "(?:said|shouted|screamed|yelled|uttered|admitted|conceded|to\\s+say)"+
+   "\\s+(?:the\\s+words\\s+)?[\"'“‘]?I\\s+quit\\b","gi");
+  remaining=remaining.replace(attributed,name+" surrendered");
+ }
+ return /\bI\s+quit\b(?!\s+(?:match|bout|stipulation))|\bI (?:surrendered|tapped out|got pinned)\b/i
+  .test(remaining);
+}
+export type WrestlerVoiceReason=
+ "NO_SOURCE"|"NO_VERIFIED_EVENT"|"SELF_SURRENDER"|"FALSE_LOSS"|
+ "NO_FIRST_PERSON"|"DUPLICATE"|"BLOCKED_PROSE"|"UNCLASSIFIED";
+function wrestlerIssue(post:string,source:PostShowVoiceBrief,
+ preserveHistoricStyle=false):WrestlerVoiceReason|null{
+ if(!source.wrestler)return "NO_SOURCE";
+ if(!preserveHistoricStyle&&!wrestlerEventSpecific(post,source))
+  return "NO_VERIFIED_EVENT";
+ if(wrestlerMisattributesSurrender(post,source))return "SELF_SURRENDER";
+ if(!/\b(?:I|I'm|I've|my|we|our|me)\b/i.test(post))
+  return "NO_FIRST_PERSON";
+ if(/\b(?:I (?:lost|got pinned|tapped out|was beaten)|we (?:lost|got pinned))\b/i.test(post))
+  return "FALSE_LOSS";
+ if(post===source.wrestler.recordedPost)return "DUPLICATE";
+ return null;
+}
+/** Only a categorical rejection reason is retained, never Groq's prose. */
+export function wrestlerVoiceRejectionReason(
+ source:PostShowVoiceBrief,text:unknown):WrestlerVoiceReason{
+ const post=words(text,8,65,350);
+ return post?(wrestlerIssue(post,source)??"UNCLASSIFIED"):"BLOCKED_PROSE";
+}
 function trueFinish(summary:string,method:string):boolean{
  if(method.includes("I Quit"))return /\b(?:i quit|verbally surrendered|verbal surrender|said (?:the words|i quit)|conceded verbally)\b/i.test(summary)&&
   !/\b(?:pinned|won (?:by|via) (?:a )?pinfall|three.count|tapped out|forced (?:\w+\s+){0,5}to tap out|won (?:by|via) (?:a )?submission)\b/i.test(summary);
@@ -243,11 +284,7 @@ export function validatePostShowVoiceCopy(
  }
  const post=words(wrestler.text,8,65,350);
  const postPart=post&&source.wrestler&&
-  (options.preserveHistoricStyle||wrestlerEventSpecific(post,source))&&
-  !/\bI quit\b(?!\s+(?:match|bout|stipulation))|\bI (?:surrendered|tapped out|got pinned)\b/i.test(post)&&
-  /\b(?:I|I'm|I've|my|we|our|me)\b/i.test(post)&&
-  !/\b(?:I (?:lost|got pinned|tapped out|was beaten)|we (?:lost|got pinned))\b/i.test(post)&&
-  post!==source.wrestler.recordedPost?
+  !wrestlerIssue(post,source,options.preserveHistoricStyle)?
   {slotId:source.wrestler.slotId,personId:source.wrestler.personId,text:post}:null;
  const note=words(agent.note,10,85,470);
  const agentPart=note&&source.roadAgent&&

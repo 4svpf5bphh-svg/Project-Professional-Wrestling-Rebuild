@@ -299,6 +299,36 @@ test("wrestler reaction must mention a recorded opponent or distinctive match ev
   text:"I quit tonight because the pressure was unbearable, and the match simply got away from me."
  }}),null,"The winning wrestler cannot claim to have surrendered");
 });
+test("verbal I Quit finish accepts only the opponent's attributed quote",()=>{
+ const brief=source();
+ const opponentQuote="I watched Ronan Wolfe finally say 'I quit' when the pressure told. That belongs to him, and the win belongs to me.";
+ const winnerQuit="I said 'I quit' after Ronan Wolfe overwhelmed me tonight, and I could not keep going in the match.";
+ assert.ok(validatePostShowVoiceCopy(brief,{wrestler:{text:opponentQuote}})?.wrestler,
+  "Verified opponent's surrendered words are not a false winner quit");
+ assert.equal(validatePostShowVoiceCopy(brief,{wrestler:{text:winnerQuit}}),null,
+  "First-person winner surrender must still be rejected");
+});
+
+test("20B wrestler rejection explains the actual guard without retaining prose",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const fixture=getPostShowVoiceBenchmark("i-quit")!;
+ const candidates=[
+  {text:"I stay cold under pressure and I never lose to any opponent when it matters.",reason:"NO_VERIFIED_EVENT"},
+  {text:"I said I quit against Ronan Wolfe because I lost the fight and gave up.",reason:"SELF_SURRENDER"}
+ ];
+ for(const sample of candidates){
+  let diagnosis:Record<string,string>|null=null;
+  await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>
+   new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+    news:valid.news,wrestler:{text:sample.text},roadAgent:valid.roadAgent
+   })}}]}),{status:200}),
+   undefined,d=>{diagnosis=d as unknown as Record<string,string>;});
+  assert.equal((diagnosis as Record<string,string>|null)?.wrestler,"FACT_OR_VOICE_REJECTED");
+  assert.equal((diagnosis as Record<string,string>|null)?.wrestlerReason,sample.reason);
+  assert.equal(JSON.stringify(diagnosis).includes(sample.text),false);
+ }
+});
+
 test("Road Agent advises on the certified issue without invented injury or chemistry",()=>{
  const show=fixture();
  const relevant={...show,staffReport:{

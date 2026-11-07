@@ -31,7 +31,7 @@ type ShortformCopy={
  roadAgent:{slotId:string;note:string}|null;
 };
 type ShortformLabDiagnostic={category:string;news:string;wrestler:string;
- roadAgent:string};
+ roadAgent:string;wrestlerReason?:string};
 type ShortformLabRun={runId:string;scenarioId:string;scenarioName:string;
  model:string;status:"READY"|"FAILED";errorCode:string|null;
  durationMs:number;providerCalls:number;inputTokens:number|null;
@@ -312,6 +312,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       line.append(el("p","ppw-admin-small",
        "Quality check: "+(readable[d.category]??"Unclassified")+
        " · News "+d.news+" · Wrestler "+d.wrestler+
+       (d.wrestlerReason?" ("+d.wrestlerReason.replace(/_/g," ").toLowerCase()+")":"")+
        " · Road Agent "+d.roadAgent));
      }
      if(sample.copy){
