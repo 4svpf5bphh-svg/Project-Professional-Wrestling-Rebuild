@@ -7,6 +7,11 @@ import type {TransactionPool} from "./transaction.js";
 import type {RingsideCopy} from "../domain/ringside-editorial.js";
 import {validateCachedRingsideCopy} from "../domain/ringside-editorial.js";
 export type LabProvider="GROQ"|"OPENAI";
+export const AI_LAB_ERROR_CODES=[
+ "FACT_VALIDATION","PROVIDER_LIMIT","PROVIDER_AUTH",
+ "PROVIDER_ERROR","INVALID_OUTPUT","OUTPUT_INCOMPLETE","UNKNOWN"
+] as const;
+export type AiLabErrorCode=typeof AI_LAB_ERROR_CODES[number];
 export const AI_LAB_FLAGS=[
  "WRONG_FINISH","TAG_RULES","INVENTED_FACT","REPETITION",
  "CHARACTER_VOICE","FLAT_WRITING","OTHER"
@@ -35,13 +40,28 @@ export interface AiLabPreviewInput{
  provider:LabProvider;model:string;durationMs:number;providerCalls:number;
  inputTokens:number|null;outputTokens:number|null;review:RingsideCopy;
 }
-export async function saveAiLabPreview(pool:TransactionPool,input:AiLabPreviewInput){
+function validateRunMetrics(input:Omit<AiLabPreviewInput,"review">,failed=false){
  assertScope(input.worldId,input.playerId);
  if(!input.showId||input.showId.length>200||input.showName.length>200||
   input.model.length>100||!["GROQ","OPENAI"].includes(input.provider)||
   !Number.isSafeInteger(input.durationMs)||input.durationMs<0||input.durationMs>180000||
-  !Number.isSafeInteger(input.providerCalls)||input.providerCalls<1||input.providerCalls>2)
-  throw new Error("Invalid AI lab preview");
+  !Number.isSafeInteger(input.providerCalls)||
+  input.providerCalls<(failed?0:1)||input.providerCalls>2||
+  [input.inputTokens,input.outputTokens].some(n=>
+   n!==null&&(!Number.isSafeInteger(n)||n<0||n>100000)))
+  throw new Error("Invalid AI lab preview metrics");
+}
+async function pruneAiLabHistory(pool:TransactionPool,world:string,player:string){
+ // At most 40 operator-triggered samples, successful OR failed, without
+ // touching the shared World or other players' records.
+ await withSqlClient(pool,db=>db.query(`
+  DELETE FROM ppw_ai_lab_runs WHERE world_id=$1 AND player_id=$2
+   AND run_id NOT IN(
+    SELECT run_id FROM ppw_ai_lab_runs WHERE world_id=$1 AND player_id=$2
+    ORDER BY created_at DESC,run_id DESC LIMIT 40)`,[world,player]));
+}
+export async function saveAiLabPreview(pool:TransactionPool,input:AiLabPreviewInput){
+ validateRunMetrics(input);
  const review=validateCachedRingsideCopy(input.review);
  const json=JSON.stringify(review);
  if(json.length>40000)throw new Error("AI lab preview exceeds safe storage limit");
@@ -54,14 +74,26 @@ export async function saveAiLabPreview(pool:TransactionPool,input:AiLabPreviewIn
   input.provider,input.model,input.durationMs,input.providerCalls,
   input.inputTokens,input.outputTokens,json
  ]));
- // Keep at most 40 manually requested samples per operator; no unrelated World
- // data is changed. This is not per-match or per-show background logging.
+ await pruneAiLabHistory(pool,input.worldId,input.playerId);
+ return {runId};
+}
+/** Failed generation is still meaningful benchmark evidence, but raw model
+ * responses and untrusted provider errors are deliberately never persisted. */
+export async function saveAiLabFailure(pool:TransactionPool,
+ input:Omit<AiLabPreviewInput,"review">&{errorCode:AiLabErrorCode}){
+ validateRunMetrics(input,true);
+ if(!(AI_LAB_ERROR_CODES as readonly string[]).includes(input.errorCode))
+  throw new Error("Unknown AI failure code");
+ const runId=randomUUID();
  await withSqlClient(pool,db=>db.query(`
-  DELETE FROM ppw_ai_lab_runs WHERE world_id=$1 AND player_id=$2
-   AND run_id NOT IN(
-    SELECT run_id FROM ppw_ai_lab_runs WHERE world_id=$1 AND player_id=$2
-    ORDER BY created_at DESC,run_id DESC LIMIT 40)`,
-  [input.worldId,input.playerId]));
+  INSERT INTO ppw_ai_lab_runs(run_id,world_id,player_id,show_id,show_name,
+   provider,model,duration_ms,provider_calls,input_tokens,output_tokens,
+   status,error_code)
+  VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'FAILED',$12)`,
+  [runId,input.worldId,input.playerId,input.showId,input.showName,
+   input.provider,input.model,input.durationMs,input.providerCalls,
+   input.inputTokens,input.outputTokens,input.errorCode]));
+ await pruneAiLabHistory(pool,input.worldId,input.playerId);
  return {runId};
 }
 export async function readAiLabDashboard(pool:TransactionPool,worldId:string,playerId:string){
@@ -86,18 +118,21 @@ export async function readAiLabDashboard(pool:TransactionPool,worldId:string,pla
    run_id:string;show_id:string;show_name:string;provider:LabProvider;
    model:string;duration_ms:number;provider_calls:number;
    input_tokens:number|null;output_tokens:number|null;rating:number|null;
-   flags:LabFlag[];notes:string;created_at:string}>(`
+   flags:LabFlag[];notes:string;created_at:string;
+   status:"READY"|"FAILED";error_code:AiLabErrorCode|null}>(`
     SELECT run_id::text,show_id,show_name,provider,model,duration_ms,
      provider_calls,input_tokens,output_tokens,rating,flags,notes,
-     created_at::text FROM ppw_ai_lab_runs
+     created_at::text,status,error_code FROM ppw_ai_lab_runs
     WHERE world_id=$1 AND player_id=$2
     ORDER BY created_at DESC,run_id DESC LIMIT 40`,
    [worldId,playerId])),
   withSqlClient(pool,db=>db.query<{
    provider:LabProvider;model:string;total:number;reviewed:number;
-   average_score:number|null}>(`
+   successful:number;failed:number;average_score:number|null}>(`
     SELECT provider,model,count(*)::integer AS total,
      count(rating)::integer AS reviewed,
+     count(*) FILTER (WHERE status='READY')::integer AS successful,
+     count(*) FILTER (WHERE status='FAILED')::integer AS failed,
      round(avg(rating)::numeric,1)::double precision AS average_score
     FROM ppw_ai_lab_runs
     WHERE world_id=$1 AND player_id=$2 AND created_at>=now()-interval '30 days'
@@ -114,7 +149,8 @@ export async function readAiLabReview(pool:TransactionPool,
   SELECT review_json FROM ppw_ai_lab_runs
   WHERE world_id=$1 AND player_id=$2 AND run_id=$3::uuid LIMIT 1`,
  [worldId,playerId,runId]));
- if(!rows.length)throw new Error("AI lab sample unavailable to this operator");
+ if(!rows.length||rows[0]!.review_json===null)
+  throw new Error("AI lab sample unavailable to this operator");
  return validateCachedRingsideCopy(rows[0]!.review_json);
 }
 export async function saveAiLabFeedback(pool:TransactionPool,
@@ -126,6 +162,7 @@ export async function saveAiLabFeedback(pool:TransactionPool,
  const rows=await withSqlClient(pool,db=>db.query<{run_id:string}>(`
   UPDATE ppw_ai_lab_runs SET rating=$4,flags=$5::text[],notes=$6
   WHERE world_id=$1 AND player_id=$2 AND run_id=$3::uuid
+   AND status='READY'
   RETURNING run_id::text`,
  [worldId,playerId,runId,feedback.rating,feedback.flags,feedback.notes]));
  if(rows.length!==1)throw new Error("AI lab sample unavailable to this operator");
