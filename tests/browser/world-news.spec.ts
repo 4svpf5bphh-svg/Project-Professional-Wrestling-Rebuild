@@ -71,7 +71,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  const officialMark=page.locator(".ppw-news-official .ppw-news-masthead-art");
  await expect(officialMark).toBeVisible();
  await expect(officialMark).toHaveAttribute("src","/branding/news-official.webp");
- expect(await officialMark.evaluate((img)=> (img as HTMLImageElement).naturalWidth)).toBe(420);
+ await expect.poll(()=>officialMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(420);
  await expect(page.locator('.ppw-news-poster[data-kind="match"]')).toHaveCSS(
   "background-image",/award-match\.webp/);
  await expect(page.locator('.ppw-news-poster[data-kind="angle"]')).toHaveCSS(
@@ -126,7 +126,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  const dirtMark=page.locator(".ppw-news-dirt .ppw-news-masthead-art");
  await expect(dirtMark).toBeVisible();
  await expect(dirtMark).toHaveAttribute("src","/branding/news-dirt.webp");
- expect(await dirtMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(420);
+ await expect.poll(()=>dirtMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(420);
 
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"Creative shake-up?"})).toBeVisible();
  await expect(page.getByText("RUMOUR / NOT CONFIRMED")).toBeVisible();
