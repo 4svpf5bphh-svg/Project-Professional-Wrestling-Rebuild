@@ -142,3 +142,27 @@ test("verbatim recap echoes are removed without another paid Groq generation",as
  assert.equal(calls,1);
  assert.equal(result.slots[0]?.recap.match(/One Winged Angel ended/g)?.length,1);
 });
+
+test("AI Director routes small features separately without an extra request",async()=>{
+ const {chooseGroqModel,groqResponseUsage,estimatedGroqTokens}=await import("../src/domain/ai-director.js");
+ const {requestGroqEditorial}=await import("../src/db/groq-ai-director.js");
+ assert.equal(chooseGroqModel("RINGSIDE"),"openai/gpt-oss-120b");
+ assert.equal(chooseGroqModel("RINGSIDE","openai/gpt-oss-20b"),"openai/gpt-oss-20b");
+ assert.equal(chooseGroqModel("SHORT_NEWS"),"openai/gpt-oss-20b");
+ assert.equal(chooseGroqModel("CREATIVE_PITCH"),"openai/gpt-oss-20b");
+ assert.equal(estimatedGroqTokens("x".repeat(300),100),200);
+ assert.throws(()=>estimatedGroqTokens("x".repeat(85001),100),/bounded/);
+ assert.deepEqual(groqResponseUsage({usage:{prompt_tokens:120,completion_tokens:40}}),
+  {inputTokens:120,outputTokens:40});
+ assert.equal(groqResponseUsage({usage:{prompt_tokens:-1,completion_tokens:40}}),null);
+ let calls=0;
+ const response=await requestGroqEditorial({task:"SHORT_NEWS",key:"test",
+  body:{max_completion_tokens:200,messages:[]},transport:async(_url,init)=>{
+   calls++;
+   const payload=JSON.parse(String(init?.body));
+   assert.equal(payload.model,"openai/gpt-oss-20b");
+   assert.equal((init?.headers as Record<string,string>).authorization,"Bearer test");
+   return new Response('{"usage":{"prompt_tokens":1,"completion_tokens":1}}');
+  }});
+ assert.equal(response.status,200);assert.equal(calls,1);
+});

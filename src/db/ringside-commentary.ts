@@ -3,6 +3,7 @@
  */
 import {createHash,randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
+import {requestGroqEditorial} from "./groq-ai-director.js";
 import {readAdminRingsideSettings} from "./admin-ringside-settings.js";
 import {DEFAULT_RINGSIDE_SETTINGS,ringsideVoiceInstruction,type RingsideSettings}
  from "../domain/ringside-settings.js";
@@ -87,7 +88,8 @@ const validationHint=(message:string)=>message.includes("unowned signature")?
 export async function generateGroqReview(show:CompletedShowView,key:string,
  transport:typeof fetch=fetch,
  settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
- memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY):Promise<RingsideCopy>{
+ memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,
+ budgetPool?:TransactionPool):Promise<RingsideCopy>{
  if(JSON.stringify(ringsideBrief(show)).length>26000||
     show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
@@ -120,10 +122,10 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),18000);
   try{
-   const response=await transport("https://api.groq.com/openai/v1/chat/completions",{
-    method:"POST",signal:controller.signal,
-    headers:{"authorization":"Bearer "+key,"content-type":"application/json"},
-    body:JSON.stringify({model:settings.model,temperature:settings.creativity,
+   const response=await requestGroqEditorial({
+    task:"RINGSIDE",preferredModel:settings.model,key,transport,
+    signal:controller.signal,pool:budgetPool,
+    body:{temperature:settings.creativity,
      max_completion_tokens:Math.min(5800,760+show.entries.length*(
       settings.detail==="LONG"?310:settings.detail==="SHORT"?185:245)),
      reasoning_effort:settings.reasoning,
@@ -139,14 +141,16 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        "Use at most one relevant callback per bout; an empty thread means no confirmed connection.\n"+
        (correction?"Quality-control correction required: "+correction+"\n":"")+
        "Records:\n"+facts}]
-    })
-   });
+    }});
    if(!response.ok){
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
      "PROVIDER_AUTH":"PROVIDER_ERROR";
     const retry=Number(response.headers.get("retry-after"));
     const delay=Number.isFinite(retry)&&retry>0?Math.ceil(Math.min(1800,retry)):60;
-    throw new RingsideGenerationError(code,response.status===429?
+    throw new RingsideGenerationError(code,response.status===429&&
+     response.headers.get("x-ppw-budget-exhausted")==="true"?
+     "PPW's daily free AI allowance is exhausted. Previously published writing remains available.":
+     response.status===429?
      "Groq's short-term limit was reached. Retry in about "+delay+
       " seconds; this does not mean the daily allowance is exhausted.":
      code==="PROVIDER_AUTH"?"Groq authentication was rejected. Check the server API configuration.":
@@ -274,7 +278,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
   let memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY;
   try{memory=await readRingsideMemory(pool,scope,show);}
   catch{console.warn("Ringside history unavailable; generating from card facts");}
-  const review=await generateGroqReview(show,key,transport,settings,memory);
+  const review=await generateGroqReview(show,key,transport,settings,memory,pool);
   const write=await withSqlClient(pool,async db=>db.query<{state:string}>(`
    UPDATE ppw_ringside_reports SET state='READY',report_json=$6::jsonb,
     updated_at=now() WHERE world_id=$1 AND promotion_id=$2
