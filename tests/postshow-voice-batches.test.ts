@@ -309,8 +309,9 @@ test("verbal I Quit finish accepts only the opponent's attributed quote",()=>{
   "First-person winner surrender must still be rejected");
 });
 
-test("opponent quit quote is rejected unless this wrestler's match ended by verbal surrender",()=>{
- const brief=postShowVoiceBrief(getWrestlingBenchmark("steel-cage")!.show);
+test("opponent quit quote is rejected unless this wrestler's match ended by verbal surrender",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const brief=getPostShowVoiceBenchmark("steel-cage")!.brief;
  const opponent=brief.wrestler?.opponentNames[0];
  assert.ok(opponent);
  const quoted={wrestler:{text:
