@@ -166,3 +166,45 @@ test("AI Director routes small features separately without an extra request",asy
   }});
  assert.equal(response.status,200);assert.equal(calls,1);
 });
+
+test("Groq receives tag legality and pacing as compact evidence, not extra requests",async()=>{
+ const team:CompletedShowView={...show,entries:[{...show.entries[0]!,
+  matchContext:{format:"2v2",intent:"COMPETITIVE",plannedMinutes:22,
+   sides:[["Kenny Omega","Matt Jackson"],["Dax Harwood","Cash Wheeler"]],
+   winnerNames:["Kenny Omega","Matt Jackson"],championshipContested:false},
+  fallout:{ratingStars:4,actualMinutes:22,injuries:[],eliminations:[]}}]};
+ let calls=0;
+ const response:typeof fetch=async(_url,init)=>{
+  calls++;
+  const request=JSON.parse(String(init?.body));
+  assert.match(request.messages[0].content,/only one wrestler PER TEAM is legal/);
+  assert.match(request.messages[1].content,/"format":"TAG"/);
+  assert.match(request.messages[1].content,/"tempo":"LONG"/);
+  assert.match(request.messages[1].content,/do not force a hot tag/);
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"The big match",opening:"It felt like a genuine main event.",
+   closing:"The team earned its victory.",
+   slots:{card_0:{headline:"A tag-team test",recap:
+    "The opponents worked the corner before Omega found a way back to the apron. A legal tag changed the momentum, and his team secured the certified clean pin."}}
+  })}}]}));
+ };
+ const article=await generateGroqReview(team,"fixture",response);
+ assert.equal(article.slots.length,1);assert.equal(calls,1);
+});
+test("Groq cannot publish a tag match where both team members remain legal",async()=>{
+ const team:CompletedShowView={...show,entries:[{...show.entries[0]!,
+  matchContext:{format:"2v2",intent:"COMPETITIVE",plannedMinutes:12,
+   sides:[["Kenny Omega","Matt Jackson"],["Dax Harwood","Cash Wheeler"]],
+   winnerNames:["Kenny Omega","Matt Jackson"],championshipContested:false}}]};
+ let attempts=0;
+ await assert.rejects(()=>generateGroqReview(team,"fixture",async()=>{
+  attempts++;
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"The tag bout",opening:"The action stayed brisk.",
+   closing:"One team won.",
+   slots:{card_0:{headline:"Wrong tag mechanics",
+    recap:"Both team partners were legal from start to finish, with no tags required."}}
+  })}}]}));
+ }),error=>error instanceof RingsideGenerationError&&error.code==="FACT_VALIDATION");
+ assert.equal(attempts,2);
+});
