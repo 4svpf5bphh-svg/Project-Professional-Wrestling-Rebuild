@@ -252,7 +252,7 @@ test("20B prompt explicitly requires nested JSON fields and a bounded concise re
  assert.match(prompt[0]!.content,/"news":\{"headline"/);
  assert.match(prompt[0]!.content,/"wrestler":\{"text"/);
  assert.match(prompt[0]!.content,/"roadAgent":\{"note"/);
- assert.match(prompt[0]!.content,/use null for that field/);
+ assert.match(prompt[0]!.content,/use null for that voice/);
 });
 
 test("news avoids technical game copy yet respects an I Quit finish",()=>{
