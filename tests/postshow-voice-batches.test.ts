@@ -191,3 +191,46 @@ test("shortform lab validates all three parts from a single 20B fixture response
  assert.ok(generated?.roadAgent);
  assert.deepEqual(readPostShowVoiceCopy(fixture.show,generated),generated);
 });
+
+test("20B failures expose only categorical diagnostics and never retain rejected prose",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const fixture=getPostShowVoiceBenchmark("i-quit")!;
+ for(const sample of [
+  {content:"not json",expected:"INVALID_JSON"},
+  {content:JSON.stringify({news:"Headline and article",
+   wrestler:"In character reply",roadAgent:"Practical advice"}),expected:"WRONG_SHAPE"},
+  {content:JSON.stringify({news:{headline:"Too short",summary:"Jett Mercer"},
+   wrestler:{text:"No"},roadAgent:{note:"No"}}),expected:"ALL_REJECTED"},
+  {content:JSON.stringify(valid),expected:"ACCEPTED"}
+ ]){
+  let calls=0,diagnosis:unknown=null;
+  const text=sample.content;
+  const result=await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>{
+   calls++;
+   return new Response(JSON.stringify({choices:[{finish_reason:"stop",
+    message:{content:text}}]}),{status:200});
+  },undefined,(value)=>{diagnosis=value;});
+  assert.equal(calls,1);
+  const d=diagnosis as {category:string;news:string;
+   wrestler:string;roadAgent:string}|null;
+  assert.equal(d?.category,sample.expected);
+  assert.ok(d);
+  assert.deepEqual(Object.keys(d).sort(),
+   ["category","news","wrestler","roadAgent"].sort(),
+   "Diagnostics contain no Groq prose, error body, names or content");
+  assert.equal(!!result,sample.expected==="ACCEPTED");
+ }
+ let diagnosis:unknown;
+ await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>
+  new Response("provider unavailable",{status:400}),undefined,
+  value=>{diagnosis=value;});
+ assert.equal((diagnosis as {category?:string})?.category,"HTTP_REJECTED");
+});
+test("20B prompt explicitly requires nested JSON fields and a bounded concise response",()=>{
+ const brief=postShowVoiceBrief(fixture());
+ const prompt=postShowVoicePrompt(brief);
+ assert.match(prompt[0]!.content,/"news":\{"headline"/);
+ assert.match(prompt[0]!.content,/"wrestler":\{"text"/);
+ assert.match(prompt[0]!.content,/"roadAgent":\{"note"/);
+ assert.match(prompt[0]!.content,/use null for that field/);
+});
