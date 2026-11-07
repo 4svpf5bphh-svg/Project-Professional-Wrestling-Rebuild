@@ -469,7 +469,9 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     await availablePromotionsAsActor(actor,cfg.worldId,null,40):[];
    return json(200,{worldId:cfg.worldId,playerId:user.playerId,
     ownerName,csrfToken:user.csrfToken,overview,availablePromotions:options,
-    canManualAdvance:manualPlaytestEnabled(process.env,cfg.worldId,user.playerId)});
+    canManualAdvance:manualPlaytestEnabled(process.env,cfg.worldId,user.playerId),
+    canAiBenchmark:aiBenchmarkPreviewOperatorEnabled(process.env,
+     cfg.worldId,user.playerId)});
   }catch{return json(503,{error:"World data unavailable"});}
  }
  if(path==="/api/join"||path==="/api/claim"){
