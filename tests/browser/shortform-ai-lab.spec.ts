@@ -36,7 +36,9 @@ test("iPhone protected AI Lab runs one fictional 20B voice batch and keeps saved
     scenarioId:"steel-cage",scenarioName:"Steel Cage · decisive pinfall",
     model:"openai/gpt-oss-20b",status:"READY",errorCode:null,
     durationMs:1250,providerCalls:1,inputTokens:825,outputTokens:240,
-    createdAt:"2026-11-07T13:00:00Z",copy}]:[]
+    createdAt:"2026-11-07T13:00:00Z",copy,
+    diagnostic:{category:"ACCEPTED",news:"ACCEPTED",wrestler:"ACCEPTED",
+     roadAgent:"ACCEPTED"}}]:[]
   }});
  });
  await page.route("**/api/admin-preview",route=>{
@@ -63,6 +65,7 @@ test("iPhone protected AI Lab runs one fictional 20B voice batch and keeps saved
  await expect(page.getByText("OFFICIAL NEWS · Holt wins inside the steel")).toBeVisible();
  await expect(page.getByText("WRESTLER REACTION",{exact:true})).toBeVisible();
  await expect(page.getByText("ROAD AGENT",{exact:true})).toBeVisible();
+ await expect(page.getByText(/Quality check: Verified · News ACCEPTED/)).toBeVisible();
  await expect(page.getByText(/Give both wrestlers recovery time/)).toBeVisible();
  await expect(scenario).toHaveValue("steel-cage");
  for(const width of [320,390]){
