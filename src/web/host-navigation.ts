@@ -11,6 +11,13 @@ export const HOST_SECTIONS=[
  {id:"market",label:"Talent Market",glyph:"◇"},
  {id:"contracts",label:"Contracts",glyph:"▤"},
  {id:"business",label:"Business",glyph:"B",primary:true},
+ {id:"finances",label:"Finances",glyph:"$"},
+ {id:"commercials",label:"Commercials",glyph:"◈"},
+ {id:"ratings-war",label:"Ratings War",glyph:"↗"},
+ {id:"business-standing",label:"Standing",glyph:"◆"},
+ {id:"business-activity",label:"Activity",glyph:"▤"},
+ {id:"business-events",label:"Event Accounts",glyph:"▣"},
+ {id:"business-territories",label:"Territories",glyph:"◎"},
  {id:"staff",label:"Staff",glyph:"◉"},
  {id:"admin",label:"Admin",glyph:"⚙"},
  {id:"industry",label:"Industry",glyph:"◎"},
@@ -87,9 +94,16 @@ export const HOST_DRAWER_ROOTS=[
   ["planner","Show Planner","Prepare future shows"],
   ["calendar","Calendar","Events and venues"],
   ["programmes","Programmes","Rivalries and ongoing stories"]]},
- {key:"business",label:"Business",glyph:"B",landing:"business",destinations:[
-  ["business","Business","Finances, Commercials and Ratings War"],
-  ["staff","Staff Office","Your team and its decisions"],
+ {key:"business",label:"Business",glyph:"B",landing:"finances",destinations:[
+  ["finances","Finances","Bank, budgets and event accounts"],
+  ["commercials","Commercials","TV, streaming and sponsors"],
+  ["ratings-war","Ratings War","Audiences and rivals"],
+  ["staff","Staff Office","Staff meetings and decisions"],
+  ["business-standing","Standing","Company reputation and progress"],
+  ["business-activity","Activity","Income and expenditure history"],
+  ["business-events","Events","Show takings and business results"],
+  ["business-territories","Territories","Where your audience is growing"],
+  ["business","Company","Promotion identity and overview"],
   ["admin","Admin","Operator-only World controls"]]}
 ] as const;
 export type HostDrawerRoot=typeof HOST_DRAWER_ROOTS[number]["key"];
@@ -99,7 +113,9 @@ export function drawerRootForSection(section:HostSection):HostDrawerRoot{
   "annual-awards","world-moments"].includes(section))return "world";
  if(["roster","market","results","championships","tournaments","contracts","backstage","teams","stables","connections"].includes(section))return "promotion";
  if(["planner","card","calendar","programmes"].includes(section))return "plan";
- if(["business","staff","admin","kayfabe"].includes(section))return "business";
+ if(["business","finances","commercials","ratings-war","business-standing",
+  "business-activity","business-events","business-territories",
+  "staff","admin","kayfabe"].includes(section))return "business";
  return "world";
 }
 

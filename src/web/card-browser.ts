@@ -460,7 +460,15 @@ function businessPort(root:HTMLElement,scope:Scope,
 }
 export function mountBusinessPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
- const isRatings=window.location.hash==="#/business/ratings";
+ const isRatings=["#/business/ratings","#/ratings-war"].includes(window.location.hash);
+ const businessPanes:Record<string,"OVERVIEW"|"FINANCES"|"COMMERCIAL"|
+  "RATINGS"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES">={
+  "#/business":"OVERVIEW","#/finances":"FINANCES",
+  "#/commercials":"COMMERCIAL","#/ratings-war":"RATINGS",
+  "#/business/ratings":"RATINGS",
+  "#/business-standing":"STANDING","#/business-activity":"ACTIVITY",
+  "#/business-events":"EVENTS","#/business-territories":"TERRITORIES"};
+ const startingPane=businessPanes[window.location.hash]??"OVERVIEW";
  const origin=pendingResultsRatingsOrigin;
  pendingResultsRatingsOrigin=null;
  const returning=isRatings&&origin?.worldId===scope.worldId&&
@@ -474,7 +482,7 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
  }:undefined;
  const port=businessPort(root,scope,call,goBack);
  if(goBack)port.returnToResults=goBack;
- return mountBusinessDesk(root,port,isRatings?"RATINGS":"OVERVIEW");
+ return mountBusinessDesk(root,port,startingPane);
 }
 function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{

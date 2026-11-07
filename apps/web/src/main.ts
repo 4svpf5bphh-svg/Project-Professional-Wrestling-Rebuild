@@ -340,7 +340,9 @@ function renderSection(){
    backstagePersonId??undefined,()=>openSection(backstageReturnSection));break;
   case "market":mountTalentMarketPage(view,scope);break;
   case "contracts":mountContractsPage(view,scope,readContractFocus(location.hash));break;
-  case "business":mountBusinessPage(view,scope);break;
+  case "business":case "finances":case "commercials":case "ratings-war":
+  case "business-standing":case "business-activity":case "business-events":
+  case "business-territories":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
   case "admin":void mountAdminCentre(view,{csrfToken:session.csrfToken,
     benchmarkOnly:!session.canManualAdvance&&!!session.canAiBenchmark});break;

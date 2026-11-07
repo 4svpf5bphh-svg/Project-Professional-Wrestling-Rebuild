@@ -695,7 +695,17 @@ test("small iPhones have only the five department drawers at the bottom without 
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab span:last-child")).toHaveText(["World","News","Promotion","Plan","Business"]);
  await expect(page.getByRole("button",{name:"Open More menu"})).toHaveCount(0);
  await page.getByRole("button",{name:"Open Business menu"}).click();
- await expect(nav.getByRole("button",{name:/Staff/})).toBeVisible();
+ for(const label of ["Finances","Commercials","Ratings War","Staff Office"]){
+  await expect(nav.getByRole("button",{name:new RegExp(label)})).toBeVisible();
+ }
+ await nav.getByRole("button",{name:/Commercials/}).click();
+ await expect(page).toHaveURL(/#\/commercials$/);
+ await expect(page.getByRole("heading",{name:"Commercials"})).toBeVisible();
+ await page.getByRole("button",{name:"Open Business menu"}).click();
+ await nav.getByRole("button",{name:/Finances/}).click();
+ await expect(page).toHaveURL(/#\/finances$/);
+ await expect(page.getByRole("heading",{name:"Finances"})).toBeVisible();
+ await page.getByRole("button",{name:"Open Business menu"}).click();
  await page.getByRole("button",{name:"Open Promotion menu"}).click();
  expect(await overflow()).toBeLessThanOrEqual(1);
  await nav.getByRole("button",{name:/Contracts/}).click();
