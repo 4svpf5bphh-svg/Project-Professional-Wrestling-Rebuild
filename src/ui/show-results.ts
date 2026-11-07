@@ -280,7 +280,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   node("h2","ppw-final-bell-headline","THE NIGHT AT RINGSIDE"),
   node("p","ppw-ringside-await","The results are final. The ringside dispatch is being prepared."));
  const reactions=projectPopFeed(show,showReactionWire(show));
- const wrestlerPosts=projectHotTagShowWrestlerPosts(show);
+ const wrestlerPosts=projectHotTagShowWrestlerPosts(show).map(post=>
+  show.shortform?.wrestler?.personId===post.personId&&
+  show.shortform.wrestler.slotId===post.slotId?
+   {...post,text:show.shortform.wrestler.text}:post);
  const noise=node("section","ppw-crowd-noise ppw-pop-social");
  if(reactions.length||wrestlerPosts.length){
   append(noise,
@@ -597,6 +600,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    }
    office.append(specific);
   }
+  if(show.shortform?.roadAgent){
+   const note=node("article","ppw-road-agent-observation");
+   note.append(node("h4","","From the Road Agent's notebook"),
+    node("p","",show.shortform.roadAgent.note));
+   office.append(note);
+  }
   management.append(office);
  }
  // Without a hired Road Agent, the factual hand-off still belongs in the
@@ -795,8 +804,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","","FAN CHAT · BACKSTAGE NOTES · MANAGEMENT"));
   after.append(station);
  }
+ const officialDispatch=show.shortform?.news?node("section","ppw-news-story ppw-postshow-dispatch"):null;
+ if(officialDispatch&&show.shortform?.news)
+  officialDispatch.append(node("span","ppw-news-desk","OFFICIAL / CERTIFIED POST-SHOW WIRE"),
+   node("h3","",show.shortform.news.headline),
+   node("p","",show.shortform.news.summary));
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
   overview,...(flowScores.length>=2?[crowdFlow]:[]),
+  ...(officialDispatch?[officialDispatch]:[]),
   ...(reactions.length||wrestlerPosts.length?[noise]:[]),management,
   ...(position?[position]:[]));
  if(show.bookingClass==="PREMIUM"&&openPress){
