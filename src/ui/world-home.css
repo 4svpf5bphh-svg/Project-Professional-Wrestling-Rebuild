@@ -239,3 +239,26 @@
  .ppw-home-action-with-dismiss .ppw-home-tile{grid-column:1/-1}
  .ppw-home-action-with-dismiss>.ppw-home-wire-button{grid-column:1}
  .ppw-home-action-with-dismiss>.ppw-home-wire-dismiss{grid-column:2}}
+
+/* Phase 45: one-glance Home; booked shows precede actionable decisions.
+   The deliberately extended playtest booking clock retains its prior logic. */
+.ppw-home-dashboard{margin:7px 0 14px}
+.ppw-home-brief{margin:4px 0 14px;padding:15px 13px;
+ background:linear-gradient(125deg,#142b42,#13192c);border-color:#4a5d78}
+.ppw-home-brief-title{align-items:center;margin-bottom:8px}
+.ppw-home-brief-title h3{font-size:clamp(17px,4.7vw,21px)}
+.ppw-home-brief>.ppw-home-tile{min-height:64px;padding:10px 12px;margin:7px 0;border-radius:12px}
+.ppw-home-brief>.ppw-home-tile .ppw-home-icon{width:33px;height:33px;font-size:18px}
+.ppw-home-brief>.ppw-home-tile .ppw-home-tile-copy small{font-size:12px}
+.ppw-home-updates{margin:5px 0 17px;border:1px solid #34536d;border-radius:14px;
+ padding:12px;background:linear-gradient(145deg,#122337,#15283d)}
+.ppw-home-updates-head{font-size:10px;letter-spacing:.16em;color:#98dfff;
+ font-weight:900;margin-bottom:9px}
+.ppw-home-updates .ppw-home-inbox-body{padding:0;gap:9px}
+.ppw-home-updates .ppw-home-wire{padding:8px 10px;margin:0;border-radius:10px}
+.ppw-home-updates .ppw-home-wire h3{font-size:16px}
+.ppw-home-updates .ppw-home-wire-item{padding:10px;margin:5px 0}
+.ppw-home-updates .ppw-home-wire-item p{line-height:1.45}
+.ppw-home-brief-clear{padding:4px 0;margin:0}
+@media(min-width:650px){.ppw-home-brief{padding:18px 20px}
+ .ppw-home-brief>.ppw-home-tile{min-height:68px}}

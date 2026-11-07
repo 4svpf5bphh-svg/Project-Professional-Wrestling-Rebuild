@@ -2,7 +2,6 @@
  * never polls, advances time, or invents future show and finance outcomes.
  */
 import {promotionBrand} from "./broadcast-identity.js";
-import {commercialCompanyName} from "../domain/commercial-offers.js";
 import {createPromoterPrestigeCrest} from "./promoter-prestige-crest.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
@@ -38,7 +37,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let manualStatus="";let manualBusy=false;let claimingKP=false;
  const dismissing=new Set<string>();
  let clearing=false;
- let inboxExpanded=false;
  let clockTimer:ReturnType<typeof setInterval>|null=null;
  function clearClock(){if(clockTimer!==null){clearInterval(clockTimer);clockTimer=null;}}
  function startClock(node:HTMLElement,world:PlayerWorldOverview["world"],
@@ -115,7 +113,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   if(!port.dismissAttentionBatch||clearing||dismissing.size)return;
   const attention=overview?.promotion?.attention;
   const keys=[...(attention?.offerResults??[]),...(attention?.dateDecisions??[]),...(attention?.backstageResults??[]),
-   ...(attention?.businessUpdates??[]),...(attention?.titleNews??[]),
+   ...(attention?.businessUpdates??[]).filter(x=>x.kind!=="COMMERCIAL_EXPIRED"&&
+    (overview?((overview.world.year-x.year)*52+overview.world.week-x.week)<=2:true)),
+   ...(attention?.titleNews??[]),
    ...(attention?.injuryNews??[]),...(attention?.medicalClearances??[])]
    .slice(0,10).map(item=>item.id);
   if(keys.length<2||keys.length>10)return;
@@ -323,44 +323,12 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    tile.append(el("span","",label),el("strong","",note));stats.append(tile);
   }
   root.append(stats);
-  // The three latest PUBLIC, verified industry developments share this
-  // single World overview response. Private backstage/cash stays off-wire.
-  const headlines=(promotion.attention?.worldStories??[]).slice(0,3);
-  if(headlines.length){
-   const worldWire=el("section","ppw-home-wire");
-   worldWire.append(el("span","ppw-home-brand","AROUND THE WORLD"),
-    el("h3","","Industry headlines"));
-   const titles:Record<string,(n:typeof headlines[number])=>string>={
-    WRESTLER_RETIRED:n=>(n.personName??"A veteran")+" hangs up the boots",
-    WRESTLER_DEBUTED:n=>(n.personName??"A new prospect")+" joins the wrestling world",
-    CAREER_STAGE_CHANGED:n=>(n.personName??"A wrestler")+" enters a new chapter",
-    PROMOTION_TIER_CHANGED:n=>(n.promotionName??"A promotion")+
-     " moves to "+(n.toTier??"another level"),
-    PROMOTION_RESTRUCTURED:n=>(n.promotionName??"A promotion")+
-     " makes changes behind the scenes",
-    PROMOTION_ENTERED_DORMANCY:n=>(n.promotionName??"A promotion")+
-     " puts operations on hold",
-    PROMOTION_RECOVERED_FROM_DISTRESS:n=>(n.promotionName??"A promotion")+
-     " steadies the ship"
-   };
-   for(const headline of headlines){
-    const title=titles[headline.kind]?.(headline)??"World update";
-    const description="Y"+headline.year+" W"+headline.week;
-    worldWire.append(control(title,description,
-     headline.personId&&port.openWrestler?
-      ()=>port.openWrestler!(headline.personId!):(port.news??port.industry),"★"));
-   }
-   worldWire.append(control("Read World News",
-    "Official headlines and the latest from the rumour mill.",
-    port.news??port.industry,"→"));
-   root.append(worldWire);
-  }
-  // Contextual actions, never a persistent tab bar. Only authoritative facts
-  // from the existing single overview query appear as attention cues.
+  // News belongs to its dedicated department. Home shows the next card,
+  // actual player decisions and recent consequences, not a duplicate feed.
   const brief=el("section","ppw-home-brief");
   const briefHead=el("header","ppw-home-brief-title");
-  briefHead.append(el("span","ppw-home-brand","YOUR WEEK"),
-   el("h3","","What needs you"));
+  briefHead.append(el("span","ppw-home-brand","YOUR NEXT MOVES"),
+   el("h3","","Needs your decision"));
   brief.append(briefHead);
   const items:{title:string;detail:string;action:()=>void;icon:string;
    level:string;noticeId?:string;personId?:string;personName?:string}[]=[];
@@ -375,7 +343,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
    if(attention?.kpClaimAvailable){
     items.push({title:"Claim Reward",detail:
-     "Your latest certified show earned Kayfabe Points. Collect your reward.",
+     "Collect the Kayfabe Points earned by your latest show.",
      action:()=>{if(claimingKP)return;
       if(!port.claimWeeklyKP){port.openKayfabe?.();return;}
       claimingKP=true;
@@ -389,11 +357,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
   if(bookingOpen&&attention?.plannedShows===0)
    items.push({title:"Plan this week's show",detail:
-    "No show has been planned for your promotion this week. Open Planner to prepare your next event.",
+    "No show is on your promotion's calendar this week.",
     action:port.planner,icon:"◷",level:"priority"});
   if(bookingOpen&&attention?.unpreparedShow)
    items.push({title:"Finish your booking card",detail:
-    "Your card still needs confirming before the weekly deadline.",
+    "Review and confirm your current card.",
     action:port.openUnfinishedCard??port.planner,icon:"▤",level:"priority"});
   if(attention?.pendingBackstage){
    const pending=(attention.backstageRequests??[]).slice(0,3);
@@ -419,23 +387,22 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   }
   const contractAlerts=(attention?.contractAlerts??[]).slice(0,5);
   for(const item of contractAlerts){
+   // The owner already placed this proposal. Only an outcome, not
+   // an outgoing offer, can create a fresh decision for the owner.
+   if(item.waiting)continue;
    const noDates=item.kind==="DATES_EXHAUSTED";
    const when=item.weeksRemaining===0?"this week":
     "in "+item.weeksRemaining+" week"+(item.weeksRemaining===1?"":"s");
-   const title=item.waiting?item.name+" has a negotiation pending":
-    noDates?item.name+" has no contracted dates left":
-     item.name+"'s contract expires "+when;
-   const detail=item.waiting?
-    (noDates?"All contracted appearances are used. A new proposal is awaiting a decision.":
-     "A new proposal is pending. The existing agreement still expires "+when+"."):
-    noDates?"No contracted appearances remain. Consider negotiating more dates before booking them again.":
-    "The current agreement expires "+when+". Review renewal terms before the deadline.";
-   items.push({title,detail,action:item.waiting?
-    port.contractsPending??port.contracts:
+   const title=noDates?item.name+" has no contracted dates left":
+    item.name+"'s contract expires "+when;
+   const detail=noDates?
+    "No bookable appearances remain. Open Contracts to offer more dates.":
+    "The agreement expires "+when+". Review renewal terms.";
+   items.push({title,detail,action:
     noDates?port.contracts:port.contractsExpiring??port.contracts,
     icon:noDates?"◇":"◈",level:noDates?"priority":"important"});
   }
-  if(attention?.expiringTalent&&!contractAlerts.some(x=>x.kind==="EXPIRING"))
+  if(attention?.expiringTalent&&contractAlerts.length===0)
    items.push({title:"Contracts approaching expiry",detail:
     "Additional wrestler contracts approach expiry. Review all expiring agreements.",
     action:port.contractsExpiring??port.contracts,icon:"◈",level:"important"});
@@ -447,10 +414,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     action:port.contracts,icon:"✓",level:"priority",noticeId:accepted.id,
     personId:accepted.personId,personName:accepted.name});
   }
-  if(attention?.pendingContractOffers)
-   items.push({title:"Offers awaiting decisions",detail:
-    "Contract offers are pending. Check the negotiation desk for their status.",
-    action:port.contractsPending??port.contracts,icon:"◇",level:"normal"});
   if(promotion.financialDistress&&promotion.financialDistress!=="HEALTHY")
    items.push({title:"Financial pressure",detail:
     "Current financial outlook: "+promotion.financialDistress+". Review commitments and runway.",
@@ -477,7 +440,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }else brief.append(entry);
   }
   // Immediate decisions are above passive links; no additional reads.
-  root.insertBefore(brief,root.querySelector(".ppw-home-dashboard")??stats);
+  root.insertBefore(brief,stats);
   // Secondary news is one compact inbox; accepted offers already have their
   // own primary action and acknowledgement above the dashboard.
   const inboxBody=el("div","ppw-home-inbox-body");
@@ -583,7 +546,12 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
    inboxBody.append(wire);
   }
-  const businessUpdates=attention?.businessUpdates??[];
+  // Expired agreements are auditable in Commercials, but they are NOT
+  // current attention. Show only recent non-commercial business changes.
+  const businessUpdates=(attention?.businessUpdates??[]).filter(item=>
+   item.kind!=="COMMERCIAL_EXPIRED"&&
+   ((world.year-item.year)*52+world.week-item.week)>=0&&
+   ((world.year-item.year)*52+world.week-item.week)<=2);
   if(businessUpdates.length){
    const wire=el("section","ppw-home-wire");
    wire.append(el("span","ppw-home-brand","THE BUSINESS WIRE"),
@@ -592,22 +560,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     DISTRESSED:"Under pressure",CRISIS:"In crisis"};
    for(const item of businessUpdates){
     const annual=item.kind==="ANNUAL_REVIEW";
-    const commercial=item.kind==="COMMERCIAL_EXPIRED";
     const delta=item.prestigeDelta;
-    const improved=commercial|| (annual?delta!==null&&delta>=0:item.after==="HEALTHY");
-    const title=commercial?"Previous "+(item.dealKind==="SPONSOR"?"sponsorship":"broadcast")+" deal ended":
-     annual?"Your annual company review is in":
+    const improved=annual?delta!==null&&delta>=0:item.after==="HEALTHY";
+    const title=annual?"Your annual company review is in":
      "Your financial outlook has changed";
-    const ended=item.endedOfferCode?commercialCompanyName(item.endedOfferCode):
-     item.dealKind==="SPONSOR"?"sponsorship":"broadcast";
-    const replacement=item.replacementOfferCode?
-     commercialCompanyName(item.replacementOfferCode):null;
-    const detail=commercial?
-     (ended+" finished its contract in Year "+item.year+", Week "+item.week+". "+
-      (replacement?"Your current "+replacement+" agreement remains active.":
-       "This is a past agreement, not confirmation that a current deal has ended. "+
-       "Check Commercials for available offers.")):
-     annual?(delta===null?
+    const detail=annual?(delta===null?
      "Your company reputation has been evaluated. Review the ratings in Business.":
      "Your prestige "+(delta>=0?"rose by ":"fell by ")+
      Math.abs(delta).toLocaleString("en-GB",{maximumFractionDigits:1})+
@@ -618,13 +575,13 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     const entry=el("article","ppw-home-wire-item");
     entry.append(el("span","ppw-home-wire-status "+
      (improved?"ppw-home-wire-accepted":"ppw-home-wire-declined"),
-     commercial?"AGREEMENT ENDED":annual?"YEAR-END REVIEW":"FINANCIAL UPDATE"),
+     annual?"YEAR-END REVIEW":"FINANCIAL UPDATE"),
      el("strong","",title),
      el("p","",detail),
      el("small","ppw-home-small","Year "+item.year+" · Week "+item.week));
     const actions=el("div","ppw-home-wire-actions");
     const open=el("button","ppw-home-wire-button",
-     commercial?"Open Commercials":"Open Business") as HTMLButtonElement;
+     "Open Business") as HTMLButtonElement;
     open.type="button";open.onclick=port.business;actions.append(open);
     if(port.dismissAttention){
      const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
@@ -728,14 +685,12 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const resolvedCount=(attention?.offerResults??[]).length+dateDecisions.length+
    resolved.length+businessUpdates.length+titleNews.length+injuryNews.length+clearanceNotices.length;
   if(inboxBody.childElementCount){
-   const inbox=document.createElement("details");
-   inbox.className="ppw-home-notification-inbox";
-   inbox.open=inboxExpanded;
-   inbox.addEventListener("toggle",()=>{inboxExpanded=inbox.open;});
-   inbox.append(el("summary","ppw-home-inbox-toggle",
-    resolvedCount+" recorded update"+(resolvedCount===1?"":"s")+" · Open inbox"),
-    inboxBody);
-   root.insertBefore(inbox,root.querySelector(".ppw-home-dashboard")??stats);
+   // Recent changes should be visible, not behind a nested dropdown.
+   const inbox=el("section","ppw-home-updates");
+   inbox.setAttribute("aria-label","Recent decisions and changes");
+   inbox.append(el("header","ppw-home-updates-head",
+    "RECENT CHANGES · "+resolvedCount),inboxBody);
+   root.insertBefore(inbox,stats);
   }
   if(port.dismissAttentionBatch&&resolvedCount>1){
    const clear=el("button","ppw-home-clear-resolved",
@@ -745,7 +700,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    clear.onclick=()=>void clearResolvedUpdates();
    inboxBody.append(clear);
   }
-
+  const privateControls=root.querySelector(".ppw-manual-test");
+  if(privateControls)root.append(privateControls);
  }
  void load();
  return {refresh:load};

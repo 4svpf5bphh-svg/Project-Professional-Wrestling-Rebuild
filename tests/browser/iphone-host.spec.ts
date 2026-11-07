@@ -99,12 +99,8 @@ test("Home alerts open expiring agreements or pending offers directly without an
   .getByRole("button",{name:/Needs action/})).toHaveAttribute("aria-current","page");
  await expect(page.getByText(/Contracts closest to expiry/)).toBeVisible();
  await page.goto("/#/home");
- await page.getByRole("button",{name:/Offers awaiting decisions/}).click();
- await expect(page).toHaveURL(/#\/contracts\/pending$/);
- await expect(page.getByText(/outstanding offers, renewals and date requests/)).toBeVisible();
- await expect(page.getByRole("navigation",{name:"Contract Desk sections"})
-  .getByRole("button",{name:/Offers/})).toHaveAttribute("aria-current","page");
- expect(methods).toEqual(["overview","contracts","overview","contracts"]);
+ await expect(page.getByRole("button",{name:/Offers awaiting decisions/})).toHaveCount(0);
+ expect(methods).toEqual(["overview","contracts","overview"]);
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
 });
 
@@ -131,18 +127,13 @@ test("named contract alerts give the right negotiation and expiry routes without
   return route.fulfill({json:method==="overview"?home:method==="contracts"?contracts:{}});
  });
  await page.goto("/#/home");
- await expect(page.getByRole("button",{name:/Ada has a negotiation pending/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Ada has a negotiation pending/})).toHaveCount(0);
  await expect(page.getByRole("button",{name:/Bert's contract expires in 1 week/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
- await page.getByRole("button",{name:/Ada has a negotiation pending/}).click();
-  await expect(page).toHaveURL(/#\/contracts\/pending$/);
- await expect(page.getByRole("navigation",{name:"Contract Desk sections"})
-  .getByRole("button",{name:/Offers/})).toHaveAttribute("aria-current","page");
- await page.goto("/#/home");
  await page.getByRole("button",{name:/Bert's contract expires in 1 week/}).click();
   await expect(page).toHaveURL(/#\/contracts\/expiring$/);
  await expect(page.getByRole("button",{name:"Expiring soon"})).toHaveAttribute("aria-pressed","true");
- expect(calls).toEqual(["overview","contracts","overview","contracts"]);
+ expect(calls).toEqual(["overview","contracts"]);
 });
 test("named Home concerns open only the intended wrestler conversation",async({page})=>{
  await page.setViewportSize({width:390,height:844});
@@ -211,7 +202,7 @@ test("completed locker-room updates dismiss privately without hiding current tas
   }else await route.fulfill({json:method==="overview"?home():{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Promises settled")).toBeVisible();
  await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
  await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
@@ -254,7 +245,7 @@ test("resolved locker-room promise opens the exact private historical thread",as
   }else await route.fulfill({json:method==="overview"?home:{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText(/Victor Vale saw your promise kept/)).toBeVisible();
  await page.getByRole("button",{name:"Open Backstage"}).click();
  await expect(page).toHaveURL(/#\/backstage$/);
@@ -288,7 +279,7 @@ test("iPhone clears all settled notices in one request and preserves urgent work
   }else await route.fulfill({json:request.method==="overview"?home():{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByRole("button",{name:"Clear all resolved updates"})).toBeVisible();
  await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
  await page.getByRole("button",{name:"Clear all resolved updates"}).click();
@@ -470,7 +461,7 @@ test("Home contract wire dismisses one resolved offer without suppressing show o
  });
  await page.goto("/#/home");
  await expect(page.getByText("Alice has signed")).toBeVisible();
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
  await page.locator(".ppw-home-action-with-dismiss").getByRole("button",{name:"Dismiss"}).click();
