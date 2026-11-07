@@ -4,6 +4,7 @@
 import {createHash,randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
+import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
 import {readAdminRingsideSettings} from "./admin-ringside-settings.js";
 import {DEFAULT_RINGSIDE_SETTINGS,ringsideVoiceInstruction,type RingsideSettings}
  from "../domain/ringside-settings.js";
@@ -89,7 +90,10 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  transport:typeof fetch=fetch,
  settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
  memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,
- budgetPool?:TransactionPool):Promise<RingsideCopy>{
+ budgetPool?:TransactionPool,previewProvider:"GROQ"|"OPENAI"="GROQ"):Promise<RingsideCopy>{
+ if(previewProvider==="OPENAI"&&!budgetPool)
+  throw new RingsideGenerationError("INVALID_OUTPUT",
+   "Paid previews require a server-side usage budget");
  if(JSON.stringify(ringsideBrief(show)).length>26000||
     show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
@@ -122,10 +126,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),18000);
   try{
-   const response=await requestGroqEditorial({
-    task:"RINGSIDE",preferredModel:settings.model,key,transport,
-    signal:controller.signal,pool:budgetPool,
-    body:{temperature:settings.creativity,
+   const payload={temperature:settings.creativity,
      max_completion_tokens:Math.min(5800,760+show.entries.length*(
       settings.detail==="LONG"?310:settings.detail==="SHORT"?185:245)),
      reasoning_effort:settings.reasoning,
@@ -141,7 +142,15 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        "Use at most one relevant callback per bout; an empty thread means no confirmed connection.\n"+
        (correction?"Quality-control correction required: "+correction+"\n":"")+
        "Records:\n"+facts}]
-    }});
+    };
+   const response=previewProvider==="OPENAI"?
+    await requestOpenAiEditorialPreview({
+     key,enabled:true,transport,signal:controller.signal,
+     pool:budgetPool!,body:payload
+    }):await requestGroqEditorial({
+     task:"RINGSIDE",preferredModel:settings.model,key,transport,
+     signal:controller.signal,pool:budgetPool,body:payload
+    });
    if(!response.ok){
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
      "PROVIDER_AUTH":"PROVIDER_ERROR";

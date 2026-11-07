@@ -12,7 +12,7 @@ type AdminData={plan:ActionPlan;settings:RingsideSettings;pilot:LegendPilot|null
  testKp?:{balance:number;granted:boolean;target:number};
  aiUsage?:{call_count:number;reserved_tokens:number;reported_input_tokens:string;
   reported_output_tokens:string;completed_calls:number;failed_calls:number}|null;
- groqConfigured:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
+ groqConfigured:boolean;openAiPreviewEnabled?:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
  editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null}[]};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
@@ -247,14 +247,27 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    finally{busy=false;save.disabled=false;}
   };
   form.append(save);
+  const provider=selectControl([
+   ["GROQ","Groq · primary free provider"],
+   ...(data.openAiPreviewEnabled?[
+    ["OPENAI","OpenAI · paid, 2 previews/day"] as [string,string]
+   ]:[])
+  ],"GROQ");
+  const paidNotice=el("p","ppw-admin-small",data.openAiPreviewEnabled?
+   "Paid comparison is operator-only and never publishes or replaces articles. OpenAI requests have a separate daily quota.":
+   "Paid-provider testing is disabled by default. No OpenAI API calls can be made.");
   const previewBtn=el("button","ppw-admin-secondary","Preview this style") as HTMLButtonElement;
-  previewBtn.type="button";previewBtn.disabled=!data.groqConfigured||!data.shows.length;
+  previewBtn.type="button";
+  const previewDisabled=()=>!data.shows.length||
+   (provider.value==="GROQ"&&!data.groqConfigured);
+  previewBtn.disabled=previewDisabled();
+  provider.onchange=()=>{previewBtn.disabled=previewDisabled();};
   const preview=el("article","ppw-admin-preview");preview.hidden=true;
   previewBtn.onclick=async()=>{
    if(busy)return;busy=true;previewBtn.disabled=true;message(aiStatus,"Preparing a one-off preview; no published results will be overwritten.");
    try{
     const out=await request("/api/admin-preview","POST",ctx.csrfToken,{
-     showId:latest.value,settings:selectedSettings()
+     showId:latest.value,settings:selectedSettings(),previewProvider:provider.value
     }) as {review:Recap};
     preview.hidden=false;preview.replaceChildren(el("span","ppw-eyebrow","UNPUBLISHED SAMPLE"),
      el("h3","",out.review.showHeadline),el("p","",out.review.opening));
@@ -286,7 +299,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   };
   studio.append(form,el("p","ppw-admin-small",
    "A saved review keeps its original text. New settings cannot change winners, title changes, injuries or scripted angles."),
-   inputField("Try against a completed show",latest),previewBtn,recover,aiStatus,preview);
+   inputField("Try against a completed show",latest),
+   inputField("Preview provider",provider),paidNotice,
+   previewBtn,recover,aiStatus,preview);
  }
  try{await load();}catch(e){
   const error=el("p","ppw-admin-error",e instanceof Error?e.message:"Admin is unavailable");

@@ -56,6 +56,8 @@ test("owner Admin lives only under Business and exposes audited Groq controls",a
  await expect(page.getByRole("button",{name:"Test credit already claimed"})).toBeDisabled();
  expect(grants).toBe(1);
  await expect(page.getByText(/Groq today · 3\/40 calls/)).toBeVisible();
+ await expect(page.getByLabel("Preview provider")).toHaveValue("GROQ");
+ await expect(page.getByLabel("Preview provider").locator("option")).toHaveCount(1);
  await page.getByLabel("AI model").selectOption("openai/gpt-oss-20b");
  await page.getByLabel("Columnist style").selectOption("SATIRE");
  await page.getByLabel("Review length").selectOption("LONG");

@@ -208,3 +208,36 @@ test("Groq cannot publish a tag match where both team members remain legal",asyn
  }),error=>error instanceof RingsideGenerationError&&error.code==="FACT_VALIDATION");
  assert.equal(attempts,2);
 });
+
+test("OpenAI preview uses the same certified Ringside validator with mocked provider",async()=>{
+ const team:CompletedShowView={...show,entries:[{...show.entries[0]!,
+  matchContext:{format:"2v2",intent:"COMPETITIVE",plannedMinutes:12,
+   sides:[["Kenny Omega","Matt Jackson"],["Dax Harwood","Cash Wheeler"]],
+   winnerNames:["Kenny Omega","Matt Jackson"],championshipContested:false}}]};
+ let requests=0;
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-07"}];
+  return [];
+ }})};
+ const transport:typeof fetch=async(url,options)=>{
+  requests++;
+  assert.equal(url,"https://api.openai.com/v1/chat/completions");
+  const body=JSON.parse(String(options?.body));
+  assert.equal(body.model,"gpt-4o-mini");
+  assert.equal(body.store,false);
+  assert.ok(!Object.hasOwn(body,"reasoning_effort"));
+  assert.equal(body.response_format.json_schema.strict,true);
+  return new Response(JSON.stringify({usage:{prompt_tokens:300,completion_tokens:60},
+   choices:[{message:{content:JSON.stringify({
+    showHeadline:"Teams go to war",opening:"A hot crowd awaited.",
+    closing:"A deserved team victory.",
+    slots:{card_0:{headline:"Double trouble",
+     recap:"Each side took turns controlling the corner until a legal tag sparked a comeback. The winners earned the official fall."}}
+   })}}]}));
+ };
+ const article=await generateGroqReview(team,"fixture",transport,undefined,undefined,
+  pool as never,"OPENAI");
+ assert.match(article.showHeadline,/Teams/);
+ assert.equal(requests,1);
+});

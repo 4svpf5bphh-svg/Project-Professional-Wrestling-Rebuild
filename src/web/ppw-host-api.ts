@@ -6,6 +6,7 @@ import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
 import {loadRingsideCommentary,generateGroqReview,RingsideGenerationError} from "../db/ringside-commentary.js";
+import {paidPreviewEnabled} from "../db/openai-editorial-preview.js";
 import {readRingsideMemory} from "../db/ringside-continuity.js";
 import {readCompletedShowView} from "../db/show-results-view.js";
 import {withSqlClient} from "../db/postgres.js";
@@ -194,7 +195,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
        WHERE usage_day=timezone('UTC',now())::date`,[]))
     ]);
     return json(200,{plan,settings,shows,pilot,testKp,aiUsage:aiUsage[0]??null,
-     groqConfigured:!!process.env.GROQ_API_KEY});
+     groqConfigured:!!process.env.GROQ_API_KEY,
+     openAiPreviewEnabled:paidPreviewEnabled(process.env)});
    }catch(e){
     console.error("Admin read failed",e instanceof Error?e.message:"unknown");
     return json(503,{error:"Admin status unavailable. No World state was changed."});
@@ -238,7 +240,15 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   }
   if(!allow("admin-preview:"+cfg.worldId,3,60*60_000))
    return json(429,{error:"AI preview limit: three reviews per hour"});
-  if(!process.env.GROQ_API_KEY)return json(503,{error:"Groq is not configured"});
+
+  const previewProvider=body.previewProvider??"GROQ";
+  if(previewProvider!=="GROQ"&&previewProvider!=="OPENAI")
+   return json(400,{error:"Unknown AI preview provider"});
+  if(previewProvider==="OPENAI"&&!paidPreviewEnabled(process.env))
+   return json(403,{error:"Paid API preview is disabled on this server"});
+  const providerKey=previewProvider==="OPENAI"?
+   process.env.OPENAI_API_KEY:process.env.GROQ_API_KEY;
+  if(!providerKey)return json(503,{error:"Selected AI provider is not configured"});
   if(typeof body.showId!=="string"||body.showId.length>200||!body.showId)
    return json(400,{error:"Choose a completed show"});
   try{
@@ -260,12 +270,13 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
     showId:body.showId},show);}
    catch{console.warn("Ringside history unavailable; previewing card facts");}
-   const review=await generateGroqReview(show,process.env.GROQ_API_KEY,fetch,effective,memory,pool);
+   const review=await generateGroqReview(show,providerKey,fetch,effective,memory,pool,
+    previewProvider);
    return json(200,{review,preview:true});
   }catch(e){
    console.error("Admin Ringside preview failed",e instanceof Error?e.message:"unknown");
    const safe=e instanceof RingsideGenerationError?e.message:
-    "Groq's report failed a factual safety check. No published review was changed.";
+    "AI editorial failed a factual safety check. No published review was changed.";
    return json(e instanceof RingsideGenerationError&&
     e.code==="PROVIDER_LIMIT"?429:422,{error:safe,
     code:e instanceof RingsideGenerationError?e.code:"FACT_VALIDATION",
