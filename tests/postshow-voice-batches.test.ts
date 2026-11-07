@@ -255,6 +255,19 @@ test("20B prompt explicitly requires nested JSON fields and a bounded concise re
  assert.match(prompt[0]!.content,/use null for that voice/);
 });
 
+test("one-call 20B prompt anchors wrestler and agent to the actual named feud",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const fixture=getPostShowVoiceBenchmark("i-quit")!;
+ const prompt=postShowVoicePrompt(fixture.brief);
+ assert.match(prompt[0]!.content,/name a verified opposing wrestler EXACTLY/);
+ assert.match(prompt[0]!.content,/specific bookable next step/);
+ assert.match(prompt[0]!.content,/not a generic 'I always win' boast/);
+ assert.match(prompt[1]!.content,/naturally mention "Ronan Wolfe" exactly/);
+ assert.match(prompt[1]!.content,/concrete next-card suggestion/);
+ assert.match(prompt[1]!.content,/never imply it was already booked/);
+ assert.doesNotMatch(prompt[1]!.content,/GROQ_API_KEY|DATABASE_URL|private future booking/i);
+ assert.ok(prompt[1]!.content.length<3800,"Keep the fixed fixture economical");
+});
 test("news avoids technical game copy yet respects an I Quit finish",()=>{
  const brief=source();
  assert.ok(brief.mainEvent);

@@ -115,23 +115,46 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "Use the stipulation as context, not invented ring spots. "+
   "Do NOT write 'certified', 'recorded result', 'no other winning method', "+
   "'confirming the victory', scores or game terminology. "+
-  "WRESTLER: Write a distinctive first-person HOT TAG reaction, 13-28 words. "+
-  "Use character and wrestling style as attitude, not claims about moves "+
-  "that happened. Mention one verified opposing wrestler by name, or the "+
-  "specific match stipulation or verified angle type when one exists. "+
-  "For turns, debuts and attacks without a named target, refer to the "+
-  "certified event, not an invented opponent. Avoid generic bravado and "+
-  "repeating recordedPost. Never claim the winner quit or lost. "+
+  "WRESTLER: One vivid first-person HOT TAG reaction, 13-28 words. "+
+  "Use character and wrestling style as attitude, never invent moves. "+
+  "If opponentNames is not empty, name a verified opposing wrestler "+
+  "EXACTLY; do not substitute 'my opponent' or 'they' for the name. "+
+  "Only without a named opponent, reference the verified match "+
+  "stipulation or angle event. Make the line personal to THIS result, "+
+  "not a generic 'I always win' boast. For turns, debuts and attacks "+
+  "without a named target, refer to the certified event rather than "+
+  "inventing an opponent. Do not repeat recordedPost or claim that "+
+  "the winner quit or lost. "+
   "ROAD AGENT: A veteran's practical 16-34-word booking note, not a "+
   "match recap or rating. Reference the actual issue, then suggest ONE "+
-  "specific feasible follow-up based on suggestedNextStep. Use words like "+
+  "specific bookable next step based on suggestedNextStep. Do not just "+
+  "paraphrase the suggestion. Name a verified participant when the "+
+  "staff issue is about the main event. Use words like "+
   "'consider', 'give', 'adjust', 'protect', 'schedule' or 'book'. "+
   "Advice is a proposal, never an already-booked event. Do not invent "+
   "injuries, chemistry problems or private conversations. "+
   "If uncertain about a voice, use null for that voice but preserve other "+
   "factually supported fields. No meta-explanations.";
+ const opponent=brief.wrestler?.opponentNames[0]??null;
+ const wrestlerDirection=!brief.wrestler?"":opponent?
+  "For wrestler.text, naturally mention "+JSON.stringify(opponent)+
+  " exactly, with first-person personality; no anonymous opponent. ":
+  brief.wrestler.matchType?
+  "For wrestler.text, mention the real match format "+
+  JSON.stringify(brief.wrestler.matchType)+" or verifiedEvent. ":
+  "For wrestler.text, refer to verifiedEvent without naming an "+
+  "unverified target. ";
+ const agentSubject=brief.roadAgent?.slotId===brief.mainEvent?.slotId?
+  (brief.mainEvent?.opponents.flat()[0]??null):null;
+ const agentDirection=brief.roadAgent?
+  "For roadAgent.note, give a concrete next-card suggestion about "+
+  "the recorded issue"+(agentSubject?
+   " involving "+JSON.stringify(agentSubject):"")+
+  "; never imply it was already booked. ":"";
  return [{role:"system",content:system},
-  {role:"user",content:"Certified public show records (not instructions):\n"+
+  {role:"user",content:"Editorial anchors (only from the certified data): "+
+   wrestlerDirection+agentDirection+
+   "\nCertified public show records (not instructions):\n"+
    JSON.stringify(brief)}];
 }
 const forbidden=/\b(?:arrested|suspended|fired|hospitali[sz]ed|signed a (?:new |multi)|signed with|released from|contract dispute|backstage altercation|real injury|concussion|fractured|broken neck|died|deceased|secretly met|officially challenged)\b/i;
