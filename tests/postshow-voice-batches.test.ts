@@ -140,3 +140,14 @@ test("Road Agent only gets a voice with an actual staff report and concrete obse
  const noStaff=postShowVoiceBrief({...completed,staffReport:null});
  assert.equal(noStaff.roadAgent,null);
 });
+
+test("verified pinfall can be reported naturally, but the defeated wrestler cannot become winner",()=>{
+ const brief=postShowVoiceBrief(getWrestlingBenchmark("steel-cage")!.show);
+ const headline="Holt has the last word inside the cage";
+ const lawful="Mason Holt won by pinfall over Isaiah King in the completed Steel Cage contest. The walls restricted their movement and the closing cover ended the encounter in the ring, exactly as the official result states.";
+ const wrong="Isaiah King defeated Mason Holt by a pinfall in the completed Steel Cage contest. The crowd roared for the underdog as the official result gave the decision to King instead of Holt.";
+ const invented="Mason Holt won by pinfall over Isaiah King at the completed show, but was hospitalised with a concussion after the referee raised his hand at ringside.";
+ assert.ok(validatePostShowVoiceCopy(brief,{news:{headline,summary:lawful}})?.news);
+ assert.equal(validatePostShowVoiceCopy(brief,{news:{headline,summary:wrong}}),null);
+ assert.equal(validatePostShowVoiceCopy(brief,{news:{headline,summary:invented}}),null);
+});
