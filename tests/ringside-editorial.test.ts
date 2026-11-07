@@ -179,7 +179,7 @@ test("Wrestling IQ supplies legal singles, tags and multi-party rules without a 
   sides:Array.from({length:12},(_,i)=>["Competitor "+i]),winnerNames:["Competitor 0"]}};
  const ringIQ=ringsideBrief({...tag,entries:[battle]}).slots[0]!.match!.wrestlingIQ!;
  assert.equal(ringIQ.format,"BATTLE_ROYAL");
- assert.equal(ringIQ.competitors,12);
+ assert.equal(battle.matchContext.sides.flat().length,12);
  assert.match(RINGSIDE_STYLE_GUIDE,/For EVERY match/);
 });
 test("Ringside rejects proven invalid tag mechanics but not an optional hot tag",()=>{
