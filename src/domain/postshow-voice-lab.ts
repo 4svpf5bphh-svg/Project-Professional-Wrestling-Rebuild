@@ -28,10 +28,11 @@ export function getPostShowVoiceBenchmark(id:string):
  // A named fictional staff report is supplied only for the fixed Lab card.
  // The observation itself still comes from the certified match facts.
  show.staffReport={
-  reporter:"Morgan Reed",headline:"Post-show performance report",
+  reporter:"Morgan Reed",staffId:null,headline:"Post-show performance report",
   praise:"The verified match gave the audience a clear result",
   concern:"Repeating the same stipulation immediately may dilute the payoff",
-  recommendation:"Give the next appearance a specific story reason"
+  recommendation:"Give the next appearance a specific story reason",
+  strongestMatchId:show.entries[0]?.slotId??null,reviewedMatches:1
  };
  return {scenario,show,brief:postShowVoiceBrief(show)};
 }
