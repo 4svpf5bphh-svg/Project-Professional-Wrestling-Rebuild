@@ -67,3 +67,14 @@
  .ppw-lab-overview{grid-template-columns:repeat(4,minmax(0,1fr))}
  .ppw-lab-compare{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+.ppw-lab-benchmark{margin:18px 0;padding:15px;border:1px solid #755a91;
+ border-radius:15px;background:linear-gradient(145deg,#31233f,#1d203b);
+ display:grid;gap:12px}
+.ppw-lab-benchmark h3{margin:0;color:#ffacd9}
+.ppw-lab-benchmark .ppw-admin-field{min-width:0}
+.ppw-lab-benchmark .ppw-admin-primary{width:100%}
+.ppw-lab-rubric{border-left:3px solid #ee79ba;padding:8px 12px;
+ border-radius:7px;background:#231b37;font-size:13px;line-height:1.5}
+.ppw-lab-rubric p{margin:7px 0;color:#e5d6ef}
+.ppw-lab-rubric strong{color:#fff}

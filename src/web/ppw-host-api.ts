@@ -8,6 +8,9 @@ import {manualPlaytestEnabled} from "../domain/manual-playtest-permission.js";
 import {loadRingsideCommentary,generateGroqReview,RingsideGenerationError} from "../db/ringside-commentary.js";
 import {paidPreviewEnabled,OPENAI_PREVIEW_MODEL} from "../db/openai-editorial-preview.js";
 import {groqResponseUsage} from "../domain/ai-director.js";
+import {getWrestlingBenchmark,assessWrestlingBenchmark,WRESTLING_BENCHMARKS}
+ from "../domain/wrestling-ai-benchmark.js";
+import {DEFAULT_RINGSIDE_SETTINGS} from "../domain/ringside-settings.js";
 import {readAiLabDashboard,readAiLabReview,saveAiLabPreview,saveAiLabFeedback}
  from "../db/ai-quality-lab.js";
 import {readRingsideMemory} from "../db/ringside-continuity.js";
@@ -172,7 +175,12 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(path==="/api/admin"&&get&&routeUrl.searchParams.get("aiLab")){
    const view=routeUrl.searchParams.get("aiLab");
    try{
-    if(view==="summary")return json(200,await readAiLabDashboard(pool,cfg.worldId,user.playerId));
+    if(view==="summary")return json(200,{
+     ...await readAiLabDashboard(pool,cfg.worldId,user.playerId),
+     scenarios:WRESTLING_BENCHMARKS,
+     providers:{groq:!!process.env.GROQ_API_KEY,
+      openai:paidPreviewEnabled(process.env)}
+    });
     if(view==="review"){
      const runId=routeUrl.searchParams.get("runId")??"";
      return json(200,{review:await readAiLabReview(pool,cfg.worldId,user.playerId,runId)});
@@ -272,27 +280,45 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   const providerKey=previewProvider==="OPENAI"?
    process.env.OPENAI_API_KEY:process.env.GROQ_API_KEY;
   if(!providerKey)return json(503,{error:"Selected AI provider is not configured"});
-  if(typeof body.showId!=="string"||body.showId.length>200||!body.showId)
+  // Only a named, trusted fixture can bypass completed-show ownership reads.
+  // Fixture previews remain guarded by the same operator auth/CSRF/rate limit,
+  // AI daily token budget and certified Ringside output validator.
+  const fixtureRequested=body.benchmarkId!==undefined;
+  if(fixtureRequested&&(typeof body.benchmarkId!=="string"||
+   body.benchmarkId.length>80||body.showId!==undefined))
+   return json(400,{error:"Choose one recognised wrestling test"});
+  const fixture=fixtureRequested?getWrestlingBenchmark(body.benchmarkId as string):null;
+  if(fixtureRequested&&!fixture)return json(400,{error:"Unknown wrestling test"});
+  if(!fixture&&(typeof body.showId!=="string"||
+   body.showId.length>200||!body.showId))
    return json(400,{error:"Choose a completed show"});
   try{
-   const promotion=await withSqlClient(pool,tx=>tx.query<{promotion_id:string}>(`
+   const safeSettings=body.settings?validateRingsideSettings(body.settings):null;
+   // Every benchmark uses exactly the same presentation settings except the
+   // selected model. Creative settings from a prior playtest cannot bias it.
+   const effective=fixture?{...DEFAULT_RINGSIDE_SETTINGS,
+    model:safeSettings?.model??DEFAULT_RINGSIDE_SETTINGS.model}:
+    safeSettings?{...safeSettings,version:0}:
+     await readAdminRingsideSettings(pool,cfg.worldId);
+   let show, memory;
+   if(fixture){
+    show=fixture.show;
+   }else{
+    const promotion=await withSqlClient(pool,tx=>tx.query<{promotion_id:string}>(`
      SELECT c.promotion_id FROM ppw_completed_shows c
      JOIN ppw_promotion_controls p ON p.world_id=c.world_id
       AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
      WHERE c.world_id=$1 AND c.show_id=$3 LIMIT 1`,
      [cfg.worldId,user.playerId,body.showId]));
-   if(promotion.length!==1)return json(404,{error:"Completed show not available"});
-   const effective=body.settings?{
-    ...validateRingsideSettings(body.settings),version:0
-   }:await readAdminRingsideSettings(pool,cfg.worldId);
-   const show=await readCompletedShowView(pool,{worldId:cfg.worldId,
-    playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
-    showId:body.showId});
-   let memory;
-   try{memory=await readRingsideMemory(pool,{worldId:cfg.worldId,
-    playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
-    showId:body.showId},show);}
-   catch{console.warn("Ringside history unavailable; previewing card facts");}
+    if(promotion.length!==1)return json(404,{error:"Completed show not available"});
+    show=await readCompletedShowView(pool,{worldId:cfg.worldId,
+     playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
+     showId:body.showId as string});
+    try{memory=await readRingsideMemory(pool,{worldId:cfg.worldId,
+     playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
+     showId:body.showId as string},show);}
+    catch{console.warn("Ringside history unavailable; previewing card facts");}
+   }
    // Capture the provider's genuine token usage for the *whole* preview,
    // including a second factual-validation attempt. No extra model call.
    let providerCalls=0,inputTokens=0,outputTokens=0,fullyReported=true;
@@ -310,14 +336,16 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     effective,memory,pool,previewProvider);
    const durationMs=Date.now()-began;
    const recorded=await saveAiLabPreview(pool,{
-    worldId:cfg.worldId,playerId:user.playerId,showId:body.showId,
+    worldId:cfg.worldId,playerId:user.playerId,showId:show.showId,
     showName:show.showName??"Completed show",provider:previewProvider,
     model:previewProvider==="OPENAI"?OPENAI_PREVIEW_MODEL:effective.model,
     durationMs,providerCalls,
     inputTokens:fullyReported?inputTokens:null,
     outputTokens:fullyReported?outputTokens:null,review
    });
+   const benchmark=fixture?assessWrestlingBenchmark(fixture.scenario.id,review):null;
    return json(200,{review,preview:true,labRunId:recorded.runId,
+    ...(benchmark?{benchmark}:{}),
     metrics:{durationMs,providerCalls,
      inputTokens:fullyReported?inputTokens:null,
      outputTokens:fullyReported?outputTokens:null}});

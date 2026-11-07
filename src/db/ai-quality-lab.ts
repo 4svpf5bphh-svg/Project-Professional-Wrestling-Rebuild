@@ -91,7 +91,7 @@ export async function readAiLabDashboard(pool:TransactionPool,worldId:string,pla
      provider_calls,input_tokens,output_tokens,rating,flags,notes,
      created_at::text FROM ppw_ai_lab_runs
     WHERE world_id=$1 AND player_id=$2
-    ORDER BY created_at DESC,run_id DESC LIMIT 12`,
+    ORDER BY created_at DESC,run_id DESC LIMIT 40`,
    [worldId,playerId])),
   withSqlClient(pool,db=>db.query<{
    provider:LabProvider;model:string;total:number;reviewed:number;
