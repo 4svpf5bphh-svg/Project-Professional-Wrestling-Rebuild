@@ -10,6 +10,11 @@ import {paidPreviewEnabled,OPENAI_PREVIEW_MODEL} from "../db/openai-editorial-pr
 import {groqResponseUsage} from "../domain/ai-director.js";
 import {getWrestlingBenchmark,assessWrestlingBenchmark,WRESTLING_BENCHMARKS}
  from "../domain/wrestling-ai-benchmark.js";
+import {POSTSHOW_VOICE_SCENARIOS,getPostShowVoiceBenchmark}
+ from "../domain/postshow-voice-lab.js";
+import {generatePostShowVoiceCopy} from "../db/postshow-voice-batches.js";
+import {saveShortformVoiceLabRun,readShortformVoiceLabRuns}
+ from "../db/postshow-voice-lab.js";
 import {DEFAULT_RINGSIDE_SETTINGS} from "../domain/ringside-settings.js";
 import {readAiLabDashboard,readAiLabReview,saveAiLabPreview,saveAiLabFeedback,
  saveAiLabFailure,type AiLabErrorCode} from "../db/ai-quality-lab.js";
@@ -182,6 +187,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     if(view==="summary")return json(200,{
      ...await readAiLabDashboard(pool,cfg.worldId,user.playerId),
      scenarios:WRESTLING_BENCHMARKS,
+     shortformScenarios:POSTSHOW_VOICE_SCENARIOS,
+     shortformRuns:await readShortformVoiceLabRuns(pool,cfg.worldId,user.playerId),
      providers:{groq:!!process.env.GROQ_API_KEY,
       openai:paidPreviewEnabled(process.env)}
     });
@@ -274,6 +281,54 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
      body.settings,body.expectedVersion as number);
     return json(200,{settings:saved});
    }catch(e){return json(409,{error:e instanceof Error?e.message:"Settings rejected"});}
+  }
+  // A separate fictional 20B voice test is available ONLY to the protected
+  // operator of the isolated AI Lab. It never reaches the World publication
+  // path, does not create completed shows, and never retries rejected output.
+  if(path==="/api/admin-preview"&&body.shortformBenchmarkId!==undefined){
+   if(!benchmarkOperator||Object.keys(body).length!==1||
+    typeof body.shortformBenchmarkId!=="string"||
+    body.shortformBenchmarkId.length>50)
+    return json(403,{error:"Protected shortform tests accept fixed fixtures only"});
+   if(!allow("admin-preview:"+cfg.worldId,3,60*60_000))
+    return json(429,{error:"AI preview limit: three reviews per hour"});
+   const fixture=getPostShowVoiceBenchmark(body.shortformBenchmarkId);
+   if(!fixture)return json(400,{error:"Unknown fictional voice scenario"});
+   const key=process.env.GROQ_API_KEY;
+   if(!key)return json(503,{error:"Groq free test key not configured"});
+   let providerCalls=0,inputTokens=0,outputTokens=0,reported=true;
+   const start=Date.now();
+   const meter:typeof fetch=async(url,init)=>{
+    providerCalls++;
+    let response:Response;
+    try{response=await fetch(url,init);}
+    catch(e){reported=false;throw e;}
+    let usage=null;
+    if(response.ok)try{usage=groqResponseUsage(await response.clone().json());}
+    catch{/* A provider response need not include usage. */}
+    if(usage){inputTokens+=usage.inputTokens;outputTokens+=usage.outputTokens;}
+    else reported=false;
+    return response;
+   };
+   let copy=null,code:"NO_ACCEPTED_COPY"|"PROVIDER_ERROR"="NO_ACCEPTED_COPY";
+   try{copy=await generatePostShowVoiceCopy(fixture.show,key,meter,pool);}
+   catch{code="PROVIDER_ERROR";}
+   const durationMs=Math.min(180000,Date.now()-start);
+   const metrics={durationMs,providerCalls,
+    inputTokens:providerCalls&&reported?inputTokens:null,
+    outputTokens:providerCalls&&reported?outputTokens:null};
+   let runId:string|null=null;
+   try{
+    const saved=await saveShortformVoiceLabRun(pool,{
+     worldId:cfg.worldId,playerId:user.playerId,scenarioId:fixture.scenario.id,
+     ...metrics,copy,errorCode:copy?undefined:code
+    });
+    runId=saved.runId;
+   }catch{console.warn("Shortform Lab could not save private sample");}
+   if(!copy)return json(422,{error:"No verified shortform copy was accepted. "+
+    "The existing PPW writing remains the fallback; no World data changed.",
+    runId,metrics,code});
+   return json(200,{copy,brief:fixture.brief,runId,metrics});
   }
   if(benchmarkOperator&&(typeof body.benchmarkId!=="string"||
     !body.benchmarkId||body.showId!==undefined))
