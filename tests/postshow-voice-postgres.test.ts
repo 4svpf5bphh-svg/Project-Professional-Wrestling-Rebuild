@@ -39,12 +39,18 @@ test("postshow cache stays owner-scoped and a published receipt gets only one Gr
   assert.ok(labFixture.brief.roadAgent);
   const savedLab=await saveShortformVoiceLabRun(db.pool,{
    worldId:world,playerId:owner,scenarioId:"i-quit",durationMs:1020,
-   providerCalls:1,inputTokens:780,outputTokens:268,copy:labCopy
+   providerCalls:1,inputTokens:780,outputTokens:268,copy:labCopy,
+   diagnostic:{category:"ACCEPTED",news:"ACCEPTED",
+    wrestler:"ACCEPTED",roadAgent:"ACCEPTED"}
   });
   assert.equal(savedLab.status,"READY");
   const ownerSamples=await readShortformVoiceLabRuns(db.pool,world,owner);
   assert.equal(ownerSamples.length,1);
   assert.deepEqual(ownerSamples[0]?.copy,labCopy);
+  assert.deepEqual(ownerSamples[0]?.diagnostic,{
+   category:"ACCEPTED",news:"ACCEPTED",wrestler:"ACCEPTED",
+   roadAgent:"ACCEPTED"
+  });
   assert.deepEqual(await readShortformVoiceLabRuns(db.pool,world,"outsider"),[]);
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`
