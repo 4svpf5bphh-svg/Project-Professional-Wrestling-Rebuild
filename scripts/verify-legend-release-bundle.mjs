@@ -77,7 +77,7 @@ assert.equal(taz.portraits[0].sha256,
 assert.ok(existsSync("dist/web/assets/legends/undertaker-immortal-card.webp"),
  "The original Undertaker pilot must remain intact");
 const sw=readFileSync("dist/web/sw.js","utf8");
-assert.match(sw,/ppw-static-shell-v5/);
+assert.match(sw,/ppw-static-shell-v6/);
 assert.match(sw,/assets\/legends\//);
 console.log("READY: deployable build contains all 95 approved original Legends assets, "+
  "including the correct Taz image; Undertaker pilot retained and iPhone cache rotated.");

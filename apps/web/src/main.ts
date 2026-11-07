@@ -66,9 +66,10 @@ const el=(tag:string,cls="",value="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=value;return x;
 };
 /** The same vector letters power sign-in, the live shell and the opening. */
-function ppwLogo(cls:string){
- const img=document.createElement("img");
- img.className=cls;img.src="/branding/ppw-logo.svg";img.alt="PPW";
+function ppwLogo(cls:string,variant:"hero"|"header"="hero"){
+ const img=document.createElement("img");img.className=cls;
+ img.src=variant==="header"?"/branding/ppw-header.svg":"/branding/ppw-hero.svg";
+ img.alt="PPW";
  img.decoding="async";return img;
 }
 const button=(label:string,action:()=>void)=>{
@@ -435,7 +436,7 @@ async function loadSession(){
    throw new Error("Incomplete game session");
   const banner=el("div","ppw-account-banner");
   const identity=el("div","ppw-shell-identity");
-  const logo=ppwLogo("ppw-shell-logo");
+  const logo=ppwLogo("ppw-shell-logo","header");
    logo.width=56;logo.height=38;
   const brand=el("span","ppw-shell-brand");
   brand.append(el("strong","",session.overview.promotion?.name??"WORLD CONTROL"),
@@ -476,7 +477,7 @@ function presentOpening(){
  scene.setAttribute("aria-label","PPW opening");
  const middle=el("div","ppw-opening-centre");
  const mark=ppwLogo("ppw-opening-logo");
- mark.width=1200;mark.height=390;
+ mark.width=1200;mark.height=475;
  middle.append(el("span","ppw-opening-kicker","THE LIVING WRESTLING WORLD"),mark,
   el("span","ppw-opening-rule"),el("h1","ppw-visually-hidden","PROJECT PROFESSIONAL WRESTLING"));
  let timer=0;
