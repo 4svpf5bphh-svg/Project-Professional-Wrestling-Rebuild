@@ -647,7 +647,11 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  expect(await worker.text()).toContain('url.pathname.startsWith("/api/")');
  // A refreshed shell must evict the old cache-first portrait entries; the
  // original 48 Legends retain their URL paths across this release.
- expect(await worker.text()).toContain('ppw-static-shell-v4');
+ expect(await worker.text()).toContain('ppw-static-shell-v5');
+ expect(await worker.text()).toContain('"/branding/ppw-logo.svg"');
+ const masterLogo=await request.get("/branding/ppw-logo.svg");
+ expect(masterLogo.ok()).toBeTruthy();
+ expect(await masterLogo.text()).toContain('class="word"');
  expect(await worker.text()).toContain('url.pathname.startsWith("/assets/legends/")');
  expect(await worker.text()).toContain('const updated=await fetch(req)');
  expect(await worker.text()).toContain('key!==CACHE');
@@ -670,7 +674,8 @@ test("small iPhones have only the five department drawers at the bottom without 
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
  const menu=page.getByRole("button",{name:"Open World menu"});
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
- await expect(page.locator(".ppw-shell-logo")).toHaveText("PPW");
+ await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("alt","PPW");
+ await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("src","/branding/ppw-logo.svg");
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("AEW");
  expect(await page.locator(".ppw-account-banner").evaluate(el=>
   getComputedStyle(el).paddingTop)).toMatch(/px$/);

@@ -27,6 +27,7 @@ import "../phase16.css";
 import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
 import {mountAdminCentre} from "../../../src/ui/admin-centre.js";
 import "../admin-centre.css";
+import "../ppw-brand.css";
 
 type SessionView={
  worldId:string;playerId:string;ownerName?:string|null;csrfToken:string;
@@ -64,6 +65,12 @@ function confirmLeavingBooking(next:HostSection){
 const el=(tag:string,cls="",value="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=value;return x;
 };
+/** The same vector letters power sign-in, the live shell and the opening. */
+function ppwLogo(cls:string){
+ const img=document.createElement("img");
+ img.className=cls;img.src="/branding/ppw-logo.svg";img.alt="PPW";
+ img.decoding="async";return img;
+}
 const button=(label:string,action:()=>void)=>{
  const b=el("button","ppw-access-button",label) as HTMLButtonElement;
  b.type="button";b.onclick=action;return b;
@@ -428,7 +435,8 @@ async function loadSession(){
    throw new Error("Incomplete game session");
   const banner=el("div","ppw-account-banner");
   const identity=el("div","ppw-shell-identity");
-  const logo=el("span","ppw-shell-logo","PPW");
+  const logo=ppwLogo("ppw-shell-logo");
+   logo.width=56;logo.height=38;
   const brand=el("span","ppw-shell-brand");
   brand.append(el("strong","",session.overview.promotion?.name??"WORLD CONTROL"),
    el("small","",(session.ownerName?session.ownerName+" · ":"")+
@@ -467,11 +475,10 @@ function presentOpening(){
  const scene=el("section","ppw-opening");
  scene.setAttribute("aria-label","PPW opening");
  const middle=el("div","ppw-opening-centre");
- const mark=document.createElement("img");
- mark.src="/icon.svg";mark.alt="PPW";mark.className="ppw-opening-logo";
- mark.width=192;mark.height=192;
+ const mark=ppwLogo("ppw-opening-logo");
+ mark.width=1200;mark.height=390;
  middle.append(el("span","ppw-opening-kicker","THE LIVING WRESTLING WORLD"),mark,
-  el("span","ppw-opening-rule"),el("h1","","PROJECT PROFESSIONAL WRESTLING"));
+  el("span","ppw-opening-rule"),el("h1","ppw-visually-hidden","PROJECT PROFESSIONAL WRESTLING"));
  let timer=0;
  const finish=()=>{clearTimeout(timer);scene.remove();};
  const skip=button("Skip intro →",finish);skip.className="ppw-opening-skip";
@@ -481,8 +488,8 @@ function presentOpening(){
 function showLogin(){
  game.replaceChildren();
  const card=el("section","ppw-access-panel");
- const mark=el("div","ppw-access-mark","PPW");
- mark.setAttribute("aria-hidden","true");
+ const mark=ppwLogo("ppw-access-mark");
+ mark.alt="";mark.setAttribute("aria-hidden","true");
  card.append(mark,el("span","ppw-access-kicker","PPW / YOUR WORLD"),
   el("h1","","Enter the locker room"),
   el("p","ppw-access-muted",
