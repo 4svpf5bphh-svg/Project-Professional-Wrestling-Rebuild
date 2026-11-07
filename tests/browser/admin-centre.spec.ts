@@ -108,7 +108,9 @@ test("owner Admin lives only under Business and exposes audited Groq controls",a
  await page.getByRole("button",{name:"Save Ringside preferences"}).click();
  await expect(page.getByText(/Saved for future Ringside reports/)).toBeVisible();
  await page.getByRole("button",{name:"Preview this style"}).click();
- await expect(page.getByRole("heading",{name:"The bell and the bill"})).toBeVisible();
+ await expect(page.locator(".ppw-admin-panel").filter({
+  has:page.getByRole("heading",{name:"Ringside AI Studio"})
+ }).getByRole("heading",{name:"The bell and the bill"})).toBeVisible();
  expect(previewCalls).toBe(1);
 });
 test("ordinary manager cannot discover the Admin department or route",async({page})=>{
