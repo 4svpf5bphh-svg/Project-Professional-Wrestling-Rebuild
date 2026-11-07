@@ -30,10 +30,13 @@ type ShortformCopy={
  wrestler:{slotId:string;personId:string;text:string}|null;
  roadAgent:{slotId:string;note:string}|null;
 };
+type ShortformLabDiagnostic={category:string;news:string;wrestler:string;
+ roadAgent:string};
 type ShortformLabRun={runId:string;scenarioId:string;scenarioName:string;
  model:string;status:"READY"|"FAILED";errorCode:string|null;
  durationMs:number;providerCalls:number;inputTokens:number|null;
- outputTokens:number|null;createdAt:string;copy:ShortformCopy|null};
+ outputTokens:number|null;createdAt:string;copy:ShortformCopy|null;
+ diagnostic?:ShortformLabDiagnostic|null};
 type LabData={usage:LabDay[];runs:LabRun[];scores:{
  provider:string;model:string;total:number;reviewed:number;average_score:number|null;
  successful?:number;failed?:number}[];
@@ -272,7 +275,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       "ms. Read each accepted voice below and judge its realism.";
     }catch(e){
      lastVoiceNotice="Voice batch failed: "+(e instanceof Error?e.message:
-      "No accepted result")+"; existing game copy is unaffected.";
+      "No accepted result.");
     }
     labData=null;
     await loadLab();
@@ -295,6 +298,22 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       el("p","ppw-admin-small",
        sample.providerCalls+" Groq request(s) · "+tokenCount+
        " · "+sample.durationMs+"ms"));
+     if(sample.diagnostic){
+      const d=sample.diagnostic;
+      const readable:Record<string,string>={
+       ACCEPTED:"Verified",PARTIAL:"Partially verified",
+       ALL_REJECTED:"All three texts rejected",WRONG_SHAPE:"Unexpected JSON fields",
+       HTTP_REJECTED:"Groq rejected the request",
+       INVALID_ENVELOPE:"Invalid provider response",
+       EMPTY_CONTENT:"Empty model response",INVALID_JSON:"Invalid model JSON",
+       TRUNCATED:"Model ran out of output space",
+       OVERSIZED:"Model response too long",PROVIDER_ERROR:"Provider connection failed"
+      };
+      line.append(el("p","ppw-admin-small",
+       "Quality check: "+(readable[d.category]??"Unclassified")+
+       " · News "+d.news+" · Wrestler "+d.wrestler+
+       " · Road Agent "+d.roadAgent));
+     }
      if(sample.copy){
       if(sample.copy.news)line.append(
        copyCard("OFFICIAL NEWS · "+sample.copy.news.headline,
