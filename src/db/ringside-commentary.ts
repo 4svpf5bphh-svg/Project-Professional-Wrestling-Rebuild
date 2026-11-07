@@ -11,7 +11,7 @@ import {readCompletedShowView} from "./show-results-view.js";
 import {readRingsideMemory,EMPTY_RINGSIDE_MEMORY,type RingsideMemory} from "./ringside-continuity.js";
 import type {CompletedShowView} from "./show-results-view.js";
 import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
- RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_LEGACY_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
+ RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
 export type RingsideResponse={status:"ready";review:RingsideCopy}|
@@ -226,14 +226,14 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
    FROM ppw_ringside_reports r
    WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
     AND r.show_id=c.show_id
-    AND (r.prompt_version=$5 OR (r.prompt_version IN ($6,$7) AND r.state='READY'))
+    AND (r.prompt_version=$5 OR (r.prompt_version IN ($6,$7,$8) AND r.state='READY'))
    -- Preserve published v4/v6 articles; do not regenerate old reviewed shows.
-   ORDER BY CASE WHEN r.prompt_version=$7 THEN 0 WHEN r.prompt_version=$6 THEN 1 ELSE 2 END
+   ORDER BY CASE WHEN r.prompt_version=$5 THEN 0 WHEN r.prompt_version=$6 THEN 1 WHEN r.prompt_version=$7 THEN 2 ELSE 3 END
    LIMIT 1
   ) r ON TRUE
   WHERE c.world_id=$1 AND c.promotion_id=$3 AND c.show_id=$4
   LIMIT 1`,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,
-   RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_LEGACY_VERSION]));
+   RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION]));
  if(!current.length)throw new Error("Completed show unavailable to this controller");
  const saved=current[0];
  if(saved?.state==="READY"){

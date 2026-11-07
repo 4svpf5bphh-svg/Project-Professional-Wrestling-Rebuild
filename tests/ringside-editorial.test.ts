@@ -125,7 +125,7 @@ test("repeat sentences are discarded while distinct editorial observations survi
 
 
 test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls",()=>{
- assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v7");
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v8");
  assert.match(ringsideStipulationNote("I Quit Match · SINGLES")!.winningCondition,/VERBALLY/);
  assert.match(ringsideStipulationNote("Steel Cage · SINGLES")!.plausibleAction,/Steel mesh/);
  const quit:CompletedShowView={...example,entries:[{
@@ -152,8 +152,8 @@ test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls
 test("Wrestling IQ supplies legal singles, tags and multi-party rules without a provider call",()=>{
  const singles=ringsideBrief(example).slots[0]!.match!.wrestlingIQ!;
  assert.equal(singles.format,"SINGLES");
- assert.match(singles.legalAction,/No tags or tag partners/);
- assert.match(singles.finishDiscipline,/three-count/);
+ assert.equal(singles.tempo,"STANDARD");
+ assert.match(RINGSIDE_STYLE_GUIDE,/No tags or tag partners|Do not insert a tag or a tag partner/);
  const team={...example.entries[0]!,matchContext:{
   ...example.entries[0]!.matchContext!,format:"2v2",sides:[
    ["The Gunns' Austin","The Gunns' Colten"],["FTR's Dax","FTR's Cash"]],
@@ -162,9 +162,8 @@ test("Wrestling IQ supplies legal singles, tags and multi-party rules without a 
  const tagIQ=ringsideBrief(tag).slots[0]!.match!.wrestlingIQ!;
  assert.equal(tagIQ.format,"TAG");
  assert.equal(tagIQ.competitors,4);
- assert.match(tagIQ.legalAction,/ONE legal wrestler per team/);
- assert.match(tagIQ.possibleSpots,/squash need not include a hot tag/);
- assert.match(tagIQ.storySpine[2],/never invent the individual scorer/);
+ assert.match(tagIQ.storyCue,/do not force a hot tag/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/only one wrestler PER TEAM is legal/);
  const trios={...team,matchContext:{...team.matchContext,format:"3v3",
   sides:[["A","B","C"],["D","E","F"]],winnerNames:["A","B","C"]}};
  assert.equal(ringsideBrief({...tag,entries:[trios]}).slots[0]!.match!.wrestlingIQ!.format,"TAG");
@@ -175,7 +174,7 @@ test("Wrestling IQ supplies legal singles, tags and multi-party rules without a 
   sides:[["A"],["B"],["C"]],winnerNames:["A"]}};
  const iq=ringsideBrief({...tag,entries:[triple]}).slots[0]!.match!.wrestlingIQ!;
  assert.equal(iq.format,"MULTI_PERSON");
- assert.match(iq.legalAction,/without tags/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/there are NO tags/);
  assert.match(RINGSIDE_STYLE_GUIDE,/For EVERY match/);
 });
 test("Ringside rejects proven invalid tag mechanics but not an optional hot tag",()=>{

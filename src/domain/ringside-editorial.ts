@@ -5,8 +5,9 @@ import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // Updated editorial is versioned independently. Published v4 remains immutable.
-export const RINGSIDE_PROMPT_VERSION="ringside-v7";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v6";
+export const RINGSIDE_PROMPT_VERSION="ringside-v8";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v7";
+export const RINGSIDE_OLDER_VERSION="ringside-v6";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 /** Compact, provider-neutral vocabulary. No additional model request, database
@@ -340,7 +341,13 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
    summary:e.summary,
    ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
    ...(e.matchContext?{match:{format:e.matchContext.format,
-    ...(wrestlingMatchIQ(e)?{wrestlingIQ:wrestlingMatchIQ(e)}:{}),
+    ...(wrestlingMatchIQ(e)?{wrestlingIQ:{
+     format:wrestlingMatchIQ(e)!.format,
+     competitors:wrestlingMatchIQ(e)!.competitors,
+     tempo:(e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)<7?"BRIEF":
+      (e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)>=20?"LONG":"STANDARD",
+     storyCue:wrestlingMatchIQ(e)!.storySpine[1]
+    }}:{}),
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
     titleContested:e.matchContext.championshipContested,
     ...(ringsideStipulationNote(e.matchContext.format)?{
