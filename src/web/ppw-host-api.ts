@@ -167,7 +167,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(post&&!csrf(req,user))return json(403,{error:"Invalid admin session"});
   if(path==="/api/admin"&&get){
    try{
-    const [plan,settings,shows,pilot,testKp]=await Promise.all([
+    const [plan,settings,shows,pilot,testKp,aiUsage]=await Promise.all([
      planNextWorldResolutionAction(pool,cfg.worldId),
      readAdminRingsideSettings(pool,cfg.worldId),
      withSqlClient(pool,tx=>tx.query<{show_id:string;show_name:string|null;year:number;week:number}>(`
@@ -184,9 +184,17 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
        WHERE c.world_id=$1 ORDER BY c.year DESC,c.week DESC,c.completed_at DESC LIMIT 6`,
        [cfg.worldId,user.playerId])),
      readLegendPilot(pool,cfg.worldId),
-     readPlaytestKp(pool,cfg.worldId,user.playerId)
+     readPlaytestKp(pool,cfg.worldId,user.playerId),
+     withSqlClient(pool,tx=>tx.query<{call_count:number;reserved_tokens:number;
+      reported_input_tokens:string;reported_output_tokens:string;
+      completed_calls:number;failed_calls:number}>(`
+       SELECT call_count,reserved_tokens,reported_input_tokens::text,
+        reported_output_tokens::text,completed_calls,failed_calls
+       FROM ppw_groq_daily_usage
+       WHERE usage_day=timezone('UTC',now())::date`,[]))
     ]);
-    return json(200,{plan,settings,shows,pilot,testKp,groqConfigured:!!process.env.GROQ_API_KEY});
+    return json(200,{plan,settings,shows,pilot,testKp,aiUsage:aiUsage[0]??null,
+     groqConfigured:!!process.env.GROQ_API_KEY});
    }catch(e){
     console.error("Admin read failed",e instanceof Error?e.message:"unknown");
     return json(503,{error:"Admin status unavailable. No World state was changed."});
@@ -252,7 +260,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
     showId:body.showId},show);}
    catch{console.warn("Ringside history unavailable; previewing card facts");}
-   const review=await generateGroqReview(show,process.env.GROQ_API_KEY,fetch,effective,memory);
+   const review=await generateGroqReview(show,process.env.GROQ_API_KEY,fetch,effective,memory,pool);
    return json(200,{review,preview:true});
   }catch(e){
    console.error("Admin Ringside preview failed",e instanceof Error?e.message:"unknown");

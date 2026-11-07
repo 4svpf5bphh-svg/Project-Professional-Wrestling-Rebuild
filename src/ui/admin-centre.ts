@@ -10,6 +10,8 @@ type LegendPilot={status:"ARMED"|"CONSUMED"|"CANCELLED";promotionId:string;
  armedYear:number;armedWeek:number;consumedYear:number|null;consumedWeek:number|null};
 type AdminData={plan:ActionPlan;settings:RingsideSettings;pilot:LegendPilot|null;
  testKp?:{balance:number;granted:boolean;target:number};
+ aiUsage?:{call_count:number;reserved_tokens:number;reported_input_tokens:string;
+  reported_output_tokens:string;completed_calls:number;failed_calls:number}|null;
  groqConfigured:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
  editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null}[]};
 type Recap={showHeadline:string;opening:string;closing:string;
@@ -198,6 +200,13 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const config={...data.settings};
   studio.replaceChildren(el("h2","","Ringside AI Studio"),
    el("p","ppw-admin-sub","These preferences govern future AI reports. Previously published Ringside reports stay unchanged."));
+  const usage=data.aiUsage;
+  studio.append(el("p","ppw-admin-small",usage?
+   "Groq today · "+usage.call_count+"/40 calls · "+usage.reserved_tokens+
+   "/160,000 reserved tokens · "+
+   (Number(usage.reported_input_tokens)+Number(usage.reported_output_tokens))
+    .toLocaleString("en-GB")+" reported tokens · "+usage.failed_calls+" failures":
+   "Groq today · no requests recorded. Shared daily limit: 40 calls / 160,000 estimated tokens."));
   const form=document.createElement("form");form.className="ppw-admin-form";
   const model=selectControl([["openai/gpt-oss-120b","GPT-OSS 120B · more capable"],["openai/gpt-oss-20b","GPT-OSS 20B · faster"]],config.model);
   const voice=selectControl([["MARTY","Marty Vale · veteran columnist"],["SPORTS","Traditional sports journalism"],["SATIRE","Sharper wrestling satire"]],config.voice);

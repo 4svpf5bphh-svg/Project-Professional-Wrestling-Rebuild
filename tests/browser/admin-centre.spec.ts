@@ -9,7 +9,9 @@ const settings={model:"openai/gpt-oss-120b",voice:"MARTY",
 const adminData={plan:{year:1,week:2,action:"RESOLVE_DETAILED_SHOWS",blockers:[],
  ready:{phase:"RESOLVING",active:13,regularSubmitted:13,submitted:13,
  cleared:13,certified:null,legacyResolved:13,detailedResolved:8}},
- settings,groqConfigured:true,testKp:{balance:100,granted:false,target:50000},
+ settings,groqConfigured:true,aiUsage:{call_count:3,reserved_tokens:5500,
+  reported_input_tokens:"1800",reported_output_tokens:"700",completed_calls:3,failed_calls:0},
+ testKp:{balance:100,granted:false,target:50000},
  shows:[{show_id:"old-show",show_name:"Friday Fire",year:1,week:1}]};
 test("owner Admin lives only under Business and exposes audited Groq controls",async({page})=>{
  await page.route("**/api/session",route=>route.fulfill({json:{
@@ -53,6 +55,7 @@ test("owner Admin lives only under Business and exposes audited Groq controls",a
  await expect(page.getByText("Your balance: 50,000 KP")).toBeVisible();
  await expect(page.getByRole("button",{name:"Test credit already claimed"})).toBeDisabled();
  expect(grants).toBe(1);
+ await expect(page.getByText(/Groq today · 3\/40 calls/)).toBeVisible();
  await page.getByLabel("AI model").selectOption("openai/gpt-oss-20b");
  await page.getByLabel("Columnist style").selectOption("SATIRE");
  await page.getByLabel("Review length").selectOption("LONG");
