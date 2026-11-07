@@ -31,7 +31,7 @@ type LabData={usage:LabDay[];runs:LabRun[];scores:{
  scenarios?:BenchmarkScenario[];providers?:{groq:boolean;openai:boolean}};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
-type Context={csrfToken:string};
+type Context={csrfToken:string;benchmarkOnly?:boolean};
 const el=(tag:string,cls="",text="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=text;return n;
 };
@@ -62,8 +62,10 @@ const message=(box:HTMLElement,s:string,isError=false)=>{
 export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  root.classList.add("ppw-admin-centre");
  root.replaceChildren(el("span","ppw-eyebrow","PPW / ADMINISTRATOR"),
-  el("h1","","Control Room"),
-  el("p","ppw-admin-sub","Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
+  el("h1","",ctx.benchmarkOnly?"Wrestling IQ Lab":"Control Room"),
+  el("p","ppw-admin-sub",ctx.benchmarkOnly?
+   "Private, fictional Groq comparisons. No World advancement or published Results change.":
+   "Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
  const world=el("section","ppw-admin-panel");
  const studio=el("section","ppw-admin-panel");
  const labPanel=el("section","ppw-admin-panel");
@@ -71,10 +73,12 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  const kpDesk=el("section","ppw-admin-panel");
  const navigation=el("nav","ppw-admin-tabs");
  navigation.setAttribute("aria-label","Admin sections");
- let activeTab:"WORLD"|"AI"|"PLAYTESTS"="WORLD";
+ let activeTab:"WORLD"|"AI"|"PLAYTESTS"=ctx.benchmarkOnly?"AI":"WORLD";
  let labData:LabData|null=null;
  let lastBenchmarkNotice="";
- const navButtons=(["WORLD","AI","PLAYTESTS"] as const).map(tab=>{
+ const tabs:readonly ("WORLD"|"AI"|"PLAYTESTS")[]=
+  ctx.benchmarkOnly?["AI"]:["WORLD","AI","PLAYTESTS"];
+ const navButtons=tabs.map(tab=>{
   const button=el("button","ppw-admin-tab",
    tab==="WORLD"?"World":tab==="AI"?"AI Testing Lab":"Playtests") as HTMLButtonElement;
   button.type="button";
@@ -86,12 +90,12 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  });
  function switchTab(){
   world.hidden=activeTab!=="WORLD";
-  studio.hidden=activeTab!=="AI";
+  studio.hidden=!!ctx.benchmarkOnly||activeTab!=="AI";
   labPanel.hidden=activeTab!=="AI";
   legendTrial.hidden=activeTab!=="PLAYTESTS";
   kpDesk.hidden=activeTab!=="PLAYTESTS";
   navButtons.forEach((button,index)=>{
-   const active=(["WORLD","AI","PLAYTESTS"] as const)[index]===activeTab;
+   const active=tabs[index]===activeTab;
    button.setAttribute("aria-pressed",String(active));
    button.classList.toggle("is-active",active);
   });
@@ -693,6 +697,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    inputField("Preview provider",provider),paidNotice,
    previewBtn,recover,aiStatus,preview);
  }
+ if(ctx.benchmarkOnly){await loadLab();return;}
  try{await load();}catch(e){
   const error=el("p","ppw-admin-error",e instanceof Error?e.message:"Admin is unavailable");
   root.append(error);
