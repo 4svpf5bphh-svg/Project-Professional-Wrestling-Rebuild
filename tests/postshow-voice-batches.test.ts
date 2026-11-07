@@ -327,3 +327,38 @@ test("earlier certified news and generic HOT TAG remain visible as historical re
  assert.ok(cached?.wrestler);
  assert.equal(cached.roadAgent,null);
 });
+
+test("certified wrestler turn can produce a real event reaction with no invented opponent",()=>{
+ const base=fixture();
+ const original=base.entries[0]!;
+ const turn={...original,type:"SEGMENT" as const,
+  segmentKind:"TURN",outcome:"HAPPENS",
+  matchContext:undefined,fallout:undefined,
+  headline:"Mercer reveals where he stands",
+  summary:"Jett Mercer made a recorded turn in front of the crowd.",
+  actorIds:["fixture-0"],targetIds:[],
+  segmentContext:{actorNames:["Jett Mercer"],targetNames:[],
+   videoPurpose:null,stableDecision:null,turnTargetAlignment:"HEEL"}
+ };
+ const scene:CompletedShowView={...base,entries:[turn],
+  matchCount:0,angleCount:1};
+ const brief=postShowVoiceBrief(scene);
+ assert.equal(brief.mainEvent,null);
+ assert.equal(brief.wrestler?.displayName,"Jett Mercer");
+ assert.equal(brief.wrestler?.eventKind,"TURN");
+ assert.deepEqual(brief.wrestler?.opponentNames,[]);
+ assert.ok(validatePostShowVoiceCopy(brief,{wrestler:{text:
+  "I made my choice in front of the crowd. Everybody knows where I stand now, and no one can make that decision for me."}})?.wrestler);
+ assert.equal(validatePostShowVoiceCopy(brief,{wrestler:{text:
+  "I won a brutal cage match tonight and absolutely destroyed my opponent in the ring."}}),null);
+});
+test("editorial facts remove technical disclaimers without leaving punctuation fragments",()=>{
+ const {show:steel}=getWrestlingBenchmark("steel-cage")!;
+ const cage=postShowVoiceBrief(steel);
+ assert.match(cage.mainEvent!.summary,/pinned Isaiah King/);
+ assert.doesNotMatch(cage.mainEvent!.summary,/winning condition|;\s*$/i);
+ const {show:tag}=getWrestlingBenchmark("tag-standard")!;
+ const tagBrief=postShowVoiceBrief(tag);
+ assert.doesNotMatch(tagBrief.mainEvent!.summary,/individual fall scorer was not recorded|;\s*$/i);
+ assert.deepEqual(tagBrief.mainEvent!.winners,["Rey Sol","Marcus Drake"]);
+});
