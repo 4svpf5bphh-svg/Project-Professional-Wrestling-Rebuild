@@ -175,7 +175,7 @@ function wrestlerEventSpecific(post:string,source:PostShowVoiceBrief):boolean{
 }
 function trueFinish(summary:string,method:string):boolean{
  if(method.includes("I Quit"))return /\b(?:i quit|verbally surrendered|verbal surrender|said (?:the words|i quit)|conceded verbally)\b/i.test(summary)&&
-  !/\b(?:pinfall|pinned|tap(?:ped|ping)? out|three.count)\b/i.test(summary);
+  !/\b(?:pinned|won (?:by|via) (?:a )?pinfall|three.count|tapped out|forced (?:\w+\s+){0,5}to tap out|won (?:by|via) (?:a )?submission)\b/i.test(summary);
  if(method.includes("pinfall"))return /\b(?:pinfall|pinned|three.count|pin(?:ning)? (?:victory|win))\b/i.test(summary)&&
   !/\b(?:won by submission|won by surrender|won by escape)\b/i.test(summary);
  if(method.includes("submission"))return /\b(?:submission|submitted|tapped out)\b/i.test(summary)&&
