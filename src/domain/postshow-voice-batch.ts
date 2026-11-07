@@ -18,7 +18,8 @@ export interface PostShowVoiceBrief{
  mainEvent:{slotId:string;headline:string;summary:string;
   winners:string[];opponents:string[][];finish:string;crowd:string}|null;
  wrestler:{slotId:string;personId:string;displayName:string;
-  recordedPost:string;verifiedEvent:string}|null;
+  recordedPost:string;verifiedEvent:string;
+  character:string|null;style:string|null}|null;
  roadAgent:{slotId:string;headline:string;recordedObservation:string;
   reporter:string}|null;
 }
@@ -36,6 +37,8 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
  const headline=bouts.find(e=>e.matchContext?.isMainEvent)??[...bouts].sort((a,b)=>
   b.crowdResponse-a.crowdResponse||a.position-b.position)[0];
  const social=projectHotTagShowWrestlerPosts(show)[0]??null;
+ const persona=social?show.entries.find(e=>e.slotId===social.slotId)
+  ?.performerIdentities?.find(i=>i.personId===social.personId):null;
  const observed=postShowStaffObservations(show)[0]??null;
  const staff=observed&&show.staffReport?observed:null;
  return {
@@ -54,7 +57,9 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
   }:null,
   wrestler:social?{slotId:social.slotId,personId:social.personId,
    displayName:clipped(social.displayName,120),recordedPost:clipped(social.text,230),
-   verifiedEvent:clipped(show.entries.find(e=>e.slotId===social.slotId)?.summary??"",220)}:null,
+   verifiedEvent:clipped(show.entries.find(e=>e.slotId===social.slotId)?.summary??"",220),
+   character:persona?.character?clipped(persona.character,75):null,
+   style:persona?.style?clipped(persona.style,60):null}:null,
   roadAgent:staff?{slotId:staff.slotId,headline:clipped(staff.headline,120),
    recordedObservation:clipped(staff.note,320),
    reporter:clipped(show.staffReport?.reporter??"Road Agent",120)}:null
@@ -72,7 +77,8 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "News: 7-14 word punchy headline and 22-45 word objective official summary, name "+
   "the verified winner and winning method; no star numbers or game mechanics. "+
   "Wrestler: one 15-35 word first-person in-character social post, different from "+
-  "recordedPost, authentic to their certified action; no claims about what someone "+
+  "recordedPost. Use their supplied character and style to distinguish their "+
+  "voice (these are NOT actual match actions); no claims about what someone "+
   "else said. Road Agent: one practical 20-45 word observation grounded in "+
   "recordedObservation, including one actionable next-booking suggestion; no "+
   "invented chemistry or medical conclusion. If a source is null, return its "+
