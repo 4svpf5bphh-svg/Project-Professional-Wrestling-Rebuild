@@ -21,6 +21,7 @@ import {readAdminRingsideSettings,changeAdminRingsideSettings,rearmFailedRingsid
  from "../db/admin-ringside-settings.js";
 import {validateRingsideSettings} from "../domain/ringside-settings.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
+import {postShowVoiceEnabled,publishPostShowVoiceBatches} from "../db/postshow-voice-batches.js";
 import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-reveal-pilot.js";
 import {readPlaytestKp,grantPlaytestKp} from "../db/admin-kp-playtest.js";
 import {getOwnerDisplayName,saveOwnerDisplayName,renameOwnedPromotion}
@@ -431,6 +432,20 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    return json(400,{error:"Confirm the exact shared World week before advancing"});
   try{
    const result=await advancePlaytestWeek(pool,cfg.worldId,b.year as number,b.week as number);
+   // One post-PUBLISH_WEEK batch, outside ALL World Lock transactions.
+   // Disabled by default; failures cannot roll back official results or week.
+   if(result.status==="PUBLISHED"&&postShowVoiceEnabled(process.env,cfg.worldId)){
+    try{
+     const voices=await publishPostShowVoiceBatches(pool,{
+      worldId:cfg.worldId,year:b.year as number,week:b.week as number},
+      process.env.GROQ_API_KEY!);
+     console.info("Certified shortform publishing",{
+      eligible:voices.eligible,generated:voices.generated,
+      failed:voices.failed,skipped:voices.skipped});
+    }catch{
+     console.warn("Shortform publishing unavailable; certified results remain intact");
+    }
+   }
    return json(200,result);
   }catch(e){
    const message=e instanceof Error?e.message:"";

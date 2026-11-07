@@ -24,7 +24,7 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
   const cutoff=Math.max(0,index-12);
   const params=[worldId,Math.floor(cutoff/52)+1,cutoff%52+1,
    auth[0]!.year,auth[0]!.week];
-  const [awards,items,annual]=await Promise.all([
+  const [awards,items,annual,voices]=await Promise.all([
    tx.query<{year:number;week:number;kind:"MATCH"|"ANGLE";
     promotion_id:string;promotion_name:string;show_id:string;
     show_name:string;slot_id:string;title:string;
@@ -68,9 +68,35 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
     )
     SELECT year,week,kind,promotion_id,promotion_name,show_id,show_name,
      slot_id,title,rating,rating_unit FROM candidates WHERE place=1
-    ORDER BY year DESC,kind DESC LIMIT 8`,[worldId,auth[0]!.year])
+    ORDER BY year DESC,kind DESC LIMIT 8`,[worldId,auth[0]!.year]),
+   // Owner-only accepted shortform news: no provider call, draft-card access
+   // or per-story follow-up. One bounded indexed read for the News menu.
+   tx.query<{year:number;week:number;show_id:string;show_name:string;
+    headline:string;summary:string;promotion_name:string}>(`
+    SELECT c.year,c.week,c.show_id,d.show_name,
+     v.copy_json#>>'{news,headline}' AS headline,
+     v.copy_json#>>'{news,summary}' AS summary,
+     p.name AS promotion_name
+    FROM ppw_postshow_voice_batches v
+    JOIN ppw_completed_shows c ON c.world_id=v.world_id
+     AND c.promotion_id=v.promotion_id AND c.show_id=v.show_id
+     AND c.receipt_digest=v.receipt_digest
+    JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
+    JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
+    WHERE v.world_id=$1 AND v.player_id=$6 AND v.promotion_id=$7
+     AND v.state='READY' AND v.copy_json->'news' IS NOT NULL
+     AND v.copy_json->'news'<>'null'::jsonb
+     AND (c.year,c.week)>=($2::integer,$3::integer)
+     AND (c.year,c.week)<=($4::integer,$5::integer)
+    ORDER BY c.year DESC,c.week DESC,c.show_id LIMIT 26`,
+    [...params,playerId,promotionId])
   ]);
-  return {annualAwards:annual.map(a=>({
+  return {voices:voices.filter(v=>typeof v.headline==="string"&&
+   v.headline.length<=145&&typeof v.summary==="string"&&v.summary.length<=480)
+   .map(v=>({year:v.year,week:v.week,showId:v.show_id,
+    showName:v.show_name,promotionName:v.promotion_name,
+    headline:v.headline,summary:v.summary})),
+   annualAwards:annual.map(a=>({
    year:a.year,week:a.week,kind:a.kind,promotionId:a.promotion_id,
    promotionName:a.promotion_name,showId:a.show_id,showName:a.show_name,
    slotId:a.slot_id,title:a.title,rating:Number(a.rating),ratingUnit:a.rating_unit

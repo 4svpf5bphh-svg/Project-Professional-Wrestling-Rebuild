@@ -27,6 +27,9 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
    people:[{kind:"PERSON",refId:"a",name:"Alice"}],
    teams:[],championships:[],programmes:[]}});
   if(method==="industryNews")return route.fulfill({json:{
+   voices:[{year:2,week:6,showId:"s1",showName:"Fight Night",
+    promotionName:"Human Pro",headline:"Alice's night earns an official dispatch",
+    summary:"Alice made her presence felt during the verified Fight Night show, giving the promotion an authoritative completed-week headline without disclosing anything about future booking."}],
    awards:[{year:2,week:6,kind:"MATCH",promotionId:"ai",
     promotionName:"AI Elite",showId:"s2",showName:"Final Clash",slotId:"m2",
     title:"Cara vs Drew",peopleNames:["Cara","Drew"],personIds:["c","d"],
@@ -70,6 +73,13 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("4.75 ★")).toBeVisible();
  await expect(page.getByText("88/100 CROWD")).toBeVisible();
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"A certified classic"})).toBeVisible();
+ const dispatch=page.locator(".ppw-news-official .ppw-news-voice");
+ await expect(dispatch).toHaveCount(1);
+ await expect(dispatch).toContainText("Alice's night earns an official dispatch");
+ await expect(dispatch).toContainText("Fight Night");
+ await expect(dispatch.getByRole("button",{name:"Read the completed show"})).toBeVisible();
+ await expect(page.locator(".ppw-news-official")).not.toContainText("GROQ");
+
  const officialThread=page.locator(".ppw-news-official .ppw-hot-tag-thread").first();
  await officialThread.locator("summary").click();
  const comment=officialThread.locator(".ppw-hot-tag-news-copy p").first();
@@ -110,6 +120,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("UNVERIFIED / DISPUTED REPORT 👀")).toBeVisible();
  await expect(page.locator(".ppw-dirt-outlet")).toHaveCount(2);
  await expect(page.locator(".ppw-news-dirt")).toHaveCount(1);
+ await expect(page.locator(".ppw-news-dirt .ppw-news-voice"),
+  "Owner's certified report does not appear in unverified Dirt Sheets").toHaveCount(0);
  await expect(page.getByText("Fictional in-game wrestling reporting.",{exact:false}).first()).toBeVisible();
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"Did Alice walk out after Fight Night"})).toBeVisible();
  const threads=page.locator(".ppw-news-dirt .ppw-hot-tag-thread");

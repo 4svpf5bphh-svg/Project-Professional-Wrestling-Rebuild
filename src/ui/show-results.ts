@@ -280,7 +280,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   node("h2","ppw-final-bell-headline","THE NIGHT AT RINGSIDE"),
   node("p","ppw-ringside-await","The results are final. The ringside dispatch is being prepared."));
  const reactions=projectPopFeed(show,showReactionWire(show));
- const wrestlerPosts=projectHotTagShowWrestlerPosts(show);
+ const wrestlerPosts=projectHotTagShowWrestlerPosts(show).map(post=>
+  show.shortform?.wrestler?.personId===post.personId&&
+  show.shortform.wrestler.slotId===post.slotId?
+   {...post,text:show.shortform.wrestler.text}:post);
  const noise=node("section","ppw-crowd-noise ppw-pop-social");
  if(reactions.length||wrestlerPosts.length){
   append(noise,
@@ -591,8 +594,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    specific.append(node("strong","","On my desk tonight"));
    for(const observation of observations){
     const line=node("article","ppw-road-agent-observation");
+    // Replace an existing certified staff observation instead of adding
+    // another box: the Road Agent sounds human without repeating advice.
+    const rewritten=show.shortform?.roadAgent?.slotId===observation.slotId?
+     show.shortform.roadAgent.note:observation.note;
     line.append(node("h4","",observation.headline),
-     node("p","",observation.note));
+     node("p","",rewritten));
     specific.append(line);
    }
    office.append(specific);
@@ -795,8 +802,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("p","","FAN CHAT · BACKSTAGE NOTES · MANAGEMENT"));
   after.append(station);
  }
+ const officialDispatch=show.shortform?.news?node("section","ppw-news-story ppw-postshow-dispatch"):null;
+ if(officialDispatch&&show.shortform?.news)
+  officialDispatch.append(node("span","ppw-news-desk","OFFICIAL / CERTIFIED POST-SHOW WIRE"),
+   node("h3","",show.shortform.news.headline),
+   node("p","",show.shortform.news.summary));
  after.append(node("h2","ppw-broadcast-section-title","AFTER THE BELL"),
   overview,...(flowScores.length>=2?[crowdFlow]:[]),
+  ...(officialDispatch?[officialDispatch]:[]),
   ...(reactions.length||wrestlerPosts.length?[noise]:[]),management,
   ...(position?[position]:[]));
  if(show.bookingClass==="PREMIUM"&&openPress){
