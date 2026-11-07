@@ -241,3 +241,23 @@ test("OpenAI preview uses the same certified Ringside validator with mocked prov
  assert.match(article.showHeadline,/Teams/);
  assert.equal(requests,1);
 });
+
+test("Groq response headers report real account RPD and model TPM, never inferred quotas",async()=>{
+ const {groqResponseLimits}=await import("../src/domain/ai-director.js");
+ const actual=new Headers({
+  "x-ratelimit-limit-requests":"1000",
+  "x-ratelimit-remaining-requests":"978",
+  "x-ratelimit-limit-tokens":"8000",
+  "x-ratelimit-remaining-tokens":"5200"
+ });
+ assert.deepEqual(groqResponseLimits(actual),{
+  dailyRequestLimit:1000,dailyRequestRemaining:978,
+  minuteTokenLimit:8000,minuteTokenRemaining:5200
+ });
+ assert.equal(groqResponseLimits(new Headers()),null);
+ actual.set("x-ratelimit-remaining-requests","1001");
+ assert.equal(groqResponseLimits(actual),null);
+ actual.set("x-ratelimit-remaining-requests","978");
+ actual.set("x-ratelimit-remaining-tokens","impossible");
+ assert.equal(groqResponseLimits(actual),null);
+});
