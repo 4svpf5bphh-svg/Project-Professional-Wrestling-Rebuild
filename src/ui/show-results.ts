@@ -594,17 +594,15 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    specific.append(node("strong","","On my desk tonight"));
    for(const observation of observations){
     const line=node("article","ppw-road-agent-observation");
+    // Replace an existing certified staff observation instead of adding
+    // another box: the Road Agent sounds human without repeating advice.
+    const rewritten=show.shortform?.roadAgent?.slotId===observation.slotId?
+     show.shortform.roadAgent.note:observation.note;
     line.append(node("h4","",observation.headline),
-     node("p","",observation.note));
+     node("p","",rewritten));
     specific.append(line);
    }
    office.append(specific);
-  }
-  if(show.shortform?.roadAgent){
-   const note=node("article","ppw-road-agent-observation");
-   note.append(node("h4","","From the Road Agent's notebook"),
-    node("p","",show.shortform.roadAgent.note));
-   office.append(note);
   }
   management.append(office);
  }
