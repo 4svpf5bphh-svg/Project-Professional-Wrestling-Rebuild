@@ -22,8 +22,8 @@ export function getPostShowVoiceBenchmark(id:string):
  const show:CompletedShowView={...sample.show,entries:sample.show.entries.map(e=>({
   ...e,matchContext:e.matchContext?{...e.matchContext,
    sideParticipants:e.matchContext.sides.map((side,i)=>
-    side.map((name,j)=>({personId:"fixture-"+e.matchContext!.sides
-     .slice(0,i).reduce((n,team)=>n+team.length,0)+j,name})))}:undefined
+    side.map((name,j)=>({personId:"fixture-"+String(
+     e.matchContext!.sides.slice(0,i).reduce((n,team)=>n+team.length,0)+j),name})))}:undefined
  }))};
  // A named fictional staff report is supplied only for the fixed Lab card.
  // The observation itself still comes from the certified match facts.
