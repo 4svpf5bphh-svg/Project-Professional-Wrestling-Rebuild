@@ -19,15 +19,16 @@ export interface PostShowVoiceBrief{
   winners:string[];opponents:string[][];finish:string;crowd:string}|null;
  wrestler:{slotId:string;personId:string;displayName:string;
   recordedPost:string;verifiedEvent:string;opponentNames:string[];
-  matchType:string|null;character:string|null;style:string|null}|null;
+  matchType:string|null;eventKind:string|null;
+  character:string|null;style:string|null}|null;
  roadAgent:{slotId:string;headline:string;recordedObservation:string;
   issue:"overrun"|"execution"|"chemistry"|"injury"|"rivalry"|"standout";
   suggestedNextStep:string;reporter:string}|null;
 }
 const clipped=(s:string,max:number)=>s.replace(/[\u0000-\u001f]/g," ").trim().slice(0,max);
 const editorialSummary=(s:string)=>clipped(s,260)
- .replace(/\s*(?:No other winning method applies\.|Escape was not a winning condition\.|The individual fall scorer was not recorded\.)$/i,"")
- .replace(/;\s*the individual fall scorer was not recorded\.?$/i,".")
+ .replace(/;\s*(?:escape was not a winning condition|the individual fall scorer was not recorded)\.?$/i,"")
+ .replace(/\s*No other winning method applies\.$/i,"")
  .trim();
 const roadAgentNextStep=(issue:string,matchType:string|null)=>{
  const stip=matchType&&/i quit|cage|iron man|falls|ladder/i.test(matchType)?"the stipulation":"that match";
@@ -84,6 +85,7 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
    verifiedEvent:editorialSummary(socialEntry?.summary??""),
    opponentNames:opponentNames.map(name=>clipped(name,120)),
    matchType:socialMatch?.format?clipped(socialMatch.format,100):null,
+   eventKind:socialEntry?.type==="SEGMENT"?clipped(socialEntry.segmentKind??"",60):null,
    character:persona?.character?clipped(persona.character,75):null,
    style:persona?.style?clipped(persona.style,60):null}:null,
   roadAgent:staff?{slotId:staff.slotId,headline:clipped(staff.headline,120),
@@ -116,7 +118,9 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "WRESTLER: Write a distinctive first-person HOT TAG reaction, 13-28 words. "+
   "Use character and wrestling style as attitude, not claims about moves "+
   "that happened. Mention one verified opposing wrestler by name, or the "+
-  "specific match stipulation when one exists. Avoid generic bravado and "+
+  "specific match stipulation or verified angle type when one exists. "+
+  "For turns, debuts and attacks without a named target, refer to the "+
+  "certified event, not an invented opponent. Avoid generic bravado and "+
   "repeating recordedPost. Never claim the winner quit or lost. "+
   "ROAD AGENT: A veteran's practical 16-34-word booking note, not a "+
   "match recap or rating. Reference the actual issue, then suggest ONE "+
@@ -155,7 +159,19 @@ function wrestlerEventSpecific(post:string,source:PostShowVoiceBrief):boolean{
  if(format.includes("iron man"))return /\biron man\b/i.test(post);
  if(format.includes("two out of three"))return /\b(?:two out of three|three falls)\b/i.test(post);
  if(format.includes("ladder"))return /\bladder\b/i.test(post);
- return false;
+ const kind=wrestler.eventKind?.toUpperCase()??"";
+ const cues:Record<string,RegExp>={
+  TURN:/\b(?:turned|my choice|my side|where i stand)\b/i,
+  STABLE_EXIT:/\b(?:left the group|left the stable|my departure|parting ways|on my own)\b/i,
+  POST_MATCH_ASSAULT:/\b(?:after the bell|post.match attack|assault)\b/i,
+  ATTACK:/\b(?:attack|ambush|blindside|jumped)\b/i,
+  CHALLENGE:/\b(?:challenge|challenged|called out)\b/i,
+  RESCUE:/\b(?:rescue|stepped in|saved|intervened)\b/i,
+  CONFRONTATION:/\b(?:confrontation|face.to.face|stood across)\b/i,
+  DEBUT:/\b(?:debut|first appearance|first night|my arrival)\b/i,
+  STABLE_INVITATION:/\b(?:invitation|offer to join|asked to join)\b/i
+ };
+ return !!cues[kind]?.test(post);
 }
 function trueFinish(summary:string,method:string):boolean{
  if(method.includes("I Quit"))return /\b(?:i quit|verbally surrendered|verbal surrender|said (?:the words|i quit)|conceded verbally)\b/i.test(summary)&&
