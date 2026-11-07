@@ -7,12 +7,14 @@ import type {TransactionPool} from "./transaction.js";
 import {getPostShowVoiceBenchmark} from "../domain/postshow-voice-lab.js";
 import {readPostShowVoiceCopy,type PostShowVoiceCopy}
  from "../domain/postshow-voice-batch.js";
+import type {ShortformVoiceDiagnostic} from "./postshow-voice-batches.js";
 
 type Failure="NO_ACCEPTED_COPY"|"PROVIDER_ERROR"|"UNKNOWN";
 type Input={
  worldId:string;playerId:string;scenarioId:string;
  durationMs:number;providerCalls:number;inputTokens:number|null;
  outputTokens:number|null;copy:PostShowVoiceCopy|null;errorCode?:Failure;
+ diagnostic?:ShortformVoiceDiagnostic|null;
 };
 function scope(worldId:string,playerId:string){
  if(!worldId||worldId.length>200||!playerId||playerId.length>200)
@@ -36,14 +38,30 @@ export async function saveShortformVoiceLabRun(pool:TransactionPool,input:Input)
  const errorCode=copy?null:input.errorCode??"NO_ACCEPTED_COPY";
  if(!copy&&!["NO_ACCEPTED_COPY","PROVIDER_ERROR","UNKNOWN"].includes(errorCode!))
   throw new Error("Invalid safe voice lab failure code");
+ const categories=[
+  "ACCEPTED","PARTIAL","ALL_REJECTED","WRONG_SHAPE","HTTP_REJECTED",
+  "INVALID_ENVELOPE","EMPTY_CONTENT","INVALID_JSON","TRUNCATED",
+  "OVERSIZED","PROVIDER_ERROR"
+ ];
+ const labels=["ACCEPTED","REJECTED","MISSING"];
+ const d=input.diagnostic;
+ if(d&&(!categories.includes(d.category)||!labels.includes(d.news)||
+  !labels.includes(d.wrestler)||!labels.includes(d.roadAgent)))
+  throw new Error("Invalid categorical voice diagnostic");
+ const diagnostics=d?JSON.stringify({
+  category:d.category,news:d.news,wrestler:d.wrestler,roadAgent:d.roadAgent
+ }):null;
  const runId=randomUUID();
  await withSqlClient(pool,db=>db.query(`
   INSERT INTO ppw_shortform_ai_lab_runs(
    run_id,world_id,player_id,scenario_id,model,status,error_code,
-   duration_ms,provider_calls,input_tokens,output_tokens,copy_json)
-  VALUES($1::uuid,$2,$3,$4,'openai/gpt-oss-20b',$5,$6,$7,$8,$9,$10,$11::jsonb)`,
+   duration_ms,provider_calls,input_tokens,output_tokens,copy_json,
+   diagnostics_json)
+  VALUES($1::uuid,$2,$3,$4,'openai/gpt-oss-20b',$5,$6,$7,$8,$9,$10,
+   $11::jsonb,$12::jsonb)`,
  [runId,input.worldId,input.playerId,input.scenarioId,status,errorCode,
-  input.durationMs,input.providerCalls,input.inputTokens,input.outputTokens,raw]));
+  input.durationMs,input.providerCalls,input.inputTokens,input.outputTokens,
+  raw,diagnostics]));
  await withSqlClient(pool,db=>db.query(`
   DELETE FROM ppw_shortform_ai_lab_runs
   WHERE world_id=$1 AND player_id=$2 AND run_id NOT IN(
@@ -59,9 +77,10 @@ export async function readShortformVoiceLabRuns(pool:TransactionPool,
   run_id:string;scenario_id:string;model:string;status:"READY"|"FAILED";
   error_code:Failure|null;duration_ms:number;provider_calls:number;
   input_tokens:number|null;output_tokens:number|null;
-  created_at:string;copy_json:unknown}>(`
+  created_at:string;copy_json:unknown;diagnostics_json:unknown}>(`
   SELECT run_id::text,scenario_id,model,status,error_code,duration_ms,
-   provider_calls,input_tokens,output_tokens,created_at::text,copy_json
+   provider_calls,input_tokens,output_tokens,created_at::text,copy_json,
+   diagnostics_json
   FROM ppw_shortform_ai_lab_runs WHERE world_id=$1 AND player_id=$2
   ORDER BY created_at DESC,run_id DESC LIMIT 12`,[worldId,playerId]));
  return rows.map(row=>{
@@ -73,6 +92,7 @@ export async function readShortformVoiceLabRuns(pool:TransactionPool,
    model:row.model,status:row.status,errorCode:row.error_code,
    durationMs:row.duration_ms,providerCalls:row.provider_calls,
    inputTokens:row.input_tokens,outputTokens:row.output_tokens,
-   createdAt:row.created_at,copy};
+   createdAt:row.created_at,copy,
+   diagnostic:row.diagnostics_json as ShortformVoiceDiagnostic|null};
  });
 }
