@@ -61,8 +61,8 @@ test("iPhone protected AI Lab runs one fictional 20B voice batch and keeps saved
  await expect.poll(()=>calls).toBe(1);
  await expect(page.getByText(/Saved the 20B voice batch · 1 Groq request/)).toBeVisible();
  await expect(page.getByText("OFFICIAL NEWS · Holt wins inside the steel")).toBeVisible();
- await expect(page.getByText("WRESTLER REACTION")).toBeVisible();
- await expect(page.getByText("ROAD AGENT")).toBeVisible();
+ await expect(page.getByText("WRESTLER REACTION",{exact:true})).toBeVisible();
+ await expect(page.getByText("ROAD AGENT",{exact:true})).toBeVisible();
  await expect(page.getByText(/Give both wrestlers recovery time/)).toBeVisible();
  await expect(scenario).toHaveValue("steel-cage");
  for(const width of [320,390]){
