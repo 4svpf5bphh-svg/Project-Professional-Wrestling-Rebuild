@@ -2267,6 +2267,38 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         how.append(el("h4","","How does it unfold?"));
         const physical=segment!.kind==="ATTACK"||
          segment!.kind==="POST_MATCH_ASSAULT";
+        // Keep the original validated select callbacks, while new angles
+        // present their Where/Why/How choices as one-tap iPhone tiles.
+        const tileFields=new Set(["Area","Exact location","Attack style",
+         "Attack intensity","Visible aftermath","Storytelling purpose",
+         "How it ends","New alignment","How the turn is shown","The message"]);
+        const asTileField=(child:Element,label:string):Element=>{
+         if(existing||!tileFields.has(label))return child;
+         const select=child.querySelector<HTMLSelectElement>("select");
+         if(!select||select.options.length<2||select.options.length>16)return child;
+         const panel=el("section","ppw-guide-script-choice");
+         panel.dataset.field=label;
+         panel.append(el("strong","ppw-guide-section-label",label));
+         const grid=el("div","ppw-guide-script-tiles");
+         grid.setAttribute("role","group");
+         grid.setAttribute("aria-label",label+" choices");
+         for(const option of [...select.options]){
+          if(option.disabled||option.hidden)continue;
+          const tile=button(option.textContent??option.value,()=>{
+           select.value=option.value;
+           select.dispatchEvent(new Event("change",{bubbles:true}));
+          },!mutable(),"ppw-guide-script-tile");
+          tile.dataset.value=option.value;
+          tile.setAttribute("aria-pressed",String(option.value===select.value));
+          grid.append(tile);
+         }
+         if(!grid.childElementCount)return child;
+         panel.append(grid);
+         const native=el("div","ppw-guide-native-choice");
+         select.tabIndex=-1;
+         native.append(child);panel.append(native);
+         return panel;
+        };
         for(const child of [...essentials.children]){
          const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
          if(label==="Creative direction"||label==="Angle type")continue;
@@ -2274,12 +2306,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
           if(existing)what.append(child);
           continue;
          }
+         const control=asTileField(child,label);
          if(["Area","Exact location","Attack intensity","Visible aftermath"].includes(label))
-          where.append(child);
+          where.append(control);
          else if(label==="Storytelling purpose"||child.classList.contains("ppw-angle-purpose-disclaimer"))
-          why.append(child);
+          why.append(control);
          else if(!child.classList.contains("ppw-angle-workflow-title"))
-          how.append(child);
+          how.append(control);
         }
          if(segment!.programmeId){
          const linked=view.programmes.find(p=>p.programmeId===segment!.programmeId);
