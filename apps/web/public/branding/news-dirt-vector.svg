@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="430" viewBox="0 0 1680 430">
+<defs><linearGradient id="bg"><stop stop-color="#080e25"/><stop offset=".48" stop-color="#2a0a2e"/><stop offset="1" stop-color="#070e20"/></linearGradient>
+<linearGradient id="line"><stop stop-color="#32f6ff"/><stop offset=".56" stop-color="#ec2fb2"/><stop offset="1" stop-color="#ff4e9a"/></linearGradient>
+<filter id="glow"><feGaussianBlur stdDeviation="14"/></filter></defs>
+<rect width="1680" height="430" fill="url(#bg)"/>
+<path d="M-60 42 L540 0 L360 430 L-100 420Z" fill="#65d7f6" opacity=".07"/>
+<path d="M1170 0 L1680 0 L1680 380 L1440 430Z" fill="#f637a8" opacity=".11"/>
+<path d="M80 115 H1600" stroke="url(#line)" stroke-width="16" opacity=".7" filter="url(#glow)"/>
+<path d="M78 113 H1600" stroke="url(#line)" stroke-width="5"/>
+<g transform="skewX(-8)">
+<text x="300" y="270" fill="#faffff" font-family="Arial,Helvetica,sans-serif" font-weight="1000" font-style="italic" font-size="175" letter-spacing="-6">DIRT</text>
+<text x="716" y="270" fill="#ff2eaa" font-family="Arial,Helvetica,sans-serif" font-weight="1000" font-style="italic" font-size="175" letter-spacing="-7">SHEETS</text>
+</g>
+<path d="M385 291 H1325 L1265 390 H445Z" fill="#ffca4b"/>
+<text x="855" y="359" text-anchor="middle" fill="#0d1123" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="40" letter-spacing="10">// THE RUMOUR MILL //</text>
+<path d="M80 405 H1600" stroke="url(#line)" stroke-width="7"/>
+</svg>
