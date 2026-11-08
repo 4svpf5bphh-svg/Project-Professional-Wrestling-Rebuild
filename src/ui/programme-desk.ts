@@ -305,8 +305,22 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      element("strong","",spine.headline),element("span","",spine.detail));
     glance.append(note);
    }
+   if((p.medicalHolds??[]).length){
+    const hold=element("div","ppw-programme-medical-hold");
+    hold.append(element("strong","","Medical hold · in-ring plans affected"));
+    for(const person of p.medicalHolds){
+     const expected=person.clearedWeekIndex===null?"pending medical clearance":
+      "expected clearance Y"+(Math.floor(person.clearedWeekIndex/52)+1)+
+      " W"+(person.clearedWeekIndex%52+1);
+     hold.append(element("span","",person.name+" · "+expected));
+    }
+    hold.append(element("small","",
+     "A draft match is not an appearance. Review medical clearance before booking; no result has been assumed."));
+    glance.append(hold);
+   }
    if(port.openPlanner&&view.canEdit)glance.append(button(
-    scheduled?"Review booked chapter":"Book next chapter",()=>port.openPlanner?.(p.programmeId)));
+    scheduled?"Review booked chapter":(p.medicalHolds??[]).length?
+     "Review safe next steps":"Book next chapter",()=>port.openPlanner?.(p.programmeId)));
    creativeLane.append(glance);
    const record=element("div","ppw-programme-record");
    for(const [caption,n] of [
@@ -452,6 +466,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(p.plannedActivity?.length)
     advice.append(element("p","ppw-programme-booked-short",
      "Already booked · "+p.plannedActivity[0]!.showName));
+   else if((p.medicalHolds??[]).length)
+    advice.append(element("p","ppw-programme-booked-short",
+     "A wrestler is medically unavailable. Revisit the plan after clearance or choose a safe alternative; a match cannot be assumed."));
    else{
     for(const idea of recommendProgrammeAngles(p).slice(0,3)){
      const pick=button(idea.title,()=>port.openPlanner?.(p.programmeId,idea.kind),working);
