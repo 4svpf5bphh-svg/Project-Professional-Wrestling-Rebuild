@@ -78,6 +78,25 @@ export function consumeBackstageRivalryFocus(worldId:string,promotionId:string){
  pendingBackstageRivalryFocus=null;
  return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?focus:null;
 }
+/** A Programme → Planner click is a real host navigation, not a silent
+ * view swap that leaves the browser on #/programmes. Keep the optional
+ * story focus private and one-use, scoped to exactly one manager's company.
+ * Planner still discovers a real editable show; no draft is fabricated.
+ */
+export type ProgrammeBookingFocus={worldId:string;promotionId:string;
+ programmeId:string;ideaKind?:string};
+let pendingProgrammeBookingFocus:ProgrammeBookingFocus|null=null;
+export function queueProgrammeBookingFocus(focus:ProgrammeBookingFocus){
+ if(![focus.worldId,focus.promotionId,focus.programmeId]
+  .every(x=>typeof x==="string"&&x.trim().length>0&&x.length<=200))return;
+ pendingProgrammeBookingFocus=focus;
+}
+export function consumeProgrammeBookingFocus(worldId:string,promotionId:string){
+ const pending=pendingProgrammeBookingFocus;
+ pendingProgrammeBookingFocus=null;
+ return pending&&pending.worldId===worldId&&pending.promotionId===promotionId?
+  pending:null;
+}
 // Private, one-use route from a wrestler dossier to a genuine unfinished card.
 // No show ID is guessed and no booking permission is assumed from the dossier.
 export type FocusedBookingWrestler={personId:string;name:string};
@@ -729,19 +748,25 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  return {
   load:()=>call("programmes"),openResults,openArchive,
   openPlanner:(programmeId,ideaKind)=>{
-   if(!programmeId){
-    mountPlannerPage(root,scope,()=>mountProgrammePage(root,scope));return;
+   // The authenticated host owns #/planner and #/card history. In contrast
+   // to mounting a Planner over #/programmes, a real hash navigation lets
+   // iPhone Back/reload, the bottom drawer and selected-card recovery agree.
+   // Keep the optional wrestler-created story context off the public URL.
+   if(programmeId)queueProgrammeBookingFocus({
+    worldId:scope.worldId,promotionId:scope.promotionId,programmeId,ideaKind});
+   const destination=hostSectionHash("planner");
+   if(window.location.hash!==destination)window.location.hash=destination;
+   else{
+    // No hashchange fires for a repeat navigation to the same section.
+    const focus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
+    const backToProgrammes=()=>{window.location.hash=hostSectionHash("programmes");};
+    const openSelectedCard=(draftId:string)=>{
+     mountBookingPage(root,{...scope,showId:draftId},
+      ()=>mountPlannerPage(root,scope,backToProgrammes,false,undefined,openSelectedCard),
+      undefined,undefined,focus?.programmeId,focus?.ideaKind);
+    };
+    mountPlannerPage(root,scope,backToProgrammes,!!focus,undefined,openSelectedCard);
    }
-   // Programmes intentionally has no show ID. Resolve the only appropriate
-   // unfinished current-week card through the existing bounded Planner read.
-   // Never invent a draft ID or send booking commands without a real show.
-   const backToProgrammes=()=>mountProgrammePage(root,scope);
-   const openSelectedCard=(draftId:string)=>{
-    mountBookingPage(root,{...scope,showId:draftId},
-     ()=>mountPlannerPage(root,scope,backToProgrammes,false,undefined,openSelectedCard),
-     undefined,undefined,programmeId,ideaKind);
-   };
-   mountPlannerPage(root,scope,backToProgrammes,true,undefined,openSelectedCard);
   },
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
