@@ -42,6 +42,7 @@ import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../d
 import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
 import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
+import {reconcileDraftAgreements} from "./card-contract-reconciliation.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 import {isQuickBookField} from "./quick-book.js";
 import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter}
@@ -803,6 +804,33 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    " · "+missing+" slot"+(missing===1?" needs":"s need")+" attention":
    dirty?" · Save before confirming":" · Finish casting to continue"));
   root.append(state);
+  // Signed renewals can become effective after a future show was drafted.
+  // The manager must explicitly update local picks and save again; no hidden
+  // World command or change to a certified historical card is permitted.
+  const currentRights=reconcileDraftAgreements([...matches.values()],
+   [...segments.values()],view.selectedPeople);
+  if(currentRights.changedPersonIds.length&&view.canEdit&&!view.ready){
+   const notice=el("section","ppw-card-contract-refresh");
+   notice.append(el("strong","","Updated signed agreements"),
+    el("p","",currentRights.changedPersonIds.length+" wrestler"+
+     (currentRights.changedPersonIds.length===1?" has":"s have")+
+     " a different eligible agreement for this show's week."));
+   notice.append(button("Use current signed agreements",()=>{
+    for(const match of currentRights.matches)matches.set(match.slotId,match);
+    for(const segment of currentRights.segments)segments.set(segment.slotId,segment);
+    for(const personId of currentRights.changedPersonIds){
+     const selected=view?.selectedPeople.find(p=>p.personId===personId);
+     const previous=roster.get(personId);
+     if(selected?.contractId&&previous)roster.set(personId,{
+      ...previous,contractId:selected.contractId,
+      appearanceFee:selected.appearanceFee??previous.appearanceFee,
+      creativeControl:selected.creativeControl??previous.creativeControl});
+    }
+    markDirty();render();
+   },saving||needsRevisionRefresh,"ppw-primary ppw-refresh-agreements"));
+   notice.append(el("small","","Your opponents, finishes and angles stay the same. Save the card to commit these changes; any creative approval must be rechecked."));
+   root.append(notice);
+  }
   if(focusedPerson){
    const focus=el("section","ppw-card-wrestler-focus");
    focus.append(el("span","ppw-eyebrow","FROM THE WRESTLER DOSSIER"),

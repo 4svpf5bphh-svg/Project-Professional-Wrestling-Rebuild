@@ -1379,3 +1379,13 @@ body>.ppw-card-edit-shade .ppw-card-consent-response{
  color:#ddfff3;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
 body>.ppw-card-edit-shade .ppw-card-consent-response[data-level="error"]{
  background:#45283b;border-color:#da91ad;color:#ffe1e7}
+
+/* Phase 46: update saved future-card rights only after an explicit tap. */
+.ppw-card-contract-refresh{margin:12px 0 16px;padding:13px;
+ border:1px solid #6da3c1;border-radius:12px;
+ background:linear-gradient(125deg,#193a51,#16253a);color:#e2f8ff}
+.ppw-card-contract-refresh strong{display:block;font-size:14px;font-weight:850}
+.ppw-card-contract-refresh p{font-size:13px;line-height:1.5;margin:6px 0 11px}
+.ppw-card-contract-refresh small{display:block;margin-top:9px;
+ color:#c2dce9;font-size:11px;line-height:1.45}
+.ppw-editor .ppw-refresh-agreements{max-width:100%;white-space:normal;text-align:center}
