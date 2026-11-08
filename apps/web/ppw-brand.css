@@ -18,7 +18,8 @@
  bottom:calc(28px + env(safe-area-inset-bottom));min-height:48px;
  padding:12px 24px;min-width:190px;letter-spacing:.02em;font-weight:800;
  background:#141d39ed;border:1px solid #91d7ff;color:#fff;border-radius:15px;
- box-shadow:0 9px 28px #030c26b8,0 0 0 1px #ff54a422;text-align:center}
+ box-shadow:0 9px 28px #030c26b8,0 0 0 1px #ff54a422;text-align:center;
+ white-space:nowrap;line-height:1.2}
 @media(prefers-reduced-motion:no-preference){
  .ppw-opening-art{animation:ppw-stage-enter 950ms ease-out both}
  @keyframes ppw-stage-enter{from{opacity:0}to{opacity:1}}
