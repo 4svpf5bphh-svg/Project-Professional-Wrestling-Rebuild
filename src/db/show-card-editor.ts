@@ -143,7 +143,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
       AND c.start_week_index<=(d.year-1)*52+d.week-1
       AND c.expires_week_index>=(d.year-1)*52+d.week-1
       AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
-     ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+     ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
       c.contract_id LIMIT 1
     ) ca ON TRUE
     JOIN LATERAL (
@@ -153,7 +153,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
       AND c.start_week_index<=(d.year-1)*52+d.week-1
       AND c.expires_week_index>=(d.year-1)*52+d.week-1
       AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
-     ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+     ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
       c.contract_id LIMIT 1
     ) cb ON TRUE
     WHERE b.world_id=d.world_id AND b.promotion_id=d.promotion_id
@@ -286,7 +286,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "WHERE other.world_id=contract.world_id AND other.person_id=contract.person_id",
    "AND other.promotion_id<>contract.promotion_id AND other.status='SIGNED'",
    "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
-   "ORDER BY CASE WHEN contract.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
+   "ORDER BY contract.start_week_index DESC,CASE WHEN contract.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
    "contract.start_week_index DESC,contract.contract_id LIMIT 1) rights ON TRUE",
    "),'[]'::jsonb) AS cast",
    "FROM ppw_programmes p LEFT JOIN ppw_programme_side_refs r",
@@ -396,7 +396,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "WHERE other.world_id=c.world_id AND other.person_id=c.person_id",
    "AND other.promotion_id<>c.promotion_id AND other.status='SIGNED'",
    "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
-   "ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
+   "ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
    "c.contract_id LIMIT 1) rights ON TRUE",
    "WHERE NOT EXISTS(SELECT 1 FROM ppw_medical_absences absence",
    "WHERE absence.world_id=u.world_id AND absence.person_id=m.person_id",
