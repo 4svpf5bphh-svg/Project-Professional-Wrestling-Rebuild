@@ -129,7 +129,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  const dirtMark=page.locator(".ppw-news-dirt .ppw-news-masthead-art");
  await expect(dirtMark).toBeVisible();
  await expect(dirtMark).toHaveAttribute("src","/branding/news-dirt-crisp.webp");
- await expect.poll(()=>dirtMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(420);
+ await expect.poll(()=>dirtMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(1680);
  await page.locator(".ppw-news-dirt").screenshot({
   path:testInfo.outputPath("phase45-dirt-sheets-390.png")});
 
