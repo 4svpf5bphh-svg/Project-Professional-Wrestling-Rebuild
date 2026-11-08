@@ -82,6 +82,8 @@ test("manager's 2v2v2 inaugural tag title survives World Lock, next-week defence
   await withWorldTransaction(db.pool,async tx=>{
    await createWorld(tx,{id:world,name:"Phase 46 Tag Title Journey",seed:4622,rulesetVersion:"test"});
    await addPromotion(tx,world,{id:promotion,name:"Chaotic Wrestling Alliance",tier:"LOCAL"});
+   await tx.query("UPDATE ppw_promotions SET media_reach=70"+
+    " WHERE world_id=$1 AND promotion_id=$2",[world,promotion]);
    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1),($2)",[owner,rival]);
    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status)"+
     " VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')",[world,owner,rival]);
