@@ -49,6 +49,20 @@ test("World archives have their own private-data-free routes and only one News d
  assert.equal(readHostSection("#/industry/legends"),"legends");
  assert.equal(readHostSection("#/collection"),"collection");
 });
+test("Business drawer directly opens individual independently addressable desks",async()=>{
+ const {HOST_DRAWER_ROOTS,drawerRootForSection}=await import("../src/web/host-navigation.js");
+ const business=HOST_DRAWER_ROOTS.find(x=>x.key==="business")!;
+ const deskIds=["finances","commercials","ratings-war","staff",
+  "business-standing","business-activity","business-events","business-territories"];
+ for(const id of deskIds){
+  assert.ok(business.destinations.some(x=>x[0]===id),id+" must be a drawer destination");
+  assert.equal(readHostSection("#/"+id),id);
+  assert.equal(drawerRootForSection(id as typeof HOST_SECTIONS[number]["id"]),"business");
+ }
+ assert.equal(readHostSection("#/business/ratings"),"business",
+  "Existing Results ratings links must remain valid");
+});
+
 test("Home alerts deep-link to the right contract queue without revealing wrestler IDs",()=>{
  assert.equal(contractAttentionHash("EXPIRING"),"#/contracts/expiring");
  assert.equal(contractAttentionHash("PENDING"),"#/contracts/pending");

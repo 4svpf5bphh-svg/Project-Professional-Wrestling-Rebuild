@@ -49,9 +49,8 @@ test("320px Business commercial agreements are optional, readable and consented 
    commercialOffers:signed?[]:[offer]
   }});
  });
- await page.goto("/#/business");
- await page.getByRole("button",{name:"Commercials",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Commercials"})).toBeVisible();
+ await page.goto("/#/commercials");
+ await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
  await expect(page.getByText("VibeFlix",{exact:true})).toBeVisible();
  await expect(page.getByText("US$312,000/week")).toBeVisible();
  await expect(page.getByText("26 weeks")).toBeVisible();
@@ -104,14 +103,12 @@ for(const width of [320,390]){
    return route.fulfill({json:{}});
   });
   await page.goto("/#/home");
-  await page.locator(".ppw-home-inbox-toggle").click();
-  await expect(page.getByRole("heading",{name:"Company updates"})).toBeVisible();
-  await expect(page.getByText("Previous broadcast deal ended")).toBeVisible();
-  await expect(page.getByText("AGREEMENT ENDED")).toBeVisible();
-  await page.getByRole("button",{name:"Open Commercials"}).click();
-  await expect(page).toHaveURL(/#\/business$/);
+  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+  await expect(page.locator(".ppw-home-brief")).toHaveCount(0);
+  await expect(page.getByRole("heading",{name:"Company updates"})).toHaveCount(0);
+  await expect(page.getByText("Previous broadcast deal ended")).toHaveCount(0);
+  await expect(page.getByText("AGREEMENT ENDED")).toHaveCount(0);
   expect(calls.filter(method=>method==="overview")).toEqual(["overview"]);
-  expect(calls.filter(method=>method==="business").length).toBeLessThanOrEqual(1);
   renewalDue=false;
   await page.goto("/#/home");
   await expect(page.getByText("Previous broadcast deal ended")).toHaveCount(0);
@@ -166,12 +163,12 @@ for(const width of [320,390]){
      obligation:"Keep staging shows."}]
    }});
   });
-  await page.goto("/#/business");
-  await page.getByRole("button",{name:"Finances",exact:true}).click();
+  // Each independently addressable Business desk should request data once.
+  // Avoid the old intermediate Company route, which added a redundant read.
+  await page.goto("/#/finances");
   await expect(page.getByRole("heading",{name:"Financial position"})).toBeVisible();
   await expect(page.locator(".ppw-finance-bank")).toContainText("US$5,000,000");
-  await page.getByRole("button",{name:"← Business"}).click();
-  await page.getByRole("button",{name:"Ratings War",exact:true}).click();
+  await page.goto("/#/ratings-war");
   const war=page.locator(".ppw-ratings-war-desk");
   await expect(war.getByRole("heading",{name:"Ratings War"})).toBeVisible();
   await expect(war.locator(".ppw-ratings-war-faceoff")).toContainText("CWA");
@@ -179,9 +176,8 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-ratings-war-result")).toContainText(
    "Rival Wrestling leads by 0.4 rating points.");
   await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(1);
-  await page.getByRole("button",{name:"← Business"}).click();
-  await page.getByRole("button",{name:"Commercials",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"Commercials"})).toBeVisible();
+  await page.goto("/#/commercials");
+  await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Ratings war"})).toHaveCount(0);
   const v=page.locator('.ppw-commercial-offer[data-availability="TAKEN"]')
    .filter({has:page.locator('.ppw-commercial-brand[data-code="BROADCAST_GROWTH"]')});
@@ -195,7 +191,7 @@ for(const width of [320,390]){
   const heldSponsor=page.locator(".ppw-commercial-offer[data-availability='TAKEN']");
   await expect(heldSponsor).toContainText("Jack's Crematorium");
   await expect(heldSponsor).toContainText("Rival Wrestling");
-  expect(calls).toEqual(["business"]);
+  expect(calls).toEqual(["business","business","business"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
@@ -235,8 +231,7 @@ test("Ratings war keeps a lower-ranked owner visible and ignores legacy PPV rows
      networkOfferCode:null,isYours:true}]
   }});
  });
- await page.goto("/#/business");
- await page.getByRole("button",{name:"Ratings War",exact:true}).click();
+ await page.goto("/#/ratings-war");
  await expect(page.getByText(/YOUR POSITION/)).toContainText("#9 OF 9");
  await expect(page.locator(".ppw-ratings-war-rival[data-own=true]")).toContainText("#9 · CWA");
  await expect(page.locator(".ppw-ratings-war-leaderboard")).toBeVisible();

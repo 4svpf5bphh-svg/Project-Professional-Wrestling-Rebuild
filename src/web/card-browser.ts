@@ -225,7 +225,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
   openContracts:navigate("contracts",()=>mountContractDesk(root,contractPort(call,root,scope),()=>mountCardEditor(root,port))),
   openRoster:navigate("roster",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")),
   openMarket:navigate("market",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET")),
-  openBusiness:navigate("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
+  openBusiness:navigate("commercials",()=>mountBusinessDesk(root,businessPort(root,scope,call), "COMMERCIAL")),
   openStaff:navigate("staff",()=>mountStaffDesk(root,staffPort(root,scope,call))),
   openIndustry:navigate("industry",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
   openStables:navigate("stables",()=>mountStableDesk(root,stablePort(call,root,scope),
@@ -308,7 +308,7 @@ function industryPort(root:HTMLElement,scope:Scope,
   publicResults:(targetPromotionId,targetShowId)=>call("publicResults",{targetPromotionId,targetShowId}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   openProgrammes:personId=>openFocusedProgrammes(root,scope,personId),
-  openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call)),
+  openBusiness:()=>mountBusinessDesk(root,businessPort(root,scope,call),"COMMERCIAL"),
   openMarket:()=>mountTalentMarketPage(root,scope),
   openPlanner:()=>mountPlannerPage(root,scope,
    ()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
@@ -460,7 +460,15 @@ function businessPort(root:HTMLElement,scope:Scope,
 }
 export function mountBusinessPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
- const isRatings=window.location.hash==="#/business/ratings";
+ const isRatings=["#/business/ratings","#/ratings-war"].includes(window.location.hash);
+ const businessPanes:Record<string,"OVERVIEW"|"FINANCES"|"COMMERCIAL"|
+  "RATINGS"|"STANDING"|"ACTIVITY"|"EVENTS"|"TERRITORIES">={
+  "#/business":"OVERVIEW","#/finances":"FINANCES",
+  "#/commercials":"COMMERCIAL","#/ratings-war":"RATINGS",
+  "#/business/ratings":"RATINGS",
+  "#/business-standing":"STANDING","#/business-activity":"ACTIVITY",
+  "#/business-events":"EVENTS","#/business-territories":"TERRITORIES"};
+ const startingPane=businessPanes[window.location.hash]??"OVERVIEW";
  const origin=pendingResultsRatingsOrigin;
  pendingResultsRatingsOrigin=null;
  const returning=isRatings&&origin?.worldId===scope.worldId&&
@@ -474,7 +482,7 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
  }:undefined;
  const port=businessPort(root,scope,call,goBack);
  if(goBack)port.returnToResults=goBack;
- return mountBusinessDesk(root,port,isRatings?"RATINGS":"OVERVIEW");
+ return mountBusinessDesk(root,port,startingPane);
 }
 function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{

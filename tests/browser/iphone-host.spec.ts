@@ -7,6 +7,25 @@ const overview={
 };
 const current={worldId:"genesis",playerId:"test-owner",
  csrfToken:"opaque-browser-csrf",overview,availablePromotions:[]};
+test("Home stays compact and avoids duplicate statuses or empty task panels at 320/390",async({page})=>{
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>route.fulfill({json:
+  route.request().postDataJSON().method==="overview"?overview:{}}));
+ for(const width of [320,390]){
+  await page.setViewportSize({width,height:844});
+  await page.goto("/#/home");
+  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+  await expect(page.locator(".ppw-home-brief")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-tags")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-broadcast")).toHaveCount(0);
+  const height=await page.locator(".ppw-home-hero").evaluate(el=>el.getBoundingClientRect().height);
+  expect(height).toBeLessThan(270);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ }
+});
+
 test("iPhone signs in and opens every department through a single drawer",async({page})=>{
  let signedIn=false;const methods:string[]=[];
  await page.route("**/api/session",async route=>{
@@ -99,12 +118,9 @@ test("Home alerts open expiring agreements or pending offers directly without an
   .getByRole("button",{name:/Needs action/})).toHaveAttribute("aria-current","page");
  await expect(page.getByText(/Contracts closest to expiry/)).toBeVisible();
  await page.goto("/#/home");
- await page.getByRole("button",{name:/Offers awaiting decisions/}).click();
- await expect(page).toHaveURL(/#\/contracts\/pending$/);
- await expect(page.getByText(/outstanding offers, renewals and date requests/)).toBeVisible();
- await expect(page.getByRole("navigation",{name:"Contract Desk sections"})
-  .getByRole("button",{name:/Offers/})).toHaveAttribute("aria-current","page");
- expect(methods).toEqual(["overview","contracts","overview","contracts"]);
+ await expect(page.getByRole("button",{name:/RESULTS ARCHIVE|LATEST RESULT/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Offers awaiting decisions/})).toHaveCount(0);
+ expect(methods).toEqual(["overview","contracts","overview"]);
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
 });
 
@@ -131,18 +147,13 @@ test("named contract alerts give the right negotiation and expiry routes without
   return route.fulfill({json:method==="overview"?home:method==="contracts"?contracts:{}});
  });
  await page.goto("/#/home");
- await expect(page.getByRole("button",{name:/Ada has a negotiation pending/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Ada has a negotiation pending/})).toHaveCount(0);
  await expect(page.getByRole("button",{name:/Bert's contract expires in 1 week/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
- await page.getByRole("button",{name:/Ada has a negotiation pending/}).click();
-  await expect(page).toHaveURL(/#\/contracts\/pending$/);
- await expect(page.getByRole("navigation",{name:"Contract Desk sections"})
-  .getByRole("button",{name:/Offers/})).toHaveAttribute("aria-current","page");
- await page.goto("/#/home");
  await page.getByRole("button",{name:/Bert's contract expires in 1 week/}).click();
   await expect(page).toHaveURL(/#\/contracts\/expiring$/);
  await expect(page.getByRole("button",{name:"Expiring soon"})).toHaveAttribute("aria-pressed","true");
- expect(calls).toEqual(["overview","contracts","overview","contracts"]);
+ expect(calls).toEqual(["overview","contracts"]);
 });
 test("named Home concerns open only the intended wrestler conversation",async({page})=>{
  await page.setViewportSize({width:390,height:844});
@@ -211,7 +222,7 @@ test("completed locker-room updates dismiss privately without hiding current tas
   }else await route.fulfill({json:method==="overview"?home():{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Promises settled")).toBeVisible();
  await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
  await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
@@ -254,7 +265,7 @@ test("resolved locker-room promise opens the exact private historical thread",as
   }else await route.fulfill({json:method==="overview"?home:{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText(/Victor Vale saw your promise kept/)).toBeVisible();
  await page.getByRole("button",{name:"Open Backstage"}).click();
  await expect(page).toHaveURL(/#\/backstage$/);
@@ -288,7 +299,7 @@ test("iPhone clears all settled notices in one request and preserves urgent work
   }else await route.fulfill({json:request.method==="overview"?home():{}});
  });
  await page.goto("/#/home");
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByRole("button",{name:"Clear all resolved updates"})).toBeVisible();
  await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
  await page.getByRole("button",{name:"Clear all resolved updates"}).click();
@@ -449,6 +460,28 @@ test("Roster dossiers preserve filters and expanded cards without reloading the 
  expect(methods.filter(x=>x==="wrestlerProfile").length).toBe(1);
 });
 
+test("Home suppresses expired sponsorship noise and outgoing offers while retaining booking",async({page})=>{
+ const home={...overview,promotion:{...overview.promotion,attention:{
+  plannedShows:1,unpreparedShow:true,pendingBackstage:false,
+  expiringTalent:false,pendingContractOffers:true,
+  contractAlerts:[{contractId:"old",personId:"p-a",name:"Alex",
+   kind:"DATES_EXHAUSTED",weeksRemaining:25,waiting:true}],
+  businessUpdates:[{id:"business-update:77",kind:"COMMERCIAL_EXPIRED",
+   year:1,week:4,prestigeDelta:null,before:null,after:null,
+   dealKind:"SPONSOR",endedOfferCode:"legacy",replacementOfferCode:"active"}]
+ }}};
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>route.fulfill({json:
+  route.request().postDataJSON().method==="overview"?home:{}}));
+ await page.goto("/#/home");
+ await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
+ await expect(page.getByText(/1825d/)).toHaveCount(0); // Fixture deadline differs; never fabricate it.
+ await expect(page.getByText(/negotiation pending/i)).toHaveCount(0);
+ await expect(page.getByText(/Offers awaiting decisions/)).toHaveCount(0);
+ await expect(page.getByText(/Previous sponsorship deal ended/)).toHaveCount(0);
+ await expect(page.locator(".ppw-home-notification-inbox")).toHaveCount(0);
+});
+
 test("Home contract wire dismisses one resolved offer without suppressing show obligations or refetching",async({page})=>{
  const methods:string[]=[];
  const attention={plannedShows:0,unpreparedShow:false,pendingBackstage:false,
@@ -470,7 +503,7 @@ test("Home contract wire dismisses one resolved offer without suppressing show o
  });
  await page.goto("/#/home");
  await expect(page.getByText("Alice has signed")).toBeVisible();
- await page.locator(".ppw-home-inbox-toggle").click();
+ await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
  await page.locator(".ppw-home-action-with-dismiss").getByRole("button",{name:"Dismiss"}).click();
@@ -641,13 +674,23 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  expect((await manifest.json()).theme_color).toBe("#101225");
  const appIcon=await request.get("/icon.svg");
  expect(appIcon.ok()).toBeTruthy();
- expect(await appIcon.text()).toContain("#ff3679");
+ expect(await appIcon.text()).toContain("data:image/webp;base64,");
  const worker=await request.get("/sw.js");
  expect(worker.ok()).toBeTruthy();
  expect(await worker.text()).toContain('url.pathname.startsWith("/api/")');
  // A refreshed shell must evict the old cache-first portrait entries; the
  // original 48 Legends retain their URL paths across this release.
- expect(await worker.text()).toContain('ppw-static-shell-v4');
+ expect(await worker.text()).toContain('ppw-static-shell-v8');
+ for(const path of ["ppw-showcase-hero.webp","ppw-showcase-header.webp",
+  "ppw-showcase-badge.webp","news-official.webp","news-dirt.webp",
+  "award-match.webp","award-angle.webp"]){
+  expect(await worker.text()).toContain('"/branding/'+path+'"');
+  const image=await request.get("/branding/"+path);
+  expect(image.ok()).toBeTruthy();
+  const bytes=await image.body();
+  expect(bytes.subarray(0,4).toString()).toBe("RIFF");
+  expect(bytes.subarray(8,12).toString()).toBe("WEBP");
+ }
  expect(await worker.text()).toContain('url.pathname.startsWith("/assets/legends/")');
  expect(await worker.text()).toContain('const updated=await fetch(req)');
  expect(await worker.text()).toContain('key!==CACHE');
@@ -670,7 +713,8 @@ test("small iPhones have only the five department drawers at the bottom without 
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
  const menu=page.getByRole("button",{name:"Open World menu"});
  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
- await expect(page.locator(".ppw-shell-logo")).toHaveText("PPW");
+ await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("alt","PPW");
+ await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("src","/branding/ppw-showcase-header.webp");
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("AEW");
  expect(await page.locator(".ppw-account-banner").evaluate(el=>
   getComputedStyle(el).paddingTop)).toMatch(/px$/);
@@ -686,7 +730,17 @@ test("small iPhones have only the five department drawers at the bottom without 
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab span:last-child")).toHaveText(["World","News","Promotion","Plan","Business"]);
  await expect(page.getByRole("button",{name:"Open More menu"})).toHaveCount(0);
  await page.getByRole("button",{name:"Open Business menu"}).click();
- await expect(nav.getByRole("button",{name:/Staff/})).toBeVisible();
+ for(const label of ["Finances","Commercials","Ratings War","Staff Office"]){
+  await expect(nav.getByRole("button",{name:new RegExp(label)})).toBeVisible();
+ }
+ await nav.getByRole("button",{name:/Commercials/}).click();
+ await expect(page).toHaveURL(/#\/commercials$/);
+ await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
+ await page.getByRole("button",{name:"Open Business menu"}).click();
+ await nav.getByRole("button",{name:/Finances/}).click();
+ await expect(page).toHaveURL(/#\/finances$/);
+ await expect(page.getByRole("heading",{name:"Finances"})).toBeVisible();
+ await page.getByRole("button",{name:"Open Business menu"}).click();
  await page.getByRole("button",{name:"Open Promotion menu"}).click();
  expect(await overflow()).toBeLessThanOrEqual(1);
  await nav.getByRole("button",{name:/Contracts/}).click();
@@ -1063,9 +1117,8 @@ test("Business event pulse reuses loaded receipts and opens detailed accounts wi
   methods.push(method);
   await route.fulfill({json:method==="business"?business:overview});
  });
- await page.goto("/#/business");
- await expect(page.getByRole("heading",{name:"Business"})).toBeVisible();
- await page.getByRole("button",{name:"Events"}).click();
+ await page.goto("/#/business-events");
+ await expect(page.getByRole("heading",{name:"Event Accounts",level:1})).toBeVisible();
  await expect(page.getByText("EVENT RESULT")).toBeVisible();
  await expect(page.locator(".ppw-business-event-stat").filter({hasText:"EVENT RESULT"}).locator("strong")).toContainText("1,000");
  const group=page.getByRole("group",{name:"Event profit and loss"});

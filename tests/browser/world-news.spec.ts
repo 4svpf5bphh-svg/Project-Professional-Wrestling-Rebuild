@@ -5,7 +5,7 @@ const overview={world:{revision:4,name:"PPW",year:2,week:7,phase:"OPEN",
  cash:1000000,debt:0,lastWeeklyNet:10,financialDistress:"HEALTHY"}};
 const session={worldId:"world",playerId:"owner",csrfToken:"opaque",overview,
  availablePromotions:[]};
-test("iPhone World News awards, official and dirt sheets render on demand and never spill plans",async({page})=>{
+test("iPhone World News awards, official and dirt sheets render on demand and never spill plans",async({page},testInfo)=>{
  await page.setViewportSize({width:390,height:844});
  const calls:string[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -68,6 +68,14 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByRole("button",{name:"Promotions"})).toHaveCount(0);
  // Opening the News root fetches the weekly public desk once.
  await page.getByRole("button",{name:"Official News"}).click();
+ const officialMark=page.locator(".ppw-news-official .ppw-news-masthead-art");
+ await expect(officialMark).toBeVisible();
+ await expect(officialMark).toHaveAttribute("src","/branding/news-official.webp");
+ await expect.poll(()=>officialMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(420);
+ await expect(page.locator('.ppw-news-poster[data-kind="match"]')).toHaveCSS(
+  "background-image",/award-match\.webp/);
+ await expect(page.locator('.ppw-news-poster[data-kind="angle"]')).toHaveCSS(
+  "background-image",/award-angle\.webp/);
  await expect(page.getByText("MATCH OF THE WEEK")).toBeVisible();
  await expect(page.getByText("ANGLE OF THE WEEK")).toBeVisible();
  await expect(page.getByText("4.75 ★")).toBeVisible();
@@ -79,6 +87,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(dispatch).toContainText("Fight Night");
  await expect(dispatch.getByRole("button",{name:"Read the completed show"})).toBeVisible();
  await expect(page.locator(".ppw-news-official")).not.toContainText("GROQ");
+ await page.locator(".ppw-news-official").screenshot({
+  path:testInfo.outputPath("phase45-official-news-390.png")});
 
  const officialThread=page.locator(".ppw-news-official .ppw-hot-tag-thread").first();
  await officialThread.locator("summary").click();
@@ -115,6 +125,13 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  expect(rect!.x).toBeGreaterThanOrEqual(0);
  expect(rect!.x+rect!.width).toBeLessThanOrEqual(391);
  await page.getByRole("button",{name:"Dirt Sheets"}).click();
+ const dirtMark=page.locator(".ppw-news-dirt .ppw-news-masthead-art");
+ await expect(dirtMark).toBeVisible();
+ await expect(dirtMark).toHaveAttribute("src","/branding/news-dirt.webp");
+ await expect.poll(()=>dirtMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(420);
+ await page.locator(".ppw-news-dirt").screenshot({
+  path:testInfo.outputPath("phase45-dirt-sheets-390.png")});
+
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"Creative shake-up?"})).toBeVisible();
  await expect(page.getByText("RUMOUR / NOT CONFIRMED")).toBeVisible();
  await expect(page.getByText("UNVERIFIED / DISPUTED REPORT 👀")).toBeVisible();
@@ -122,7 +139,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.locator(".ppw-news-dirt")).toHaveCount(1);
  await expect(page.locator(".ppw-news-dirt .ppw-news-voice"),
   "Owner's certified report does not appear in unverified Dirt Sheets").toHaveCount(0);
- await expect(page.getByText("Fictional in-game wrestling reporting.",{exact:false}).first()).toBeVisible();
+ await expect(page.getByText("Fictional in-game wrestling reporting.",{exact:false})).toHaveCount(0);
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"Did Alice walk out after Fight Night"})).toBeVisible();
  const threads=page.locator(".ppw-news-dirt .ppw-hot-tag-thread");
  await expect(threads).toHaveCount(2);

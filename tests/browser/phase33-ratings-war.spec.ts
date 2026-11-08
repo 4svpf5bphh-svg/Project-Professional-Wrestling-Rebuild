@@ -70,7 +70,7 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-ratings-war-impact")).toContainText("YOU GAINED 0.2");
   await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("North Wrestling");
   await war.getByRole("button",{name:"Networks & sponsors"}).click();
-  await expect(page.getByRole("heading",{name:"Commercials"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
   expect(methods).toEqual(["business"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);

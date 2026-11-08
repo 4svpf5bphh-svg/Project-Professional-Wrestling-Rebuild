@@ -69,9 +69,9 @@ test("bottom Business navigation enters the correct desk and Back restores the p
  await expect(page.locator(".ppw-management-menu")).toHaveCount(0);
  await page.getByRole("button",{name:"Open Business menu"}).click();
  await page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:/Business/}).click();
- await expect(page).toHaveURL(/#\/business$/);
- await expect(page.locator("html")).toHaveAttribute("data-ppw-screen","business");
+  .getByRole("button",{name:/Finances/}).click();
+ await expect(page).toHaveURL(/#\/finances$/);
+ await expect(page.locator("html")).toHaveAttribute("data-ppw-screen","finances");
  await page.goBack();
  await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByText("The Big Event")).toBeVisible();

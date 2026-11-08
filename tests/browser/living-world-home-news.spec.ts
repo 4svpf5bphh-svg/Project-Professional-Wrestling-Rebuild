@@ -25,10 +25,10 @@ test("iPhone Home publishes recent verified world developments without leaking p
   return route.fulfill({json:{}});
  });
  await page.goto("/#/home");
- await expect(page.getByRole("heading",{name:"Industry headlines"})).toBeVisible();
- await expect(page.getByRole("button",{name:/Alex Rook hangs up the boots/})).toBeVisible();
- await expect(page.getByRole("button",{name:/Coastal Wrestling moves to RISING/})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Industry headlines"})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Alex Rook hangs up the boots/})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Coastal Wrestling moves to RISING/})).toHaveCount(0);
  await expect(page.getByText("private rival problem")).toHaveCount(0);
- await expect(page.getByRole("button",{name:/Read World News/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/RESULTS ARCHIVE/})).toBeVisible();
  expect(calls).toEqual(["overview"]);
 });
