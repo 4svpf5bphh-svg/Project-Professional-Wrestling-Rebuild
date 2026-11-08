@@ -424,9 +424,10 @@ test("iPhone booker unlocks and books a premium vehicle hosedown with a sensible
   .getByRole("button",{name:/Vehicle hosedown/})).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
- await expect(dialog.getByLabel("Exact location")).toHaveValue("RINGSIDE");
- await expect(dialog.getByLabel("Exact location").locator("option",{hasText:"Arena car park"})).toHaveCount(0);
- await dialog.getByLabel("Exact location").scrollIntoViewIfNeeded();
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Exact location"] .ppw-guide-script-tile[data-value="RINGSIDE"]'))
+  .toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Exact location"] select option',{hasText:"Arena car park"})).toHaveCount(0);
+ await dialog.getByRole("group",{name:"Exact location choices"}).scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-special-moment-390.png",
   fullPage:true,animations:"disabled"});
  await dialog.getByRole("button",{name:"Close card editor"}).click();
