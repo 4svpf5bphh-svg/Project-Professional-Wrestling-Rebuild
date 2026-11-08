@@ -65,6 +65,13 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await page.getByRole("button",{name:"+ Add match"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
+  await expect(dialog.locator(".ppw-guide-format-tile")).toHaveCount(9);
+  await expect(dialog.locator(".ppw-guide-format-tabs")).toHaveCount(0);
+  await expect(dialog.getByRole("button",{name:"Multi-team · 2v2v2 / more"})).toBeVisible();
+  await expect(dialog.getByRole("button",{name:"Battle royal · 6–30 entrants"})).toBeVisible();
+  await dialog.getByRole("button",{name:"Tag · 2v2"}).click();
+  await expect(dialog.locator(".ppw-guide-format-tile[aria-pressed=true]")).toContainText("Tag");
+  await dialog.getByRole("button",{name:"Singles · 1v1"}).click();
  await expect(page.locator(".ppw-card[data-booking-slot-id]")).toHaveCount(0);
  await expect(page.locator(".ppw-card-airtime-heading")).toContainText("0 / 120 min");
  await dialog.getByRole("button",{name:"Ladder Match"}).click();
@@ -245,7 +252,13 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
  await expect(dialog.getByLabel("Creative direction")).toHaveCount(0);
  await expect(dialog.getByLabel("Angle type")).toHaveCount(0);
- await dialog.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Conflict & attacks"}).click();
+ const categories=dialog.locator(".ppw-angle-category-tiles");
+  for(const kind of ["Promos & interviews","Conflict & attacks",
+   "Challenges","Alliances","Turns","Debuts","Video packages"]){
+   await categories.getByRole("button",{name:kind}).click();
+   await expect(dialog.locator(".ppw-angle-type-tiles button").first()).toBeVisible();
+  }
+  await categories.getByRole("button",{name:"Conflict & attacks"}).click();
  const choices=dialog.locator(".ppw-angle-type-tiles");
  await expect(choices).toContainText("Attack");
  expect(await choices.evaluate(element=>
@@ -292,11 +305,11 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(dialog.getByRole("heading",{name:"Why is this on the show?",exact:true})).toBeVisible();
  await expect(dialog.getByRole("heading",{name:"How does it unfold?",exact:true})).toBeVisible();
  await expect(dialog.getByLabel("Angle type")).toHaveCount(0);
- await dialog.getByLabel("Area",{exact:true}).selectOption("OUTSIDE");
- await dialog.getByLabel("Exact location").selectOption("PARKING_LOT");
- await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
- await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
- await dialog.getByLabel("Storytelling purpose").selectOption("SEEK_REVENGE");
+ await dialog.locator('.ppw-guide-script-choice[data-field="Area"] .ppw-guide-script-tile[data-value="OUTSIDE"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Exact location"] .ppw-guide-script-tile[data-value="PARKING_LOT"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Attack intensity"] .ppw-guide-script-tile[data-value="BRUTAL"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Visible aftermath"] .ppw-guide-script-tile[data-value="BLOODIED"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="SEEK_REVENGE"]').click();
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-angle-where-why-320.png",animations:"disabled"});
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const review=dialog.locator(".ppw-guide-staff-review");
@@ -475,8 +488,8 @@ test("320px: Medical reduces an authored bloody attack only when explicitly tapp
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  const choice=dialog.locator(".ppw-booking-choice-panel");
  await expect(choice).toHaveCount(0);
- await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
- await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
+ await dialog.locator('.ppw-guide-script-choice[data-field="Attack intensity"] .ppw-guide-script-tile[data-value="BRUTAL"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Visible aftermath"] .ppw-guide-script-tile[data-value="BLOODIED"]').click();
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(choice).toContainText("Dr Singh");
  await expect(choice).toContainText("Samoa Joe");
@@ -484,8 +497,8 @@ test("320px: Medical reduces an authored bloody attack only when explicitly tapp
  await choice.getByRole("button",{name:"Reduce physical intensity"}).click();
  await expect(choice).toHaveCount(0);
  await dialog.getByRole("button",{name:"← Revise script"}).click();
- await expect(dialog.getByLabel("Attack intensity")).toHaveValue("WARNING");
- await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("OFFICIALS_SEPARATE");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Attack intensity"] .ppw-guide-script-tile[data-value="WARNING"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Visible aftermath"] .ppw-guide-script-tile[data-value="OFFICIALS_SEPARATE"]')).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const review=dialog.locator(".ppw-guide-staff-review");
  await expect(review).toContainText("Check condition before this physical scene");

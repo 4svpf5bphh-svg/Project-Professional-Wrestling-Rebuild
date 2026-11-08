@@ -39,7 +39,8 @@ import {forecastBookingAirtime} from "./card-airtime-preview.js";
 import {bookingChoiceAdvice,applyBookingAdjustment} from "../domain/booking-choice-advice.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../domain/card-appearance-forecast.js";
-import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
+import {bookingFinanceBrief} from "../domain/booking-financial-brief.js";
+import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,crossShowWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
 import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {reconcileDraftAgreements} from "./card-contract-reconciliation.js";
@@ -160,7 +161,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const openRunIns=new Set<string>();
  const slotBookingModes=new Map<string,"QUICK"|"ADVANCED">();
  const slotBookingSteps=new Map<string,"SETUP"|"CAST"|"OUTCOME"|"REVIEW">();
- const matchSetupTabs=new Map<string,"SINGLES"|"TEAMS"|"OTHER">();
  const guidedPickerSlots=new Set<string>();
  // A new booking is only added to the working card at the final step.
  // Closing earlier discards this wizard's local slot and restores the
@@ -194,13 +194,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const people=advisorPeople(),staffed=team();
   const workload=showWorkloadNotes(slotId,(match??segment)!,activeMatches,
    activeSegments,people,staffed);
+  const otherWeek=crossShowWorkloadNotes((match??segment)!,
+   view?.otherShowWorkloads??[],people,staffed);
   if(match){
-   const all=[...workload,...matchStaffNotes(match,people,staffed),
+   const all=[...otherWeek,...workload,...matchStaffNotes(match,people,staffed),
     ...matchPartnershipNotes(match,people,staffed)];
    return [...all.filter(n=>n.level==="WATCH"),...all.filter(n=>n.level==="INFO")].slice(0,6);
   }
   const cast=view?.programmes.find(p=>p.programmeId===segment!.programmeId)?.cast??[];
-  return [...workload,...angleStaffNotes(segment!,people,staffed,
+  return [...otherWeek,...workload,...angleStaffNotes(segment!,people,staffed,
    cast.map(p=>p.personId))].slice(0,5);
  }
  /** One optional next action at a time, using the same locally authored
@@ -329,7 +331,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   inProgressWizards.delete(slotId);
   slotBookingSteps.delete(slotId);
   guidedPickerSlots.delete(slotId);
-  matchSetupTabs.delete(slotId);
   dirty=pending.wasDirty;pendingRequestId=null;error="";success="";
   port.onDraftChange?.(dirty);expanded=null;render();
  }
@@ -933,14 +934,44 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      .flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId))
    ];
    const feeEstimate=forecastCardAppearanceFees(participation,roster);
-   if(feeEstimate.performers){
+   const finance=bookingFinanceBrief(view.bookingFinancials,feeEstimate,
+    (view.year-1)*52+view.week-1);
+   if(feeEstimate.performers||finance){
+    const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
     const costs=el("details","ppw-card-appearance-cost") as HTMLDetailsElement;
-    costs.append(el("summary","","Estimated appearance fees · "+
-     "$"+Math.round(feeEstimate.amount).toLocaleString("en-GB")),
-     el("p","",feeEstimate.performers+" wrestlers · "+
-      (feeEstimate.complete?"All fees known":feeEstimate.unknown+" fees unknown")+
-      ". Each person counts once for live matches, angles and run-ins. "+
-      "Pre-recorded videos carry no appearance fees. Costs settle when the show runs."));
+    costs.append(el("summary","","Show talent fees · "+money(feeEstimate.amount)+
+     (feeEstimate.complete?"":" + unknown")));
+    costs.append(el("p","",feeEstimate.performers+" wrestlers · "+
+     (feeEstimate.complete?"All fees known":feeEstimate.unknown+" fees unknown")+
+     ". Live match, angle and run-in appearances count once per show."));
+    if(finance){
+     const briefing=el("div","ppw-card-financial-baseline");
+     const row=(title:string,value:string)=>{
+      const line=el("div","ppw-card-financial-line");
+      line.append(el("span","",title),el("strong","",value));return line;
+     };
+     if(finance.talentLimit!==null)
+      briefing.append(row("Show talent limit",money(finance.talentLimit)));
+     briefing.append(row("Wages + staff / week",money(finance.weeklyGuaranteedOutgoings)));
+     if(finance.weeklyFixedMargin!==null){
+      briefing.append(row("4-week baseline",money(finance.fourWeeks!)),
+       row("8-week baseline",money(finance.eightWeeks!)));
+     }
+     if(finance.breachesTalentLimit)
+      briefing.append(el("p","ppw-card-financial-warning",
+       "Known fees exceed the show talent limit. Review the cast or the spending plan in Finances."));
+     else if(finance.mayBreachTalentLimit)
+      briefing.append(el("p","ppw-card-financial-warning",
+       "An unknown appearance fee could exceed the show talent limit."));
+     if(finance.projectedBelowReserve)
+      briefing.append(el("p","ppw-card-financial-warning",
+       "Known show fees would leave less than the selected cash reserve before ticket income."));
+     briefing.append(el("small","",
+      "Scenario, not a cash forecast: current balance, flat income, wages, staff and overhead. "+
+      "This card's fees count once within its show week. "+
+      "Excludes tickets, venues, production, travel, other shows and future contract changes."));
+     costs.append(briefing);
+    }
     root.append(costs);
    }
   const toolbar=el("div","ppw-toolbar");
@@ -2026,23 +2057,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       if(extraContent.childElementCount)extra.append(extraContent);
       if(stage==="SETUP"){
        if(m){
-        const tabs=el("div","ppw-guide-format-tabs");
-        const group=matchSetupTabs.get(slotId)??(
-         ["TAG","TRIOS","FOUR_V_FOUR","FIVE_V_FIVE","MULTI_TEAM"].includes(m.format)?
-          "TEAMS":["BATTLE_ROYAL"].includes(m.format)?"OTHER":"SINGLES");
-        for(const [key,title] of [
-         ["SINGLES","Singles"],["TEAMS","Teams"],["OTHER","Other"]
-        ] as const){
-         const tab=button(title,()=>{
-          matchSetupTabs.set(slotId,key);resetGuideScroll=true;render();
-         },false,"ppw-guide-format-tab");
-         tab.setAttribute("aria-pressed",String(group===key));tabs.append(tab);
-        }
-        guide.append(tabs);
-        const formats=FORMATS.filter(f=>
-         group==="TEAMS"?["TAG","TRIOS","FOUR_V_FOUR","FIVE_V_FIVE","MULTI_TEAM"].includes(f.value):
-         group==="OTHER"?f.value==="BATTLE_ROYAL":
-         ["SINGLES","TRIPLE_THREAT","FOUR_WAY"].includes(f.value));
+        // All nine original formats visible together on a small iPhone.
+        const formats=FORMATS;
         const formatGrid=el("div","ppw-guide-format-grid");
         for(const option of formats){
          const selected=m.format===option.value;
@@ -2236,6 +2252,41 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         how.append(el("h4","","How does it unfold?"));
         const physical=segment!.kind==="ATTACK"||
          segment!.kind==="POST_MATCH_ASSAULT";
+        // Keep original validated event handlers; both new and reopened angles
+        // present their Where/Why/How choices as one-tap iPhone tiles.
+        const tileFields=new Set(["Area","Exact location","Attack style",
+         "Attack intensity","Visible aftermath","Storytelling purpose",
+         "How it ends","New alignment","How the turn is shown","The message"]);
+        const asTileField=(child:Element,label:string):Element=>{
+         if(!tileFields.has(label))return child;
+         const select=child.querySelector<HTMLSelectElement>("select");
+         if(!select||select.options.length<2||select.options.length>16)return child;
+         const panel=el("section","ppw-guide-script-choice");
+         panel.dataset.field=label;
+         panel.append(el("strong","ppw-guide-section-label",label));
+         const grid=el("div","ppw-guide-script-tiles");
+         grid.setAttribute("role","group");
+         grid.setAttribute("aria-label",label+" choices");
+         for(const option of [...select.options]){
+          if(option.disabled||option.hidden)continue;
+          const tile=button(option.textContent??option.value,()=>{
+           select.value=option.value;
+           select.dispatchEvent(new Event("change",{bubbles:true}));
+          },!mutable(),"ppw-guide-script-tile");
+          tile.dataset.value=option.value;
+          tile.setAttribute("aria-pressed",String(option.value===select.value));
+          grid.append(tile);
+         }
+         if(!grid.childElementCount)return child;
+         panel.append(grid);
+         const native=el("div","ppw-guide-native-choice");
+         // An invisible native change-dispatcher is not a second screen-reader
+         // control competing with the visible, keyboard-operable tile group.
+         native.setAttribute("aria-hidden","true");
+         select.tabIndex=-1;
+         native.append(child);panel.append(native);
+         return panel;
+        };
         for(const child of [...essentials.children]){
          const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
          if(label==="Creative direction"||label==="Angle type")continue;
@@ -2243,12 +2294,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
           if(existing)what.append(child);
           continue;
          }
+         const control=asTileField(child,label);
          if(["Area","Exact location","Attack intensity","Visible aftermath"].includes(label))
-          where.append(child);
+          where.append(control);
          else if(label==="Storytelling purpose"||child.classList.contains("ppw-angle-purpose-disclaimer"))
-          why.append(child);
+          why.append(control);
          else if(!child.classList.contains("ppw-angle-workflow-title"))
-          how.append(child);
+          how.append(control);
         }
          if(segment!.programmeId){
          const linked=view.programmes.find(p=>p.programmeId===segment!.programmeId);
@@ -2471,6 +2523,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          .flatMap(other=>[...other.actors,...other.targets].map(p=>p.personId))
        ];
        const fees=forecastIncrementalAppearanceFees(ids,existingAppearances,roster);
+       const allFees=forecastCardAppearanceFees([...existingAppearances,...ids],roster);
+       const cash=bookingFinanceBrief(view.bookingFinancials,allFees,
+        (view.year-1)*52+view.week-1);
+       if(cash&&(cash.breachesTalentLimit||cash.mayBreachTalentLimit||
+        cash.projectedBelowReserve)){
+        brief.append(el("p","ppw-guide-financial-warning",
+         cash.breachesTalentLimit?
+          "Known show talent fees exceed your spending cap. Review the cast or update Finances.":
+         cash.mayBreachTalentLimit?
+          "One or more appearance fees are unknown. The show cap cannot be confirmed.":
+          "Known fees would place the chosen cash reserve at risk before ticket income."));
+       }
        if(segment?.kind==="VIDEO_PACKAGE")
         brief.append(el("p","ppw-guide-fee-note",
          "Pre-recorded video · No live appearance fees for this segment."));

@@ -162,3 +162,34 @@ test("a long interview without a Creative hire still offers a house adjustment",
  assert.deepEqual(shorter.actors,scene.actors);
  assert.equal(bookingChoiceAdvice(shorter,[mistico],new Set<StaffRole>()),null);
 });
+
+test("a real strained team gets an optional Road Agent change without false feud psychology",()=>{
+ const tag={...newEditorMatch("tag","TAG"),plannedLengthMinutes:24,
+  teams:[[{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}],
+   [{personId:"c",contractId:"cc"},{personId:"d",contractId:"cd"}]],
+  winnerSide:1};
+ const people=[
+  {personId:"a",name:"Alpha",stamina:90,workingConnections:[
+   {personId:"b",professionalTrust:35,familiarity:12,lastChangeType:"STRAIN" as const}]},
+  {personId:"b",name:"Bravo",stamina:90},
+  {personId:"c",name:"Charlie",stamina:90},
+  {personId:"d",name:"Delta",stamina:90}
+ ];
+ const advice=bookingChoiceAdvice(tag,people,crew)!;
+ assert.equal(advice.role,"ROAD_AGENT");
+ assert.equal(advice.actionLabel,"Shorten to 15 min");
+ const shorter=applyBookingAdjustment(tag,advice.adjustment);
+ assert.ok("teams" in shorter);
+ assert.equal(shorter.plannedLengthMinutes,15);
+ assert.equal(shorter.winnerSide,1);
+ assert.equal(shorter.plannedFinish,tag.plannedFinish);
+ assert.deepEqual(shorter.teams,tag.teams);
+ assert.equal(bookingChoiceAdvice(shorter,people,crew),null);
+ assert.equal(bookingChoiceAdvice(tag,people,new Set<StaffRole>()),null);
+ assert.equal(bookingChoiceAdvice({...tag,teams:[
+  [{personId:"a",contractId:"ca"},{personId:"c",contractId:"cc"}],
+  [{personId:"b",contractId:"cb"},{personId:"d",contractId:"cd"}]]},people,crew),
+  null,"Opponents are not team-mates");
+ assert.equal(bookingChoiceAdvice(tag,
+  people.map(p=>({...p,workingConnections:[]})),crew),null);
+});

@@ -73,7 +73,9 @@ test("contractual veto, consent, refusal, rewritten finish and confirmed card ar
   assert.equal(first.creativeConcerns.length,2);
   assert.equal(first.creativeConcerns.find(x=>x.personId==="alice")?.reason,"MATCH_APPROVAL");
   assert.equal(first.creativeConcerns.find(x=>x.personId==="bob")?.reason,"PROTECTED_LOSS");
-  meter.assertBudget({maxQueries:9,maxResultBytes:13000});
+  const readBudget=meter.assertBudget({maxQueries:9,maxResultBytes:13000});
+  assert.equal(readBudget.queryCount,9,
+   "Creative consent and same-week workload must share the existing Card read budget");
   await assert.rejects(ready(0,"not-yet"),/creative agreement/);
   const approved=await agree("alice","alice-yes",0);
   assert.equal(approved.status,"APPLIED");

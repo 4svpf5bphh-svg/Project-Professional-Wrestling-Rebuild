@@ -54,12 +54,87 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     await tx.query("INSERT INTO ppw_wrestler_relationships(world_id,person_a_id,person_b_id,professional_trust,familiarity,last_change_type) VALUES($1,'p0','p1',37,22,'STRAIN')",[world]);
     await tx.query("INSERT INTO ppw_tag_teams(world_id,team_id,name,status) VALUES($1,'tested-pair','Tested Pair','ACTIVE')",[world]);
     await tx.query("INSERT INTO ppw_tag_team_members(world_id,team_id,person_id) VALUES($1,'tested-pair','p0'),($1,'tested-pair','p1')",[world]);
+    // Booking affordability reuses the existing owned promotion and signed
+    // payroll facts; it must not issue a separate Finance desk read.
+    await tx.query("UPDATE ppw_promotions SET cash=135000,weekly_media_income=10000,"+
+     "weekly_sponsor_income=5000,weekly_fixed_overhead=3000"+
+     " WHERE world_id=$1 AND promotion_id=$2",[world,promotion]);
+    await tx.query("UPDATE ppw_contracts SET weekly_guarantee=450"+
+     " WHERE world_id=$1 AND person_id='p0'",[world]);
     await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall','home','Wednesday Night Live','REGULAR')",
      [world,show,promotion]);
     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'angle',0,'SEGMENT',$3::jsonb)",
      [world,show,JSON.stringify({participants:[members[0]],kind:"PROMO",outcome:"HAPPENS"})]);
+     await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,'premium-other',$2,1,1,'DRAFT',6,'hall','home','Sunday Premium','PREMIUM')",
+      [world,promotion]);
+     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,'premium-other','other-main',0,'MATCH',$2::jsonb)",
+      [world,JSON.stringify(raw)]);
    });
    const view=await showCardEditorAsActor(context,world,promotion,show);
+   // Finance is included in this owner-authorised Card hydration, with a
+   // fixed Neon query/response budget even for a full 30-person Royal.
+   const cardMeter=new MeasuredQuerySession("card-read-finances-"+mode);
+   const cardPool:TransactionPool={async connect(){
+    const client=await db.pool.connect();
+    return {release(){client.release();},
+     async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+      return cardMeter.execute(()=>client.query<T>(sql,params));
+     }};
+   }};
+   const reloaded=await showCardEditorAsActor({...context,pool:cardPool},
+    world,promotion,show);
+   assert.deepEqual(reloaded.otherShowWorkloads,view.otherShowWorkloads);
+    assert.equal(view.otherShowWorkloads.length,ids.length,
+     "Even 30 wrestlers on the other show require one bounded Card read");
+    assert.deepEqual(view.otherShowWorkloads.find(x=>x.personId==="p0"),{
+     personId:"p0",showId:"premium-other",showName:"Sunday Premium",kind:"MATCH"
+    });
+    assert.equal(view.otherShowWorkloads.some(x=>x.showId===show),false);
+    assert.deepEqual(reloaded.bookingFinancials,view.bookingFinancials,
+    "Bounded Card read must include the identical owner-scoped financial snapshot");
+   const cardSample=cardMeter.assertBudget({maxQueries:12,maxResultBytes:120_000});
+   console.log("PPW Card finances Neon query budget:",JSON.stringify(cardSample));
+    assert.equal(cardSample.queryCount,7,
+     "Current slots and bounded same-week evidence share one SQL request");
+    // Other submitted physical work is real but provisional. A promo,
+    // another week and another company's card must not create false warnings.
+    await withWorldTransaction(db.pool,async tx=>{
+     await addPromotion(tx,world,{id:"rival",name:"Rival",tier:"LOCAL"});
+     await tx.query(
+      "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,"+
+      "year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES"+
+      "($1,'studio-other',$2,1,1,'SUBMITTED',4,'hall','home','Studio Extra','REGULAR'),"+
+      "($1,'later-week',$2,1,2,'DRAFT',4,'hall','home','Later Week','REGULAR'),"+
+      "($1,'rival-other','rival',1,1,'DRAFT',4,'hall','home','Rival Show','REGULAR')",
+      [world,promotion]);
+     for(const [draft,slot,kind,payload] of [
+      ["studio-other","physical","SEGMENT",
+       {kind:"ATTACK",actorIds:["p0"],targetIds:[],participants:[members[0]],outcome:"HAPPENS"}],
+      ["studio-other","talk","SEGMENT",
+       {kind:"PROMO",actorIds:["p1"],targetIds:[],participants:[members[1]],outcome:"HAPPENS"}],
+      ["later-week","later-match","MATCH",raw],
+      ["rival-other","other-company-match","MATCH",raw]
+     ] as const)
+      await tx.query(
+       "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)"+
+       " VALUES($1,$2,$3,$4,$5,$6::jsonb)",
+       [world,draft,slot,slot==="talk"?1:0,kind,JSON.stringify(payload)]);
+    });
+    const scoped=await showCardEditorAsActor(context,world,promotion,show);
+    assert.deepEqual(scoped.slots.map(s=>s.slotId),["angle"],
+     "Workload evidence is never mixed into this show's own card");
+    assert.deepEqual(scoped.otherShowWorkloads.filter(x=>x.showId==="studio-other"),[{
+     personId:"p0",showId:"studio-other",showName:"Studio Extra",kind:"PHYSICAL_ANGLE"
+    }],"A real same-week attack counts, but a promo never does");
+    assert.equal(scoped.otherShowWorkloads.filter(x=>x.showId==="premium-other").length,
+     ids.length,"The original same-week match remains visible");
+    assert.equal(scoped.otherShowWorkloads.some(x=>
+     x.showId==="later-week"||x.showId==="rival-other"),false,
+     "Future-week and rival-promotion bookings must remain out of scope");
+    await withWorldTransaction(db.pool,tx=>tx.query(
+     "DELETE FROM ppw_booking_drafts WHERE world_id=$1"+
+     " AND draft_id=ANY($2::text[])",
+     [world,["premium-other","studio-other","later-week","rival-other"]]));
    assert.equal(view.canEdit,true);
    const offeredPair=view.bookableTeams.find(t=>t.teamId==="tested-pair");
    assert.equal(offeredPair?.members.length,2);
@@ -74,6 +149,15 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    assert.equal(view.marketName,"Heartland");
    assert.equal(view.day,3);
    assert.equal(view.bookingClass,"REGULAR");
+   assert.deepEqual({
+    currentWeekIndex:view.bookingFinancials?.currentWeekIndex,
+    cash:view.bookingFinancials?.cash,media:view.bookingFinancials?.media,
+    sponsor:view.bookingFinancials?.sponsor,
+    overhead:view.bookingFinancials?.overhead,
+    wages:view.bookingFinancials?.wages,staff:view.bookingFinancials?.staff
+   },{currentWeekIndex:0,cash:135000,media:10000,sponsor:5000,
+    overhead:3000,wages:450,staff:0},
+    "The owned show exposes actual payroll and cash in the existing Card read");
    assert.deepEqual(view.slots.map(s=>s.slotId),["angle"]);
    // Relationship facts share the already-authenticated talent query.
    // Keep the mobile show-week picker at two SQL round trips, not one

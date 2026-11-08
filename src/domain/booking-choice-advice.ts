@@ -65,6 +65,36 @@ export function bookingChoiceAdvice(booking:EditorMatch|EditorSegment,
     "these rules. Standard rules remove the stipulation and reset the "+
     "finish; choose that only if it fits your intended story.",
     "Use standard rules",{kind:"MATCH_RULES"});
+  // A Road Agent can intervene when verified teammates have low
+  // professional trust; do not infer hostility from scripted opponents.
+  if(staffed.has("ROAD_AGENT")&&
+   ["TAG","TRIOS","FOUR_V_FOUR","FIVE_V_FIVE","MULTI_TEAM"].includes(booking.format)){
+   const lookup=new Map(people.map(p=>[p.personId,p]));
+   for(const side of booking.teams){
+    const members=side.flatMap(p=>p?[p.personId]:[]);
+    for(let i=0;i<members.length;i++)for(let j=i+1;j<members.length;j++){
+     const one=lookup.get(members[i]!),two=lookup.get(members[j]!);
+     if(!one||!two)continue;
+     const fact=one.workingConnections?.find(p=>p.personId===two.personId)??
+      two.workingConnections?.find(p=>p.personId===one.personId);
+     if(!fact||!Number.isFinite(fact.professionalTrust)||
+      !Number.isFinite(fact.familiarity)||fact.familiarity<0||
+      fact.familiarity>100||fact.professionalTrust< -100||
+      fact.professionalTrust>40)continue;
+     // A single useful intervention, not a repeated staircase of
+     // increasingly shorter suggestions after the manager acts on it.
+     if(booking.plannedLengthMinutes<=18)continue;
+     const shorter=Math.max(stipulationMinimumMinutes(rules),
+      Math.min(15,booking.plannedLengthMinutes-5));
+     if(shorter>=booking.plannedLengthMinutes)continue;
+     return make("ROAD_AGENT","Protect a strained partnership",
+      one.name+" and "+two.name+" have documented low working trust. "+
+      "A shorter match reduces their shared exposure without claiming personal animosity. "+
+      "The scripted teams, winner and finish remain untouched.",
+      "Shorten to "+shorter+" min",{kind:"MATCH_LENGTH",minutes:shorter});
+    }
+   }
+  }
   return null;
  }
  const segment=booking;
