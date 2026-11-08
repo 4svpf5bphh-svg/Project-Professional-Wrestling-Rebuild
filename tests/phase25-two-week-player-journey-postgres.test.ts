@@ -11,13 +11,15 @@ import {showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,
 import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
+import {submitManualContractOffer} from "../src/db/manual-contract-offers.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 
 /** Genuine two-week manager route, not disconnected mocked endpoints:
  * START FEUD -> CAST -> SAVE MATCH+ANGLE -> CONFIRM -> MANUAL WORLD LOCK
- * -> CERTIFIED RESULTS -> NEW SIGNED RENEWAL -> NEXT-WEEK PICKER
- * -> POST-SHOW CHOICE -> NEXT WEEK MATCH -> PAYOFF -> CERTIFICATION.
+ * -> PLAYER RENEWAL OFFER -> TRUSTED WORLD ACCEPTANCE -> CERTIFIED RESULTS
+ * -> ACTIVATED NEW TERMS -> NEXT-WEEK PICKER -> NEXT WEEK REMATCH
+ * -> PAYOFF AND CERTIFICATION. No fixture signs a substitute agreement.
  * The fixture World is disposable; neither a live clock,
  * production database nor automatic World Lock is accessed.
  */
@@ -95,8 +97,10 @@ test("player books and certifies two weeks with a renewed show-week contract and
    await tx.query("INSERT INTO ppw_promotion_controls("+
     "world_id,player_id,promotion_id) VALUES($1,$2,$3)",
     [worldId,playerId,promotionId]);
-   await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0"+
-    " WHERE world_id=$1",[worldId]);
+   // Deterministic acceptance in this disposable economic fixture.
+   // A real player must still submit the offer; the World alone accepts it.
+   await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0,"+
+    " offer_acceptance_threshold=0 WHERE world_id=$1",[worldId]);
    await tx.query("UPDATE ppw_promotions SET media_reach=70"+
     " WHERE world_id=$1 AND promotion_id=$2",[worldId,promotionId]);
    await tx.query("INSERT INTO ppw_markets("+
@@ -109,9 +113,12 @@ test("player books and certifies two weeks with a renewed show-week contract and
     await tx.query("INSERT INTO ppw_people("+
      "world_id,person_id,name,booking_division,in_ring_quality,match_craft,"+
      "presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum,"+
-     "default_alignment)"+
-     " VALUES($1,$2,$3,'MEN',82,81,84,87,95,5,5,65,66,70,$4)",
-     [worldId,person,index===0?"Samoa Joe":"Místico",index===0?"HEEL":"FACE"]);
+     "default_alignment,career_stage,morale,contract_priorities)"+
+     " VALUES($1,$2,$3,'MEN',82,81,84,87,95,5,5,65,66,70,$4,'PRIME',80,$5::jsonb)",
+     [worldId,person,index===0?"Samoa Joe":"Místico",
+      index===0?"HEEL":"FACE",JSON.stringify({
+       money:65,role:70,prestige:50,schedule:45,loyalty:40,exposure:60
+      })]);
     await tx.query("INSERT INTO ppw_contracts("+
      "world_id,contract_id,person_id,promotion_id,family,status,"+
      "remaining_dates,expires_week_index,appearance_fee)"+
@@ -162,6 +169,17 @@ test("player books and certifies two weeks with a renewed show-week contract and
   assert.equal((await ready(firstShow,"confirm-opening")).status,"APPLIED");
   card=await showCardEditorAsActor(context,worldId,promotionId,firstShow);
   assert.equal(card.ready,true);
+  // True manager action: the old Week-1 Joe deal expires after this show.
+  // A future-dated renewal is offered via the normal authenticated command.
+  const renewalOffer="week-one-joe-renewal-"+uuid;
+  const offered=await submitManualContractOffer(db.pool,{
+   worldId,playerId,promotionId,personId:"joe",sourceContractId:"deal-joe",
+   requestId:renewalOffer,expectedRevision:await revision(),terms:{
+    family:"LIMITED_NON_EXCLUSIVE",roleExpectation:"FEATURED",
+    creativeControl:"CONSULTATION",startWeekIndex:1,termWeeks:12,
+    dateEntitlement:5,weeklyGuarantee:100,appearanceFee:9000,signingBonus:0
+   }});
+  assert.equal(offered.status,"APPLIED","Only the controlling manager can send the renewal");
   await resolve(1);
   const result=await readCompletedShowView(db.pool,{...scope,showId:firstShow});
   assert.equal(result.matchCount,1);
@@ -179,23 +197,29 @@ test("player books and certifies two weeks with a renewed show-week contract and
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY person_id",
    [worldId])).map(x=>x.remaining_dates),[4,4],
    "A wrestler booked in one bout plus angle owes one show appearance, not two");
-  // After Week 1 certification, Joe's original contract has expired.
-  // Simulate the signed/accepted renewal now active in Week 2. This is
-  // fixture setup, not a hidden offer acceptance or a production mutation.
-  // The live editor must select the NEW agreement before an already-planned
-  // rematch can be authored, saved, and resolved through the same World Lock.
-  await withWorldTransaction(db.pool,tx=>tx.query(
-   "INSERT INTO ppw_contracts("+
-   "world_id,contract_id,person_id,promotion_id,family,status,"+
-   "remaining_dates,start_week_index,expires_week_index,appearance_fee)"+
-   " VALUES($1,'renewal-joe','joe',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',5,1,52,9000)",
-   [worldId,promotionId]));
+  // The trusted World evaluated the pending wrestler decision, then
+  // activated the accepted terms at the original agreement's paid expiry.
+  // The original system extends the same contract ID, preserving continuity.
+  const negotiation=await read<{status:string}>(
+   "SELECT status FROM ppw_contract_offers WHERE world_id=$1 AND offer_id=$2",
+   [worldId,renewalOffer]);
+  assert.deepEqual(negotiation,[{status:"ACCEPTED"}]);
+  const activated=await read<{status:string}>(
+   "SELECT status FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND contract_id='deal-joe'",
+   [worldId]);
+  assert.deepEqual(activated,[{status:"ACTIVATED"}]);
+  const signed=await read<{contract_id:string;start_week_index:number;expires_week_index:number;
+   remaining_dates:number}>(
+   "SELECT contract_id,start_week_index,expires_week_index,remaining_dates"+
+   " FROM ppw_contracts WHERE world_id=$1 AND person_id='joe'",[worldId]);
+  assert.deepEqual(signed,[{contract_id:"deal-joe",start_week_index:1,
+   expires_week_index:12,remaining_dates:5}],
+   "The old deal must not vanish, retain expired rights, or gain a duplicate signed row");
   const nextWeekRights=await cardTalentAsActor(context,worldId,promotionId,
    secondShow,"Joe",null,10);
   assert.deepEqual(nextWeekRights.talent.map(p=>[p.personId,p.contractId,p.available]),
-   [["joe","renewal-joe",true]],
-   "A signed future renewal must replace the expired original agreement in the next show's picker");
-  members[0]!.contractId="renewal-joe";
+   [["joe","deal-joe",true]],
+   "The accepted and activated renewal must be usable for the next show without replacing the wrestler's identity");
   const direction=await chooseProgrammeDirection(db.pool,{...scope,
    programmeId,showId:firstShow,slotId:"main",
    choice:"PURSUE_REMATCH",requestId:"demand-rematch",
@@ -242,8 +266,8 @@ test("player books and certifies two weeks with a renewed show-week contract and
    "SELECT contract_id,remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",
    [worldId]);
   assert.deepEqual(Object.fromEntries(finalContracts.map(x=>[x.contract_id,x.remaining_dates])),
-   {"deal-joe":4,"deal-mistico":3,"renewal-joe":4},
-   "Certified Week 2 deducts the renewed Joe deal once while leaving his original expired deal untouched");
+   {"deal-joe":4,"deal-mistico":3},
+   "The real renewed Joe deal was charged once in Week 2, without a duplicate agreement or double-spending");
   assert.equal((await driveWorldResolution(db.pool,{
    worldId,resolutionId:"manual-resolution-2-"+uuid,maxStages:2})).status,"BLOCKED");
   assert.equal((await read<{n:number}>(
@@ -263,6 +287,7 @@ test("player books and certifies two weeks with a renewed show-week contract and
     "ppw_week_continuity_assessments","ppw_ledger_events",
     "ppw_command_receipts","ppw_promotion_alignment_changes",
     "ppw_programme_match_activities","ppw_card_slots","ppw_booking_drafts",
+    "ppw_contract_offers","ppw_contract_renewal_proposals",
     "ppw_programme_creative_agreements","ppw_programme_side_refs",
     "ppw_programme_participants","ppw_programmes",
     "ppw_contracts","ppw_people","ppw_venues",
