@@ -38,6 +38,23 @@ test("approved PPW full-screen intro is one artwork with an accessible Continue 
  }
 });
 
+test("intentional five-year booking horizon stays intact without filling Home with a day counter",async({page})=>{
+ const longWorld={...overview.world,
+  nextLockEpoch:Date.now()/1000+1825*86400,serverEpoch:Date.now()/1000};
+ const longOverview={...overview,world:longWorld};
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  ...current,overview:longOverview
+ }}));
+ await page.route("**/api/card",route=>route.fulfill({json:
+  route.request().postDataJSON().method==="overview"?longOverview:{}}));
+ await page.goto("/#/home");
+ await expect(page.locator(".ppw-home-countdown"))
+  .toHaveText("Booking is open · finish your next card when ready");
+ await expect(page.locator(".ppw-manual-test")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Advance Week/})).toHaveCount(0);
+ expect(longWorld.nextLockEpoch-longWorld.serverEpoch).toBeGreaterThan(1824*86400);
+});
+
 test("Home stays compact and avoids duplicate statuses or empty task panels at 320/390",async({page})=>{
  await page.route("**/api/session",route=>route.fulfill({json:current}));
  await page.route("**/api/card",route=>route.fulfill({json:
