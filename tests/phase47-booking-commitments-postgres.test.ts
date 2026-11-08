@@ -9,6 +9,7 @@ import {decideBackstageRequest,publishBackstageRequests,settleBackstagePromises}
 import {closeUnavailableBackstageRequests}
  from "../src/db/backstage-closure.js";
 import {readPortablePersonaWorkspace} from "../src/db/portable-persona-workspace.js";
+import {publishBackstageMemories} from "../src/db/backstage-memories.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 /** Authoritative private messages -> real authored draft -> certified match
@@ -31,7 +32,8 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
  const people=[
   ["a","Agreed Wrestler"],["b","Agreed Speaker"],
   ["c","Injured Wrestler"],["d","Forgotten Wrestler"],
-  ["e","Title Challenger"],["f","Medical Contact"]
+  ["e","Title Challenger"],["f","Medical Contact"],
+  ["g","Declined Request"]
  ] as const;
  try{
   await withWorldTransaction(db.pool,async tx=>{
@@ -66,7 +68,7 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
      [worldId,"visitors-"+personId,personId,otherPromotion]);
    for(const [personId,kind] of [
     ["a","MORALE"],["b","CREATIVE"],["c","MORALE"],["d","MORALE"],
-    ["e","TITLE_AMBITION"]
+    ["e","TITLE_AMBITION"],["g","MORALE"]
    ]){
     await tx.query("INSERT INTO ppw_backstage_requests("+
      "world_id,request_id,promotion_id,person_id,kind,created_week_index)"+
@@ -83,7 +85,7 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
   for(const [personId,decision] of [
    ["a","PROMISE_APPEARANCE"],["b","PROMISE_SEGMENT"],
    ["c","PROMISE_APPEARANCE"],["d","PROMISE_APPEARANCE"],
-   ["e","TALK"]
+   ["e","TALK"],["g","DECLINE"]
   ] as const){
    const response=await decideBackstageRequest(db.pool,{...context,
     requestId:"reply-"+personId,conversationId:"request-"+personId,
@@ -125,6 +127,12 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
   assert.equal(title.decision,"TALK");
   assert.equal(title.plannedBooking,null,
    "Listening to title ambitions grants no automatic championship match");
+  const turnedDown=(await readPortablePersonaWorkspace(db.pool,{...context,
+   personId:"g"})).conversations[0]!;
+  assert.equal(turnedDown.status,"DECLINED");
+  assert.equal(turnedDown.decision,"DECLINE");
+  assert.equal(turnedDown.plannedBooking,null,
+   "A manager's refusal does not secretly create or schedule a match");
   // Two real certified records: the player show keeps A and B's promises,
   // a different promotion records C's legitimate injury after the reply.
   await withWorldTransaction(db.pool,async tx=>{
@@ -200,6 +208,14 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
   assert.equal(byId.d?.trust_delta,-3);
   assert.equal(byId.e?.status,"ANSWERED");
   assert.equal(byId.f?.status,"ANSWERED");
+  assert.equal(byId.g?.status,"DECLINED");
+  assert.equal(byId.g?.trust_delta,0);
+  await withWorldTransaction(db.pool,tx=>publishBackstageMemories(tx,worldId,2));
+  const refusedMemory=await query<{kind:string}>(
+   "SELECT kind FROM ppw_backstage_memories"+
+   " WHERE world_id=$1 AND person_id='g'",[worldId]);
+  assert.deepEqual(refusedMemory,[{kind:"REQUEST_DECLINED"}],
+   "Refusal is remembered as a private decision, never a false promise");
   const trust=await query<{person_id:string;trust:number}>(
    "SELECT person_id,trust FROM ppw_backstage_promotion_trust"+
    " WHERE world_id=$1",[worldId]);
