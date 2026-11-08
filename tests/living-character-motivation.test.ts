@@ -131,3 +131,17 @@ test("veteran-led mentorship remembers real tag chemistry and an actionable next
   requests:[accepted]})?.kind,"RECOVERY");
  assert.equal(livingWrestlerMotivation({...base,onRoster:false,requests:[accepted]}),null);
 });
+
+test("refusal is remembered briefly, never treated as a promise, artificial feud or injury",()=>{
+ const refused={kind:"REQUEST_DECLINED",weekIndex:39};
+ const current=livingWrestlerMotivation({...base,memories:[refused]});
+ assert.equal(current?.kind,"REQUEST_DECLINED");
+ assert.match(current!.reason,/Y1 W40/);
+ assert.match(current!.reason,/did not promise or schedule anything/);
+ assert.notEqual(livingWrestlerMotivation({...base,currentWeekIndex:45,
+  memories:[refused]})?.kind,"REQUEST_DECLINED");
+ assert.equal(livingWrestlerMotivation({...base,status:"INJURED",
+  memories:[refused]})?.kind,"RECOVERY");
+ assert.equal(livingWrestlerMotivation({...base,memories:[refused],
+  requests:[{kind:"CREATIVE",status:"PENDING",createdWeekIndex:40}]})?.kind,"CREATIVE");
+});

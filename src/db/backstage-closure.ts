@@ -15,7 +15,9 @@ export async function closeUnavailableBackstageRequests(
   "THEN 'WRESTLER_UNAVAILABLE' ELSE 'CONTRACT_UNAVAILABLE' END",
   "FROM ppw_people person WHERE r.world_id=$1 AND r.status='PENDING'",
   "AND person.world_id=r.world_id AND person.person_id=r.person_id",
-  "AND (person.status<>'ACTIVE' OR NOT EXISTS(",
+  // Medical absence is temporary; retain an unanswered medical-support
+  // request when a signed deal still exists, rather than fabricating refusal.
+  "AND (person.status NOT IN ('ACTIVE','INJURED') OR NOT EXISTS(",
   "SELECT 1 FROM ppw_contracts c WHERE c.world_id=r.world_id",
   "AND c.promotion_id=r.promotion_id AND c.person_id=r.person_id",
   "AND c.status='SIGNED' AND c.start_week_index<=$2",

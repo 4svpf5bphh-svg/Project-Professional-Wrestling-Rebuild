@@ -28,7 +28,9 @@ const existing={programmeId:"joe-riddle",status:"ACTIVE",heat:67,repetition:0,
  sideA:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
  sideB:[{kind:"PERSON",refId:"riddle",name:"Matt Riddle"}],
  recentActivity:[],eligibleCreativePeople:[],creativeAgreements:[],
- plannedActivity:[],finale:null,latestFollowUp:null};
+ plannedActivity:[],finale:null,latestFollowUp:null,
+ wrestlerOrigin:{requestId:"rival:1",initiatorId:"joe",opponentId:"riddle",
+  acceptedWeekIndex:3,recordedWeekIndex:null,previousCertifiedMeetings:3}};
 
 for(const width of [320,390]){
  test(`Phase 31 ${width}px: accepted wrestler rivalry opens the named programme pair but books nothing until confirmed`,
@@ -86,6 +88,10 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
   await create.getByRole("button",{name:"Start rivalry"}).click();
   await expect(page.locator(".ppw-programme-switch")).toContainText(["Samoa Joe vs Matt Riddle"]);
+  await expect(page.locator(".ppw-programme-wrestler-idea"))
+   .toContainText("Wrestler idea accepted — no on-screen chapter yet");
+  await expect(page.locator(".ppw-programme-wrestler-idea"))
+   .toContainText("Samoa Joe suggested this rivalry with Matt Riddle");
   expect(calls.filter(c=>c==="startProgramme")).toHaveLength(1);
   expect(calls.filter(c=>c==="programmes")).toHaveLength(2);
   expect(calls).not.toContain("saveCard");

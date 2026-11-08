@@ -153,6 +153,14 @@ export function livingWrestlerMotivation(i:LivingMotivationInput):LivingMotivati
  if(broken&&!repaired)return make("PROMISE_BROKEN","Rebuild the trust",
   "An earlier booking promise went unfulfilled. Future actions can restore confidence.",
   "CERTIFIED","BACKSTAGE");
+ // A genuine declined request remains a brief private memory, without
+ // inventing a morale penalty, feud, contract or future booking duty.
+ const refused=memories.find(m=>m.kind==="REQUEST_DECLINED"&&
+  i.currentWeekIndex-m.weekIndex<=4);
+ if(refused)return make("REQUEST_DECLINED","A request was turned down",
+  "You declined a wrestler's request in "+weekLabel(refused.weekIndex)+
+   ". That decision is recorded; it did not promise or schedule anything.",
+  "CERTIFIED","BACKSTAGE");
  const titles=i.championships?.length??0;
  const chance=memories.find(m=>m.kind==="TITLE_CHALLENGE");
  const newerWin=memories.some(m=>m.kind==="TITLE_WON"&&

@@ -122,10 +122,26 @@ export function drawerRootForSection(section:HostSection):HostDrawerRoot{
 /** Selected show IDs remain in this browser history entry, never in the URL.
  * The authenticated booking endpoint still verifies World/promotion control.
  */
-export function bookingHistoryState(worldId:string,promotionId:string,showId:string){
+/** One show may be opened from a wrestler-originated Programme. Keep the
+ * optional focus in private, scope-checked browser history, never the URL.
+ * The actual show/contract/creative authorisation still runs on the server.
+ */
+export interface ProgrammeCardHistoryFocus{programmeId:string;ideaKind?:string}
+export function bookingHistoryState(worldId:string,promotionId:string,showId:string,
+ focus?:ProgrammeCardHistoryFocus|null){
  if(![worldId,promotionId,showId].every(v=>v.trim().length>0&&v.length<=200))
   throw new Error("Invalid booking route");
- return {ppwBooking:{worldId,promotionId,showId}};
+ if(focus){
+  if(typeof focus.programmeId!=="string"||!focus.programmeId.trim()||
+   focus.programmeId.length>200||
+   (focus.ideaKind!==undefined&&
+    (typeof focus.ideaKind!=="string"||!focus.ideaKind||
+     focus.ideaKind.length>60)))
+   throw new Error("Invalid Programme booking focus");
+ }
+ return {ppwBooking:{worldId,promotionId,showId,
+  ...(focus?{programmeId:focus.programmeId,
+   ...(focus.ideaKind?{ideaKind:focus.ideaKind}:{})}:{})}};
 }
 export function readBookingHistory(state:unknown,worldId:string,promotionId:string):string|null{
  if(!state||typeof state!=="object"||Array.isArray(state))return null;
@@ -135,4 +151,23 @@ export function readBookingHistory(state:unknown,worldId:string,promotionId:stri
  return p.worldId===worldId&&p.promotionId===promotionId&&
   typeof p.showId==="string"&&p.showId.trim().length>0&&p.showId.length<=200?
   p.showId:null;
+}
+
+/** A history-forward/reload restores only the visible local Programme choice,
+ * after verifying the authoritative World/promotion/show route first.
+ */
+export function readBookingProgrammeFocus(state:unknown,worldId:string,
+ promotionId:string):ProgrammeCardHistoryFocus|null{
+ if(!readBookingHistory(state,worldId,promotionId)||!state||
+  typeof state!=="object"||Array.isArray(state))return null;
+ const entry=(state as {ppwBooking?:unknown}).ppwBooking;
+ if(!entry||typeof entry!=="object"||Array.isArray(entry))return null;
+ const p=entry as Record<string,unknown>;
+ if(typeof p.programmeId!=="string"||!p.programmeId.trim()||
+  p.programmeId.length>200)return null;
+ if(p.ideaKind!==undefined&&
+  (typeof p.ideaKind!=="string"||!p.ideaKind.trim()||
+   p.ideaKind.length>60))return null;
+ return {programmeId:p.programmeId,
+  ...(typeof p.ideaKind==="string"?{ideaKind:p.ideaKind}:{})};
 }

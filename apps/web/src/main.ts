@@ -5,12 +5,14 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
  consumeBackstageRivalryFocus,
- consumeBookingFocus,clearBookingFocus}
+ consumeBookingFocus,clearBookingFocus,consumeProgrammeBookingFocus,
+ type ProgrammeBookingFocus}
  from "../../../src/web/card-browser.js";
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
- type HomeAttentionFocus,legendsVaultHash} from "../../../src/web/host-navigation.js";
+ type HomeAttentionFocus,legendsVaultHash,readBookingProgrammeFocus}
+ from "../../../src/web/host-navigation.js";
 import {createCardClient,type CardSessionScope} from "../../../src/web/card-client.js";
 import {clearLegendRevealPortal,type LegendsVaultView} from "../../../src/ui/legends-vault.js";
 import {requireSuccessfulPromotionClaim} from "../../../src/web/promotion-claim-feedback.js";
@@ -127,10 +129,12 @@ function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:str
  * its exact card, including a second PPV. World and promotion must still match.
  * No player, contract, or show identity appears in the shareable URL.
  */
-function openBooking(showId:string){
+function openBooking(showId:string,focus?:ProgrammeBookingFocus|null){
  if(!session?.overview.promotion)return;
  const worldId=session.worldId,promotionId=session.overview.promotion.id;
- const state=bookingHistoryState(worldId,promotionId,showId);
+ const validFocus=focus&&focus.worldId===worldId&&
+  focus.promotionId===promotionId?focus:null;
+ const state=bookingHistoryState(worldId,promotionId,showId,validFocus);
  bookingDirty=false;activeBooking={worldId,promotionId,showId};
  if(location.hash===plannerCardHash)
   history.replaceState(null,"",hostSectionHash("planner"));
@@ -316,8 +320,13 @@ function renderSection(){
      // The World has already advanced; Home retains the unseen Legends cue.
     }
    });break;
-  case "planner":mountPlannerPage(view,scope,back,
-   location.hash===plannerCardHash,undefined,openBooking);break;
+  case "planner":{
+   const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
+   mountPlannerPage(view,scope,back,
+    location.hash===plannerCardHash||!!storyFocus,undefined,
+    storyFocus?(showId=>openBooking(showId,storyFocus)):openBooking);
+   break;
+  }
   case "card":{
    const showId=readBookingHistory(history.state,scope.worldId,scope.promotionId);
    if(!showId){
@@ -326,11 +335,14 @@ function renderSection(){
     mountPlannerPage(view,scope,back,false,undefined,openBooking);
    }else{
     activeBooking={worldId:scope.worldId,promotionId:scope.promotionId,showId};
+    const storyFocus=readBookingProgrammeFocus(history.state,
+     scope.worldId,scope.promotionId);
     mountBookingPageForHost(view,{...scope,showId},()=>openSection("planner"),
      dirty=>{
       if(view.isConnected&&readHostSection(location.hash)==="card"&&
        activeBooking?.showId===showId)bookingDirty=dirty;
-     },section=>openSection(section),undefined,undefined,
+     },section=>openSection(section),storyFocus?.programmeId,
+     storyFocus?.ideaKind,
      consumeBookingFocus(scope.worldId,scope.promotionId)??undefined);
    }
    break;
