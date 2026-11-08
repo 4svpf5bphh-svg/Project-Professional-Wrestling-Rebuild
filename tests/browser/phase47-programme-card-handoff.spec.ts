@@ -55,7 +55,7 @@ for(const width of [320,390])test(`Phase 47 ${width}px: wrestler-led rivalry ent
  await page.goto("/#/programmes");
  await expect(page.locator(".ppw-programme-wrestler-idea")).toContainText("Samoa Joe");
  await page.getByRole("button",{name:"Book next chapter"}).click();
- await expect(page).toHaveURL(/#\\/card$/);
+ await expect.poll(()=>page.evaluate(()=>location.hash)).toBe("#/card");
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  const selected=page.locator(".ppw-card-rivalry-pick[aria-pressed='true']");
  await expect(selected).toHaveText("Samoa Joe vs Matt Riddle");
@@ -66,10 +66,10 @@ for(const width of [320,390])test(`Phase 47 ${width}px: wrestler-led rivalry ent
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
  await page.goBack();
- await expect(page).toHaveURL(/#\\/planner$/);
+ await expect.poll(()=>page.evaluate(()=>location.hash)).toBe("#/planner");
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await page.goForward();
- await expect(page).toHaveURL(/#\\/card$/);
+ await expect.poll(()=>page.evaluate(()=>location.hash)).toBe("#/card");
  await expect(page.locator(".ppw-card-rivalry-pick[aria-pressed='true']"))
   .toHaveText("Samoa Joe vs Matt Riddle");
  await page.reload();
