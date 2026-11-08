@@ -20,6 +20,8 @@ for(const width of [320,390]){
   });
   let saved=asMatch(old),revision=4;
   const requests:Record<string,unknown>[]=[];
+  let releaseSave!:()=>void;
+  const saveGate=new Promise<void>(resolve=>{releaseSave=resolve;});
   const overview={world:{revision:4,name:"Genesis",year:1,week:1,phase:"OPEN",
    nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
    membership:"ACTIVE",promotion:{id:"cwa",name:"Chaotic Wrestling Alliance",tier:"LOCAL",
@@ -51,6 +53,7 @@ for(const width of [320,390]){
    if(req.method==="load")return r.fulfill({json:card()});
    if(req.method==="save"){
     requests.push(req);
+    await saveGate;
     saved=(req.matches as Array<{payload:typeof saved}>)[0]!.payload;
     revision++;
     return r.fulfill({json:{status:"APPLIED",revision,result:{showId:"future",matchCount:1}}});
@@ -67,9 +70,24 @@ for(const width of [320,390]){
   await update.click();
   await expect(update).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Discard unsaved edits"})).toBeVisible();
+  // A manager can abandon a renewal correction without changing the saved
+  // card, and the same valid offer remains available on reopening.
+  page.once("dialog",dialog=>{void dialog.accept();});
+  await page.getByRole("button",{name:"Discard unsaved edits"}).click();
+  await expect(update).toBeVisible();
+  expect(requests).toHaveLength(0);
+  await update.click();
+  await expect(update).toHaveCount(0);
   expect(saved.participants[0]?.contractId).toBe("old-austin");
   expect(requests).toHaveLength(0);
   await page.getByRole("button",{name:/Save card|Save changes/}).click();
+  const inFlight=page.getByRole("button",{name:"Saving…"});
+  await expect(inFlight).toBeDisabled();
+  // A tap while an authoritative save is pending must not enqueue a second
+  // command or spend two appearances. Only one request ID leaves the device.
+  await inFlight.evaluate((el:HTMLButtonElement)=>el.click());
+  expect(requests).toHaveLength(1);
+  releaseSave();
   await expect(page.getByText("Show card saved")).toBeVisible();
   expect(requests).toHaveLength(1);
   expect(requests[0]?.expectedRevision).toBe(4);
