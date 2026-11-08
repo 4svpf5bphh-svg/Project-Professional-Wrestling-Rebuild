@@ -25,6 +25,11 @@ for(const width of [320,390])test(`Phase 47 ${width}px injured wrestler pauses i
  await page.route("**/api/card",r=>{
   const req=r.request().postDataJSON() as {method:string};
   calls.push(req.method);
+  if(req.method==="planner")return r.fulfill({json:{
+   worldName:"Genesis",promotionName:"CWA",year:1,week:6,
+   canEdit:true,worldRevision:14,homeMarketId:"home",venues:[],
+   weeks:[{year:1,week:6,offset:0,required:true,major:false,
+    canEdit:true,scheduled:[],shows:[]}]}});
   if(req.method==="programmes")return r.fulfill({json:{
    year:1,week:6,worldRevision:14,canEdit:true,
    people:[{kind:"PERSON",refId:"riddle",name:"Matt Riddle"}],
@@ -49,6 +54,10 @@ for(const width of [320,390])test(`Phase 47 ${width}px injured wrestler pauses i
   .toBeLessThanOrEqual(1);
  expect(calls).not.toContain("saveCard");
  await page.getByRole("button",{name:"Review safe next steps"}).click();
- await expect.poll(()=>page.evaluate(()=>location.hash)).toContain("planner");
+ await expect(page).toHaveURL(/#\/planner$/);
+ await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
+ await expect(page.getByText(/There isn't an unfinished show card this week/))
+  .toBeVisible();
+ expect(calls).toContain("planner");
  expect(calls).not.toContain("saveCard");
 });
