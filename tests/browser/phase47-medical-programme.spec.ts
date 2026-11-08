@@ -40,7 +40,10 @@ for(const width of [320,390])test(`Phase 47 ${width}px injured wrestler pauses i
  await expect(page.locator(".ppw-programme-glance-headline")).toContainText("Samoa Joe won");
  await page.getByRole("button",{name:"Plan",exact:true}).click();
  await expect(page.getByText(/medically unavailable\. Revisit the plan after clearance/)).toBeVisible();
- await expect(page.locator(".ppw-programme-story-actions button")).toHaveCount(0);
+ // Post-match human Result fallout choices must remain available; only
+ // automatic ready-to-book angle suggestions are withheld during injury.
+ await expect(page.locator(".ppw-programme-story-actions > button")).toHaveCount(0);
+ await expect(page.locator(".ppw-programme-decisions button")).toHaveCount(3);
  await page.getByRole("button",{name:"Story",exact:true}).click();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
