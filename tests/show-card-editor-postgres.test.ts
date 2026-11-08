@@ -67,6 +67,22 @@ for(const mode of ["ROYAL","TEAMS"] as const){
      [world,show,JSON.stringify({participants:[members[0]],kind:"PROMO",outcome:"HAPPENS"})]);
    });
    const view=await showCardEditorAsActor(context,world,promotion,show);
+   // Finance is included in this owner-authorised Card hydration, with a
+   // fixed Neon query/response budget even for a full 30-person Royal.
+   const cardMeter=new MeasuredQuerySession("card-read-finances-"+mode);
+   const cardPool:TransactionPool={async connect(){
+    const client=await db.pool.connect();
+    return {release(){client.release();},
+     async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+      return cardMeter.execute(()=>client.query<T>(sql,params));
+     }};
+   }};
+   const reloaded=await showCardEditorAsActor({...context,pool:cardPool},
+    world,promotion,show);
+   assert.deepEqual(reloaded.bookingFinancials,view.bookingFinancials,
+    "Bounded Card read must include the identical owner-scoped financial snapshot");
+   const cardSample=cardMeter.assertBudget({maxQueries:12,maxResultBytes:120_000});
+   console.log("PPW Card finances Neon query budget:",JSON.stringify(cardSample));
    assert.equal(view.canEdit,true);
    const offeredPair=view.bookableTeams.find(t=>t.teamId==="tested-pair");
    assert.equal(offeredPair?.members.length,2);
