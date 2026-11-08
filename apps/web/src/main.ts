@@ -475,7 +475,10 @@ async function loadSession(){
  * Never blocks a repeat visit or changes the underlying signed-in game.
  */
 function presentOpening(){
- if(!session?.overview.promotion||readHostSection(location.hash)!=="home")return;
+ // Only the actual app launch gets a blocking intro; explicit deep links
+ // and returning from departments must remain immediately interactive.
+ if(!session?.overview.promotion||readHostSection(location.hash)!=="home"||
+  (location.hash!==""&&location.hash!=="#/"))return;
  const key="ppw-opening:"+session.worldId+":"+session.overview.promotion.id;
  try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"1");}catch{return;}
  const scene=el("section","ppw-opening");
