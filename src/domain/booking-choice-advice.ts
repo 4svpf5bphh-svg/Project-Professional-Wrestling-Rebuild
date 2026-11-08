@@ -81,6 +81,9 @@ export function bookingChoiceAdvice(booking:EditorMatch|EditorSegment,
       !Number.isFinite(fact.familiarity)||fact.familiarity<0||
       fact.familiarity>100||fact.professionalTrust< -100||
       fact.professionalTrust>40)continue;
+     // A single useful intervention, not a repeated staircase of
+     // increasingly shorter suggestions after the manager acts on it.
+     if(booking.plannedLengthMinutes<=18)continue;
      const shorter=Math.max(stipulationMinimumMinutes(rules),
       Math.min(15,booking.plannedLengthMinutes-5));
      if(shorter>=booking.plannedLengthMinutes)continue;
