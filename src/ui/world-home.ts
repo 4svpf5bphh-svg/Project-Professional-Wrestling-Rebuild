@@ -301,11 +301,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      action:()=>{if(claimingKP)return;
       if(!port.claimWeeklyKP){port.openKayfabe?.();return;}
       claimingKP=true;
-      void port.claimWeeklyKP().then(result=>{
-       manualStatus=result.awarded>0?"Kayfabe Points claimed.":
-        result.reason??"No new points available.";
-       return load();
-      }).catch(e=>{error=e instanceof Error?e.message:"Could not claim points";})
+      void port.claimWeeklyKP().then(()=>load())
+       .catch(e=>{error=e instanceof Error?e.message:"Could not claim points";})
        .finally(()=>{claimingKP=false;draw();});
      },icon:"★",level:"priority"});
    }
