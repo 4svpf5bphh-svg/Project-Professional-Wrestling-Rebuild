@@ -170,6 +170,7 @@ for(const width of [320,390]){
   const requests=await mock(page);
   await page.goto("/#/roster");
   const wrestler=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
+  await expect(wrestler).toBeVisible();
   // Force the underlying iPhone document deep into its own scroll before
   // opening the modal. A synthetic DOM click avoids Playwright scrolling
   // the roster back to the top in order to click the card.
