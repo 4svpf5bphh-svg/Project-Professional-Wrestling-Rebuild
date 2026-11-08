@@ -172,8 +172,12 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
   const generated=await withWorldTransaction(db.pool,tx=>
    publishBackstageRequests(tx,worldId,1));
   assert.equal(generated.newMessages,1);
-  const incoming=(await readPortablePersonaWorkspace(db.pool,{...context,
-   personId:"f"})).conversations[0]!;
+  const incomingView=await readPortablePersonaWorkspace(db.pool,{...context,
+   personId:"f"});
+  const incoming=incomingView.conversations[0]!;
+  assert.equal(incomingView.roster.find(p=>p.personId==="f")?.isCurrent,true,
+   "Injury cannot turn a signed wrestler into an unreplyable former contact");
+  assert.equal(incomingView.canEdit,true);
   assert.equal(incoming.kind,"MEDICAL_SUPPORT");
   assert.equal(incoming.status,"PENDING");
   assert.equal((await withWorldTransaction(db.pool,tx=>
