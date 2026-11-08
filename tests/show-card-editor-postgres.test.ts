@@ -54,6 +54,13 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     await tx.query("INSERT INTO ppw_wrestler_relationships(world_id,person_a_id,person_b_id,professional_trust,familiarity,last_change_type) VALUES($1,'p0','p1',37,22,'STRAIN')",[world]);
     await tx.query("INSERT INTO ppw_tag_teams(world_id,team_id,name,status) VALUES($1,'tested-pair','Tested Pair','ACTIVE')",[world]);
     await tx.query("INSERT INTO ppw_tag_team_members(world_id,team_id,person_id) VALUES($1,'tested-pair','p0'),($1,'tested-pair','p1')",[world]);
+    // Booking affordability reuses the existing owned promotion and signed
+    // payroll facts; it must not issue a separate Finance desk read.
+    await tx.query("UPDATE ppw_promotions SET cash=135000,weekly_media_income=10000,"+
+     "weekly_sponsor_income=5000,weekly_fixed_overhead=3000"+
+     " WHERE world_id=$1 AND promotion_id=$2",[world,promotion]);
+    await tx.query("UPDATE ppw_contracts SET weekly_guarantee=450"+
+     " WHERE world_id=$1 AND person_id='p0'",[world]);
     await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,$2,$3,1,1,'DRAFT',3,'hall','home','Wednesday Night Live','REGULAR')",
      [world,show,promotion]);
     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'angle',0,'SEGMENT',$3::jsonb)",
@@ -74,6 +81,15 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    assert.equal(view.marketName,"Heartland");
    assert.equal(view.day,3);
    assert.equal(view.bookingClass,"REGULAR");
+   assert.deepEqual({
+    currentWeekIndex:view.bookingFinancials?.currentWeekIndex,
+    cash:view.bookingFinancials?.cash,media:view.bookingFinancials?.media,
+    sponsor:view.bookingFinancials?.sponsor,
+    overhead:view.bookingFinancials?.overhead,
+    wages:view.bookingFinancials?.wages,staff:view.bookingFinancials?.staff
+   },{currentWeekIndex:0,cash:135000,media:10000,sponsor:5000,
+    overhead:3000,wages:450,staff:0},
+    "The owned show exposes actual payroll and cash in the existing Card read");
    assert.deepEqual(view.slots.map(s=>s.slotId),["angle"]);
    // Relationship facts share the already-authenticated talent query.
    // Keep the mobile show-week picker at two SQL round trips, not one
