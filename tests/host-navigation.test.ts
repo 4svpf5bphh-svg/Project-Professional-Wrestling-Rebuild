@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {HOST_SECTIONS,hostSectionHash,readHostSection,
  contractAttentionHash,readContractFocus,plannerCardHash,backstageUnreadHash,
- bookingHistoryState,readBookingHistory}
+ bookingHistoryState,readBookingHistory,readBookingProgrammeFocus}
  from "../src/web/host-navigation.js";
 test("every workspace is addressable and all routes avoid private credentials",()=>{
  for(const item of HOST_SECTIONS){
@@ -102,4 +102,22 @@ test("private selected-card history survives a reload but never crosses promotio
   showId:"x".repeat(201)}}, "w1","mine"),null);
  assert.throws(()=>bookingHistoryState("w1","mine",""));
  assert.equal("#/card".includes("ppv-night"),false);
+});
+
+test("Programme to booking focus survives iPhone history navigation without crossing managers",()=>{
+ const state=bookingHistoryState("shared","cwa","ascension",{
+  programmeId:"joe-riddle",ideaKind:"CONFRONTATION"});
+ assert.equal(readBookingHistory(state,"shared","cwa"),"ascension");
+ assert.deepEqual(readBookingProgrammeFocus(state,"shared","cwa"),{
+  programmeId:"joe-riddle",ideaKind:"CONFRONTATION"});
+ assert.equal(readBookingProgrammeFocus(state,"shared","other-manager"),null);
+ assert.equal(readBookingProgrammeFocus(state,"other-world","cwa"),null);
+ assert.equal(readBookingProgrammeFocus(bookingHistoryState("shared","cwa","ascension"),
+  "shared","cwa"),null);
+ assert.equal(readBookingProgrammeFocus({
+  ppwBooking:{...state.ppwBooking,programmeId:""}}, "shared","cwa"),null);
+ assert.throws(()=>bookingHistoryState("shared","cwa","ascension",{programmeId:""}));
+ assert.throws(()=>bookingHistoryState("shared","cwa","ascension",{
+  programmeId:"joe-riddle",ideaKind:"X".repeat(100)}));
+ assert.equal("#/card".includes("joe-riddle"),false);
 });
