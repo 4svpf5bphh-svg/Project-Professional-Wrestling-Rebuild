@@ -170,7 +170,15 @@ for(const width of [320,390]){
   const requests=await mock(page);
   await page.goto("/#/roster");
   const wrestler=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
-  await wrestler.click();
+  // Force the underlying iPhone document deep into its own scroll before
+  // opening the modal. A synthetic DOM click avoids Playwright scrolling
+  // the roster back to the top in order to click the card.
+  await page.evaluate(()=>{
+   document.body.style.minHeight="1800px";
+   window.scrollTo(0,800);
+  });
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeGreaterThan(0);
+  await wrestler.evaluate(node=>(node as HTMLElement).click());
   const overlay=page.locator(".ppw-profile-overlay");
   await expect(overlay).toBeVisible();
   const dossier=page.getByRole("dialog",{name:"Wrestler dossier"});
@@ -179,7 +187,7 @@ for(const width of [320,390]){
    const scroller=node as HTMLElement;
    return {top:scroller.scrollTop,extra:scroller.scrollHeight-scroller.clientHeight};
   });
-  expect(metrics.top).toBe(0,"A dossier must never inherit the directory's scroll position");
+  expect(metrics.top,"A dossier must never inherit the directory's scroll position").toBe(0);
   expect(metrics.extra).toBeGreaterThan(90);
   await overlay.evaluate(node=>{(node as HTMLElement).scrollTop=(node as HTMLElement).scrollHeight;});
   await expect.poll(()=>overlay.evaluate(node=>(node as HTMLElement).scrollTop)).toBeGreaterThan(25);
