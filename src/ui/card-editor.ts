@@ -39,6 +39,7 @@ import {forecastBookingAirtime} from "./card-airtime-preview.js";
 import {bookingChoiceAdvice,applyBookingAdjustment} from "../domain/booking-choice-advice.js";
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../domain/card-appearance-forecast.js";
+import {bookingFinanceBrief} from "../domain/booking-financial-brief.js";
 import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
 import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
@@ -933,14 +934,44 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      .flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId))
    ];
    const feeEstimate=forecastCardAppearanceFees(participation,roster);
-   if(feeEstimate.performers){
+   const finance=bookingFinanceBrief(view.bookingFinancials,feeEstimate,
+    (view.year-1)*52+view.week-1);
+   if(feeEstimate.performers||finance){
+    const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
     const costs=el("details","ppw-card-appearance-cost") as HTMLDetailsElement;
-    costs.append(el("summary","","Estimated appearance fees · "+
-     "$"+Math.round(feeEstimate.amount).toLocaleString("en-GB")),
-     el("p","",feeEstimate.performers+" wrestlers · "+
-      (feeEstimate.complete?"All fees known":feeEstimate.unknown+" fees unknown")+
-      ". Each person counts once for live matches, angles and run-ins. "+
-      "Pre-recorded videos carry no appearance fees. Costs settle when the show runs."));
+    costs.append(el("summary","","Show talent fees · "+money(feeEstimate.amount)+
+     (feeEstimate.complete?"":" + unknown")));
+    costs.append(el("p","",feeEstimate.performers+" wrestlers · "+
+     (feeEstimate.complete?"All fees known":feeEstimate.unknown+" fees unknown")+
+     ". Live match, angle and run-in appearances count once per show."));
+    if(finance){
+     const briefing=el("div","ppw-card-financial-baseline");
+     const row=(title:string,value:string)=>{
+      const line=el("div","ppw-card-financial-line");
+      line.append(el("span","",title),el("strong","",value));return line;
+     };
+     if(finance.talentLimit!==null)
+      briefing.append(row("Show talent limit",money(finance.talentLimit)));
+     briefing.append(row("Wages + staff / week",money(finance.weeklyGuaranteedOutgoings)));
+     if(finance.weeklyFixedMargin!==null){
+      briefing.append(row("4-week baseline",money(finance.fourWeeks!)),
+       row("8-week baseline",money(finance.eightWeeks!)));
+     }
+     if(finance.breachesTalentLimit)
+      briefing.append(el("p","ppw-card-financial-warning",
+       "Known fees exceed the show talent limit. Review the cast or the spending plan in Finances."));
+     else if(finance.mayBreachTalentLimit)
+      briefing.append(el("p","ppw-card-financial-warning",
+       "An unknown appearance fee could exceed the show talent limit."));
+     if(finance.projectedBelowReserve)
+      briefing.append(el("p","ppw-card-financial-warning",
+       "Known show fees would leave less than the selected cash reserve before ticket income."));
+     briefing.append(el("small","",
+      "Scenario, not a cash forecast: current balance, flat income, wages, staff and overhead. "+
+      "This card's fees count once within its show week. "+
+      "Excludes tickets, venues, production, travel, other shows and future contract changes."));
+     costs.append(briefing);
+    }
     root.append(costs);
    }
   const toolbar=el("div","ppw-toolbar");
@@ -2471,6 +2502,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          .flatMap(other=>[...other.actors,...other.targets].map(p=>p.personId))
        ];
        const fees=forecastIncrementalAppearanceFees(ids,existingAppearances,roster);
+       const allFees=forecastCardAppearanceFees([...existingAppearances,...ids],roster);
+       const cash=bookingFinanceBrief(view.bookingFinancials,allFees,
+        (view.year-1)*52+view.week-1);
+       if(cash&&(cash.breachesTalentLimit||cash.mayBreachTalentLimit||
+        cash.projectedBelowReserve)){
+        brief.append(el("p","ppw-guide-financial-warning",
+         cash.breachesTalentLimit?
+          "Known show talent fees exceed your spending cap. Review the cast or update Finances.":
+         cash.mayBreachTalentLimit?
+          "One or more appearance fees are unknown. The show cap cannot be confirmed.":
+          "Known fees would place the chosen cash reserve at risk before ticket income."));
+       }
        if(segment?.kind==="VIDEO_PACKAGE")
         brief.append(el("p","ppw-guide-fee-note",
          "Pre-recorded video · No live appearance fees for this segment."));
