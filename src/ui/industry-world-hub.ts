@@ -289,6 +289,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   clearLegendRevealPortal();
   if(watching||watched||watchError){renderPublicShow();return;}
   activateWorkspaceRoot(root,"ppw-industry");root.replaceChildren();
+  const newsLayout=active==="OFFICIAL"||active==="DIRT";
+  root.classList.toggle("ppw-news-layout",newsLayout);
   const head=el("header","ppw-industry-head");
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
   const headings:Record<string,[string,string]>={
@@ -302,7 +304,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     heritageTab==="HALL"?"Hall of Fame":heritageTab==="MOMENTS"?"World Moments":"Annual Awards"]
   };
   const heading=headings[active]??headings.STANDINGS!;
-  head.append(el("span","ppw-industry-kicker",heading[0]),
+  if(!newsLayout)head.append(el("span","ppw-industry-kicker",heading[0]),
    el("h1","",heading[1]),
    el("p","ppw-industry-muted",view?
     view.worldName+" · Year "+view.year+" · Week "+view.week:
@@ -669,22 +671,19 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    const section=el("section","ppw-industry-list ppw-news");
    const official=active==="OFFICIAL";
    section.classList.add(official?"ppw-news-official":"ppw-news-dirt");
-   // These are the actual owner-approved game-ready title images, cropped
-   // only to remove the old REBUILD wording. All world data stays DOM text.
+   // Crisp editorial mastheads preserve the established PPW desk palettes.
+   // Live headlines, results and award winners are separate DOM text.
    const masthead=el("div","ppw-news-masthead");
    const art=document.createElement("img");
    art.className="ppw-news-masthead-art";
-   art.src=official?"/branding/news-official.webp":"/branding/news-dirt.webp";
+   art.src=official?"/branding/news-official-crisp.webp":"/branding/news-dirt-crisp.webp";
    art.alt=official?"Official News · The PPW Wire":"Dirt Sheets · The Rumour Mill";
-   art.width=420;art.height=official?95:140;
+   art.width=1680;art.height=430;
    art.decoding="async";art.loading="eager";
    art.onerror=()=>{masthead.classList.add("ppw-news-masthead-failed");};
    masthead.append(art);
    section.append(masthead,
-    el("h2","ppw-news-masthead-fallback",official?"Official News":"Dirt Sheets"),
-    el("p","ppw-industry-muted",official?
-     "Verified highlights, award winners and reports from completed shows.":
-     "Backstage gossip, insider sources and the stories everyone is talking about."));
+    el("h2","ppw-news-masthead-fallback",official?"Official News":"Dirt Sheets"));
    if(newsBusy)section.append(el("p","ppw-industry-muted","Opening this week's news desk…"));
    if(newsError)section.append(el("p","ppw-alert ppw-error",newsError),
     btn("Retry",()=>void loadNews()));

@@ -672,6 +672,14 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  expect(manifest.ok()).toBeTruthy();
  expect((await manifest.json()).display).toBe("standalone");
  expect((await manifest.json()).theme_color).toBe("#101225");
+ expect((await manifest.json()).icons).toContainEqual({
+  src:"/icon-192.png",sizes:"192x192",type:"image/png",purpose:"any"});
+ const touch=await request.get("/apple-touch-icon.png");
+ expect(touch.ok()).toBeTruthy();
+ expect((await touch.body()).subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
+ const mask=await request.get("/icon-512.png");
+ expect(mask.ok()).toBeTruthy();
+ expect((await mask.body()).subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
  const appIcon=await request.get("/icon.svg");
  expect(appIcon.ok()).toBeTruthy();
  expect(await appIcon.text()).toContain("data:image/webp;base64,");
@@ -680,10 +688,11 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  expect(await worker.text()).toContain('url.pathname.startsWith("/api/")');
  // A refreshed shell must evict the old cache-first portrait entries; the
  // original 48 Legends retain their URL paths across this release.
- expect(await worker.text()).toContain('ppw-static-shell-v8');
+ expect(await worker.text()).toContain('ppw-static-shell-v9');
  for(const path of ["ppw-showcase-hero.webp","ppw-showcase-header.webp",
   "ppw-showcase-badge.webp","news-official.webp","news-dirt.webp",
-  "award-match.webp","award-angle.webp"]){
+  "award-match.webp","award-angle.webp",
+  "ppw-intro-stage.webp","news-official-crisp.webp","news-dirt-crisp.webp"]){
   expect(await worker.text()).toContain('"/branding/'+path+'"');
   const image=await request.get("/branding/"+path);
   expect(image.ok()).toBeTruthy();

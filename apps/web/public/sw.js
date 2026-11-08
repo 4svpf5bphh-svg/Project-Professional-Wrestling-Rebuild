@@ -1,8 +1,10 @@
 /* Static install shell only: never cache authenticated requests or World data. */
 // Asset names are stable across Legends artwork upgrades; rotate the shell
 // cache with each curated art replacement so old portraits are never served.
-const CACHE="ppw-static-shell-v8";
-const CORE=["/offline.html","/icon.svg","/manifest.webmanifest",
+const CACHE="ppw-static-shell-v9";
+const CORE=["/offline.html","/icon.svg","/icon-192.png","/icon-512.png",
+ "/apple-touch-icon.png","/manifest.webmanifest","/branding/ppw-intro-stage.webp",
+ "/branding/news-official-crisp.webp","/branding/news-dirt-crisp.webp",
  "/branding/ppw-showcase-hero.webp","/branding/ppw-showcase-header.webp",
  "/branding/ppw-showcase-badge.webp",
  "/branding/news-official.webp","/branding/news-dirt.webp",
