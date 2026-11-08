@@ -204,14 +204,21 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    loading?"Checking World…":"Check World status") as HTMLButtonElement;
   check.type="button";check.disabled=loading;check.onclick=()=>void load();
   if(world.phase==="OPEN"){
+   // The deliberately extended solo playtest deadline is real, but a
+   // five-year countdown is not useful dashboard information. Keep normal
+   // short-window countdowns and all authoritative deadline checks intact.
+   const longTestWindow=Number.isFinite(world.nextLockEpoch)&&
+    Number.isFinite(world.serverEpoch)&&
+    world.nextLockEpoch-world.serverEpoch>30*86400;
    const countdown=el("p","ppw-home-countdown",
     deadlineDue?"Booking deadline reached · check World status":
+    longTestWindow?"Booking is open · finish your next card when ready":
      "Checking this week's deadline…");
    countdown.setAttribute("aria-live","off");
    hero.append(countdown);
    check.hidden=!deadlineDue;
    hero.append(check);
-   if(!deadlineDue)startClock(countdown,world,()=>{
+   if(!deadlineDue&&!longTestWindow)startClock(countdown,world,()=>{
     expiredOnScreen=key;
     draw();
    });
