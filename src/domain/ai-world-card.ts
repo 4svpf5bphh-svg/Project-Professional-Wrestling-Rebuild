@@ -182,14 +182,15 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
    (a.kind!=="PROGRAMME"?0:1)-(b.kind!=="PROGRAMME"?0:1)||
    b.heat-a.heat||a.aId.localeCompare(b.aId,"en"));
  const reserve=priority[0]??null;
- const tagCandidates=(input.establishedTeams??[]).map(t=>{
-  if(!t.teamId||!t.aId||!t.bId||t.aId===t.bId)
-   throw new Error("Invalid established tag team");
-  return {...t,a:byId.get(t.aId),b:byId.get(t.bId)};
- }).filter(t=>t.a&&t.b&&t.a.bookingDivision===t.b.bookingDivision &&
-  ![t.aId,t.bId].some(id=>id===reserve?.aId||id===reserve?.bId))
-  .sort((a,b)=>push(b.a!)+push(b.b!)-push(a.a!)-push(a.b!)||
-   a.teamId.localeCompare(b.teamId,"en"));
+ const establishedTagCandidates:(readonly {
+  teamId:string;aId:string;bId:string;a:AiRosterCandidate|undefined;
+  b:AiRosterCandidate|undefined;provisional:boolean}[]) =
+  (input.establishedTeams??[]).map(t=>{
+   if(!t.teamId||!t.aId||!t.bId||t.aId===t.bId)
+    throw new Error("Invalid established tag team");
+   return {...t,a:byId.get(t.aId),b:byId.get(t.bId),provisional:false};
+  }).filter(t=>t.a&&t.b&&t.a.bookingDivision===t.b.bookingDivision &&
+   ![t.aId,t.bId].some(id=>id===reserve?.aId||id===reserve?.bId));
  const titleCandidates=(input.tagTitles??[]).filter(t=>{
   if(!t.championshipId||(t.holderTeamId!==null&&!t.holderTeamId)||!isStat(t.heat)||
     (t.bookingDivision!=null&&!["MEN","WOMEN"].includes(t.bookingDivision)))
@@ -197,11 +198,40 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   return true;
  }).sort((a,b)=>b.heat-a.heat||
   a.championshipId.localeCompare(b.championshipId,"en"));
- // An established hot rivalry should not lose its weekly headline (or
-  // established tag-team showcase) to an inaugural belt scheduling pass.
-  const hotProgramme=(input.featuredPairs??[]).some(f=>
-    f.kind==="PROGRAMME"&&f.heat>=85);
-  const inauguralWeek=((input.year-1)*52+input.week-1)%4===0&&!hotProgramme;
+ // A hot feud keeps its weekly headline. Only an inaugural TV title bout
+ // or a major tag title match may ask an unestablished pair to team up.
+ const hotProgramme=(input.featuredPairs??[]).some(f=>
+  f.kind==="PROGRAMME"&&f.heat>=85);
+ const inauguralWeek=((input.year-1)*52+input.week-1)%4===0&&!hotProgramme;
+ const titleOpportunity=(input.eventType==="MAJOR"||inauguralWeek)&&
+  titleCandidates.some(t=>input.eventType==="MAJOR"||t.holderTeamId===null);
+ // Genesis can have real contracted wrestlers but ZERO established teams.
+ // Without a booking-only partnership, all AI tag belts stay vacant forever.
+ // These candidates are not saved as World teams. ONLY a certified winning
+ // result may create an authentic team via settleCanonicalTagTitleContests.
+ const namedMembers=new Set(establishedTagCandidates.flatMap(t=>[t.aId,t.bId]));
+ const provisionalTagCandidates:(typeof establishedTagCandidates[number])[]=[];
+ if(titleOpportunity){
+  for(const division of ["MEN","WOMEN"] as const){
+   const free=available.filter(p=>p.bookingDivision===division&&
+    !namedMembers.has(p.personId)&&
+    p.personId!==reserve?.aId&&p.personId!==reserve?.bId).sort(best);
+   // Two pairs per division suffice for an inaugural title or a defense.
+   // Keep their identities transient; no tag name or contract is invented.
+   for(let i=0;i+1<Math.min(free.length,4);i+=2){
+    const a=free[i]!,b=free[i+1]!;
+    provisionalTagCandidates.push({
+     teamId:"__draft_tag_"+division+"_"+i,aId:a.personId,bId:b.personId,
+     a,b,provisional:true});
+   }
+  }
+ }
+ // Established partnerships retain priority; the first successful
+ // title-winning makeshift team is then persisted by canonical settlement.
+ const tagCandidates=[...establishedTagCandidates,...provisionalTagCandidates]
+  .sort((a,b)=>Number(a.provisional)-Number(b.provisional)||
+   push(b.a!)+push(b.b!)-push(a.a!)-push(a.b!)||
+   a.teamId.localeCompare(b.teamId,"en"));
   const eligibleTagTitle=(input.eventType==="MAJOR"||inauguralWeek)?
     titleCandidates.find(t=>{
      if(input.eventType!=="MAJOR"&&t.holderTeamId!==null)return false;
@@ -217,9 +247,11 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   t.a!.bookingDivision===firstTeam.a!.bookingDivision &&
   ![firstTeam.aId,firstTeam.bId].includes(t.aId)&&
   ![firstTeam.aId,firstTeam.bId].includes(t.bId)):undefined;
- const tagChoice=firstTeam&&secondTeam?{first:firstTeam,second:secondTeam,
-  titleId:eligibleTagTitle?.championshipId??null,
-   inaugural:eligibleTagTitle?.holderTeamId===null}:null;
+ const tagChoice=firstTeam&&secondTeam&&
+  (eligibleTagTitle||(!firstTeam.provisional&&!secondTeam.provisional))?
+   {first:firstTeam,second:secondTeam,
+    titleId:eligibleTagTitle?.championshipId??null,
+    inaugural:eligibleTagTitle?.holderTeamId===null}:null;
  const tagIds=new Set(tagChoice?[tagChoice.first.aId,tagChoice.first.bId,
   tagChoice.second.aId,tagChoice.second.bId]:[]);
  // Keep recognisable headliners, but rotate credible undercard opportunities.
