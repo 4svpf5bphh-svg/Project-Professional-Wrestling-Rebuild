@@ -178,8 +178,9 @@ test("manager's 2v2v2 inaugural tag title survives World Lock, next-week defence
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
-    "ppw_championship_contests","ppw_championship_reigns",
-    "ppw_tag_working_pair_appearances","ppw_wrestler_relationship_changes",
+    "ppw_tag_match_career_effects","ppw_championship_contests",
+    "ppw_championship_reigns","ppw_tag_working_pair_appearances",
+    "ppw_working_chemistry","ppw_wrestler_relationship_changes",
     "ppw_wrestler_relationships","ppw_medical_absences",
     "ppw_completed_match_evidence","ppw_completed_show_segments",
     "ppw_completed_show_matches","ppw_show_economics","ppw_completed_shows",
