@@ -7,6 +7,37 @@ const overview={
 };
 const current={worldId:"genesis",playerId:"test-owner",
  csrfToken:"opaque-browser-csrf",overview,availablePromotions:[]};
+test("approved PPW full-screen intro is one artwork with an accessible Continue control at 320/390",async({page})=>{
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>route.fulfill({json:
+  route.request().postDataJSON().method==="overview"?overview:{}}));
+ for(const width of [320,390]){
+  await page.setViewportSize({width,height:844});
+  await page.goto("/#/home");
+  const opening=page.locator(".ppw-opening");
+  await expect(opening).toBeVisible();
+  await expect(opening.locator("img")).toHaveCount(1);
+  await expect(opening.locator("button")).toHaveCount(1);
+  const art=opening.locator(".ppw-opening-art");
+  await expect(art).toHaveAttribute("src","/branding/ppw-intro-stage.webp");
+  await expect.poll(()=>art.evaluate(x=>(x as HTMLImageElement).naturalWidth))
+   .toBe(1080);
+  const full=await art.boundingBox();
+  expect(full).not.toBeNull();
+  expect(full!.width).toBeGreaterThanOrEqual(width-1);
+  expect(full!.height).toBeGreaterThanOrEqual(843);
+  await expect(opening.getByRole("button",{name:/Continue to PPW/})).toBeVisible();
+  await expect(opening).not.toContainText("THE LIVING WRESTLING WORLD");
+  await expect(opening.locator(".ppw-opening-logo")).toHaveCount(0);
+  await opening.screenshot({path:`test-results/phase45r-iphone-intro-${width}.png`});
+  await opening.getByRole("button",{name:/Continue to PPW/}).click();
+  await expect(opening).toHaveCount(0);
+  // The game's normal Home opens without a second intro for this session.
+  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+  await page.evaluate(()=>sessionStorage.clear());
+ }
+});
+
 test("Home stays compact and avoids duplicate statuses or empty task panels at 320/390",async({page})=>{
  await page.route("**/api/session",route=>route.fulfill({json:current}));
  await page.route("**/api/card",route=>route.fulfill({json:
