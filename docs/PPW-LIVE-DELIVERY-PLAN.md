@@ -31,7 +31,8 @@
 
 | ID | Milestone | Why it matters / delivered player outcome | Depends on | Status |
 | --- | --- | --- | --- | --- |
-| 45 | Finish current release gate | Unchanged playable World with correct PPW identity, useful Home and Business access | Phase 45 candidate | **RELEASED — OWNER VISUAL PLAYTEST PENDING** |
+| 45 | Finish current release gate | Unchanged playable World with correct PPW identity, useful Home and Business access | Phase 45 candidate | **RELEASED — OWNER FEEDBACK RECEIVED** |
+| 45R | Post-release iPhone presentation corrections | Proper PPW Home Screen icon, full-screen intro, crisp and compact News, Home without operator panel | 45 owner screenshots | **ACTIVE — VERIFICATION PENDING** |
 | 46 | Real player-journey integrity | Future contracts, tournament/creative consent, title settlement and mobile actions actually work together | 45 baseline | PLANNED |
 | 47 | Living wrestler stories and Programmes | A wrestler's request can meaningfully progress from Backstage to booking and certified follow-through | 46 | PLANNED |
 | 48 | Booking, staff and financial decisions | Useful in-flow staff advice and real show affordability without UI clutter | 46–47 | PLANNED |
@@ -55,6 +56,16 @@
 **Why:** deployment should not introduce styling/identity regressions or hide a known booking failure behind cosmetic improvements.
 
 **Pass:** final-head CI, screenshots and authenticated flow at 320/390, known regression outcomes documented, production and backup preflight, explicit owner production GO. No merge/production change before GO.
+
+### Phase 45R — Owner feedback after the Phase 45 visual playtest (8 Nov 2026)
+
+**Evidence:** owner supplied six iPhone screenshots from the actual production version. Confirmed issues: iPhone Home Screen icon displays a generic P; intro hero is a disconnected rectangular image; Official News and Dirt Sheets raster mastheads are grainy; World News heading, descriptive paragraph and old "PPW Rebuild Genesis" name waste space; Home has a large test-only Advance Week panel despite an existing Admin operator control.
+
+**Implementation:** generate an actual Apple touch-icon PNG and PNG manifest icons from the approved badge image during the Vite build; keep original brand assets untouched. Build one 1080 × 2340 intro WebP by blending the approved hero logo into a unified atmospheric background; opening DOM contains only this artwork and a Continue button with safe-area placement and reduced-motion support. Produce sharp, high-resolution editorial mastheads from deterministic PPW-themed vector sources, while leaving the award visuals and factual DOM content alone. Simplify /#/news to a Back control and Official News/Dirt Sheets switcher above its masthead/feed; remove heading, World name and redundant copy. Remove only the Home test-advance panel, not the Admin workflow, World Lock, backend operator permission or long test booking window. Rotate PWA cache.
+
+**Pass:** verify PNG magic headers, distinct correctly sized 180/192/512 icons, manifest and iOS link; inspect true 320/390px intro with no separate image card and usable Continue control; no invalid artwork/shrunken masthead; news buttons immediately below Back without old World text; Home has no manual operator panel but Admin still advances with explicit confirmation; browser, TypeScript, build, disposable PostgreSQL and privacy regression pass. No live data or production deploy without authorisation.
+
+**Status:** ACTIVE, awaiting integrated tests and owner preview/release decision. Phase 46 remains next, not replaced by this follow-up.
 
 ### Phase 46 — One trustworthy player journey
 
@@ -203,3 +214,5 @@ Each future chat can read this document from the repository first rather than re
 **NEXT:** owner visual playtest and confirmation of the Phase 45 logos, news/award art and navigation. Collect feedback, record it under the relevant existing milestone or a clearly justified plan amendment. **Do not begin Phase 46 until owner confirms Phase 45 is acceptable.**
 
 **08 Nov 2026 — Phase 45 authorised and released.** Owner approved a controlled visual-playtest release of Phase 45. New-head [CI #42472646825](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/42472646825) passed; PR [#84](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/pull/84) merged to main `89fee8ee1b3e50d098c770859aeebc2e05630edf`. Vercel production `dpl_6WrBap7vEDXMzztf3MQ1Z4WNukme` is READY, and `project-professional-wrestling-rebu.vercel.app` independently resolves to that deployment and exact commit. No new SQL migrations, World Lock cron, or live World advancement. Vercel reported no runtime error clusters immediately after release; direct authenticated owner/device visual inspection **not yet performed**. Owner will check exact logo crops, loading/header, Official News, Dirt Sheets, Match/Angle of Week and navigation before the Phase 46 start GO. This progress update is stored on its own **nonproduction tracking branch**, not merged to main, to avoid triggering a duplicate production build merely for a document change.
+
+**08 Nov 2026 — Phase 45R correction pass started.** User's live iPhone screenshots were accepted as release feedback; this milestone and its exact verification checks were inserted without moving Phases 46–54. Source changes are isolated on the `phase45r-iphone-presentation-corrections` branch. No production deployment, Neon change, World Lock cron or advancement authorised as part of implementation.

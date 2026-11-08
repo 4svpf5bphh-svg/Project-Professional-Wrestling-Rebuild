@@ -28,3 +28,8 @@
  white-space:nowrap!important;border:0!important}
 @media(max-width:345px){#account .ppw-shell-logo{width:65px;height:30px}}
 @media(prefers-reduced-motion:reduce){.ppw-opening,.ppw-opening-art{animation:none!important}}
+
+/* Last-import iPhone newsroom overrides: remove inherited oversized desktop heading space. */
+#game .ppw-news-layout .ppw-industry-head{padding:0!important;margin:0 0 10px!important;min-height:0!important}
+#game .ppw-news-layout .ppw-industry-nav{margin:0 0 12px!important}
+#game .ppw-news-layout .ppw-news-masthead{margin:0 0 12px!important}

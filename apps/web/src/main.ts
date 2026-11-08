@@ -491,7 +491,7 @@ function presentOpening(){
  enter.className="ppw-opening-skip";
  scene.append(artwork,enter);document.body.append(scene);
  // The intro is optional and never traps a player who cannot tap Continue.
- timer=window.setTimeout(finish,4000);
+ timer=window.setTimeout(finish,2800);
 }
 function showLogin(){
  game.replaceChildren();
