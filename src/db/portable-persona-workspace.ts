@@ -35,7 +35,10 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "p.momentum,p.career_stage,p.status,p.fatigue,true AS is_current",
    "FROM ppw_people p JOIN ppw_contracts c",
    "ON c.world_id=p.world_id AND c.person_id=p.person_id",
-   "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
+   // An injured signed wrestler is still on the manager's roster and must
+   // retain their private recovery conversation and reply controls.
+   "WHERE p.world_id=$1 AND c.promotion_id=$2",
+   "AND p.status IN ('ACTIVE','INJURED')",
    "AND c.status='SIGNED' AND c.start_week_index<=$3",
    "AND c.expires_week_index>=$3 ORDER BY p.name,p.person_id LIMIT 501",
    "), former_ids AS (",
