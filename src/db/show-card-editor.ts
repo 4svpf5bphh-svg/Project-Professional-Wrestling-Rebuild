@@ -82,6 +82,8 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
   personA:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string};
   personB:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string}}[]};
 type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
+type CombinedCardRow={slot_id:string|null;position:number|null;kind:string;
+ payload:unknown;show_id:string|null;show_name:string|null};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
  popularity:number|null;recognition:number|null;momentum:number|null;
  in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
@@ -226,23 +228,33 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
  return withSqlClient(pool,async tx=>{
   const show=await readShowScope(tx,id,true);
   const staffNames=new Map(worldStaff(show.seed).map(member=>[member.staffId,member.name]));
-  const slots=boundedSlots(await tx.query<SlotRow>(
-   "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
-   " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
-   [id.worldId,id.showId]));
-  // Exactly one other-card read, bounded to this promotion and week.
-  // It is indexed and has no per-wrestler round trips.
-  const otherSlots=await tx.query<{
-   show_id:string;show_name:string|null;kind:string;payload:unknown
-  }>([
-   "SELECT d.draft_id AS show_id,d.show_name,s.kind,s.payload",
+  // Reuse one bounded card-slot request for the current card AND other
+  // draft/submitted shows in the same promotion/week. Two independent LIMITs
+  // prevent a packed neighbouring show from hiding the current card.
+  // UNION ALL avoids an extra Neon network round trip in creative reviews.
+  const cardRows=await tx.query<CombinedCardRow>([
+   "SELECT current_card.slot_id,current_card.position,current_card.kind,",
+   "current_card.payload,NULL::text AS show_id,NULL::text AS show_name",
+   "FROM (SELECT slot_id,position,kind,payload FROM ppw_card_slots",
+   "WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101) current_card",
+   "UNION ALL",
+   "SELECT NULL::text AS slot_id,NULL::integer AS position,",
+   "other_card.kind,other_card.payload,other_card.show_id,other_card.show_name",
+   "FROM (SELECT d.draft_id AS show_id,d.show_name,s.position,s.kind,s.payload",
    "FROM ppw_booking_drafts d JOIN ppw_card_slots s",
    "ON s.world_id=d.world_id AND s.draft_id=d.draft_id",
-   "WHERE d.world_id=$1 AND d.promotion_id=$2",
-   "AND d.year=$3 AND d.week=$4 AND d.draft_id<>$5",
+   "WHERE d.world_id=$1 AND d.promotion_id=$3",
+   "AND d.year=$4 AND d.week=$5 AND d.draft_id<>$2",
    "AND d.status IN ('DRAFT','SUBMITTED')",
-   "ORDER BY d.draft_id,s.position LIMIT 121"
-  ].join(" "),[id.worldId,id.promotionId,show.year,show.week,id.showId]);
+   "ORDER BY d.draft_id,s.position LIMIT 121) other_card",
+   "ORDER BY show_id NULLS FIRST,position"
+  ].join(" "),[id.worldId,id.showId,id.promotionId,show.year,show.week]);
+  const slots=boundedSlots(cardRows.filter(row=>row.show_id===null)
+   .map(row=>({slot_id:row.slot_id!,position:row.position!,
+    kind:row.kind,payload:row.payload})));
+  const otherSlots=cardRows.filter(row=>row.show_id!==null)
+   .map(row=>({show_id:row.show_id!,show_name:row.show_name,
+    kind:row.kind,payload:row.payload}));
   if(otherSlots.length>120)throw new Error("Other show workload exceeded safe bound");
   const otherByPerson=new Map<string,{
    personId:string;showId:string;showName:string;kind:"MATCH"|"PHYSICAL_ANGLE"
