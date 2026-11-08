@@ -193,10 +193,15 @@ test("player books and certifies two weeks with a renewed show-week contract and
   assert.equal(story.sideBWins,1);
   assert.deepEqual(new Set(story.recentActivity.map(x=>x.kind)),
    new Set(["MATCH","SEGMENT"]));
+  const charged=await read<{performers_count:number;dates_charged:number}>(
+   "SELECT performers_count,dates_charged FROM ppw_show_resolutions"+
+   " WHERE world_id=$1 AND show_id=$2",[worldId,firstShow]);
+  assert.deepEqual(charged,[{performers_count:2,dates_charged:2}],
+   "Samoa Joe's match plus angle owes one date, not two, before renewal");
   assert.deepEqual((await read<{remaining_dates:number}>(
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY person_id",
-   [worldId])).map(x=>x.remaining_dates),[4,4],
-   "A wrestler booked in one bout plus angle owes one show appearance, not two");
+   [worldId])).map(x=>x.remaining_dates),[5,4],
+   "Joe's actually accepted end-of-week renewal resets dates to five; Mistico spent one");
   // The trusted World evaluated the pending wrestler decision, then
   // activated the accepted terms at the original agreement's paid expiry.
   // The original system extends the same contract ID, preserving continuity.
