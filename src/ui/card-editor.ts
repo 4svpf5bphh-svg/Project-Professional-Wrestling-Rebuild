@@ -161,7 +161,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const openRunIns=new Set<string>();
  const slotBookingModes=new Map<string,"QUICK"|"ADVANCED">();
  const slotBookingSteps=new Map<string,"SETUP"|"CAST"|"OUTCOME"|"REVIEW">();
- const matchSetupTabs=new Map<string,"SINGLES"|"TEAMS"|"OTHER">();
  const guidedPickerSlots=new Set<string>();
  // A new booking is only added to the working card at the final step.
  // Closing earlier discards this wizard's local slot and restores the
@@ -330,7 +329,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   inProgressWizards.delete(slotId);
   slotBookingSteps.delete(slotId);
   guidedPickerSlots.delete(slotId);
-  matchSetupTabs.delete(slotId);
   dirty=pending.wasDirty;pendingRequestId=null;error="";success="";
   port.onDraftChange?.(dirty);expanded=null;render();
  }
@@ -2057,23 +2055,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       if(extraContent.childElementCount)extra.append(extraContent);
       if(stage==="SETUP"){
        if(m){
-        const tabs=el("div","ppw-guide-format-tabs");
-        const group=matchSetupTabs.get(slotId)??(
-         ["TAG","TRIOS","FOUR_V_FOUR","FIVE_V_FIVE","MULTI_TEAM"].includes(m.format)?
-          "TEAMS":["BATTLE_ROYAL"].includes(m.format)?"OTHER":"SINGLES");
-        for(const [key,title] of [
-         ["SINGLES","Singles"],["TEAMS","Teams"],["OTHER","Other"]
-        ] as const){
-         const tab=button(title,()=>{
-          matchSetupTabs.set(slotId,key);resetGuideScroll=true;render();
-         },false,"ppw-guide-format-tab");
-         tab.setAttribute("aria-pressed",String(group===key));tabs.append(tab);
-        }
-        guide.append(tabs);
-        const formats=FORMATS.filter(f=>
-         group==="TEAMS"?["TAG","TRIOS","FOUR_V_FOUR","FIVE_V_FIVE","MULTI_TEAM"].includes(f.value):
-         group==="OTHER"?f.value==="BATTLE_ROYAL":
-         ["SINGLES","TRIPLE_THREAT","FOUR_WAY"].includes(f.value));
+        // All nine original formats visible together on a small iPhone.
+        const formats=FORMATS;
         const formatGrid=el("div","ppw-guide-format-grid");
         for(const option of formats){
          const selected=m.format===option.value;

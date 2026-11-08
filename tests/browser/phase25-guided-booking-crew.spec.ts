@@ -65,6 +65,13 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await page.getByRole("button",{name:"+ Add match"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
+  await expect(dialog.locator(".ppw-guide-format-tile")).toHaveCount(9);
+  await expect(dialog.locator(".ppw-guide-format-tabs")).toHaveCount(0);
+  await expect(dialog.getByRole("button",{name:"Multi-team · 2v2v2 / more"})).toBeVisible();
+  await expect(dialog.getByRole("button",{name:"Battle royal · 6–30 entrants"})).toBeVisible();
+  await dialog.getByRole("button",{name:"Tag · 2v2"}).click();
+  await expect(dialog.locator(".ppw-guide-format-tile[aria-pressed=true]")).toContainText("Tag");
+  await dialog.getByRole("button",{name:"Singles · 1v1"}).click();
  await expect(page.locator(".ppw-card[data-booking-slot-id]")).toHaveCount(0);
  await expect(page.locator(".ppw-card-airtime-heading")).toContainText("0 / 120 min");
  await dialog.getByRole("button",{name:"Ladder Match"}).click();

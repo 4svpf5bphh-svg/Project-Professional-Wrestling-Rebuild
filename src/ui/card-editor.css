@@ -1422,3 +1422,13 @@ body>.ppw-card-edit-shade .ppw-card-consent-response[data-level="error"]{
 .ppw-guide-native-choice .ppw-field{width:1px!important;max-width:1px!important}
 .ppw-guide-native-choice select{width:1px!important;max-width:1px!important;
  min-width:1px!important;height:1px!important;min-height:1px!important;padding:0!important}
+
+/* Phase 48: all nine match types visible with no tabs or hidden group. */
+.ppw-guide-format-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+body>.ppw-card-edit-shade .ppw-guide-format-tile{
+ min-height:44px;padding:8px 4px;font-size:12px;line-height:1.22;overflow-wrap:anywhere}
+@media(max-width:350px){
+ .ppw-guide-format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body>.ppw-card-edit-shade .ppw-guide-format-tile{
+  min-height:44px;padding:7px 4px;font-size:12px}
+}
