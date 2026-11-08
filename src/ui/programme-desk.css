@@ -591,3 +591,12 @@
  color:#b6d1e2;line-height:1.35}
 .ppw-programme-desk .ppw-programme-decision-current{color:#9ff3d7!important;
  font-weight:800}
+
+/* Phase 47: private accepted wrestler idea, verified on-screen progression. */
+.ppw-programme-wrestler-idea{display:grid;gap:4px;padding:10px 12px;
+ border:1px solid #476a83;border-radius:10px;background:#132b3d;
+ color:#e3f3ff;overflow-wrap:anywhere}
+.ppw-programme-wrestler-idea small{font-size:10px;letter-spacing:.08em;
+ font-weight:800;color:#9dd9f4}
+.ppw-programme-wrestler-idea strong{font-size:14px;line-height:1.35;color:#fff}
+.ppw-programme-wrestler-idea span{font-size:12px;line-height:1.4;color:#c5dbea}
