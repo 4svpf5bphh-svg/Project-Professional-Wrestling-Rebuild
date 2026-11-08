@@ -27,6 +27,11 @@ test("approved PPW full-screen intro is one artwork with an accessible Continue 
   expect(full!.width).toBeGreaterThanOrEqual(width-1);
   expect(full!.height).toBeGreaterThanOrEqual(843);
   await expect(opening.getByRole("button",{name:/Continue to PPW/})).toBeVisible();
+  const continueButton=opening.getByRole("button",{name:/Continue to PPW/});
+  const continueBounds=await continueButton.boundingBox();
+  expect(continueBounds).not.toBeNull();
+  expect(continueBounds!.height,"Continue should fit on one line").toBeLessThan(60);
+  expect(continueBounds!.width).toBeLessThanOrEqual(width-20);
   await expect(opening).not.toContainText("THE LIVING WRESTLING WORLD");
   await expect(opening.locator(".ppw-opening-logo")).toHaveCount(0);
   // Capture the fully faded-in composition, not the translucent first frame.
