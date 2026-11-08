@@ -125,16 +125,24 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   const programmes=rows.map(p=>p.programme_id);
   const refs=programmes.length?await tx.query<{programme_id:string;side:"A"|"B";
    position:number;ref_kind:"PERSON"|"TEAM";ref_id:string;
-   person_name:string|null;team_name:string|null}>([
+   person_name:string|null;team_name:string|null;
+   person_status:string|null;medical_clear_week:number|null}>([
    "SELECT r.programme_id,r.side,r.position,r.ref_kind,r.ref_id,",
-   "p.name AS person_name,t.name AS team_name FROM ppw_programme_side_refs r",
+   "p.name AS person_name,t.name AS team_name,",
+   "p.status AS person_status,medical.cleared_week_index AS medical_clear_week",
+   "FROM ppw_programme_side_refs r",
    "LEFT JOIN ppw_people p ON p.world_id=r.world_id",
    "AND p.person_id=r.ref_id AND r.ref_kind='PERSON'",
+   // An actual medical record, not an imagined story injury, supplies the
+   // clearance week. Share the existing bounded side-refs query.
+   "LEFT JOIN ppw_medical_absences medical ON medical.world_id=r.world_id",
+   "AND medical.person_id=r.ref_id AND r.ref_kind='PERSON'",
+   "AND medical.status='ACTIVE' AND medical.cleared_week_index>$4",
    "LEFT JOIN ppw_tag_teams t ON t.world_id=r.world_id",
    "AND t.team_id=r.ref_id AND r.ref_kind='TEAM'",
    "WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.programme_id=ANY($3::text[])",
    "ORDER BY r.programme_id,r.side,r.position LIMIT 401"
-  ].join(" "),[scope.worldId,scope.promotionId,programmes]):[];
+  ].join(" "),[scope.worldId,scope.promotionId,programmes,currentWeek]):[];
   if(refs.length>400)throw new Error("Programme refs exceed bounded capacity");
   // Distinct signed roster: no per-wrestler queries, and zero date balances
   // still count as on-roster if the agreement itself remains in force.
@@ -318,6 +326,12 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
       resolvedWinnerSide:f.resolved_winner_side}:null;
     })(),
     sideA:side("A"),sideB:side("B"),
+    medicalHolds:own.filter(x=>x.ref_kind==="PERSON"&&
+     x.person_status==="INJURED").map(x=>({
+      personId:x.ref_id,
+      name:x.person_name??x.ref_id,
+      clearedWeekIndex:x.medical_clear_week
+     })),
     eligibleCreativePeople:[...new Set(own.flatMap(x=>
      x.ref_kind==="PERSON"?[x.ref_id]:
      teamOptions.find(t=>t.team_id===x.ref_id)?.person_ids??[]))]
