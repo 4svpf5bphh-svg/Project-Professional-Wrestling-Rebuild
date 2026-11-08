@@ -5,7 +5,8 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
  consumeBackstageRivalryFocus,
- consumeBookingFocus,clearBookingFocus}
+ consumeBookingFocus,clearBookingFocus,consumeProgrammeBookingFocus,
+ type ProgrammeBookingFocus}
  from "../../../src/web/card-browser.js";
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
@@ -55,6 +56,8 @@ let pendingBackstagePersonId:string|null=null;
 let backstageReturnSection:HostSection="home";
 let bookingDirty=false;
 let activeBooking:{worldId:string;promotionId:string;showId:string}|null=null;
+// One-use protected handoff from Programme → Planner → actual Card.
+let pendingProgrammeCardFocus:ProgrammeBookingFocus|null=null;
 function confirmLeavingBooking(next:HostSection){
  if(!bookingDirty||next==="card")return true;
  if(!window.confirm("You have unsaved changes to this show. Leave without saving?"))
@@ -127,9 +130,11 @@ function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:str
  * its exact card, including a second PPV. World and promotion must still match.
  * No player, contract, or show identity appears in the shareable URL.
  */
-function openBooking(showId:string){
+function openBooking(showId:string,focus?:ProgrammeBookingFocus|null){
  if(!session?.overview.promotion)return;
  const worldId=session.worldId,promotionId=session.overview.promotion.id;
+ pendingProgrammeCardFocus=focus&&focus.worldId===worldId&&
+  focus.promotionId===promotionId?focus:null;
  const state=bookingHistoryState(worldId,promotionId,showId);
  bookingDirty=false;activeBooking={worldId,promotionId,showId};
  if(location.hash===plannerCardHash)
@@ -316,8 +321,13 @@ function renderSection(){
      // The World has already advanced; Home retains the unseen Legends cue.
     }
    });break;
-  case "planner":mountPlannerPage(view,scope,back,
-   location.hash===plannerCardHash,undefined,openBooking);break;
+  case "planner":{
+   const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
+   mountPlannerPage(view,scope,back,
+    location.hash===plannerCardHash||!!storyFocus,undefined,
+    storyFocus?(showId=>openBooking(showId,storyFocus)):openBooking);
+   break;
+  }
   case "card":{
    const showId=readBookingHistory(history.state,scope.worldId,scope.promotionId);
    if(!showId){
@@ -326,11 +336,16 @@ function renderSection(){
     mountPlannerPage(view,scope,back,false,undefined,openBooking);
    }else{
     activeBooking={worldId:scope.worldId,promotionId:scope.promotionId,showId};
+    const storyFocus=pendingProgrammeCardFocus?.worldId===scope.worldId&&
+     pendingProgrammeCardFocus.promotionId===scope.promotionId?
+      pendingProgrammeCardFocus:null;
+    pendingProgrammeCardFocus=null;
     mountBookingPageForHost(view,{...scope,showId},()=>openSection("planner"),
      dirty=>{
       if(view.isConnected&&readHostSection(location.hash)==="card"&&
        activeBooking?.showId===showId)bookingDirty=dirty;
-     },section=>openSection(section),undefined,undefined,
+     },section=>openSection(section),storyFocus?.programmeId,
+     storyFocus?.ideaKind,
      consumeBookingFocus(scope.worldId,scope.promotionId)??undefined);
    }
    break;
