@@ -34,7 +34,7 @@
 | 45 | Finish current release gate | Unchanged playable World with correct PPW identity, useful Home and Business access | Phase 45 candidate | **RELEASED — OWNER FEEDBACK RECEIVED** |
 | 45R | Post-release iPhone presentation corrections | Proper PPW Home Screen icon, full-screen intro, crisp and compact News, Home without operator panel | 45 owner screenshots | **CODE VERIFIED — OWNER VISUAL REVIEW DEFERRED; NOT RELEASED** |
 | 46 | Real player-journey integrity | Future contracts, tournament/creative consent, title settlement and mobile actions actually work together | 45 baseline | **VERIFIED — complete certified journeys; UNRELEASED (PR #86)** |
-| 47 | Living wrestler stories and Programmes | A wrestler's request can meaningfully progress from Backstage to booking and certified follow-through | 46 | PLANNED |
+| 47 | Living wrestler stories and Programmes | A wrestler's request can meaningfully progress from Backstage to booking and certified follow-through | 46 | **ACTIVE — wrestler-idea-to-certified-Programme slice under verification** |
 | 48 | Booking, staff and financial decisions | Useful in-flow staff advice and real show affordability without UI clutter | 46–47 | PLANNED |
 | 49 | Contenders, championships and credible rival promotions | Earned title opportunities, meaningful divisions and sustainable AI title programmes | 46–48 | PLANNED |
 | 50 | Living wrestling media and Groq refinement | Distinct journalism, truthful press reactions and evolving stories without excessive AI calls | 47, 49 | PLANNED |
@@ -100,6 +100,8 @@
 **Why:** turn isolated dialogue, promos and matches into an unfolding wrestling story.
 
 **Pass:** multi-week fixtures for a requested challenge, successful escalation, failed promise, feud payoff, alliance/turn, injury disrupting plans, and refusal; specific next-week advice must cite the correct certified event and never hallucinate an outcome. 320/390 flows and no per-pitch Neon query storms.
+
+**Phase 47 first connected slice (8 November 2026, development-only):** An actual previously accepted wrestler-led rivalry pitch is now projected into its exact player-owned two-person Programme without a new narrative table, poll, Groq request or extra Neon SQL roundtrip. The read model matches the initiator and requested opponent on opposite sides, the original manager acceptance week, and actual Programme start, excluding unrelated, declined, pre-existing and multi-person feuds. The iPhone Programme Story pane shows the private origin and distinguishes manager-created but unbooked stories, drafted/confirmed future cards, certified on-screen chapters and delivered finales. Source of truth remains the original Backstage decision, programme activity, completed show and official finale; no auto-booked scenes or implied promises. Existing 320/390 Backstage handoff browser tests and the two-week genuine World Lock/renewal/feud finale disposable-PostgreSQL journey were extended, alongside a dedicated pure stage test. **CI verification and full Phase 47 acceptance remain outstanding**; next extend this spine beyond rival pitches to wrestler challenges/requests and test refusals, disruption and multi-week consequences before calling Phase 47 VERIFIED. Phase 45R/46 are not released; owner approval still required.
 
 ### Phase 48 — Better booking UI, staff and finance at the decision point
 
