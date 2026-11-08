@@ -65,6 +65,10 @@ for(const mode of ["ROYAL","TEAMS"] as const){
      [world,show,promotion]);
     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,$2,'angle',0,'SEGMENT',$3::jsonb)",
      [world,show,JSON.stringify({participants:[members[0]],kind:"PROMO",outcome:"HAPPENS"})]);
+     await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES($1,'premium-other',$2,1,1,'DRAFT',6,'hall','home','Sunday Premium','PREMIUM')",
+      [world,promotion]);
+     await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,'premium-other','other-main',0,'MATCH',$2::jsonb)",
+      [world,JSON.stringify(raw)]);
    });
    const view=await showCardEditorAsActor(context,world,promotion,show);
    // Finance is included in this owner-authorised Card hydration, with a
@@ -79,10 +83,22 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    }};
    const reloaded=await showCardEditorAsActor({...context,pool:cardPool},
     world,promotion,show);
-   assert.deepEqual(reloaded.bookingFinancials,view.bookingFinancials,
+   assert.deepEqual(reloaded.otherShowWorkloads,view.otherShowWorkloads);
+    assert.equal(view.otherShowWorkloads.length,ids.length,
+     "Even 30 wrestlers on the other show require one bounded Card read");
+    assert.deepEqual(view.otherShowWorkloads.find(x=>x.personId==="p0"),{
+     personId:"p0",showId:"premium-other",showName:"Sunday Premium",kind:"MATCH"
+    });
+    assert.equal(view.otherShowWorkloads.some(x=>x.showId===show),false);
+    assert.deepEqual(reloaded.bookingFinancials,view.bookingFinancials,
     "Bounded Card read must include the identical owner-scoped financial snapshot");
    const cardSample=cardMeter.assertBudget({maxQueries:12,maxResultBytes:120_000});
    console.log("PPW Card finances Neon query budget:",JSON.stringify(cardSample));
+    assert.equal(cardSample.queryCount,8,
+     "One additional indexed read for the other show, never one per wrestler");
+    await withWorldTransaction(db.pool,tx=>tx.query(
+     "DELETE FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id='premium-other'",
+     [world]));
    assert.equal(view.canEdit,true);
    const offeredPair=view.bookableTeams.find(t=>t.teamId==="tested-pair");
    assert.equal(offeredPair?.members.length,2);
