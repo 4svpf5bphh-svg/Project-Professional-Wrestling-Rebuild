@@ -16,11 +16,12 @@ const url=process.env.PPW_NEON_TEST_URL;
 
 /** Genuine two-week manager route, not disconnected mocked endpoints:
  * START FEUD -> CAST -> SAVE MATCH+ANGLE -> CONFIRM -> MANUAL WORLD LOCK
- * -> CERTIFIED RESULTS -> POST-SHOW CHOICE -> NEXT WEEK MATCH -> PAYOFF
- * -> CERTIFICATION. The fixture World is disposable; neither a live clock,
+ * -> CERTIFIED RESULTS -> NEW SIGNED RENEWAL -> NEXT-WEEK PICKER
+ * -> POST-SHOW CHOICE -> NEXT WEEK MATCH -> PAYOFF -> CERTIFICATION.
+ * The fixture World is disposable; neither a live clock,
  * production database nor automatic World Lock is accessed.
  */
-test("player books, resolves, reviews and follows a feud into next week's decisive finale",{
+test("player books and certifies two weeks with a renewed show-week contract and decisive feud finale",{
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
  const db=postgresPool(url!,4),uuid=randomUUID();
@@ -114,8 +115,8 @@ test("player books, resolves, reviews and follows a feud into next week's decisi
     await tx.query("INSERT INTO ppw_contracts("+
      "world_id,contract_id,person_id,promotion_id,family,status,"+
      "remaining_dates,expires_week_index,appearance_fee)"+
-     " VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,52,9000)",
-     [worldId,contracts[index],person,promotionId]);
+     " VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,$5,9000)",
+     [worldId,contracts[index],person,promotionId,index===0?0:52]);
    }
    for(const [index,showId] of [firstShow,secondShow].entries())
     await tx.query("INSERT INTO ppw_booking_drafts("+
@@ -178,6 +179,23 @@ test("player books, resolves, reviews and follows a feud into next week's decisi
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY person_id",
    [worldId])).map(x=>x.remaining_dates),[4,4],
    "A wrestler booked in one bout plus angle owes one show appearance, not two");
+  // After Week 1 certification, Joe's original contract has expired.
+  // Simulate the signed/accepted renewal now active in Week 2. This is
+  // fixture setup, not a hidden offer acceptance or a production mutation.
+  // The live editor must select the NEW agreement before an already-planned
+  // rematch can be authored, saved, and resolved through the same World Lock.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_contracts("+
+   "world_id,contract_id,person_id,promotion_id,family,status,"+
+   "remaining_dates,start_week_index,expires_week_index,appearance_fee)"+
+   " VALUES($1,'renewal-joe','joe',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',5,1,52,9000)",
+   [worldId,promotionId]));
+  const nextWeekRights=await cardTalentAsActor(context,worldId,promotionId,
+   secondShow,"Joe",null,10);
+  assert.deepEqual(nextWeekRights.talent.map(p=>[p.personId,p.contractId,p.available]),
+   [["joe","renewal-joe",true]],
+   "A signed future renewal must replace the expired original agreement in the next show's picker");
+  members[0]!.contractId="renewal-joe";
   const direction=await chooseProgrammeDirection(db.pool,{...scope,
    programmeId,showId:firstShow,slotId:"main",
    choice:"PURSUE_REMATCH",requestId:"demand-rematch",
@@ -220,9 +238,12 @@ test("player books, resolves, reviews and follows a feud into next week's decisi
    "SELECT count(*)::integer AS n FROM ppw_ledger_events"+
    " WHERE world_id=$1 AND event_type='PROGRAMME_FINALE_DELIVERED'",
    [worldId]))[0]!.n,1);
-  assert.deepEqual((await read<{remaining_dates:number}>(
-   "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY person_id",
-   [worldId])).map(x=>x.remaining_dates),[3,3]);
+  const finalContracts=await read<{contract_id:string;remaining_dates:number}>(
+   "SELECT contract_id,remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",
+   [worldId]);
+  assert.deepEqual(Object.fromEntries(finalContracts.map(x=>[x.contract_id,x.remaining_dates])),
+   {"deal-joe":4,"deal-mistico":3,"renewal-joe":4},
+   "Certified Week 2 deducts the renewed Joe deal once while leaving his original expired deal untouched");
   assert.equal((await driveWorldResolution(db.pool,{
    worldId,resolutionId:"manual-resolution-2-"+uuid,maxStages:2})).status,"BLOCKED");
   assert.equal((await read<{n:number}>(
