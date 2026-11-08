@@ -29,6 +29,11 @@ test("approved PPW full-screen intro is one artwork with an accessible Continue 
   await expect(opening.getByRole("button",{name:/Continue to PPW/})).toBeVisible();
   await expect(opening).not.toContainText("THE LIVING WRESTLING WORLD");
   await expect(opening.locator(".ppw-opening-logo")).toHaveCount(0);
+  // Capture the fully faded-in composition, not the translucent first frame.
+  await art.evaluate(async node=>{
+   await Promise.all(node.getAnimations().map(animation=>animation.finished));
+  });
+  await expect(opening).toHaveCSS("opacity","1");
   await opening.screenshot({path:`test-results/phase45r-iphone-intro-${width}.png`});
   await opening.getByRole("button",{name:/Continue to PPW/}).click();
   await expect(opening).toHaveCount(0);
