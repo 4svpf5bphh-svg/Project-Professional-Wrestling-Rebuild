@@ -71,6 +71,11 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
  booking_open:boolean;within_window:boolean;broadcast_package:string|null;
+ booking_financials?:{
+  currentWeekIndex:number;cash:number;media:number|null;sponsor:number|null;
+  overhead:number|null;wages:number;staff:number;
+  showTalentLimit:number|null;cashReserve:number|null;
+ };
  advisers?:{role:string;staffId:string}[];
  tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;entrantsCount:4|8;
   championshipId:string|null;
@@ -107,7 +112,29 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
     "ORDER BY e.role) FROM ppw_staff_employments e",
     "WHERE e.world_id=d.world_id AND e.promotion_id=d.promotion_id",
     "AND e.status='ACTIVE' AND e.start_week_index<=(w.year-1)*52+w.week-1",
-    "AND e.expires_week_index>=(w.year-1)*52+w.week-1),'[]'::jsonb) AS advisers,"
+    "AND e.expires_week_index>=(w.year-1)*52+w.week-1),'[]'::jsonb) AS advisers,",
+    // Reuse the existing show owner read and indexed payroll rows.
+    "jsonb_build_object('currentWeekIndex',(w.year-1)*52+w.week-1,",
+    "'cash',p.cash::double precision,",
+    "'media',p.weekly_media_income::double precision,",
+    "'sponsor',p.weekly_sponsor_income::double precision,",
+    "'overhead',p.weekly_fixed_overhead::double precision,",
+    "'wages',coalesce((SELECT sum(terms.weekly_guarantee)",
+    "FROM ppw_contracts terms WHERE terms.world_id=d.world_id",
+    "AND terms.promotion_id=d.promotion_id AND terms.status='SIGNED'",
+    "AND terms.start_week_index<=(w.year-1)*52+w.week-1",
+    "AND terms.expires_week_index>=(w.year-1)*52+w.week-1),0)::double precision,",
+    "'staff',coalesce((SELECT sum(office.weekly_salary)",
+    "FROM ppw_staff_employments office WHERE office.world_id=d.world_id",
+    "AND office.promotion_id=d.promotion_id AND office.status='ACTIVE'",
+    "AND office.start_week_index<=(w.year-1)*52+w.week-1",
+    "AND office.expires_week_index>=(w.year-1)*52+w.week-1),0)::double precision,",
+    "'showTalentLimit',(SELECT plan.show_talent_limit::double precision",
+    "FROM ppw_promotion_spending_plans plan WHERE plan.world_id=d.world_id",
+    "AND plan.promotion_id=d.promotion_id),",
+    "'cashReserve',(SELECT plan.cash_reserve::double precision",
+    "FROM ppw_promotion_spending_plans plan WHERE plan.world_id=d.world_id",
+    "AND plan.promotion_id=d.promotion_id)) AS booking_financials,"
    ]:[]),
    ...(includeTournament?[`
    (SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -430,6 +457,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     trioId:t.unit_id,name:t.name,members:t.members})),
    advisers:(show.advisers??[]).map(member=>({...member,
     name:staffNames.get(member.staffId)??null})),
+   bookingFinancials:show.booking_financials??null,
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),
