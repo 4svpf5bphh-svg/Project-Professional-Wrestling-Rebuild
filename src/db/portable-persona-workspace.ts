@@ -151,7 +151,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    planned_show_name:string|null;planned_show_year:number|null;
    planned_show_week:number|null;planned_show_status:string|null;
    planned_slot_kind:string|null}>([
-   "SELECT request_id,kind,related_person_id,status,decision,",
+   "SELECT r.request_id,r.kind,r.related_person_id,r.status,r.decision,",
    "created_week_index,responded_week_index,due_week_index,",
    "promised_role,observed_match_shows,observed_featured_shows,",
    "assessment_reason,trust_delta,working_verified_shows,working_trust_delta,",
