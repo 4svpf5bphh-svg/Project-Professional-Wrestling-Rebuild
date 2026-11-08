@@ -65,6 +65,8 @@
 
 **Pass:** verify PNG magic headers, distinct correctly sized 180/192/512 icons, manifest and iOS link; inspect true 320/390px intro with no separate image card and usable Continue control; no invalid artwork/shrunken masthead; news buttons immediately below Back without old World text; Home has no manual operator panel but Admin still advances with explicit confirmation; browser, TypeScript, build, disposable PostgreSQL and privacy regression pass. No live data or production deploy without authorisation.
 
+**Note:** final actual iPhone screenshot review caught the Continue arrow wrapping to a second line; added `white-space:nowrap` and a button-height assertion at 320/390. Exact post-fix CI must pass before declaring final-head verified.
+
 **Status:** CODE VERIFIED on code head `01cdc89f921edfd87961e21c999be97fdeacb459`; [GitHub CI #42477869195](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/actions/runs/42477869195) passed 279 authenticated browser tests, unit suite, 164 disposable PostgreSQL tests and the 52-week isolated AI World. Full three-year lock simulation was not separately run. A subsequent screenshot-only test change waits until the fade completes so iPhone capture reflects the final opaque image rather than a transition frame. Release is **blocked on owner visual approval**, not on unfinished game code. Phase 46 remains next, not replaced by this follow-up.
 
 ### Phase 46 — One trustworthy player journey
