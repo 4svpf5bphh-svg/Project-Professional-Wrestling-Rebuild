@@ -28,6 +28,9 @@ export function describeBookingCommitment(input:PromiseEvidence,
  const due=input.dueWeekIndex!==null&&Number.isSafeInteger(input.dueWeekIndex)&&
   input.dueWeekIndex>=0?" · due "+when(input.dueWeekIndex):"";
  const kind=name(input.decision);
+ const countdown=input.dueWeekIndex!==null&&Number.isSafeInteger(currentWeekIndex)&&
+  currentWeekIndex>=0?" · "+Math.max(0,input.dueWeekIndex-currentWeekIndex)+
+  " weeks remaining":"";
  if(input.status==="FULFILLED")return {
   stage:"FULFILLED",headline:kind+" delivered",
   detail:"A completed, certified show fulfilled this booking commitment.",
@@ -59,7 +62,7 @@ export function describeBookingCommitment(input:PromiseEvidence,
    canReviewBooking:true};
  }
  return {stage:"UNBOOKED",headline:kind+" still to book",
-  detail:"No matching future card is recorded yet"+due+
+  detail:"No matching future card is recorded yet"+due+countdown+
    ". Only a certified appearance can keep this promise.",
   canReviewBooking:true};
 }
