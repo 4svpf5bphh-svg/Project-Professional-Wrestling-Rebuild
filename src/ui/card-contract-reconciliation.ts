@@ -13,6 +13,12 @@ export function reconcileDraftAgreements(
   Boolean(p.personId)&&typeof p.contractId==="string"&&Boolean(p.contractId))
   .map(p=>[p.personId,p.contractId] as const));
  const changed=new Set<string>();
+ const refreshRunIn=(p:NonNullable<EditorMatch["interference"]>)=>{
+  const contractId=current.get(p.personId);
+  if(!contractId||contractId===p.contractId)return p;
+  changed.add(p.personId);
+  return {...p,contractId};
+ };
  const refresh=(p:Pick):Pick=>{
   const contractId=current.get(p.personId);
   if(!contractId||contractId===p.contractId)return p;
@@ -21,7 +27,7 @@ export function reconcileDraftAgreements(
  };
  return {matches:matches.map(m=>({...m,
    teams:m.teams.map(side=>side.map(p=>p?refresh(p):null)),
-   ...(m.interference?{interference:refresh(m.interference)}:{})
+   ...(m.interference?{interference:refreshRunIn(m.interference)}:{})
   })),
   segments:segments.map(s=>({...s,
    actors:s.actors.map(refresh),targets:s.targets.map(refresh)

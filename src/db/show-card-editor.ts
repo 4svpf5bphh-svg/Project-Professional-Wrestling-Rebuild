@@ -353,7 +353,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     " WHERE rival.world_id=c.world_id AND rival.person_id=c.person_id"+
     " AND rival.promotion_id<>c.promotion_id AND rival.status='SIGNED'"+
     " AND rival.family='EXCLUSIVE' AND rival.expires_week_index>=$4)"+
-    " ORDER BY c.start_week_index DESC,",
+    " ORDER BY c.start_week_index DESC,"+
     "CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,c.contract_id LIMIT 1) rights ON TRUE"+
     " WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])",
     [id.worldId,personIds,id.promotionId,(show.year-1)*52+show.week-1]):[];
