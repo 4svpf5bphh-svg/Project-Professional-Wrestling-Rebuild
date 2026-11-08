@@ -94,8 +94,8 @@ for(const mode of ["ROYAL","TEAMS"] as const){
     "Bounded Card read must include the identical owner-scoped financial snapshot");
    const cardSample=cardMeter.assertBudget({maxQueries:12,maxResultBytes:120_000});
    console.log("PPW Card finances Neon query budget:",JSON.stringify(cardSample));
-    assert.equal(cardSample.queryCount,8,
-     "One additional indexed read for the other show, never one per wrestler");
+    assert.equal(cardSample.queryCount,7,
+     "Current slots and bounded same-week evidence share one SQL request");
     await withWorldTransaction(db.pool,tx=>tx.query(
      "DELETE FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id='premium-other'",
      [world]));
