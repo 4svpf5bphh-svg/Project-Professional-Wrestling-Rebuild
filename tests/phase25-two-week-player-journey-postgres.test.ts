@@ -12,6 +12,8 @@ import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
 import {submitManualContractOffer} from "../src/db/manual-contract-offers.js";
+import {forecastCardAppearanceFees} from "../src/domain/card-appearance-forecast.js";
+import {bookingFinanceBrief} from "../src/domain/booking-financial-brief.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -166,6 +168,12 @@ test("player books and certifies two weeks with a renewed show-week contract and
   let card=await showCardEditorAsActor(context,worldId,promotionId,firstShow);
   assert.deepEqual(card.slots.map(s=>s.slotId),["main","aftermath"]);
   assert.deepEqual(card.programmeLinks,[{slotId:"aftermath",programmeId}]);
+  const previewFees=forecastCardAppearanceFees([...persons,...persons],
+   new Map(card.selectedPeople.map(x=>[x.personId,{appearanceFee:x.appearanceFee}])));
+  assert.deepEqual(previewFees,{amount:18000,performers:2,unknown:0,complete:true},
+   "A match and a separate angle still owe only one appearance fee per wrestler");
+  assert.equal(bookingFinanceBrief(card.bookingFinancials,previewFees,0)?.fees,18000,
+   "Manager booking uses real show-week contract fees");
   const beforeBell=(await readProgrammeWorkspace(db.pool,scope)).programmes
    .find(p=>p.programmeId===programmeId)!;
   assert.equal(beforeBell.activityCount,0,
@@ -240,6 +248,11 @@ test("player books and certifies two weeks with a renewed show-week contract and
    " WHERE world_id=$1 AND show_id=$2",[worldId,firstShow]);
   assert.deepEqual(charged,[{performers_count:2,dates_charged:2}],
    "Samoa Joe's match plus angle owes one date, not two, before renewal");
+  const actualExpense=await read<{appearance_fees:string}>(
+   "SELECT appearance_fees::text FROM ppw_show_economics"+
+   " WHERE world_id=$1 AND show_id=$2",[worldId,firstShow]);
+  assert.equal(Number(actualExpense[0]?.appearance_fees),previewFees.amount,
+   "Show-fee preview and actual World-certified financial receipt must reconcile");
   assert.deepEqual((await read<{remaining_dates:number}>(
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY person_id",
    [worldId])).map(x=>x.remaining_dates),[5,4],
