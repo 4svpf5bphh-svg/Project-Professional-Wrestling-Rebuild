@@ -1389,3 +1389,20 @@ body>.ppw-card-edit-shade .ppw-card-consent-response[data-level="error"]{
 .ppw-card-contract-refresh small{display:block;margin-top:9px;
  color:#c2dce9;font-size:11px;line-height:1.45}
 .ppw-editor .ppw-refresh-agreements{max-width:100%;white-space:normal;text-align:center}
+
+/* Phase 48: compact card economics beside booking choices, not another page. */
+.ppw-card-financial-baseline{display:grid;gap:7px;margin:10px 0 0;
+ padding:10px 12px;border-top:1px solid rgba(198,215,229,.25)}
+.ppw-card-financial-line{display:flex;justify-content:space-between;gap:10px;
+ align-items:baseline;font-size:13px;line-height:1.4}
+.ppw-card-financial-line strong{font-variant-numeric:tabular-nums;white-space:nowrap;
+ color:#eef8ff}
+.ppw-card-financial-baseline small{font-size:11px;line-height:1.45;color:#c9d9e3}
+.ppw-card-financial-warning,.ppw-guide-financial-warning{
+ padding:8px 10px;margin:6px 0;border-left:3px solid #e2b775;
+ border-radius:7px;background:rgba(195,132,55,.13);color:#ffdeb0;
+ font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+@media(max-width:350px){
+ .ppw-card-financial-line{font-size:12px}
+ .ppw-card-financial-baseline{padding:9px}
+}
