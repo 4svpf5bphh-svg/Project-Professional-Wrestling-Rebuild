@@ -67,10 +67,10 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
- await expect(dialog.getByLabel("The message")).toBeVisible();
+ await expect(dialog.getByRole("group",{name:"The message choices"})).toBeVisible();
  // Direct authoring now needs no intermediate switch.
- await dialog.getByLabel("The message").selectOption("AIR_GRIEVANCE");
- await dialog.getByLabel("The message").scrollIntoViewIfNeeded();
+ await dialog.locator('.ppw-guide-script-choice[data-field="The message"] .ppw-guide-script-tile[data-value="AIR_GRIEVANCE"]').click();
+ await dialog.getByRole("group",{name:"The message choices"}).scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-promo-what.png",animations:"disabled"});
  await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Close card editor"}).click();
@@ -85,7 +85,7 @@ test("iPhone scripts, saves and reopens a specialist angle without another roste
  // The server-returned slot drives the next edit, not a local unsaved draft.
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByLabel("The message")).toHaveValue("AIR_GRIEVANCE");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="The message"] .ppw-guide-script-tile[data-value="AIR_GRIEVANCE"]')).toHaveAttribute("aria-pressed","true");
  await expect(dialog.getByLabel("On-screen outcome")).toHaveCount(0);
 });
 
@@ -139,18 +139,18 @@ test("iPhone anchors a post-match attack to its preceding bout without a new ros
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByLabel("After which match?").selectOption("bout");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
- await dialog.getByLabel("How it ends").selectOption("VICTIM_FIGHTS_BACK");
+ await dialog.locator('.ppw-guide-script-choice[data-field="How it ends"] .ppw-guide-script-tile[data-value="VICTIM_FIGHTS_BACK"]').click();
  await dialog.getByRole("button",{name:"← Change cast"}).click();
  await expect(dialog.getByText("Victim from the match")).toBeVisible();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
- await expect(dialog.getByLabel("How it ends")).toHaveValue("VICTIM_FIGHTS_BACK");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="How it ends"] .ppw-guide-script-tile[data-value="VICTIM_FIGHTS_BACK"]')).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  await expect(page.locator(".ppw-card-lineup").filter({hasText:/Victim Fights Back/i})).toBeVisible();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByLabel("How it ends")).toHaveValue("VICTIM_FIGHTS_BACK");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="How it ends"] .ppw-guide-script-tile[data-value="VICTIM_FIGHTS_BACK"]')).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"← Change cast"}).click();
  await expect(dialog.getByLabel("After which match?")).toHaveValue("bout");
  expect(methods.filter(m=>m==="save")).toHaveLength(1);
@@ -349,21 +349,21 @@ test("iPhone books a brutal premeditated ambush outside and reopens every sub-op
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
- await dialog.getByLabel("Attack style").selectOption("PREMEDITATED_AMBUSH");
- await dialog.getByLabel("Area",{exact:true}).selectOption("OUTSIDE");
- await dialog.getByLabel("Exact location").selectOption("LOADING_BAY");
- await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
- await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
- await dialog.getByLabel("Storytelling purpose").selectOption("SEEK_REVENGE");
- await expect(dialog.getByLabel("Attack style")).toHaveValue("PREMEDITATED_AMBUSH");
- await expect(dialog.getByLabel("Exact location")).toHaveValue("LOADING_BAY");
+ await dialog.locator('.ppw-guide-script-choice[data-field="Attack style"] .ppw-guide-script-tile[data-value="PREMEDITATED_AMBUSH"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Area"] .ppw-guide-script-tile[data-value="OUTSIDE"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Exact location"] .ppw-guide-script-tile[data-value="LOADING_BAY"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Attack intensity"] .ppw-guide-script-tile[data-value="BRUTAL"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Visible aftermath"] .ppw-guide-script-tile[data-value="BLOODIED"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="SEEK_REVENGE"]').click();
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Attack style"] .ppw-guide-script-tile[data-value="PREMEDITATED_AMBUSH"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Exact location"] .ppw-guide-script-tile[data-value="LOADING_BAY"]')).toHaveAttribute("aria-pressed","true");
  for(const label of ["Attack style","Exact location","Storytelling purpose"]){
-  const box=await dialog.getByLabel(label).boundingBox();
+  const box=await dialog.getByRole("group",{name:label+" choices"}).boundingBox();
   expect(box?.width??0,"Mobile "+label+" must have room for chosen text").toBeGreaterThan(190);
  }
- await dialog.getByLabel("Attack style").scrollIntoViewIfNeeded();
+ await dialog.getByRole("group",{name:"Attack style choices"}).scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-attack-what.png",animations:"disabled"});
- await dialog.getByLabel("Storytelling purpose").scrollIntoViewIfNeeded();
+ await dialog.getByRole("group",{name:"Storytelling purpose choices"}).scrollIntoViewIfNeeded();
  await page.screenshot({path:"test-results/presentation-screenshots/phase22-attack-where-why.png",animations:"disabled"});
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
@@ -371,10 +371,10 @@ test("iPhone books a brutal premeditated ambush outside and reopens every sub-op
  expect(saveCount).toBe(1);
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog.getByLabel("Area",{exact:true})).toHaveValue("OUTSIDE");
- await expect(dialog.getByLabel("Exact location")).toHaveValue("LOADING_BAY");
- await expect(dialog.getByLabel("Attack intensity")).toHaveValue("BRUTAL");
- await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("BLOODIED");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Area"] .ppw-guide-script-tile[data-value="OUTSIDE"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Exact location"] .ppw-guide-script-tile[data-value="LOADING_BAY"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Attack intensity"] .ppw-guide-script-tile[data-value="BRUTAL"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Visible aftermath"] .ppw-guide-script-tile[data-value="BLOODIED"]')).toHaveAttribute("aria-pressed","true");
 });
 
 test("iPhone booker unlocks and books a premium vehicle hosedown with a sensible arena location",async({page})=>{

@@ -1569,10 +1569,10 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
- await dialog.getByLabel("Attack style").selectOption("PULL_APART_BRAWL");
- await dialog.getByLabel("Storytelling purpose").selectOption("BUILD_RIVALRY");
- await expect(dialog.getByLabel("Attack style")).toHaveValue("PULL_APART_BRAWL");
- await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("BUILD_RIVALRY");
+ await dialog.locator('.ppw-guide-script-choice[data-field="Attack style"] .ppw-guide-script-tile[data-value="PULL_APART_BRAWL"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="BUILD_RIVALRY"]').click();
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Attack style"] .ppw-guide-script-tile[data-value="PULL_APART_BRAWL"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="BUILD_RIVALRY"]')).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-lineup").last()).toContainText("Pull-apart brawl");
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
@@ -1581,8 +1581,8 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
   presentation:"PULL_APART_BRAWL",objective:"ESCALATE_RIVALRY"});
  expect(angle.outcome).toBe("HAPPENS");
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
- await expect(page.getByRole("dialog",{name:"Edit angle"}).getByLabel("Attack style"))
-  .toHaveValue("PULL_APART_BRAWL");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Attack style"] .ppw-guide-script-tile[data-value="PULL_APART_BRAWL"]'))
+  .toHaveAttribute("aria-pressed","true");
  expect(methods.filter(x=>x==="save")).toHaveLength(1);
  expect(methods.filter(x=>x==="talent")).toHaveLength(0);
  expect(methods.filter(x=>x==="wrestlerProfile")).toHaveLength(0);

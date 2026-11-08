@@ -2250,13 +2250,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         how.append(el("h4","","How does it unfold?"));
         const physical=segment!.kind==="ATTACK"||
          segment!.kind==="POST_MATCH_ASSAULT";
-        // Keep the original validated select callbacks, while new angles
+        // Keep original validated event handlers; both new and reopened angles
         // present their Where/Why/How choices as one-tap iPhone tiles.
         const tileFields=new Set(["Area","Exact location","Attack style",
          "Attack intensity","Visible aftermath","Storytelling purpose",
          "How it ends","New alignment","How the turn is shown","The message"]);
         const asTileField=(child:Element,label:string):Element=>{
-         if(existing||!tileFields.has(label))return child;
+         if(!tileFields.has(label))return child;
          const select=child.querySelector<HTMLSelectElement>("select");
          if(!select||select.options.length<2||select.options.length>16)return child;
          const panel=el("section","ppw-guide-script-choice");
