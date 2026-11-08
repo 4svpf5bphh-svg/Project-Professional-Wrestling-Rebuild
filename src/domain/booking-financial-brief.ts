@@ -25,7 +25,7 @@ export function bookingFinanceBrief(snapshot:BookingFinanceSnapshot|null|undefin
  fees:FeeEstimate,showWeekIndex:number):BookingFinanceBrief|null{
  if(!snapshot||!Number.isSafeInteger(snapshot.currentWeekIndex)||
   !Number.isSafeInteger(showWeekIndex)||showWeekIndex<snapshot.currentWeekIndex||
-  !Number.isFinite(snapshot.cash)||snapshot.cash<0||
+  !Number.isFinite(snapshot.cash)||
   ![snapshot.wages,snapshot.staff].every(x=>Number.isFinite(x)&&x>=0)||
   !Number.isFinite(fees.amount)||fees.amount<0||fees.unknown<0)
   return null;
