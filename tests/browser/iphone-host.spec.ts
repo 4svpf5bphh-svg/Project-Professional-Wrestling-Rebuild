@@ -13,7 +13,7 @@ test("approved PPW full-screen intro is one artwork with an accessible Continue 
   route.request().postDataJSON().method==="overview"?overview:{}}));
  for(const width of [320,390]){
   await page.setViewportSize({width,height:844});
-  await page.goto("/#/home");
+  await page.goto("/");
   const opening=page.locator(".ppw-opening");
   await expect(opening).toBeVisible();
   await expect(opening.locator("img")).toHaveCount(1);
