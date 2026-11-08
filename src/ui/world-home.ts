@@ -34,7 +34,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
  let progressedFrom:{year:number;week:number}|null=null;
  let expiredOnScreen:string|null=null;
- let manualStatus="";let manualBusy=false;let claimingKP=false;
+ let claimingKP=false;
  const dismissing=new Set<string>();
  let clearing=false;
  let clockTimer:ReturnType<typeof setInterval>|null=null;
@@ -166,7 +166,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    hero.dataset.promotion=brand.key;
    const logo=createPromotionLogo(brand.key,170);
   const heroTop=el("div","ppw-home-hero-top");
-  heroTop.append(el("span","ppw-home-kicker",world.name+" / YEAR "+world.year+" · WEEK "+world.week));
+  heroTop.append(el("span","ppw-home-kicker","YOUR WORLD / YEAR "+world.year+" · WEEK "+world.week));
   const live=el("span","ppw-home-phase ppw-home-phase-"+
    (deadlineDue?"due":world.phase.toLowerCase()),
    bookingOpen?"● BOOKING OPEN":deadlineDue?"● DEADLINE REACHED":
@@ -204,14 +204,21 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    loading?"Checking World…":"Check World status") as HTMLButtonElement;
   check.type="button";check.disabled=loading;check.onclick=()=>void load();
   if(world.phase==="OPEN"){
+   // The deliberately extended solo playtest deadline is real, but a
+   // five-year countdown is not useful dashboard information. Keep normal
+   // short-window countdowns and all authoritative deadline checks intact.
+   const longTestWindow=Number.isFinite(world.nextLockEpoch)&&
+    Number.isFinite(world.serverEpoch)&&
+    world.nextLockEpoch-world.serverEpoch>30*86400;
    const countdown=el("p","ppw-home-countdown",
     deadlineDue?"Booking deadline reached · check World status":
+    longTestWindow?"Booking is open · finish your next card when ready":
      "Checking this week's deadline…");
    countdown.setAttribute("aria-live","off");
    hero.append(countdown);
    check.hidden=!deadlineDue;
    hero.append(check);
-   if(!deadlineDue)startClock(countdown,world,()=>{
+   if(!deadlineDue&&!longTestWindow)startClock(countdown,world,()=>{
     expiredOnScreen=key;
     draw();
    });
@@ -249,53 +256,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    root.append(dashboard);
    // News, weekly awards and the rumour mill already live under the persistent
    // News tab. Do not add two Home shortcuts pointing to that same screen.
-  }
-  if(port.manualAdvance&&promotion){
-   const controls=el("section","ppw-manual-test");
-   controls.append(el("span","ppw-home-brand","PRIVATE PLAYTEST CONTROL"),
-    el("h3","","Advance the shared week"),
-    el("p","ppw-home-small",
-     "One tap advances the shared World. If you're the only human player and have no show this week, your promotion takes an off-week. Future cards stay saved."));
-   if(manualStatus)controls.append(el("p","ppw-home-small",manualStatus));
-   if(deadlineDue&&world.phase==="OPEN"&&port.extendBooking){
-    controls.append(el("p","ppw-home-small",
-     "Keep this week's booking window open without advancing or losing saved cards."));
-    const extend=el("button","ppw-home-status-refresh",
-     manualBusy?"Working…":"Keep booking open for 5 years") as HTMLButtonElement;
-    extend.type="button";extend.disabled=manualBusy;
-    extend.onclick=async()=>{
-     if(manualBusy||!window.confirm(
-      "Keep the shared booking window open for five years? Existing cards remain intact and the World won't advance."))return;
-     manualBusy=true;manualStatus="Reopening the shared booking window…";draw();
-     try{await port.extendBooking!(world.year,world.week);
-      expiredOnScreen=null;manualStatus="";await load();}
-     catch(e){manualStatus=e instanceof Error?e.message:"Unable to reopen booking";}
-     finally{manualBusy=false;draw();}
-    };
-    controls.append(extend);
-   }
-   const action=el("button","ppw-home-status-refresh",manualBusy?
-    "Processing World…":world.phase==="OPEN"?"Advance Week "+world.week:
-    "Continue show resolution") as HTMLButtonElement;
-   action.type="button";action.disabled=manualBusy;
-   action.onclick=async()=>{
-    if(manualBusy)return;
-    if(world.phase==="OPEN"&&!window.confirm(
-     "Advance from Week "+world.week+"? If you are the only human player with no current show, your promotion takes an off-week. The AI World continues and future cards remain intact."))return;
-    manualBusy=true;manualStatus="Processing this week's shows…";draw();
-    try{
-     const result=await port.manualAdvance!(world.year,world.week);
-     if(result.status==="PUBLISHED"){
-      manualStatus="Shows settled. Refreshing your World…";
-      await load();await port.onWeekPublished?.();return;
-     }
-     manualStatus=result.status==="BLOCKED"?
-      (result.blockers?.length?result.blockers.slice(0,2).join(" · "):"World resolution needs a card or conflict decision. No results have been invented."):
-      "Some stages are still resolving. Press Advance Week to resume safely.";
-    }catch(e){manualStatus=e instanceof Error?e.message:"Could not advance World";}
-    finally{manualBusy=false;draw();}
-   };
-   controls.append(action);root.append(controls);
   }
   if(progressedFrom){
    const completed=el("section","ppw-home-week-complete");
@@ -348,11 +308,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      action:()=>{if(claimingKP)return;
       if(!port.claimWeeklyKP){port.openKayfabe?.();return;}
       claimingKP=true;
-      void port.claimWeeklyKP().then(result=>{
-       manualStatus=result.awarded>0?"Kayfabe Points claimed.":
-        result.reason??"No new points available.";
-       return load();
-      }).catch(e=>{error=e instanceof Error?e.message:"Could not claim points";})
+      void port.claimWeeklyKP().then(()=>load())
+       .catch(e=>{error=e instanceof Error?e.message:"Could not claim points";})
        .finally(()=>{claimingKP=false;draw();});
      },icon:"★",level:"priority"});
    }

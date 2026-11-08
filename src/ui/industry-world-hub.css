@@ -363,3 +363,13 @@
  .ppw-news-poster-rating{font-size:22px}
  .ppw-news-masthead{border-radius:10px}
 }
+
+/* Phase 45R: a compact editorial header — the two news desks are the title. */
+.ppw-news-layout{padding-top:10px}
+.ppw-news-layout .ppw-industry-head{padding:0;margin:0 0 10px;min-height:0}
+.ppw-news-layout .ppw-industry-actions,.ppw-news-layout .ppw-industry-nav{margin:0 0 12px;gap:8px}
+.ppw-news-layout .ppw-industry-button{min-height:42px;padding:9px 13px}
+.ppw-news .ppw-news-masthead{max-width:100%;margin:0 0 14px;border-radius:12px}
+.ppw-news .ppw-news-masthead-art{width:100%;height:auto;max-height:150px;object-fit:cover}
+.ppw-news-layout .ppw-industry-list{margin-top:0}
+@media(max-width:390px){.ppw-news-layout{padding-top:8px}}

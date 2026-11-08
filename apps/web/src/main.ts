@@ -470,24 +470,32 @@ async function loadSession(){
   game.append(button("Retry",()=>void loadSession()));
  }
 }
-/** Short, optional bumper. A single cached icon; no network/API work. */
+/** One composited branded scene: the logo is part of the backdrop image.
+ * Only the accessible Continue button is a live element over the artwork.
+ * Never blocks a repeat visit or changes the underlying signed-in game.
+ */
 function presentOpening(){
+ // Only the actual app launch gets a blocking intro; explicit deep links
+ // and returning from departments must remain immediately interactive.
  if(!session?.overview.promotion||readHostSection(location.hash)!=="home"||
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  (location.hash!==""&&location.hash!=="#/"))return;
  const key="ppw-opening:"+session.worldId+":"+session.overview.promotion.id;
  try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"1");}catch{return;}
  const scene=el("section","ppw-opening");
  scene.setAttribute("aria-label","PPW opening");
- const middle=el("div","ppw-opening-centre");
- const mark=ppwLogo("ppw-opening-logo");
- mark.width=1200;mark.height=475;
- middle.append(el("span","ppw-opening-kicker","THE LIVING WRESTLING WORLD"),mark,
-  el("span","ppw-opening-rule"),el("h1","ppw-visually-hidden","PROJECT PROFESSIONAL WRESTLING"));
- let timer=0;
- const finish=()=>{clearTimeout(timer);scene.remove();};
- const skip=button("Skip intro →",finish);skip.className="ppw-opening-skip";
- scene.append(middle,skip);document.body.append(scene);
- timer=window.setTimeout(finish,1900);
+ const artwork=document.createElement("img");
+ artwork.className="ppw-opening-art";
+ artwork.src="/branding/ppw-intro-stage.webp";
+ artwork.alt="PPW — Project Professional Wrestling";
+ artwork.decoding="async";artwork.loading="eager";
+ const finish=()=>{scene.remove();};
+ const enter=button("Continue to PPW →",finish);
+ enter.className="ppw-opening-skip";
+ scene.append(artwork,enter);document.body.append(scene);
+ // The player continues when ready; the background itself is not actionable.
+ // Escape is an additional accessibility exit for keyboard players.
+ scene.addEventListener("keydown",event=>{if(event.key==="Escape")finish();});
+ enter.focus();
 }
 function showLogin(){
  game.replaceChildren();

@@ -13,7 +13,7 @@
     "playtest:recover-careers": "tsx scripts/playtest-recover-careers.ts",
     "playtest:preflight": "tsx scripts/playtest-preflight.ts",
     "playtest:week": "tsx scripts/playtest-week.ts",
-    "web:build": "node scripts/install-original-legends.mjs && vite build",
+    "web:build": "node scripts/install-original-legends.mjs && node scripts/build-brand-assets.mjs && vite build",
     "web:dev": "vite --host 127.0.0.1",
     "test:browser": "playwright test --config playwright.config.ts",
     "web:preview": "vite preview --host 127.0.0.1 --port 4173",
@@ -27,6 +27,7 @@
     "pg": "^8.16.3",
     "@types/pg": "^8.15.5",
     "vite": "^7.1.0",
-    "@playwright/test": "1.64.1"
+    "@playwright/test": "1.64.1",
+    "sharp": "^0.34.5"
   }
 }
