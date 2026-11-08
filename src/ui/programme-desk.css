@@ -591,3 +591,20 @@
  color:#b6d1e2;line-height:1.35}
 .ppw-programme-desk .ppw-programme-decision-current{color:#9ff3d7!important;
  font-weight:800}
+
+/* Phase 47: private accepted wrestler idea, verified on-screen progression. */
+.ppw-programme-wrestler-idea{display:grid;gap:4px;padding:10px 12px;
+ border:1px solid #476a83;border-radius:10px;background:#132b3d;
+ color:#e3f3ff;overflow-wrap:anywhere}
+.ppw-programme-wrestler-idea small{font-size:10px;letter-spacing:.08em;
+ font-weight:800;color:#9dd9f4}
+.ppw-programme-wrestler-idea strong{font-size:14px;line-height:1.35;color:#fff}
+.ppw-programme-wrestler-idea span{font-size:12px;line-height:1.4;color:#c5dbea}
+
+/* Phase 47: real certified injuries interrupt the rivalry plan, not history. */
+.ppw-programme-medical-hold{display:grid;gap:5px;margin:9px 0;
+ padding:11px 12px;border:1px solid #ad8660;border-radius:12px;
+ background:#33291e;color:#ffebcf;overflow-wrap:anywhere}
+.ppw-programme-medical-hold strong{color:#fff3de;font-size:13px}
+.ppw-programme-medical-hold span,.ppw-programme-medical-hold small{
+ color:#ffdbb7;font-size:12px;line-height:1.4}

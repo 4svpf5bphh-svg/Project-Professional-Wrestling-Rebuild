@@ -10,13 +10,27 @@
  padding:0;border:0;background:transparent;box-shadow:none;border-radius:0;
  margin:0 auto 18px;filter:drop-shadow(0 8px 16px #05081d99)
 }
-.ppw-opening-centre{width:min(92vw,540px);gap:17px}
-.ppw-opening-logo{width:min(88vw,480px);max-height:210px;height:auto;
- object-fit:contain;filter:drop-shadow(0 14px 28px #020416dd)}
-.ppw-opening-kicker{color:#a5e9ff;letter-spacing:.17em;font-size:10px}
-.ppw-opening-rule{background:linear-gradient(90deg,transparent,#32dff5 25%,#e92bad 75%,transparent)}
+.ppw-opening{display:block!important;background:#0b0e26!important}
+.ppw-opening::before,.ppw-opening::after{display:none!important}
+.ppw-opening-art{display:block;position:absolute;inset:0;width:100%;height:100%;
+ object-fit:cover;object-position:center center;user-select:none;pointer-events:none}
+.ppw-opening-skip{z-index:2;right:50%;transform:translateX(50%);
+ bottom:calc(28px + env(safe-area-inset-bottom));min-height:48px;
+ padding:12px 24px;min-width:190px;letter-spacing:.02em;font-weight:800;
+ background:#141d39ed;border:1px solid #91d7ff;color:#fff;border-radius:15px;
+ box-shadow:0 9px 28px #030c26b8,0 0 0 1px #ff54a422;text-align:center;
+ white-space:nowrap;line-height:1.2}
+@media(prefers-reduced-motion:no-preference){
+ .ppw-opening-art{animation:ppw-stage-enter 950ms ease-out both}
+ @keyframes ppw-stage-enter{from{opacity:0}to{opacity:1}}
+}
 .ppw-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;
  padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;
  white-space:nowrap!important;border:0!important}
 @media(max-width:345px){#account .ppw-shell-logo{width:65px;height:30px}}
-@media(prefers-reduced-motion:reduce){.ppw-opening-logo{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.ppw-opening,.ppw-opening-art{animation:none!important}}
+
+/* Last-import iPhone newsroom overrides: remove inherited oversized desktop heading space. */
+#game .ppw-news-layout .ppw-industry-head{padding:0!important;margin:0 0 10px!important;min-height:0!important}
+#game .ppw-news-layout .ppw-industry-nav{margin:0 0 12px!important}
+#game .ppw-news-layout .ppw-news-masthead{margin:0 0 12px!important}

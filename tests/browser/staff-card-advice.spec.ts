@@ -34,6 +34,7 @@ test("390px iPhone gets contextual Road Agent, referee and medical warnings with
    ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],
    advisers:[{role:"ROAD_AGENT",staffId:"a"},{role:"MEDICAL",staffId:"b"},
     {role:"REFEREE",staffId:"c"}],
+   otherShowWorkloads:[{personId:"joe",showId:"premium",showName:"Sunday Premium",kind:"MATCH"}],
    selectedPeople:[
     {personId:"joe",name:"Samoa Joe",division:"MEN",stamina:34,
      safety:42,fatigue:78,wear:82,inRingQuality:73,matchCraft:48,presentation:82},
@@ -52,6 +53,9 @@ test("390px iPhone gets contextual Road Agent, referee and medical warnings with
  await expect(dialog.locator(".ppw-card-advisor-notes")).toHaveCount(0);
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const notes=dialog.locator(".ppw-guide-staff-review");
+ await expect(notes).toContainText("Physical commitments on another show this week");
+ await expect(notes).toContainText("Sunday Premium");
+ await expect(notes).toContainText("provisional");
  await expect(notes).toContainText("This is a demanding match");
  await expect(notes).toContainText("Watch cumulative wear");
  await expect(notes).toContainText("Risky stipulation and safety concerns");

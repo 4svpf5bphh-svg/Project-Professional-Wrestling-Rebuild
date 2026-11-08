@@ -68,7 +68,7 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   const cardRows=await withWorldTransaction(db.pool,tx=>tx.query<{
     draft_id:string;slot_id:string;position:number;payload:{
       participants:{personId:string;contractId:string}[];
-      scriptedWinner:string;intent:string;plannedFinish:string;
+      scriptedWinner:string;intent:string;plannedFinish:string;championshipId?:string;
       matchType?:"SINGLES"|"TAG";family?:string;scriptedWinnerSide?:string;
       sides?:{sideId:string;participants:{personId:string;contractId:string}[]}[];
       plannedLengthMinutes:number;mainEvent:boolean;scriptedBy:string;
@@ -107,7 +107,16 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
     assert.equal(ids.length,slots.reduce((sum,slot)=>sum+
       slot.payload.participants.length,0));
     assert.equal(new Set(ids).size,ids.length);
-    assert.ok(ids.length<=10);
+    // Ordinary AI cards still cap at ten cast wrestlers. Only a genuine
+    // tag championship bout may use the twelve-person cast needed for
+    // five matches when one match itself needs four wrestlers.
+    const titleTag=slots.some(slot=>slot.payload.matchType==="TAG"&&
+      Boolean(slot.payload.championshipId));
+    assert.ok(ids.length<=(titleTag?12:10));
+    if(ids.length>10){
+     assert.equal(titleTag,true);
+     assert.equal(slots.length,5);
+    }
     for(const slot of slots){
       assert.equal(slot.payload.scriptedBy,"AI_WORLD_BOOKER");
       assert.ok(slot.payload.participants.some(x=>x.personId===slot.payload.scriptedWinner));

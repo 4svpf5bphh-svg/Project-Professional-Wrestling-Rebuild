@@ -7,6 +7,64 @@ const overview={
 };
 const current={worldId:"genesis",playerId:"test-owner",
  csrfToken:"opaque-browser-csrf",overview,availablePromotions:[]};
+test("approved PPW full-screen intro is one artwork with an accessible Continue control at 320/390",async({page})=>{
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>route.fulfill({json:
+  route.request().postDataJSON().method==="overview"?overview:{}}));
+ for(const width of [320,390]){
+  await page.setViewportSize({width,height:844});
+  await page.goto("/");
+  const opening=page.locator(".ppw-opening");
+  await expect(opening).toBeVisible();
+  await expect(opening.locator("img")).toHaveCount(1);
+  await expect(opening.locator("button")).toHaveCount(1);
+  const art=opening.locator(".ppw-opening-art");
+  await expect(art).toHaveAttribute("src","/branding/ppw-intro-stage.webp");
+  await expect.poll(()=>art.evaluate(x=>(x as HTMLImageElement).naturalWidth))
+   .toBe(1080);
+  const full=await art.boundingBox();
+  expect(full).not.toBeNull();
+  expect(full!.width).toBeGreaterThanOrEqual(width-1);
+  expect(full!.height).toBeGreaterThanOrEqual(843);
+  await expect(opening.getByRole("button",{name:/Continue to PPW/})).toBeVisible();
+  const continueButton=opening.getByRole("button",{name:/Continue to PPW/});
+  const continueBounds=await continueButton.boundingBox();
+  expect(continueBounds).not.toBeNull();
+  expect(continueBounds!.height,"Continue should fit on one line").toBeLessThan(60);
+  expect(continueBounds!.width).toBeLessThanOrEqual(width-20);
+  await expect(opening).not.toContainText("THE LIVING WRESTLING WORLD");
+  await expect(opening.locator(".ppw-opening-logo")).toHaveCount(0);
+  // Capture the fully faded-in composition, not the translucent first frame.
+  await art.evaluate(async node=>{
+   await Promise.all(node.getAnimations().map(animation=>animation.finished));
+  });
+  await expect(opening).toHaveCSS("opacity","1");
+  await opening.screenshot({path:`test-results/phase45r-iphone-intro-${width}.png`});
+  await opening.getByRole("button",{name:/Continue to PPW/}).click();
+  await expect(opening).toHaveCount(0);
+  // The game's normal Home opens without a second intro for this session.
+  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+  await page.evaluate(()=>sessionStorage.clear());
+ }
+});
+
+test("intentional five-year booking horizon stays intact without filling Home with a day counter",async({page})=>{
+ const longWorld={...overview.world,
+  nextLockEpoch:Date.now()/1000+1825*86400,serverEpoch:Date.now()/1000};
+ const longOverview={...overview,world:longWorld};
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  ...current,overview:longOverview
+ }}));
+ await page.route("**/api/card",route=>route.fulfill({json:
+  route.request().postDataJSON().method==="overview"?longOverview:{}}));
+ await page.goto("/#/home");
+ await expect(page.locator(".ppw-home-countdown"))
+  .toHaveText("Booking is open · finish your next card when ready");
+ await expect(page.locator(".ppw-manual-test")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Advance Week/})).toHaveCount(0);
+ expect(longWorld.nextLockEpoch-longWorld.serverEpoch).toBeGreaterThan(1824*86400);
+});
+
 test("Home stays compact and avoids duplicate statuses or empty task panels at 320/390",async({page})=>{
  await page.route("**/api/session",route=>route.fulfill({json:current}));
  await page.route("**/api/card",route=>route.fulfill({json:
@@ -672,6 +730,14 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  expect(manifest.ok()).toBeTruthy();
  expect((await manifest.json()).display).toBe("standalone");
  expect((await manifest.json()).theme_color).toBe("#101225");
+ expect((await manifest.json()).icons).toContainEqual({
+  src:"/icon-192.png",sizes:"192x192",type:"image/png",purpose:"any"});
+ const touch=await request.get("/apple-touch-icon.png");
+ expect(touch.ok()).toBeTruthy();
+ expect((await touch.body()).subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
+ const mask=await request.get("/icon-512.png");
+ expect(mask.ok()).toBeTruthy();
+ expect((await mask.body()).subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
  const appIcon=await request.get("/icon.svg");
  expect(appIcon.ok()).toBeTruthy();
  expect(await appIcon.text()).toContain("data:image/webp;base64,");
@@ -680,10 +746,11 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  expect(await worker.text()).toContain('url.pathname.startsWith("/api/")');
  // A refreshed shell must evict the old cache-first portrait entries; the
  // original 48 Legends retain their URL paths across this release.
- expect(await worker.text()).toContain('ppw-static-shell-v8');
+ expect(await worker.text()).toContain('ppw-static-shell-v9');
  for(const path of ["ppw-showcase-hero.webp","ppw-showcase-header.webp",
   "ppw-showcase-badge.webp","news-official.webp","news-dirt.webp",
-  "award-match.webp","award-angle.webp"]){
+  "award-match.webp","award-angle.webp",
+  "ppw-intro-stage.webp","news-official-crisp.webp","news-dirt-crisp.webp"]){
   expect(await worker.text()).toContain('"/branding/'+path+'"');
   const image=await request.get("/branding/"+path);
   expect(image.ok()).toBeTruthy();
@@ -1502,10 +1569,10 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog).toBeVisible();
- await dialog.getByLabel("Attack style").selectOption("PULL_APART_BRAWL");
- await dialog.getByLabel("Storytelling purpose").selectOption("BUILD_RIVALRY");
- await expect(dialog.getByLabel("Attack style")).toHaveValue("PULL_APART_BRAWL");
- await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("BUILD_RIVALRY");
+ await dialog.locator('.ppw-guide-script-choice[data-field="Attack style"] .ppw-guide-script-tile[data-value="PULL_APART_BRAWL"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="BUILD_RIVALRY"]').click();
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Attack style"] .ppw-guide-script-tile[data-value="PULL_APART_BRAWL"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="BUILD_RIVALRY"]')).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await expect(page.locator(".ppw-card-lineup").last()).toContainText("Pull-apart brawl");
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
@@ -1514,8 +1581,8 @@ test("iPhone scripts and reopens a specialist attack with one card save",async({
   presentation:"PULL_APART_BRAWL",objective:"ESCALATE_RIVALRY"});
  expect(angle.outcome).toBe("HAPPENS");
  await page.locator(".ppw-card-bar .ppw-expand").nth(1).click();
- await expect(page.getByRole("dialog",{name:"Edit angle"}).getByLabel("Attack style"))
-  .toHaveValue("PULL_APART_BRAWL");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Attack style"] .ppw-guide-script-tile[data-value="PULL_APART_BRAWL"]'))
+  .toHaveAttribute("aria-pressed","true");
  expect(methods.filter(x=>x==="save")).toHaveLength(1);
  expect(methods.filter(x=>x==="talent")).toHaveLength(0);
  expect(methods.filter(x=>x==="wrestlerProfile")).toHaveLength(0);

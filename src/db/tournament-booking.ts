@@ -33,14 +33,14 @@ export async function readBookableTournamentBouts(tx:SqlRows,
     AND c.person_id=b.person_a AND c.status='SIGNED'
     AND c.start_week_index<=$4 AND c.expires_week_index>=$4
     AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
-   ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+   ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
     c.contract_id LIMIT 1) ca ON TRUE
   JOIN LATERAL(SELECT c.contract_id FROM ppw_contracts c
    WHERE c.world_id=b.world_id AND c.promotion_id=b.promotion_id
     AND c.person_id=b.person_b AND c.status='SIGNED'
     AND c.start_week_index<=$4 AND c.expires_week_index>=$4
     AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
-   ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+   ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
     c.contract_id LIMIT 1) cb ON TRUE
   WHERE b.world_id=$1 AND b.promotion_id=$2
    AND b.winner_person_id IS NULL

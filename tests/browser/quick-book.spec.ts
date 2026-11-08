@@ -80,7 +80,6 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
- await dialog.getByRole("button",{name:"Teams",exact:true}).click();
  await dialog.getByRole("button",{name:"Tag · 2v2"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
@@ -108,8 +107,8 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByLabel("Cast a team, trio or faction").selectOption("team:pair-a");
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
- await expect(dialog.getByLabel("New alignment")).toBeVisible();
- await dialog.getByLabel("New alignment").selectOption("FACE");
+ await expect(dialog.getByRole("group",{name:"New alignment choices"})).toBeVisible();
+ await dialog.locator('.ppw-guide-script-choice[data-field="New alignment"] .ppw-guide-script-tile[data-value="FACE"]').click();
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await dialog.getByRole("button",{name:"Complete angle"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
@@ -197,8 +196,8 @@ test("book a feud match and retaliation scene with signed participants, one save
  await dialog.getByRole("button",{name:"Side B initiates"}).click();
  await expect(dialog.locator(".ppw-side").first().getByText("Místico",{exact:true})).toBeVisible();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
- await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("SEEK_REVENGE");
- await expect(dialog.getByLabel("Area")).toHaveValue("BACKSTAGE");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="SEEK_REVENGE"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Area"] .ppw-guide-script-tile[data-value="BACKSTAGE"]')).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await dialog.getByRole("button",{name:"Complete angle"}).click();
  await expect(page.locator(".ppw-angle-card .ppw-card-booked-facts"))

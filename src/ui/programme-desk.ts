@@ -10,6 +10,7 @@ import {evaluateProgrammeReview} from "../domain/programme-review.js";
 import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
 import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {describeProgrammeChapter} from "./programme-chapter-summary.js";
+import {describeWrestlerStory} from "../domain/programme-story-spine.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {wrestlerInitials} from "./wrestler-card.js";
 export type ProgrammeView=Awaited<ReturnType<typeof readProgrammeWorkspace>>;
@@ -288,8 +289,38 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(scheduled)glance.append(element("span","ppw-programme-upcoming-compact",
     "Next · "+(scheduled.kind==="MATCH"?"Match":"Angle")+" on "+scheduled.showName+
     " · "+(scheduled.status==="SUBMITTED"?"Confirmed":"Draft")));
+   if(p.wrestlerOrigin){
+    const origin=p.wrestlerOrigin;
+    const people=[...p.sideA,...p.sideB];
+    const initiator=people.find(x=>x.refId===origin.initiatorId);
+    const opponent=people.find(x=>x.refId===origin.opponentId);
+    const spine=describeWrestlerStory({origin,
+     initiatorName:initiator?.name??"The wrestler",
+     opponentName:opponent?.name??"their opponent",
+     activityCount:p.activityCount,plannedShows:p.plannedActivity??[],
+     resolvedFinaleWeekIndex:p.finale?.resolvedWeekIndex??null});
+    const note=element("div","ppw-programme-wrestler-idea");
+    note.dataset.storyStage=spine.stage;
+    note.append(element("small","","FROM BACKSTAGE · WRESTLER IDEA"),
+     element("strong","",spine.headline),element("span","",spine.detail));
+    glance.append(note);
+   }
+   if((p.medicalHolds??[]).length){
+    const hold=element("div","ppw-programme-medical-hold");
+    hold.append(element("strong","","Medical hold · in-ring plans affected"));
+    for(const person of p.medicalHolds){
+     const expected=person.clearedWeekIndex===null?"pending medical clearance":
+      "expected clearance Y"+(Math.floor(person.clearedWeekIndex/52)+1)+
+      " W"+(person.clearedWeekIndex%52+1);
+     hold.append(element("span","",person.name+" · "+expected));
+    }
+    hold.append(element("small","",
+     "A draft match is not an appearance. Review medical clearance before booking; no result has been assumed."));
+    glance.append(hold);
+   }
    if(port.openPlanner&&view.canEdit)glance.append(button(
-    scheduled?"Review booked chapter":"Book next chapter",()=>port.openPlanner?.(p.programmeId)));
+    scheduled?"Review booked chapter":(p.medicalHolds??[]).length?
+     "Review safe next steps":"Book next chapter",()=>port.openPlanner?.(p.programmeId)));
    creativeLane.append(glance);
    const record=element("div","ppw-programme-record");
    for(const [caption,n] of [
@@ -435,6 +466,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(p.plannedActivity?.length)
     advice.append(element("p","ppw-programme-booked-short",
      "Already booked · "+p.plannedActivity[0]!.showName));
+   else if((p.medicalHolds??[]).length)
+    advice.append(element("p","ppw-programme-booked-short",
+     "A wrestler is medically unavailable. Revisit the plan after clearance or choose a safe alternative; a match cannot be assumed."));
    else{
     for(const idea of recommendProgrammeAngles(p).slice(0,3)){
      const pick=button(idea.title,()=>port.openPlanner?.(p.programmeId,idea.kind),working);

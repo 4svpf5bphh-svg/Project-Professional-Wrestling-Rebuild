@@ -80,9 +80,9 @@ test("one press automatically finishes multiple certified batches",async({page})
  expect(batches).toBe(2);
 });
 
-test("Home offers the same one-tap solo week advance without entering Admin",async({page})=>{
+test("Home has no test-only World advance panel; Admin remains the only operator control",async({page})=>{
  await page.setViewportSize({width:390,height:844});
- let batches=0;
+ let calls=0;
  await page.route("**/api/session",route=>route.fulfill({json:{
   worldId:"world-20261017",playerId:"owner",csrfToken:"csrf",
   overview:{world,membership:"ACTIVE",promotion},availablePromotions:[],
@@ -91,21 +91,13 @@ test("Home offers the same one-tap solo week advance without entering Admin",asy
  await page.route("**/api/card",route=>route.fulfill({json:{
   world,membership:"ACTIVE",promotion
  }}));
- await page.route("**/api/playtest-week",route=>{
-  expect(route.request().postDataJSON()).toMatchObject({
-   confirm:"ADVANCE_SHARED_WORLD",year:1,week:1
-  });
-  batches++;
-  return route.fulfill({json:batches===1?{
-   status:"LIMIT_REACHED",steps:[{action:"ASSESS_CONTINUITY",status:"EXECUTED"}],blockers:[]
-  }:{status:"PUBLISHED",steps:[{action:"PUBLISH_WEEK",status:"EXECUTED"}],blockers:[]}});
- });
+ await page.route("**/api/playtest-week",route=>{calls++;return route.fulfill({status:403,json:{}});});
+ await page.route("**/api/admin",route=>route.fulfill({json:admin(world)}));
  await page.goto("/#/home");
- const action=page.getByRole("button",{name:"Advance Week 1"});
- await expect(action).toBeVisible();
- page.once("dialog",dialog=>dialog.accept());
- await action.click();
- await expect.poll(()=>batches).toBe(2);
- await expect(page.getByText(/One tap advances the shared World/)).toBeVisible();
+ await expect(page.locator(".ppw-manual-test")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Advance Week/})).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+ await page.goto("/#/admin");
+ await expect(page.getByRole("button",{name:"Advance Week"})).toBeVisible();
+ expect(calls).toBe(0);
 });

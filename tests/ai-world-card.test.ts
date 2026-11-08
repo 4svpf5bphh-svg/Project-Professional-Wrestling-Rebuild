@@ -275,3 +275,53 @@ test("hot active TV rivalry is not displaced by an optional inaugural tag title"
    ["talent-01","talent-02"]);
  }
 });
+
+test("AI can crown a real tag title from legal temporary partnerships in teamless Genesis",()=>{
+ const args={...base,week:1,eventType:"REGULAR" as const,
+  establishedTeams:[],tagTitles:[{championshipId:"inaugural-tag",holderTeamId:null,
+   heat:95}]};
+ const card=chooseAiWorldCard(args);
+ assert.equal(card.status,"READY");
+ if(card.status!=="READY")return;
+ const title=card.matches.find(m=>m.championshipId==="inaugural-tag");
+ assert.ok(title,"A World without named teams still deserves a genuine inaugural title bout");
+ assert.equal(title.matchType,"TAG");
+ assert.equal(title.plannedFinish,"CLEAN_PIN",
+  "An inaugural belt must not be declared after a protected non-finish");
+ assert.equal(title.participants.length,4);
+ assert.equal(new Set(title.participants.map(p=>p.personId)).size,4);
+ assert.equal(card.matches.length,5,
+  "Inaugural tag match must keep a full five-match AI broadcast, not displace the undercard");
+ assert.ok(card.matches.every(x=>x.participants.length===(x.matchType==="TAG"?4:2)));
+ assert.equal(new Set(card.matches.flatMap(x=>x.participants.map(p=>p.personId))).size,12);
+ assert.ok(title.participants.every(p=>roster.some(r=>
+  r.personId===p.personId&&r.contractId===p.contractId)));
+ assert.ok(!("teamId" in title),"No ephemeral internal draft pair may enter a canonical match");
+ const reversed=chooseAiWorldCard({...args,roster:[...roster].reverse()});
+ assert.deepEqual(reversed,card,"Booked provisional entrants are deterministic");
+ const notDue=chooseAiWorldCard({...args,week:2});
+ if(notDue.status==="READY")
+  assert.ok(notDue.matches.every(m=>m.championshipId!=="inaugural-tag"));
+ const notEnough=chooseAiWorldCard({...args,roster:roster.slice(0,3)});
+ if(notEnough.status==="READY")
+  assert.ok(notEnough.matches.every(m=>m.championshipId!=="inaugural-tag"));
+});
+test("AI tag champions are real teams and may defend against new legal partners",()=>{
+ const args={...base,eventType:"MAJOR" as const,
+  establishedTeams:[{teamId:"holders",aId:"talent-01",bId:"talent-02"}],
+  tagTitles:[{championshipId:"held-tag",holderTeamId:"holders",heat:90}]};
+ const card=chooseAiWorldCard(args);
+ assert.equal(card.status,"READY");
+ if(card.status!=="READY")return;
+ const title=card.matches.find(m=>m.championshipId==="held-tag");
+ assert.ok(title,"The only established team still deserves a credible challenger");
+ assert.equal(title.matchType,"TAG");
+ assert.ok(title.sides!.some(side=>
+  side.participants.map(p=>p.personId).sort().join("|")==="talent-01|talent-02"));
+ assert.equal(new Set(title.participants.map(p=>p.personId)).size,4);
+ const forged=chooseAiWorldCard({...args,establishedTeams:[],
+  tagTitles:[{championshipId:"held-tag",holderTeamId:"holders",heat:90}]});
+ if(forged.status==="READY")
+  assert.ok(forged.matches.every(m=>m.championshipId!=="held-tag"),
+   "A non-existent holding team can never enter a title defense");
+});

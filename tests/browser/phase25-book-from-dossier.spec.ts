@@ -163,3 +163,45 @@ for(const width of [320,390]){
   await expect(page).toHaveURL(/#\/roster$/);
  });
 }
+
+for(const width of [320,390]){
+ test(width+"px roster dossier opens from a scrolled list, scrolls independently and returns safely",async({page})=>{
+  await page.setViewportSize({width,height:620});
+  const requests=await mock(page);
+  await page.goto("/#/roster");
+  const wrestler=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster").first();
+  await expect(wrestler).toBeVisible();
+  // Force the underlying iPhone document deep into its own scroll before
+  // opening the modal. A synthetic DOM click avoids Playwright scrolling
+  // the roster back to the top in order to click the card.
+  await page.evaluate(()=>{
+   document.body.style.minHeight="1800px";
+   window.scrollTo(0,800);
+  });
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeGreaterThan(0);
+  await wrestler.evaluate(node=>(node as HTMLElement).click());
+  const overlay=page.locator(".ppw-profile-overlay");
+  await expect(overlay).toBeVisible();
+  const dossier=page.getByRole("dialog",{name:"Wrestler dossier"});
+  await expect(dossier).toBeVisible();
+  const metrics=await overlay.evaluate(node=>{
+   const scroller=node as HTMLElement;
+   return {top:scroller.scrollTop,extra:scroller.scrollHeight-scroller.clientHeight};
+  });
+  expect(metrics.top,"A dossier must never inherit the directory's scroll position").toBe(0);
+  expect(metrics.extra).toBeGreaterThan(90);
+  await overlay.evaluate(node=>{(node as HTMLElement).scrollTop=(node as HTMLElement).scrollHeight;});
+  await expect.poll(()=>overlay.evaluate(node=>(node as HTMLElement).scrollTop)).toBeGreaterThan(25);
+  const back=dossier.getByRole("button",{name:"‹ Back"});
+  await back.click();
+  await expect(overlay).toHaveCount(0);
+  await expect(page).toHaveURL(/#\/roster$/);
+  await expect(wrestler).toBeVisible();
+  await wrestler.click();
+  await expect(overlay).toBeVisible();
+  await expect.poll(()=>overlay.evaluate(node=>(node as HTMLElement).scrollTop)).toBe(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+  expect(requests.filter(x=>x==="wrestlerProfile")).toHaveLength(2);
+ });
+}

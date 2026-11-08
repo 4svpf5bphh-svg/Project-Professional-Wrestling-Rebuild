@@ -182,14 +182,15 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
    (a.kind!=="PROGRAMME"?0:1)-(b.kind!=="PROGRAMME"?0:1)||
    b.heat-a.heat||a.aId.localeCompare(b.aId,"en"));
  const reserve=priority[0]??null;
- const tagCandidates=(input.establishedTeams??[]).map(t=>{
-  if(!t.teamId||!t.aId||!t.bId||t.aId===t.bId)
-   throw new Error("Invalid established tag team");
-  return {...t,a:byId.get(t.aId),b:byId.get(t.bId)};
- }).filter(t=>t.a&&t.b&&t.a.bookingDivision===t.b.bookingDivision &&
-  ![t.aId,t.bId].some(id=>id===reserve?.aId||id===reserve?.bId))
-  .sort((a,b)=>push(b.a!)+push(b.b!)-push(a.a!)-push(a.b!)||
-   a.teamId.localeCompare(b.teamId,"en"));
+ const establishedTagCandidates:(readonly {
+  teamId:string;aId:string;bId:string;a:AiRosterCandidate|undefined;
+  b:AiRosterCandidate|undefined;provisional:boolean}[]) =
+  (input.establishedTeams??[]).map(t=>{
+   if(!t.teamId||!t.aId||!t.bId||t.aId===t.bId)
+    throw new Error("Invalid established tag team");
+   return {...t,a:byId.get(t.aId),b:byId.get(t.bId),provisional:false};
+  }).filter(t=>t.a&&t.b&&t.a.bookingDivision===t.b.bookingDivision &&
+   ![t.aId,t.bId].some(id=>id===reserve?.aId||id===reserve?.bId));
  const titleCandidates=(input.tagTitles??[]).filter(t=>{
   if(!t.championshipId||(t.holderTeamId!==null&&!t.holderTeamId)||!isStat(t.heat)||
     (t.bookingDivision!=null&&!["MEN","WOMEN"].includes(t.bookingDivision)))
@@ -197,11 +198,40 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   return true;
  }).sort((a,b)=>b.heat-a.heat||
   a.championshipId.localeCompare(b.championshipId,"en"));
- // An established hot rivalry should not lose its weekly headline (or
-  // established tag-team showcase) to an inaugural belt scheduling pass.
-  const hotProgramme=(input.featuredPairs??[]).some(f=>
-    f.kind==="PROGRAMME"&&f.heat>=85);
-  const inauguralWeek=((input.year-1)*52+input.week-1)%4===0&&!hotProgramme;
+ // A hot feud keeps its weekly headline. Only an inaugural TV title bout
+ // or a major tag title match may ask an unestablished pair to team up.
+ const hotProgramme=(input.featuredPairs??[]).some(f=>
+  f.kind==="PROGRAMME"&&f.heat>=85);
+ const inauguralWeek=((input.year-1)*52+input.week-1)%4===0&&!hotProgramme;
+ const titleOpportunity=(input.eventType==="MAJOR"||inauguralWeek)&&
+  titleCandidates.some(t=>input.eventType==="MAJOR"||t.holderTeamId===null);
+ // Genesis can have real contracted wrestlers but ZERO established teams.
+ // Without a booking-only partnership, all AI tag belts stay vacant forever.
+ // These candidates are not saved as World teams. ONLY a certified winning
+ // result may create an authentic team via settleCanonicalTagTitleContests.
+ const namedMembers=new Set(establishedTagCandidates.flatMap(t=>[t.aId,t.bId]));
+ const provisionalTagCandidates:(typeof establishedTagCandidates[number])[]=[];
+ if(titleOpportunity){
+  for(const division of ["MEN","WOMEN"] as const){
+   const free=available.filter(p=>p.bookingDivision===division&&
+    !namedMembers.has(p.personId)&&
+    p.personId!==reserve?.aId&&p.personId!==reserve?.bId).sort(best);
+   // Two pairs per division suffice for an inaugural title or a defense.
+   // Keep their identities transient; no tag name or contract is invented.
+   for(let i=0;i+1<Math.min(free.length,4);i+=2){
+    const a=free[i]!,b=free[i+1]!;
+    provisionalTagCandidates.push({
+     teamId:"__draft_tag_"+division+"_"+i,aId:a.personId,bId:b.personId,
+     a,b,provisional:true});
+   }
+  }
+ }
+ // Established partnerships retain priority; the first successful
+ // title-winning makeshift team is then persisted by canonical settlement.
+ const tagCandidates=[...establishedTagCandidates,...provisionalTagCandidates]
+  .sort((a,b)=>Number(a.provisional)-Number(b.provisional)||
+   push(b.a!)+push(b.b!)-push(a.a!)-push(a.b!)||
+   a.teamId.localeCompare(b.teamId,"en"));
   const eligibleTagTitle=(input.eventType==="MAJOR"||inauguralWeek)?
     titleCandidates.find(t=>{
      if(input.eventType!=="MAJOR"&&t.holderTeamId!==null)return false;
@@ -217,9 +247,11 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   t.a!.bookingDivision===firstTeam.a!.bookingDivision &&
   ![firstTeam.aId,firstTeam.bId].includes(t.aId)&&
   ![firstTeam.aId,firstTeam.bId].includes(t.bId)):undefined;
- const tagChoice=firstTeam&&secondTeam?{first:firstTeam,second:secondTeam,
-  titleId:eligibleTagTitle?.championshipId??null,
-   inaugural:eligibleTagTitle?.holderTeamId===null}:null;
+ const tagChoice=firstTeam&&secondTeam&&
+  (eligibleTagTitle||(!firstTeam.provisional&&!secondTeam.provisional))?
+   {first:firstTeam,second:secondTeam,
+    titleId:eligibleTagTitle?.championshipId??null,
+    inaugural:eligibleTagTitle?.holderTeamId===null}:null;
  const tagIds=new Set(tagChoice?[tagChoice.first.aId,tagChoice.first.bId,
   tagChoice.second.aId,tagChoice.second.bId]:[]);
  // Keep recognisable headliners, but rotate credible undercard opportunities.
@@ -240,12 +272,18 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
     rotationScore(b)-rotationScore(a)||best(a,b))[0];
   return other?[leader,other]:[leader];
  };
+ // One tag bout uses four athletes for one result. Keep the original
+ // four-to-five-bout AI show depth by widening the cast only for a tag show,
+ // never by inventing extra matches or reusing a wrestler twice.
+ // Only a consequential title match earns extra cast capacity. Ordinary
+ // established-team TV bouts keep their original ten-appearance ceiling.
+ const maxCast=tagChoice?.titleId?12:10;
  const chosen:AiRosterCandidate[]=[];
  if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
  if(tagChoice)for(const id of tagIds)chosen.push(byId.get(id)!);
  if(men.length>=2&&women.length>=2&&available.length>=4){
   for(const p of [...nextDivision(men),...nextDivision(women)]){
-   if(chosen.length<10&&!chosen.some(x=>x.personId===p.personId))chosen.push(p);
+   if(chosen.length<maxCast&&!chosen.some(x=>x.personId===p.personId))chosen.push(p);
   }
  }
  // A developmental appearance needs a legal opponent. Fill remaining
@@ -253,7 +291,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  const rotationOrder=[...available].sort((a,b)=>
   rotationScore(b)-rotationScore(a)||best(a,b));
  const reservePair=(p:AiRosterCandidate)=>{
-  if(chosen.length>8||chosen.some(x=>x.personId===p.personId))return false;
+  if(chosen.length>maxCast-2||chosen.some(x=>x.personId===p.personId))return false;
   const opponent=rotationOrder.find(x=>x.personId!==p.personId&&
    x.bookingDivision===p.bookingDivision&&
    !chosen.some(c=>c.personId===x.personId));
@@ -268,11 +306,11 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   if(developing)reservePair(developing);
  }
  for(const p of rotationOrder){
-  if(chosen.length>8)break;
+  if(chosen.length>maxCast-2)break;
   reservePair(p);
  }
- // If ten slots leave one wrestler unpaired, use eight rather than using
- // the same performer twice or mixing the divisions.
+ // Leave any odd casting slot empty rather than duplicate a wrestler
+ // or cross booking divisions. A tag card can use up to twelve performers.
  const pool=[...chosen].sort((a,b)=>
   rank(b)+opportunity(b)-rank(a)-opportunity(a)||
   a.personId.localeCompare(b.personId,"en"));
@@ -293,7 +331,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   pool.splice(pool.indexOf(a),1);pool.splice(pool.indexOf(b),1);
   cards.push([a,b]);
  }
- while(pool.length>=2&&cards.length<5){
+ while(pool.length>=2&&cards.length<(tagChoice?4:5)){
   const head=pool.shift()!;
   const candidates=pool.filter(p=>p.bookingDivision===head.bookingDivision);
   if(!candidates.length)continue;

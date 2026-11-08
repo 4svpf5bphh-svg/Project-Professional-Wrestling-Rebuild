@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {newEditorMatch} from "../src/ui/card-editor-model.js";
 import {newEditorSegment} from "../src/ui/card-segment-model.js";
-import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,contractStaffNotes}
+import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,crossShowWorkloadNotes,matchPartnershipNotes,contractStaffNotes}
  from "../src/domain/staff-context-advice.js";
 import type {StaffRole} from "../src/domain/world-staff.js";
 
@@ -228,4 +228,33 @@ test("an unsafe wrestler gets finish-specific guidance even without a hired refe
  assert.ok(!safeFinish.some(n=>n.title==="Risky finish and safety concerns"));
  assert.equal(match.plannedFinish,"FOREIGN_OBJECT",
   "A staff assessment must not rewrite the player's scripted outcome");
+});
+
+test("cross-show physical work is real booked evidence, never a manufactured medical outcome",()=>{
+ const match={...newEditorMatch("main","SINGLES"),
+  teams:[[{personId:"a",contractId:"ca"}],[{personId:"b",contractId:"cb"}]]};
+ const other=[
+  {personId:"a",showId:"premium",showName:"Sunday Premium",kind:"MATCH" as const},
+  {personId:"c",showId:"premium",showName:"Sunday Premium",kind:"PHYSICAL_ANGLE" as const}
+ ];
+ const notes=crossShowWorkloadNotes(match,other,[opponentA,opponentB],crew);
+ assert.equal(notes.length,1);
+ assert.equal(notes[0]!.role,"MEDICAL");
+ assert.equal(notes[0]!.level,"WATCH");
+ assert.match(notes[0]!.message,/Samoa Joe/);
+ assert.match(notes[0]!.message,/Sunday Premium/);
+ assert.match(notes[0]!.message,/provisional/);
+ assert.doesNotMatch(notes[0]!.message,/injury confirmed|charged twice/i);
+ assert.equal(crossShowWorkloadNotes(match,other,[opponentA,opponentB],
+  new Set<StaffRole>(["ROAD_AGENT"]))[0]!.role,"ROAD_AGENT");
+ assert.equal(crossShowWorkloadNotes(match,other,[opponentA,opponentB],
+  new Set<StaffRole>())[0]!.role,"HOUSE");
+ assert.deepEqual(crossShowWorkloadNotes(match,other.filter(x=>x.personId==="c"),
+  [opponentA,opponentB],crew),[]);
+ const interview={...newEditorSegment("promo","PROMO"),
+  actors:[{personId:"a",contractId:"ca"}]};
+ assert.deepEqual(crossShowWorkloadNotes(interview,other,[opponentA],crew),[]);
+ const physical={...newEditorSegment("attack","ATTACK"),
+  actors:[{personId:"a",contractId:"ca"}]};
+ assert.equal(crossShowWorkloadNotes(physical,other,[opponentA],crew).length,1);
 });

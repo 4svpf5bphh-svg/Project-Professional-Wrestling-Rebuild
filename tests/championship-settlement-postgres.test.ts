@@ -160,7 +160,7 @@ test("Canonical singles titles defend, transfer once on clean results and remain
  }
 });
 
-test("vacant singles/tag titles crown verified inaugural winners and history stays actor-scoped and paginated",{
+test("vacant singles and 2v2v2 tag titles crown verified winners with private paginated history",{
  skip:!url?"No disposable PostgreSQL":false,
 },async()=>{
  const world="inaugural-"+randomUUID(),promotion="promotion";
@@ -177,12 +177,15 @@ test("vacant singles/tag titles crown verified inaugural winners and history sta
     VALUES($1,$2,$3)`,[world,player,promotion]);
    await tx.query(`INSERT INTO ppw_people(world_id,person_id,name)
     VALUES($1,'a','Alpha'),($1,'b','Bravo'),
-     ($1,'c','Charlie'),($1,'d','Delta')`,[world]);
+     ($1,'c','Charlie'),($1,'d','Delta'),
+     ($1,'e','Echo'),($1,'f','Foxtrot')`,[world]);
    await tx.query(`INSERT INTO ppw_tag_teams(world_id,team_id,name,status)
-    VALUES($1,'team-a','Founders','ACTIVE'),($1,'team-b','New Blood','ACTIVE')`,[world]);
+    VALUES($1,'team-a','Founders','ACTIVE'),
+     ($1,'team-b','New Blood','ACTIVE'),($1,'team-c','Third Side','ACTIVE')`,[world]);
    await tx.query(`INSERT INTO ppw_tag_team_members(world_id,team_id,person_id)
     VALUES($1,'team-a','a'),($1,'team-a','b'),
-     ($1,'team-b','c'),($1,'team-b','d')`,[world]);
+     ($1,'team-b','c'),($1,'team-b','d'),
+     ($1,'team-c','e'),($1,'team-c','f')`,[world]);
    await tx.query(`INSERT INTO ppw_championships(
      world_id,promotion_id,championship_id,name,division,status,prestige)
     VALUES($1,$2,'belt-s','World Championship','SINGLES','ACTIVE',75),
@@ -196,14 +199,16 @@ test("vacant singles/tag titles crown verified inaugural winners and history sta
     await tx.query(`INSERT INTO ppw_completed_show_matches(
       world_id,show_id,match_id,position,crowd_response,
       actual_finish,actual_winner_side)
-      VALUES($1,$2,'main',0,76,'CLEAN_PIN','B')`,[world,show]);
+      VALUES($1,$2,'main',0,76,'CLEAN_PIN',
+       CASE WHEN $2='tag-show' THEN 'C' ELSE 'B' END)`,[world,show]);
    }
   });
   const receipt=(showId:string):CompletedShowReceipt=>({
    worldId:world,promotionId:promotion,showId,year:1,week:22,
    resolutionId:"resolve-"+showId,crowdResponse:76,
    matches:[{matchId:"main",position:0,crowdResponse:76,
-    actualFinish:"CLEAN_PIN",actualWinnerSide:"B"}],segments:[]
+    actualFinish:"CLEAN_PIN",
+    actualWinnerSide:showId==="tag-show"?"C":"B"}],segments:[]
   });
   const singles=await withWorldTransaction(db.pool,tx=>
    settleCanonicalSinglesTitleContests(tx,receipt("singles-show"),[{
@@ -212,13 +217,16 @@ test("vacant singles/tag titles crown verified inaugural winners and history sta
   const tag=await withWorldTransaction(db.pool,tx=>
    settleCanonicalTagTitleContests(tx,receipt("tag-show"),[{
     slotId:"main",championshipId:"belt-t",
-    sides:[{sideId:"A",personIds:["a","b"]},{sideId:"B",personIds:["c","d"]}]
+    sides:[{sideId:"A",personIds:["a","b"]},
+     {sideId:"B",personIds:["c","d"]},
+     {sideId:"C",personIds:["e","f"]}]
    }]));
   assert.deepEqual(tag,{contests:1,transfers:1});
   const first=await readChampionshipDirectory(db.pool,world,player,promotion);
   assert.equal(first.titles.length,2);
   assert.equal(first.titles.find(x=>x.championshipId==="belt-s")?.holderName,"Charlie");
-  assert.equal(first.titles.find(x=>x.championshipId==="belt-t")?.holderName,"New Blood");
+  assert.equal(first.titles.find(x=>x.championshipId==="belt-t")?.holderName,"Third Side",
+   "A genuine third 2v2v2 side can win the vacant tag championship from certified match facts");
   const contests=await withWorldTransaction(db.pool,tx=>tx.query<{
    prior_reign_id:string|null;title_changed:boolean}>(`
     SELECT prior_reign_id,title_changed FROM ppw_championship_contests

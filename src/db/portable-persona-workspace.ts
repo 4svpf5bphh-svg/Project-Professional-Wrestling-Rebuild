@@ -35,7 +35,10 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "p.momentum,p.career_stage,p.status,p.fatigue,true AS is_current",
    "FROM ppw_people p JOIN ppw_contracts c",
    "ON c.world_id=p.world_id AND c.person_id=p.person_id",
-   "WHERE p.world_id=$1 AND c.promotion_id=$2 AND p.status='ACTIVE'",
+   // An injured signed wrestler is still on the manager's roster and must
+   // retain their private recovery conversation and reply controls.
+   "WHERE p.world_id=$1 AND c.promotion_id=$2",
+   "AND p.status IN ('ACTIVE','INJURED')",
    "AND c.status='SIGNED' AND c.start_week_index<=$3",
    "AND c.expires_week_index>=$3 ORDER BY p.name,p.person_id LIMIT 501",
    "), former_ids AS (",
@@ -147,8 +150,11 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    rival_verified_matches:number|null;rival_professional_trust:number|string|null;
    follow_through_week_index:number|null;follow_through_kind:string|null;
    observed_absent_weeks:number|null;observed_losses:number|null;
-   relevant_title:string|null;career_stage_at_request:string|null}>([
-   "SELECT request_id,kind,related_person_id,status,decision,",
+   relevant_title:string|null;career_stage_at_request:string|null;
+   planned_show_name:string|null;planned_show_year:number|null;
+   planned_show_week:number|null;planned_show_status:string|null;
+   planned_slot_kind:string|null}>([
+   "SELECT r.request_id,r.kind,r.related_person_id,r.status,r.decision,",
    "created_week_index,responded_week_index,due_week_index,",
    "promised_role,observed_match_shows,observed_featured_shows,",
    "assessment_reason,trust_delta,working_verified_shows,working_trust_delta,",
@@ -156,10 +162,29 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "team_verified_matches,observed_execution_quality,",
    "rival_verified_matches,rival_professional_trust,",
    "follow_through_week_index,follow_through_kind,",
-   "observed_absent_weeks,observed_losses,relevant_title,career_stage_at_request",
-   "FROM ppw_backstage_requests WHERE world_id=$1 AND promotion_id=$2",
-   "AND person_id=$3 ORDER BY created_week_index DESC,request_id DESC LIMIT 30"
-  ].join(" "),[s.worldId,s.promotionId,selected]);
+   "observed_absent_weeks,observed_losses,relevant_title,career_stage_at_request,",
+   "booked.show_name AS planned_show_name,booked.year AS planned_show_year,",
+   "booked.week AS planned_show_week,booked.status AS planned_show_status,",
+   "booked.kind AS planned_slot_kind",
+   "FROM ppw_backstage_requests r",
+   // Only this selected wrestler's open private commitments, not an inbox
+   // query per contact. A draft card never counts as a kept promise.
+   "LEFT JOIN LATERAL (SELECT d.show_name,d.year,d.week,d.status,s.kind",
+   "FROM ppw_booking_drafts d JOIN ppw_card_slots s ON s.world_id=d.world_id",
+   "AND s.draft_id=d.draft_id",
+   "WHERE r.status='PROMISED' AND d.world_id=r.world_id",
+   "AND d.promotion_id=r.promotion_id AND d.status IN ('DRAFT','SUBMITTED')",
+   "AND (d.year-1)*52+d.week-1 BETWEEN greatest($4,r.responded_week_index)",
+   "AND r.due_week_index",
+   "AND s.payload->'participants' @>",
+   "jsonb_build_array(jsonb_build_object('personId',r.person_id))",
+   "AND ((r.decision='PROMISE_SEGMENT' AND s.kind='SEGMENT')",
+   "OR (r.decision IN ('PROMISE_APPEARANCE','PROMISE_FEATURED')",
+   "AND s.kind='MATCH'))",
+   "ORDER BY d.year,d.week,d.draft_id,s.position LIMIT 1) booked ON TRUE",
+   "WHERE r.world_id=$1 AND r.promotion_id=$2",
+   "AND r.person_id=$3 ORDER BY r.created_week_index DESC,r.request_id DESC LIMIT 30"
+  ].join(" "),[s.worldId,s.promotionId,selected,now]);
   // Only the selected wrestler thread reads memory. Never inflate inbox
   // reads or pull rival-promoter conversations into this person's history.
   const memories=await tx.query<{kind:string;source_id:string;
@@ -241,6 +266,12 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     averageExecution:x.observed_execution_quality===null?null:Number(x.observed_execution_quality),
     followThroughWeekIndex:x.follow_through_week_index,
     followThroughKind:x.follow_through_kind,
+    plannedBooking:x.planned_show_name&&x.planned_show_year!==null&&
+     x.planned_show_week!==null&&x.planned_show_status&&x.planned_slot_kind?{
+      showName:x.planned_show_name,year:x.planned_show_year,
+      week:x.planned_show_week,status:x.planned_show_status,
+      kind:x.planned_slot_kind
+     }:null,
     observedAbsentWeeks:x.observed_absent_weeks,
     observedLosses:x.observed_losses,relevantTitle:x.relevant_title,
     careerStageAtRequest:x.career_stage_at_request,

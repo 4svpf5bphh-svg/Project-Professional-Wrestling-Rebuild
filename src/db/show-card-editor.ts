@@ -71,12 +71,19 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
  show_name:string|null;promotion_name:string;venue_name:string|null;market_name:string|null;
  booking_class:"REGULAR"|"PREMIUM";ticket_strategy:string|null;
  booking_open:boolean;within_window:boolean;broadcast_package:string|null;
+ booking_financials?:{
+  currentWeekIndex:number;cash:number;media:number|null;sponsor:number|null;
+  overhead:number|null;wages:number;staff:number;
+  showTalentLimit:number|null;cashReserve:number|null;
+ };
  advisers?:{role:string;staffId:string}[];
  tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;entrantsCount:4|8;
   championshipId:string|null;
   personA:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string};
   personB:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string}}[]};
 type SlotRow={slot_id:string;position:number;kind:string;payload:unknown};
+type CombinedCardRow={slot_id:string|null;position:number|null;kind:string;
+ payload:unknown;show_id:string|null;show_name:string|null};
 type ContractRow={person_id:string;contract_id:string;name:string|null;
  popularity:number|null;recognition:number|null;momentum:number|null;
  in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
@@ -107,7 +114,29 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
     "ORDER BY e.role) FROM ppw_staff_employments e",
     "WHERE e.world_id=d.world_id AND e.promotion_id=d.promotion_id",
     "AND e.status='ACTIVE' AND e.start_week_index<=(w.year-1)*52+w.week-1",
-    "AND e.expires_week_index>=(w.year-1)*52+w.week-1),'[]'::jsonb) AS advisers,"
+    "AND e.expires_week_index>=(w.year-1)*52+w.week-1),'[]'::jsonb) AS advisers,",
+    // Reuse the existing show owner read and indexed payroll rows.
+    "jsonb_build_object('currentWeekIndex',(w.year-1)*52+w.week-1,",
+    "'cash',p.cash::double precision,",
+    "'media',p.weekly_media_income::double precision,",
+    "'sponsor',p.weekly_sponsor_income::double precision,",
+    "'overhead',p.weekly_fixed_overhead::double precision,",
+    "'wages',coalesce((SELECT sum(terms.weekly_guarantee)",
+    "FROM ppw_contracts terms WHERE terms.world_id=d.world_id",
+    "AND terms.promotion_id=d.promotion_id AND terms.status='SIGNED'",
+    "AND terms.start_week_index<=(w.year-1)*52+w.week-1",
+    "AND terms.expires_week_index>=(w.year-1)*52+w.week-1),0)::double precision,",
+    "'staff',coalesce((SELECT sum(office.weekly_salary)",
+    "FROM ppw_staff_employments office WHERE office.world_id=d.world_id",
+    "AND office.promotion_id=d.promotion_id AND office.status='ACTIVE'",
+    "AND office.start_week_index<=(w.year-1)*52+w.week-1",
+    "AND office.expires_week_index>=(w.year-1)*52+w.week-1),0)::double precision,",
+    "'showTalentLimit',(SELECT plan.show_talent_limit::double precision",
+    "FROM ppw_promotion_spending_plans plan WHERE plan.world_id=d.world_id",
+    "AND plan.promotion_id=d.promotion_id),",
+    "'cashReserve',(SELECT plan.cash_reserve::double precision",
+    "FROM ppw_promotion_spending_plans plan WHERE plan.world_id=d.world_id",
+    "AND plan.promotion_id=d.promotion_id)) AS booking_financials,"
    ]:[]),
    ...(includeTournament?[`
    (SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -143,7 +172,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
       AND c.start_week_index<=(d.year-1)*52+d.week-1
       AND c.expires_week_index>=(d.year-1)*52+d.week-1
       AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
-     ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+     ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
       c.contract_id LIMIT 1
     ) ca ON TRUE
     JOIN LATERAL (
@@ -153,7 +182,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
       AND c.start_week_index<=(d.year-1)*52+d.week-1
       AND c.expires_week_index>=(d.year-1)*52+d.week-1
       AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
-     ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+     ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
       c.contract_id LIMIT 1
     ) cb ON TRUE
     WHERE b.world_id=d.world_id AND b.promotion_id=d.promotion_id
@@ -199,10 +228,60 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
  return withSqlClient(pool,async tx=>{
   const show=await readShowScope(tx,id,true);
   const staffNames=new Map(worldStaff(show.seed).map(member=>[member.staffId,member.name]));
-  const slots=boundedSlots(await tx.query<SlotRow>(
-   "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
-   " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
-   [id.worldId,id.showId]));
+  // Reuse one bounded card-slot request for the current card AND other
+  // draft/submitted shows in the same promotion/week. Two independent LIMITs
+  // prevent a packed neighbouring show from hiding the current card.
+  // UNION ALL avoids an extra Neon network round trip in creative reviews.
+  const cardRows=await tx.query<CombinedCardRow>([
+   "SELECT current_card.slot_id,current_card.position,current_card.kind,",
+   "current_card.payload,NULL::text AS show_id,NULL::text AS show_name",
+   "FROM (SELECT slot_id,position,kind,payload FROM ppw_card_slots",
+   "WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101) current_card",
+   "UNION ALL",
+   "SELECT NULL::text AS slot_id,NULL::integer AS position,",
+   "other_card.kind,other_card.payload,other_card.show_id,other_card.show_name",
+   "FROM (SELECT d.draft_id AS show_id,d.show_name,s.position,s.kind,s.payload",
+   "FROM ppw_booking_drafts d JOIN ppw_card_slots s",
+   "ON s.world_id=d.world_id AND s.draft_id=d.draft_id",
+   "WHERE d.world_id=$1 AND d.promotion_id=$3",
+   "AND d.year=$4 AND d.week=$5 AND d.draft_id<>$2",
+   "AND d.status IN ('DRAFT','SUBMITTED')",
+   "ORDER BY d.draft_id,s.position LIMIT 121) other_card",
+   "ORDER BY show_id NULLS FIRST,position"
+  ].join(" "),[id.worldId,id.showId,id.promotionId,show.year,show.week]);
+  const slots=boundedSlots(cardRows.filter(row=>row.show_id===null)
+   .map(row=>({slot_id:row.slot_id!,position:row.position!,
+    kind:row.kind,payload:row.payload})));
+  const otherSlots=cardRows.filter(row=>row.show_id!==null)
+   .map(row=>({show_id:row.show_id!,show_name:row.show_name,
+    kind:row.kind,payload:row.payload}));
+  if(otherSlots.length>120)throw new Error("Other show workload exceeded safe bound");
+  const otherByPerson=new Map<string,{
+   personId:string;showId:string;showName:string;kind:"MATCH"|"PHYSICAL_ANGLE"
+  }>();
+  for(const other of otherSlots){
+   const payload=other.payload&&typeof other.payload==="object"&&
+    !Array.isArray(other.payload)?other.payload as Record<string,unknown>:null;
+   if(!payload)continue;
+   const kind=other.kind==="MATCH"?"MATCH":
+    other.kind==="SEGMENT"&&["ATTACK","POST_MATCH_ASSAULT","RESCUE"]
+     .includes(String(payload.kind))?"PHYSICAL_ANGLE":null;
+   if(!kind)continue; // No physical load for promos or pre-recorded videos.
+   const runIn=kind==="MATCH"?readBookedInterference(other.payload):null;
+   const people=[...readCardParticipants(other.payload).map(x=>x.personId),
+    ...(runIn?.contractId?[runIn.personId]:[])];
+   for(const personId of new Set(people)){
+    const key=JSON.stringify([other.show_id,personId]);
+    const previous=otherByPerson.get(key);
+    if(!previous||kind==="MATCH")otherByPerson.set(key,{
+     personId,showId:other.show_id,showName:other.show_name?.trim()||"another show",
+     kind
+    });
+    if(otherByPerson.size>200)
+     throw new Error("Other show wrestler evidence exceeded safe bound");
+   }
+  }
+  const otherShowWorkloads=[...otherByPerson.values()];
   const personIds=[...new Set(slots.flatMap(s=>[
    ...readCardParticipants(s.payload).map(p=>p.personId),
    ...(s.kind==="MATCH"&&readBookedInterference(s.payload)?
@@ -286,7 +365,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "WHERE other.world_id=contract.world_id AND other.person_id=contract.person_id",
    "AND other.promotion_id<>contract.promotion_id AND other.status='SIGNED'",
    "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
-   "ORDER BY CASE WHEN contract.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
+   "ORDER BY contract.start_week_index DESC,CASE WHEN contract.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
    "contract.start_week_index DESC,contract.contract_id LIMIT 1) rights ON TRUE",
    "),'[]'::jsonb) AS cast",
    "FROM ppw_programmes p LEFT JOIN ppw_programme_side_refs r",
@@ -336,9 +415,25 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     " AND a.person_id=p.person_id AND a.promotion_id=$3"+
     " LEFT JOIN LATERAL (SELECT c.appearance_fee::text,c.contract_id,c.creative_control"+
     " FROM ppw_contracts c WHERE c.world_id=p.world_id AND c.person_id=p.person_id"+
-    " AND c.promotion_id=$3 AND c.status='SIGNED' AND c.start_week_index<=$4"+
+    " AND c.status='SIGNED' AND c.start_week_index<=$4"+
     " AND c.expires_week_index>=$4 AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)"+
-    " ORDER BY c.start_week_index DESC,c.contract_id LIMIT 1) rights ON TRUE"+
+    " AND (c.promotion_id=$3 OR EXISTS (SELECT 1 FROM ppw_wrestler_promotion_affiliations affiliation"+
+    " JOIN ppw_promotions parent ON parent.world_id=affiliation.world_id"+
+    " AND parent.promotion_id=affiliation.promotion_id"+
+    " WHERE affiliation.world_id=c.world_id AND affiliation.person_id=c.person_id"+
+    " AND affiliation.promotion_id=$3 AND affiliation.basis='PARENT_COMPANY'"+
+    " AND parent.parent_promotion_id=c.promotion_id))"+
+    " AND p.status='ACTIVE'"+
+    " AND NOT EXISTS (SELECT 1 FROM ppw_medical_absences med"+
+    " WHERE med.world_id=p.world_id AND med.person_id=p.person_id"+
+    " AND med.status='ACTIVE' AND med.injured_week_index<$4"+
+    " AND med.cleared_week_index>$4)"+
+    " AND NOT EXISTS (SELECT 1 FROM ppw_contracts rival"+
+    " WHERE rival.world_id=c.world_id AND rival.person_id=c.person_id"+
+    " AND rival.promotion_id<>c.promotion_id AND rival.status='SIGNED'"+
+    " AND rival.family='EXCLUSIVE' AND rival.expires_week_index>=$4)"+
+    " ORDER BY c.start_week_index DESC,"+
+    "CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,c.contract_id LIMIT 1) rights ON TRUE"+
     " WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])",
     [id.worldId,personIds,id.promotionId,(show.year-1)*52+show.week-1]):[];
   // One bounded, show-week-specific lookup populates team shortcuts. Only
@@ -380,7 +475,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "WHERE other.world_id=c.world_id AND other.person_id=c.person_id",
    "AND other.promotion_id<>c.promotion_id AND other.status='SIGNED'",
    "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
-   "ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
+   "ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
    "c.contract_id LIMIT 1) rights ON TRUE",
    "WHERE NOT EXISTS(SELECT 1 FROM ppw_medical_absences absence",
    "WHERE absence.world_id=u.world_id AND absence.person_id=m.person_id",
@@ -414,6 +509,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     trioId:t.unit_id,name:t.name,members:t.members})),
    advisers:(show.advisers??[]).map(member=>({...member,
     name:staffNames.get(member.staffId)??null})),
+   bookingFinancials:show.booking_financials??null,
+   otherShowWorkloads,
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),
@@ -494,24 +591,28 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "AND other.promotion_id<>c.promotion_id AND other.status='SIGNED'",
     "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$5)",
     "AS exclusive_elsewhere",
-    "FROM ppw_contracts c JOIN ppw_people p",
-    "ON p.world_id=c.world_id AND p.person_id=c.person_id",
+    // One actual show-week-eligible agreement per wrestler before pagination.
+    // A new signed renewal wins over an older still-overlapping agreement.
+    "FROM (SELECT DISTINCT ON(c.person_id) c.* FROM ppw_contracts c",
+    "WHERE c.world_id=$1 AND c.status='SIGNED'",
+    "AND (c.promotion_id=$2 OR EXISTS (",
+    "SELECT 1 FROM ppw_wrestler_promotion_affiliations a",
+    "JOIN ppw_promotions parent ON parent.world_id=a.world_id",
+    "AND parent.promotion_id=a.promotion_id",
+    "WHERE a.world_id=c.world_id AND a.person_id=c.person_id",
+    "AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'",
+    "AND parent.parent_promotion_id=c.promotion_id))",
+    "AND c.start_week_index<=$5 AND c.expires_week_index>=$5",
+    "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
+    "ORDER BY c.person_id,c.start_week_index DESC,",
+    "CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,c.contract_id) c",
+    "JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id",
     "LEFT JOIN ppw_portable_personas identity ON identity.world_id=p.world_id",
     "AND identity.person_id=p.person_id",
     "LEFT JOIN ppw_promotion_wrestler_alignments aligned",
     "ON aligned.world_id=p.world_id AND aligned.person_id=p.person_id",
     "AND aligned.promotion_id=$2",
-    "WHERE c.world_id=$1 AND c.status='SIGNED' AND",
-    "(c.promotion_id=$2 OR EXISTS (",
-    "SELECT 1 FROM ppw_wrestler_promotion_affiliations a",
-    "JOIN ppw_promotions target ON target.world_id=a.world_id",
-    "AND target.promotion_id=a.promotion_id",
-    "WHERE a.world_id=c.world_id AND a.person_id=c.person_id",
-    "AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'",
-    "AND target.parent_promotion_id=c.promotion_id))",
-    "AND c.start_week_index<=$5 AND c.expires_week_index>=$5",
-     "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
-     "AND (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
+    "WHERE (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
     "AND ($4::text IS NULL OR (p.name,p.person_id,c.contract_id)>",
     "($4::text,$6::text,$7::text))",
     "ORDER BY p.name,p.person_id,c.contract_id LIMIT $8"

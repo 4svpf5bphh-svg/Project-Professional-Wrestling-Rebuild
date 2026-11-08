@@ -77,7 +77,19 @@ assert.equal(taz.portraits[0].sha256,
 assert.ok(existsSync("dist/web/assets/legends/undertaker-immortal-card.webp"),
  "The original Undertaker pilot must remain intact");
 const sw=readFileSync("dist/web/sw.js","utf8");
-assert.match(sw,/ppw-static-shell-v8/);
+assert.match(sw,/ppw-static-shell-v9/);
+for(const file of ["apple-touch-icon.png","icon-192.png","icon-512.png"]){
+ const bytes=readFileSync("dist/web/"+file);
+ assert.equal(bytes.subarray(0,8).toString("hex"),"89504e470d0a1a0a",
+  "The iPhone install must use a real PNG, not a generic P/icon fallback");
+ assert.ok(bytes.length>2000,"PPW install icon is an empty placeholder: "+file);
+}
+for(const file of ["ppw-intro-stage.webp","news-official-crisp.webp","news-dirt-crisp.webp"]){
+ const bytes=readFileSync("dist/web/branding/"+file);
+ assert.equal(bytes.toString("ascii",0,4),"RIFF",file+" has invalid WebP header");
+ assert.equal(bytes.toString("ascii",8,12),"WEBP",file+" is not a real generated image");
+ assert.ok(bytes.length>10000,"PPW presentation image unexpectedly tiny: "+file);
+}
 const approvedBrandAssets=new Map([
  ["/branding/ppw-showcase-hero.webp","2360f899774c45e59e3e9f956e0e6e5e401cef98371c96d2a7a23cbe2b1065bc"],
  ["/branding/ppw-showcase-header.webp","dc6b76bf628a4a7dd32b2734b3df18dda62a564a8c069c7f90b6c58f3222086d"],

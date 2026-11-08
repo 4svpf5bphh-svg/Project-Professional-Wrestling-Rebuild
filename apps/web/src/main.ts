@@ -5,12 +5,14 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
  consumeBackstageRivalryFocus,
- consumeBookingFocus,clearBookingFocus}
+ consumeBookingFocus,clearBookingFocus,consumeProgrammeBookingFocus,
+ type ProgrammeBookingFocus}
  from "../../../src/web/card-browser.js";
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
- type HomeAttentionFocus,legendsVaultHash} from "../../../src/web/host-navigation.js";
+ type HomeAttentionFocus,legendsVaultHash,readBookingProgrammeFocus}
+ from "../../../src/web/host-navigation.js";
 import {createCardClient,type CardSessionScope} from "../../../src/web/card-client.js";
 import {clearLegendRevealPortal,type LegendsVaultView} from "../../../src/ui/legends-vault.js";
 import {requireSuccessfulPromotionClaim} from "../../../src/web/promotion-claim-feedback.js";
@@ -127,10 +129,12 @@ function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:str
  * its exact card, including a second PPV. World and promotion must still match.
  * No player, contract, or show identity appears in the shareable URL.
  */
-function openBooking(showId:string){
+function openBooking(showId:string,focus?:ProgrammeBookingFocus|null){
  if(!session?.overview.promotion)return;
  const worldId=session.worldId,promotionId=session.overview.promotion.id;
- const state=bookingHistoryState(worldId,promotionId,showId);
+ const validFocus=focus&&focus.worldId===worldId&&
+  focus.promotionId===promotionId?focus:null;
+ const state=bookingHistoryState(worldId,promotionId,showId,validFocus);
  bookingDirty=false;activeBooking={worldId,promotionId,showId};
  if(location.hash===plannerCardHash)
   history.replaceState(null,"",hostSectionHash("planner"));
@@ -316,8 +320,13 @@ function renderSection(){
      // The World has already advanced; Home retains the unseen Legends cue.
     }
    });break;
-  case "planner":mountPlannerPage(view,scope,back,
-   location.hash===plannerCardHash,undefined,openBooking);break;
+  case "planner":{
+   const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
+   mountPlannerPage(view,scope,back,
+    location.hash===plannerCardHash||!!storyFocus,undefined,
+    storyFocus?(showId=>openBooking(showId,storyFocus)):openBooking);
+   break;
+  }
   case "card":{
    const showId=readBookingHistory(history.state,scope.worldId,scope.promotionId);
    if(!showId){
@@ -326,11 +335,14 @@ function renderSection(){
     mountPlannerPage(view,scope,back,false,undefined,openBooking);
    }else{
     activeBooking={worldId:scope.worldId,promotionId:scope.promotionId,showId};
+    const storyFocus=readBookingProgrammeFocus(history.state,
+     scope.worldId,scope.promotionId);
     mountBookingPageForHost(view,{...scope,showId},()=>openSection("planner"),
      dirty=>{
       if(view.isConnected&&readHostSection(location.hash)==="card"&&
        activeBooking?.showId===showId)bookingDirty=dirty;
-     },section=>openSection(section),undefined,undefined,
+     },section=>openSection(section),storyFocus?.programmeId,
+     storyFocus?.ideaKind,
      consumeBookingFocus(scope.worldId,scope.promotionId)??undefined);
    }
    break;
@@ -470,24 +482,32 @@ async function loadSession(){
   game.append(button("Retry",()=>void loadSession()));
  }
 }
-/** Short, optional bumper. A single cached icon; no network/API work. */
+/** One composited branded scene: the logo is part of the backdrop image.
+ * Only the accessible Continue button is a live element over the artwork.
+ * Never blocks a repeat visit or changes the underlying signed-in game.
+ */
 function presentOpening(){
+ // Only the actual app launch gets a blocking intro; explicit deep links
+ // and returning from departments must remain immediately interactive.
  if(!session?.overview.promotion||readHostSection(location.hash)!=="home"||
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  (location.hash!==""&&location.hash!=="#/"))return;
  const key="ppw-opening:"+session.worldId+":"+session.overview.promotion.id;
  try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"1");}catch{return;}
  const scene=el("section","ppw-opening");
  scene.setAttribute("aria-label","PPW opening");
- const middle=el("div","ppw-opening-centre");
- const mark=ppwLogo("ppw-opening-logo");
- mark.width=1200;mark.height=475;
- middle.append(el("span","ppw-opening-kicker","THE LIVING WRESTLING WORLD"),mark,
-  el("span","ppw-opening-rule"),el("h1","ppw-visually-hidden","PROJECT PROFESSIONAL WRESTLING"));
- let timer=0;
- const finish=()=>{clearTimeout(timer);scene.remove();};
- const skip=button("Skip intro →",finish);skip.className="ppw-opening-skip";
- scene.append(middle,skip);document.body.append(scene);
- timer=window.setTimeout(finish,1900);
+ const artwork=document.createElement("img");
+ artwork.className="ppw-opening-art";
+ artwork.src="/branding/ppw-intro-stage.webp";
+ artwork.alt="PPW — Project Professional Wrestling";
+ artwork.decoding="async";artwork.loading="eager";
+ const finish=()=>{scene.remove();};
+ const enter=button("Continue to PPW →",finish);
+ enter.className="ppw-opening-skip";
+ scene.append(artwork,enter);document.body.append(scene);
+ // The player continues when ready; the background itself is not actionable.
+ // Escape is an additional accessibility exit for keyboard players.
+ scene.addEventListener("keydown",event=>{if(event.key==="Escape")finish();});
+ enter.focus();
 }
 function showLogin(){
  game.replaceChildren();

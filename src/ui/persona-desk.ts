@@ -6,6 +6,7 @@ import type {readPortablePersonaWorkspace}
 type View=Awaited<ReturnType<typeof readPortablePersonaWorkspace>>;
 import {describeWrestlerRivalryMemory} from "../domain/verified-wrestler-rivalry-memory.js";
 import {livingWrestlerMotivation} from "../domain/living-character-motivation.js";
+import {describeBookingCommitment} from "../domain/backstage-booking-commitment.js";
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 export interface PersonaDeskPort{
@@ -615,18 +616,27 @@ export function mountPersonaDesk(root:HTMLElement,
        "The proposed opponent is no longer on your active roster."));
      }
     }
-    if(item.status==="BROKEN"&&item.trustDelta<0)
-     chat.append(el("small","ppw-backstage-promise",
-      "Broken promise · promotion trust "+item.trustDelta));
-    if(item.status==="EXCUSED")
-     chat.append(el("small","ppw-backstage-promise",
-      "No penalty · "+item.assessmentReason?.replaceAll("_"," ").toLowerCase()));
-    if(item.status==="PROMISED"&&item.dueWeekIndex!==null){
-     const remaining=item.dueWeekIndex-((view.worldYear-1)*52+view.worldWeek-1);
-     chat.append(el("small","ppw-backstage-promise",
-      (item.decision==="PROMISE_SEGMENT"?"Promo/angle":
-       item.decision==="PROMISE_FEATURED"?"Featured match":"Match")+
-      " promised · "+Math.max(0,remaining)+" weeks remaining"));
+    const chapter=describeBookingCommitment(item,
+     (view.worldYear-1)*52+view.worldWeek-1);
+    if(chapter){
+     const report=el("div","ppw-backstage-chapter");
+     report.dataset.commitmentStage=chapter.stage;
+     report.append(el("strong","",chapter.headline),
+      el("span","",chapter.detail));
+     if(chapter.canReviewBooking&&view.canEdit&&port.openPlanner){
+      report.append(button("Review booking →",()=>port.openPlanner?.(),loading));
+     }
+     chat.append(report);
+    }
+    // A title ambition is a recorded request, not a title-shot guarantee.
+    if(item.kind==="TITLE_AMBITION"&&item.decision==="TALK"){
+     const path=el("div","ppw-backstage-chapter");
+     path.append(el("strong","","Championship goal heard"),
+      el("span","","No title opportunity has been booked by this conversation."));
+     if(view.canEdit&&port.openPlanner)
+      path.append(button("Plan their next opportunity →",
+       ()=>port.openPlanner?.(),loading));
+     chat.append(path);
     }
    }else if(item.status==="NOTED"){
     chat.append(el("small","ppw-muted",

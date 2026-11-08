@@ -354,7 +354,9 @@ const topicWrestlerReplies:Partial<Record<BackstageKind,Partial<Record<"TALK"|"D
   DECLINE:"That doesn't rebuild the trust we lost."}
 };
 export function backstageReply(decision:BackstageDecision,status:string,kind?:BackstageKind){
- if(status==="FULFILLED")return "You kept your word. That match meant a lot to me.";
+ if(status==="FULFILLED")return decision==="PROMISE_SEGMENT"?
+  "You gave me that on-screen moment. I appreciate you following through.":
+  "You kept your word. That match meant a lot to me.";
  if(status==="BROKEN")return "You made me a booking promise and didn't deliver. I won't forget.";
  if(status==="EXCUSED")return "The circumstances changed. We couldn't reasonably follow through this time.";
  const specific=(decision==="TALK"||decision==="DECLINE")&&kind?

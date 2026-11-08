@@ -1379,3 +1379,56 @@ body>.ppw-card-edit-shade .ppw-card-consent-response{
  color:#ddfff3;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
 body>.ppw-card-edit-shade .ppw-card-consent-response[data-level="error"]{
  background:#45283b;border-color:#da91ad;color:#ffe1e7}
+
+/* Phase 46: update saved future-card rights only after an explicit tap. */
+.ppw-card-contract-refresh{margin:12px 0 16px;padding:13px;
+ border:1px solid #6da3c1;border-radius:12px;
+ background:linear-gradient(125deg,#193a51,#16253a);color:#e2f8ff}
+.ppw-card-contract-refresh strong{display:block;font-size:14px;font-weight:850}
+.ppw-card-contract-refresh p{font-size:13px;line-height:1.5;margin:6px 0 11px}
+.ppw-card-contract-refresh small{display:block;margin-top:9px;
+ color:#c2dce9;font-size:11px;line-height:1.45}
+.ppw-editor .ppw-refresh-agreements{max-width:100%;white-space:normal;text-align:center}
+
+/* Phase 48: compact card economics beside booking choices, not another page. */
+.ppw-card-financial-baseline{display:grid;gap:7px;margin:10px 0 0;
+ padding:10px 12px;border-top:1px solid rgba(198,215,229,.25)}
+.ppw-card-financial-line{display:flex;justify-content:space-between;gap:10px;
+ align-items:baseline;font-size:13px;line-height:1.4}
+.ppw-card-financial-line strong{font-variant-numeric:tabular-nums;white-space:nowrap;
+ color:#eef8ff}
+.ppw-card-financial-baseline small{font-size:11px;line-height:1.45;color:#c9d9e3}
+.ppw-card-financial-warning,.ppw-guide-financial-warning{
+ padding:8px 10px;margin:6px 0;border-left:3px solid #e2b775;
+ border-radius:7px;background:rgba(195,132,55,.13);color:#ffdeb0;
+ font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+@media(max-width:350px){
+ .ppw-card-financial-line{font-size:12px}
+ .ppw-card-financial-baseline{padding:9px}
+}
+
+/* Phase 48: one-tap script options for new Where/Why/How angle decisions. */
+.ppw-guide-script-choice{display:grid;position:relative;gap:7px;min-width:0}
+.ppw-guide-script-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(135px,100%),1fr));gap:7px;min-width:0}
+.ppw-guide-script-tile{min-width:0;min-height:42px;padding:8px 9px;
+ border:1px solid #66839b;border-radius:10px;background:#193449;
+ color:#e5eff8;font-weight:600;font-size:12px;line-height:1.32;
+ text-align:center;overflow-wrap:anywhere}
+.ppw-guide-script-tile[aria-pressed="true"]{background:#155074;border-color:#93d4f3;
+ color:#fff;box-shadow:inset 0 0 0 1px #93d4f3}
+.ppw-guide-script-tile:focus-visible{outline:2px solid #d2edff;outline-offset:2px}
+.ppw-guide-native-choice{position:absolute;left:0;top:0;width:1px;height:1px;
+ overflow:hidden;opacity:0;pointer-events:none}
+.ppw-guide-native-choice .ppw-field{width:1px!important;max-width:1px!important}
+.ppw-guide-native-choice select{width:1px!important;max-width:1px!important;
+ min-width:1px!important;height:1px!important;min-height:1px!important;padding:0!important}
+
+/* Phase 48: all nine match types visible with no tabs or hidden group. */
+.ppw-guide-format-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+body>.ppw-card-edit-shade .ppw-guide-format-tile{
+ min-height:44px;padding:8px 4px;font-size:12px;line-height:1.22;overflow-wrap:anywhere}
+@media(max-width:350px){
+ .ppw-guide-format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body>.ppw-card-edit-shade .ppw-guide-format-tile{
+  min-height:44px;padding:7px 4px;font-size:12px}
+}
