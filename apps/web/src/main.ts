@@ -485,13 +485,14 @@ function presentOpening(){
  artwork.src="/branding/ppw-intro-stage.webp";
  artwork.alt="PPW — Project Professional Wrestling";
  artwork.decoding="async";artwork.loading="eager";
- let timer=0;
- const finish=()=>{window.clearTimeout(timer);scene.remove();};
+ const finish=()=>{scene.remove();};
  const enter=button("Continue to PPW →",finish);
  enter.className="ppw-opening-skip";
  scene.append(artwork,enter);document.body.append(scene);
- // The intro is optional and never traps a player who cannot tap Continue.
- timer=window.setTimeout(finish,2800);
+ // The player continues when ready; the background itself is not actionable.
+ // Escape is an additional accessibility exit for keyboard players.
+ scene.addEventListener("keydown",event=>{if(event.key==="Escape")finish();});
+ enter.focus();
 }
 function showLogin(){
  game.replaceChildren();
