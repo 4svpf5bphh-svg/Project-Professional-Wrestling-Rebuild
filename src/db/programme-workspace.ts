@@ -49,6 +49,9 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    direction_show_id:string|null;direction_slot_id:string|null;
    direction_week_index:number|null;
    next_match_week_index:number|null;next_angle_week_index:number|null;
+   origin_request_id:string|null;origin_person_id:string|null;
+   origin_opponent_id:string|null;origin_accepted_week_index:number|null;
+   origin_recorded_week_index:number|null;origin_previous_matches:number|null;
    wrestler_changes:{personId:string;name:string;beforePopularity:number|null;
     beforeMomentum:number|null;afterPopularity:number|null;afterMomentum:number|null}[]}>([
    "SELECT programme.programme_id,programme.status,programme.heat,programme.repetition,programme.championship_id,",
@@ -58,6 +61,11 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "direction.slot_id AS direction_slot_id,direction.chosen_week_index AS direction_week_index,",
    "follow_up.match_week AS next_match_week_index,",
    "follow_up.angle_week AS next_angle_week_index,",
+   "origin.request_id AS origin_request_id,origin.person_id AS origin_person_id,",
+   "origin.related_person_id AS origin_opponent_id,",
+   "origin.responded_week_index AS origin_accepted_week_index,",
+   "origin.follow_through_week_index AS origin_recorded_week_index,",
+   "origin.rival_verified_matches AS origin_previous_matches,",
    "coalesce((SELECT jsonb_agg(jsonb_build_object(",
    "'personId',base.person_id,'name',person.name,",
    "'beforePopularity',base.start_popularity,'beforeMomentum',base.start_momentum,",
@@ -75,6 +83,29 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "WHERE d.world_id=programme.world_id AND d.promotion_id=programme.promotion_id",
    "AND d.programme_id=programme.programme_id",
    "ORDER BY d.chosen_week_index DESC,d.chosen_at DESC LIMIT 1) direction ON TRUE",
+   // Exact accepted two-person wrestler pitch; declined ideas or historical
+   // programmes must never be represented as wrestler-led.
+   // One existing bounded programme statement; no extra Neon roundtrip.
+   "LEFT JOIN LATERAL (SELECT r.request_id,r.person_id,r.related_person_id,",
+   "r.responded_week_index,r.follow_through_week_index,r.rival_verified_matches",
+   "FROM ppw_backstage_requests r",
+   "JOIN ppw_programme_side_refs a ON a.world_id=programme.world_id",
+   "AND a.promotion_id=programme.promotion_id",
+   "AND a.programme_id=programme.programme_id AND a.ref_kind='PERSON'",
+   "AND a.ref_id=r.person_id",
+   "JOIN ppw_programme_side_refs b ON b.world_id=a.world_id",
+   "AND b.promotion_id=a.promotion_id AND b.programme_id=a.programme_id",
+   "AND b.ref_kind='PERSON' AND b.ref_id=r.related_person_id AND b.side<>a.side",
+   "WHERE r.world_id=programme.world_id AND r.promotion_id=programme.promotion_id",
+   "AND r.kind='RIVALRY_PITCH' AND r.decision='EXPLORE_RIVALRY'",
+   "AND r.status='ANSWERED' AND r.responded_week_index IS NOT NULL",
+   "AND programme.started_week_index BETWEEN r.responded_week_index",
+   "AND r.responded_week_index+26",
+   "AND (SELECT count(*) FROM ppw_programme_side_refs exact_pair",
+   "WHERE exact_pair.world_id=programme.world_id",
+   "AND exact_pair.promotion_id=programme.promotion_id",
+   "AND exact_pair.programme_id=programme.programme_id)=2",
+   "ORDER BY r.responded_week_index DESC,r.request_id LIMIT 1) origin ON TRUE",
    // Only independently certified programme beats, not planned show cards,
    // can fulfil a manager's creative direction. One indexed per-programme
    // range, computed in the already existing workspace query.
@@ -249,6 +280,13 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     championshipId:p.championship_id,
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
     wrestlerChanges:p.status==="COMPLETED"?p.wrestler_changes:[],
+    wrestlerOrigin:p.origin_request_id&&p.origin_person_id&&p.origin_opponent_id&&
+     p.origin_accepted_week_index!==null?{
+     requestId:p.origin_request_id,initiatorId:p.origin_person_id,
+     opponentId:p.origin_opponent_id,acceptedWeekIndex:p.origin_accepted_week_index,
+     recordedWeekIndex:p.origin_recorded_week_index,
+     previousCertifiedMeetings:p.origin_previous_matches
+    }:null,
     latestFollowUp:p.direction_choice===null?null:{
      choice:p.direction_choice,showId:p.direction_show_id!,
      slotId:p.direction_slot_id!,weekIndex:p.direction_week_index!,
