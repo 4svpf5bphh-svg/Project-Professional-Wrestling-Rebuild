@@ -143,7 +143,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
       AND c.start_week_index<=(d.year-1)*52+d.week-1
       AND c.expires_week_index>=(d.year-1)*52+d.week-1
       AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
-     ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+     ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
       c.contract_id LIMIT 1
     ) ca ON TRUE
     JOIN LATERAL (
@@ -153,7 +153,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
       AND c.start_week_index<=(d.year-1)*52+d.week-1
       AND c.expires_week_index>=(d.year-1)*52+d.week-1
       AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)
-     ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
+     ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,
       c.contract_id LIMIT 1
     ) cb ON TRUE
     WHERE b.world_id=d.world_id AND b.promotion_id=d.promotion_id
@@ -286,7 +286,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "WHERE other.world_id=contract.world_id AND other.person_id=contract.person_id",
    "AND other.promotion_id<>contract.promotion_id AND other.status='SIGNED'",
    "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
-   "ORDER BY CASE WHEN contract.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
+   "ORDER BY contract.start_week_index DESC,CASE WHEN contract.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
    "contract.start_week_index DESC,contract.contract_id LIMIT 1) rights ON TRUE",
    "),'[]'::jsonb) AS cast",
    "FROM ppw_programmes p LEFT JOIN ppw_programme_side_refs r",
@@ -336,9 +336,25 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
     " AND a.person_id=p.person_id AND a.promotion_id=$3"+
     " LEFT JOIN LATERAL (SELECT c.appearance_fee::text,c.contract_id,c.creative_control"+
     " FROM ppw_contracts c WHERE c.world_id=p.world_id AND c.person_id=p.person_id"+
-    " AND c.promotion_id=$3 AND c.status='SIGNED' AND c.start_week_index<=$4"+
+    " AND c.status='SIGNED' AND c.start_week_index<=$4"+
     " AND c.expires_week_index>=$4 AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)"+
-    " ORDER BY c.start_week_index DESC,c.contract_id LIMIT 1) rights ON TRUE"+
+    " AND (c.promotion_id=$3 OR EXISTS (SELECT 1 FROM ppw_wrestler_promotion_affiliations affiliation"+
+    " JOIN ppw_promotions parent ON parent.world_id=affiliation.world_id"+
+    " AND parent.promotion_id=affiliation.promotion_id"+
+    " WHERE affiliation.world_id=c.world_id AND affiliation.person_id=c.person_id"+
+    " AND affiliation.promotion_id=$3 AND affiliation.basis='PARENT_COMPANY'"+
+    " AND parent.parent_promotion_id=c.promotion_id))"+
+    " AND p.status='ACTIVE'"+
+    " AND NOT EXISTS (SELECT 1 FROM ppw_medical_absences med"+
+    " WHERE med.world_id=p.world_id AND med.person_id=p.person_id"+
+    " AND med.status='ACTIVE' AND med.injured_week_index<$4"+
+    " AND med.cleared_week_index>$4)"+
+    " AND NOT EXISTS (SELECT 1 FROM ppw_contracts rival"+
+    " WHERE rival.world_id=c.world_id AND rival.person_id=c.person_id"+
+    " AND rival.promotion_id<>c.promotion_id AND rival.status='SIGNED'"+
+    " AND rival.family='EXCLUSIVE' AND rival.expires_week_index>=$4)"+
+    " ORDER BY c.start_week_index DESC,"+
+    "CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,c.contract_id LIMIT 1) rights ON TRUE"+
     " WHERE p.world_id=$1 AND p.person_id=ANY($2::text[])",
     [id.worldId,personIds,id.promotionId,(show.year-1)*52+show.week-1]):[];
   // One bounded, show-week-specific lookup populates team shortcuts. Only
@@ -380,7 +396,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "WHERE other.world_id=c.world_id AND other.person_id=c.person_id",
    "AND other.promotion_id<>c.promotion_id AND other.status='SIGNED'",
    "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$3)",
-   "ORDER BY CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
+   "ORDER BY c.start_week_index DESC,CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,",
    "c.contract_id LIMIT 1) rights ON TRUE",
    "WHERE NOT EXISTS(SELECT 1 FROM ppw_medical_absences absence",
    "WHERE absence.world_id=u.world_id AND absence.person_id=m.person_id",
@@ -494,24 +510,28 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "AND other.promotion_id<>c.promotion_id AND other.status='SIGNED'",
     "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$5)",
     "AS exclusive_elsewhere",
-    "FROM ppw_contracts c JOIN ppw_people p",
-    "ON p.world_id=c.world_id AND p.person_id=c.person_id",
+    // One actual show-week-eligible agreement per wrestler before pagination.
+    // A new signed renewal wins over an older still-overlapping agreement.
+    "FROM (SELECT DISTINCT ON(c.person_id) c.* FROM ppw_contracts c",
+    "WHERE c.world_id=$1 AND c.status='SIGNED'",
+    "AND (c.promotion_id=$2 OR EXISTS (",
+    "SELECT 1 FROM ppw_wrestler_promotion_affiliations a",
+    "JOIN ppw_promotions parent ON parent.world_id=a.world_id",
+    "AND parent.promotion_id=a.promotion_id",
+    "WHERE a.world_id=c.world_id AND a.person_id=c.person_id",
+    "AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'",
+    "AND parent.parent_promotion_id=c.promotion_id))",
+    "AND c.start_week_index<=$5 AND c.expires_week_index>=$5",
+    "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
+    "ORDER BY c.person_id,c.start_week_index DESC,",
+    "CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,c.contract_id) c",
+    "JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id",
     "LEFT JOIN ppw_portable_personas identity ON identity.world_id=p.world_id",
     "AND identity.person_id=p.person_id",
     "LEFT JOIN ppw_promotion_wrestler_alignments aligned",
     "ON aligned.world_id=p.world_id AND aligned.person_id=p.person_id",
     "AND aligned.promotion_id=$2",
-    "WHERE c.world_id=$1 AND c.status='SIGNED' AND",
-    "(c.promotion_id=$2 OR EXISTS (",
-    "SELECT 1 FROM ppw_wrestler_promotion_affiliations a",
-    "JOIN ppw_promotions target ON target.world_id=a.world_id",
-    "AND target.promotion_id=a.promotion_id",
-    "WHERE a.world_id=c.world_id AND a.person_id=c.person_id",
-    "AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'",
-    "AND target.parent_promotion_id=c.promotion_id))",
-    "AND c.start_week_index<=$5 AND c.expires_week_index>=$5",
-     "AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)",
-     "AND (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
+    "WHERE (LOWER($3::text)='' OR POSITION(LOWER($3::text) IN LOWER(p.name))>0)",
     "AND ($4::text IS NULL OR (p.name,p.person_id,c.contract_id)>",
     "($4::text,$6::text,$7::text))",
     "ORDER BY p.name,p.person_id,c.contract_id LIMIT $8"

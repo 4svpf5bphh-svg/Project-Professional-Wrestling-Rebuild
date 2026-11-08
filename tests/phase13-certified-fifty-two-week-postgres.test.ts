@@ -134,6 +134,28 @@ test("eight AI promotions complete a real fifty-two-week World and annual recali
     "The authentic free-agent market should preserve credible AI card depth in Week "+week);
    assert.equal(f.weekly_ledger,1,"World should publish only once per week");
    assert.equal(f.payroll,8,"Every company pays its actual weekly contracts");
+   // Regression #51: the original live World reached Week 17 with every
+   // rival championship vacant. Inspect actual certified World titles, not
+   // mere booked title flags or synthetic reigns. This uses one small query
+   // at two milestones, never a per-show runtime Neon read.
+   if(week===17||week===52){
+    const titles=await withWorldTransaction(db.pool,tx=>tx.query<{
+     division:"SINGLES"|"TAG";total:number;crowned:number
+    }>([
+     "SELECT division,count(*)::integer AS total,",
+     "count(*) FILTER(WHERE current_reign_id IS NOT NULL)::integer AS crowned",
+     "FROM ppw_championships",
+     "WHERE world_id=$1 AND status='ACTIVE'",
+     "GROUP BY division ORDER BY division"
+    ].join(" "),[world]));
+    assert.deepEqual(titles.map(x=>[x.division,x.total]),
+     [["SINGLES",8],["TAG",8]],
+     "The actual eight-company Genesis should retain each inaugural belt");
+    assert.ok((titles.find(x=>x.division==="SINGLES")?.crowned??0)>0,
+     "No AI singles promotion crowned a verified champion by Week "+week);
+    assert.ok((titles.find(x=>x.division==="TAG")?.crowned??0)>0,
+     "No AI tag promotion crowned a verified team champion by Week "+week);
+   }
    if(week===1||week%8===0)progress("certified",week);
    snapshots.push({week,shows:f.shows,completed:f.completed,
     certified:f.certified,matches:f.matches,cash:f.cash,
