@@ -69,7 +69,6 @@ test("iPhone selects complete teams for a tag match and turns both partners with
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
- await dialog.getByRole("button",{name:"Teams",exact:true}).click();
  await dialog.getByRole("button",{name:"Tag · 2v2"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByLabel("Choose tag team")).toHaveCount(2);
@@ -142,7 +141,6 @@ test("iPhone books a complete named trio against another in one certified 3v3 ca
  await page.getByRole("button",{name:"Edit card"}).click();
  await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
- await dialog.getByRole("button",{name:"Teams",exact:true}).click();
  await dialog.getByRole("button",{name:"Trios · 3v3"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByLabel("Choose trio")).toHaveCount(2);

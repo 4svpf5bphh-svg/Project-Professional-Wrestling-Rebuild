@@ -80,7 +80,6 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await page.getByRole("button",{name:"+ Add match"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit match"});
  await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
- await dialog.getByRole("button",{name:"Teams",exact:true}).click();
  await dialog.getByRole("button",{name:"Tag · 2v2"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
