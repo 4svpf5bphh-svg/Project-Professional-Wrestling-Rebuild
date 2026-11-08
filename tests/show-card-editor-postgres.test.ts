@@ -96,9 +96,45 @@ for(const mode of ["ROYAL","TEAMS"] as const){
    console.log("PPW Card finances Neon query budget:",JSON.stringify(cardSample));
     assert.equal(cardSample.queryCount,7,
      "Current slots and bounded same-week evidence share one SQL request");
+    // Other submitted physical work is real but provisional. A promo,
+    // another week and another company's card must not create false warnings.
+    await withWorldTransaction(db.pool,async tx=>{
+     await addPromotion(tx,world,{id:"rival",name:"Rival",tier:"LOCAL"});
+     await tx.query(
+      "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,"+
+      "year,week,status,show_day,venue_id,market_id,show_name,booking_class) VALUES"+
+      "($1,'studio-other',$2,1,1,'SUBMITTED',4,'hall','home','Studio Extra','REGULAR'),"+
+      "($1,'later-week',$2,1,2,'DRAFT',4,'hall','home','Later Week','REGULAR'),"+
+      "($1,'rival-other','rival',1,1,'DRAFT',4,'hall','home','Rival Show','REGULAR')",
+      [world,promotion]);
+     for(const [draft,slot,kind,payload] of [
+      ["studio-other","physical","SEGMENT",
+       {kind:"ATTACK",actorIds:["p0"],targetIds:[],participants:[members[0]],outcome:"HAPPENS"}],
+      ["studio-other","talk","SEGMENT",
+       {kind:"PROMO",actorIds:["p1"],targetIds:[],participants:[members[1]],outcome:"HAPPENS"}],
+      ["later-week","later-match","MATCH",raw],
+      ["rival-other","other-company-match","MATCH",raw]
+     ] as const)
+      await tx.query(
+       "INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)"+
+       " VALUES($1,$2,$3,$4,$5,$6::jsonb)",
+       [world,draft,slot,slot==="talk"?1:0,kind,JSON.stringify(payload)]);
+    });
+    const scoped=await showCardEditorAsActor(context,world,promotion,show);
+    assert.deepEqual(scoped.slots.map(s=>s.slotId),["angle"],
+     "Workload evidence is never mixed into this show's own card");
+    assert.deepEqual(scoped.otherShowWorkloads.filter(x=>x.showId==="studio-other"),[{
+     personId:"p0",showId:"studio-other",showName:"Studio Extra",kind:"PHYSICAL_ANGLE"
+    }],"A real same-week attack counts, but a promo never does");
+    assert.equal(scoped.otherShowWorkloads.filter(x=>x.showId==="premium-other").length,
+     ids.length,"The original same-week match remains visible");
+    assert.equal(scoped.otherShowWorkloads.some(x=>
+     x.showId==="later-week"||x.showId==="rival-other"),false,
+     "Future-week and rival-promotion bookings must remain out of scope");
     await withWorldTransaction(db.pool,tx=>tx.query(
-     "DELETE FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id='premium-other'",
-     [world]));
+     "DELETE FROM ppw_booking_drafts WHERE world_id=$1"+
+     " AND draft_id=ANY($2::text[])",
+     [world,["premium-other","studio-other","later-week","rival-other"]]));
    assert.equal(view.canEdit,true);
    const offeredPair=view.bookableTeams.find(t=>t.teamId==="tested-pair");
    assert.equal(offeredPair?.members.length,2);
