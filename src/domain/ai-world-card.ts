@@ -275,7 +275,9 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  // One tag bout uses four athletes for one result. Keep the original
  // four-to-five-bout AI show depth by widening the cast only for a tag show,
  // never by inventing extra matches or reusing a wrestler twice.
- const maxCast=tagChoice?12:10;
+ // Only a consequential title match earns extra cast capacity. Ordinary
+ // established-team TV bouts keep their original ten-appearance ceiling.
+ const maxCast=tagChoice?.titleId?12:10;
  const chosen:AiRosterCandidate[]=[];
  if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
  if(tagChoice)for(const id of tagIds)chosen.push(byId.get(id)!);
