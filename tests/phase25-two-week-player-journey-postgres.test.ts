@@ -208,6 +208,33 @@ test("player books and certifies two weeks with a renewed show-week contract and
   assert.equal(story.wrestlerOrigin?.requestId,"joe-pitched-mistico");
   assert.deepEqual(new Set(story.recentActivity.map(x=>x.kind)),
    new Set(["MATCH","SEGMENT"]));
+  // Inject one canonical injury receipt from this just-certified match to
+  // exercise the real Programme's medically interrupted next chapter.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_medical_absences("+
+    "world_id,person_id,show_id,match_id,injured_week_index,"+
+    "cleared_week_index,weeks_out,severity,status)"+
+    " VALUES($1,'joe',$2,'main',0,4,4,'MODERATE','ACTIVE')",
+    [worldId,firstShow]);
+   await tx.query("UPDATE ppw_people SET status='INJURED'"+
+    " WHERE world_id=$1 AND person_id='joe'",[worldId]);
+  });
+  const disrupted=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.deepEqual(disrupted.medicalHolds,[{
+   personId:"joe",name:"Samoa Joe",clearedWeekIndex:4
+  }],"An authentic medical record pauses the next chapter, not its official history");
+  assert.equal(disrupted.sideBWins,1);
+  assert.equal(disrupted.wrestlerOrigin?.initiatorId,"joe");
+  // Test-only clearance restores the ordinary future booking path.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_medical_absences"+
+    " WHERE world_id=$1 AND person_id='joe'",[worldId]);
+   await tx.query("UPDATE ppw_people SET status='ACTIVE'"+
+    " WHERE world_id=$1 AND person_id='joe'",[worldId]);
+  });
+  assert.deepEqual((await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)?.medicalHolds,[]);
   const charged=await read<{performers_count:number;dates_charged:number}>(
    "SELECT performers_count,dates_charged FROM ppw_show_resolutions"+
    " WHERE world_id=$1 AND show_id=$2",[worldId,firstShow]);
