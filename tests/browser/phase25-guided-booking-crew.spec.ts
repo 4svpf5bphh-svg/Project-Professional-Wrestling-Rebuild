@@ -245,7 +245,13 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
  await expect(dialog.getByLabel("Creative direction")).toHaveCount(0);
  await expect(dialog.getByLabel("Angle type")).toHaveCount(0);
- await dialog.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Conflict & attacks"}).click();
+ const categories=dialog.locator(".ppw-angle-category-tiles");
+  for(const kind of ["Promos & interviews","Conflict & attacks",
+   "Challenges","Alliances","Turns","Debuts","Video packages"]){
+   await categories.getByRole("button",{name:kind}).click();
+   await expect(dialog.locator(".ppw-angle-type-tiles button").first()).toBeVisible();
+  }
+  await categories.getByRole("button",{name:"Conflict & attacks"}).click();
  const choices=dialog.locator(".ppw-angle-type-tiles");
  await expect(choices).toContainText("Attack");
  expect(await choices.evaluate(element=>
@@ -292,11 +298,11 @@ test("320px: a new angle chooses What, casts initiator and target with independe
  await expect(dialog.getByRole("heading",{name:"Why is this on the show?",exact:true})).toBeVisible();
  await expect(dialog.getByRole("heading",{name:"How does it unfold?",exact:true})).toBeVisible();
  await expect(dialog.getByLabel("Angle type")).toHaveCount(0);
- await dialog.getByLabel("Area",{exact:true}).selectOption("OUTSIDE");
- await dialog.getByLabel("Exact location").selectOption("PARKING_LOT");
- await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
- await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
- await dialog.getByLabel("Storytelling purpose").selectOption("SEEK_REVENGE");
+ await dialog.locator('.ppw-guide-script-choice[data-field="Area"] .ppw-guide-script-tile[data-value="OUTSIDE"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Exact location"] .ppw-guide-script-tile[data-value="PARKING_LOT"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Attack intensity"] .ppw-guide-script-tile[data-value="BRUTAL"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Visible aftermath"] .ppw-guide-script-tile[data-value="BLOODIED"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="SEEK_REVENGE"]').click();
  await page.screenshot({path:"test-results/presentation-screenshots/phase25-angle-where-why-320.png",animations:"disabled"});
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const review=dialog.locator(".ppw-guide-staff-review");
@@ -475,8 +481,8 @@ test("320px: Medical reduces an authored bloody attack only when explicitly tapp
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  const choice=dialog.locator(".ppw-booking-choice-panel");
  await expect(choice).toHaveCount(0);
- await dialog.getByLabel("Attack intensity").selectOption("BRUTAL");
- await dialog.getByLabel("Visible aftermath").selectOption("BLOODIED");
+ await dialog.locator('.ppw-guide-script-choice[data-field="Attack intensity"] .ppw-guide-script-tile[data-value="BRUTAL"]').click();
+ await dialog.locator('.ppw-guide-script-choice[data-field="Visible aftermath"] .ppw-guide-script-tile[data-value="BLOODIED"]').click();
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  await expect(choice).toContainText("Dr Singh");
  await expect(choice).toContainText("Samoa Joe");
