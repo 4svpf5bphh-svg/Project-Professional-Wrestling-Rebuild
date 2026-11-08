@@ -248,11 +248,20 @@ test("player books and certifies two weeks with a renewed show-week contract and
    " WHERE world_id=$1 AND show_id=$2",[worldId,firstShow]);
   assert.deepEqual(charged,[{performers_count:2,dates_charged:2}],
    "Samoa Joe's match plus angle owes one date, not two, before renewal");
-  const actualExpense=await read<{appearance_fees:string}>(
-   "SELECT appearance_fees::text FROM ppw_show_economics"+
-   " WHERE world_id=$1 AND show_id=$2",[worldId,firstShow]);
-  assert.equal(Number(actualExpense[0]?.appearance_fees),previewFees.amount,
-   "Show-fee preview and actual World-certified financial receipt must reconcile");
+  // Show Economics is an optional, separately enabled World projection.
+  // CONTRACT_APPEARANCE_FEES is the authoritative cash debit, even when that
+  // optional show analytics projection is OFF (as in this disposable World).
+  const expense=await read<{amount:string;receipts:number}>(
+   "SELECT coalesce(sum((payload->>'amount')::bigint),0)::text AS amount,"+
+   " count(*)::integer AS receipts FROM ppw_ledger_events"+
+   " WHERE world_id=$1 AND year=1 AND week=1"+
+   " AND event_type='CONTRACT_APPEARANCE_FEES'"+
+   " AND payload->>'showId'=$2 AND payload->>'promotionId'=$3",
+   [worldId,firstShow,promotionId]);
+  assert.equal(Number(expense[0]?.amount),previewFees.amount,
+   "Manager fee preview must match the actual World resource-clearance cash debit");
+  assert.equal(expense[0]?.receipts,1,
+   "Match plus angle must create one payment receipt, not one charge per segment");
   assert.deepEqual((await read<{remaining_dates:number}>(
    "SELECT remaining_dates FROM ppw_contracts WHERE world_id=$1 ORDER BY person_id",
    [worldId])).map(x=>x.remaining_dates),[5,4],
