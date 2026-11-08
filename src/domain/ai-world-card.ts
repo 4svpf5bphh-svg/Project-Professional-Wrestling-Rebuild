@@ -272,12 +272,16 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
     rotationScore(b)-rotationScore(a)||best(a,b))[0];
   return other?[leader,other]:[leader];
  };
+ // One tag bout uses four athletes for one result. Keep the original
+ // four-to-five-bout AI show depth by widening the cast only for a tag show,
+ // never by inventing extra matches or reusing a wrestler twice.
+ const maxCast=tagChoice?12:10;
  const chosen:AiRosterCandidate[]=[];
  if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
  if(tagChoice)for(const id of tagIds)chosen.push(byId.get(id)!);
  if(men.length>=2&&women.length>=2&&available.length>=4){
   for(const p of [...nextDivision(men),...nextDivision(women)]){
-   if(chosen.length<10&&!chosen.some(x=>x.personId===p.personId))chosen.push(p);
+   if(chosen.length<maxCast&&!chosen.some(x=>x.personId===p.personId))chosen.push(p);
   }
  }
  // A developmental appearance needs a legal opponent. Fill remaining
@@ -285,7 +289,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  const rotationOrder=[...available].sort((a,b)=>
   rotationScore(b)-rotationScore(a)||best(a,b));
  const reservePair=(p:AiRosterCandidate)=>{
-  if(chosen.length>8||chosen.some(x=>x.personId===p.personId))return false;
+  if(chosen.length>maxCast-2||chosen.some(x=>x.personId===p.personId))return false;
   const opponent=rotationOrder.find(x=>x.personId!==p.personId&&
    x.bookingDivision===p.bookingDivision&&
    !chosen.some(c=>c.personId===x.personId));
@@ -300,11 +304,11 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   if(developing)reservePair(developing);
  }
  for(const p of rotationOrder){
-  if(chosen.length>8)break;
+  if(chosen.length>maxCast-2)break;
   reservePair(p);
  }
- // If ten slots leave one wrestler unpaired, use eight rather than using
- // the same performer twice or mixing the divisions.
+ // Leave any odd casting slot empty rather than duplicate a wrestler
+ // or cross booking divisions. A tag card can use up to twelve performers.
  const pool=[...chosen].sort((a,b)=>
   rank(b)+opportunity(b)-rank(a)-opportunity(a)||
   a.personId.localeCompare(b.personId,"en"));
@@ -325,7 +329,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   pool.splice(pool.indexOf(a),1);pool.splice(pool.indexOf(b),1);
   cards.push([a,b]);
  }
- while(pool.length>=2&&cards.length<5){
+ while(pool.length>=2&&cards.length<(tagChoice?4:5)){
   const head=pool.shift()!;
   const candidates=pool.filter(p=>p.bookingDivision===head.bookingDivision);
   if(!candidates.length)continue;

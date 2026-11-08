@@ -290,6 +290,10 @@ test("AI can crown a real tag title from legal temporary partnerships in teamles
   "An inaugural belt must not be declared after a protected non-finish");
  assert.equal(title.participants.length,4);
  assert.equal(new Set(title.participants.map(p=>p.personId)).size,4);
+ assert.equal(card.matches.length,5,
+  "Inaugural tag match must keep a full five-match AI broadcast, not displace the undercard");
+ assert.ok(card.matches.every(x=>x.participants.length===(x.matchType==="TAG"?4:2)));
+ assert.equal(new Set(card.matches.flatMap(x=>x.participants.map(p=>p.personId))).size,12);
  assert.ok(title.participants.every(p=>roster.some(r=>
   r.personId===p.personId&&r.contractId===p.contractId)));
  assert.ok(!("teamId" in title),"No ephemeral internal draft pair may enter a canonical match");
