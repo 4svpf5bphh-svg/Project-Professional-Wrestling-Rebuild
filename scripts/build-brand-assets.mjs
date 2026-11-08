@@ -29,7 +29,7 @@ async function approvedForeground(file,fitWidth,fitHeight){
 // A single full-size WebP: the approved hero logo is blended into the art.
 const W=1080,H=2340;
 const backdrop=await readFile(join(brand,'intro-backdrop.svg'));
-const hero=await approvedForeground(join(brand,'ppw-showcase-hero.webp'),1015,550);
+const hero=await approvedForeground(join(brand,'ppw-showcase-hero.webp'),830,550);
 const hm=await sharp(hero).metadata();
 const hx=Math.round((W-hm.width)/2),hy=Math.round((H-hm.height)/2-75);
 const tagline=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2340"><text x="540" y="'+(hy+hm.height+136)+'" fill="#a8edff" font-family="Arial,Helvetica,sans-serif" font-size="32" font-weight="800" letter-spacing="9" text-anchor="middle">THE LIVING WRESTLING WORLD</text><path d="M310 '+(hy+hm.height+177)+' H770" stroke="#81cfff" stroke-width="2" stroke-opacity=".3"/></svg>');
