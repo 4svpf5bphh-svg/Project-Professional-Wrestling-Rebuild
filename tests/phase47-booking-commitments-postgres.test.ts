@@ -4,7 +4,7 @@ import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
-import {decideBackstageRequest,settleBackstagePromises}
+import {decideBackstageRequest,publishBackstageRequests,settleBackstagePromises}
  from "../src/db/backstage-conversations.js";
 import {closeUnavailableBackstageRequests}
  from "../src/db/backstage-closure.js";
@@ -54,9 +54,19 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
      " VALUES($1,$2,$3,$4,'EXCLUSIVE','SIGNED',NULL,52)",
      [worldId,"contract-"+personId,personId,promotionId]);
    }
+   // Their separate visitors' appearances are legitimate shared rights,
+   // not an impossible booking under another company's exclusive contract.
+   await tx.query("UPDATE ppw_contracts SET family='LIMITED_NON_EXCLUSIVE',"+
+    "remaining_dates=6 WHERE world_id=$1 AND person_id IN ('c','f')",[worldId]);
+   for(const personId of ["c","f"])
+    await tx.query("INSERT INTO ppw_contracts("+
+     "world_id,contract_id,person_id,promotion_id,family,status,"+
+     "remaining_dates,expires_week_index)"+
+     " VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',6,52)",
+     [worldId,"visitors-"+personId,personId,otherPromotion]);
    for(const [personId,kind] of [
     ["a","MORALE"],["b","CREATIVE"],["c","MORALE"],["d","MORALE"],
-    ["e","TITLE_AMBITION"],["f","MEDICAL_SUPPORT"]
+    ["e","TITLE_AMBITION"]
    ]){
     await tx.query("INSERT INTO ppw_backstage_requests("+
      "world_id,request_id,promotion_id,person_id,kind,created_week_index)"+
@@ -95,7 +105,9 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
     [worldId,JSON.stringify({participants:[
      {personId:"a",contractId:"contract-a"}]}),
      JSON.stringify({participants:[{personId:"b",contractId:"contract-b"}]}),
-     JSON.stringify({participants:[{personId:"c",contractId:"contract-c"}]})]);
+     JSON.stringify({participants:[
+      {personId:"c",contractId:"visitors-c"},
+      {personId:"f",contractId:"visitors-f"}]})]);
   });
   const bookedA=(await readPortablePersonaWorkspace(db.pool,{...context,
    personId:"a"})).conversations[0]!;
@@ -139,18 +151,29 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
     [worldId]);
    await tx.query("INSERT INTO ppw_medical_absences("+
     "world_id,person_id,show_id,match_id,injured_week_index,"+
-    "cleared_week_index,weeks_out,severity,status)"+
-    " VALUES($1,'c','injury-show','injury-match',0,4,4,'MODERATE','ACTIVE')",
+    "cleared_week_index,weeks_out,severity,status) VALUES"+
+    "($1,'c','injury-show','injury-match',0,4,4,'MODERATE','ACTIVE'),"+
+    "($1,'f','injury-show','injury-match',0,4,4,'MODERATE','ACTIVE')",
     [worldId]);
    await tx.query("UPDATE ppw_people SET status='INJURED'"+
     " WHERE world_id=$1 AND person_id IN ('c','f')",[worldId]);
   });
-  // The system must not silently decline a request for an injured contracted
-  // wrestler. They can still discuss medical support without auto-booking.
+  // The World itself now generates a genuine medical-support message for
+  // injured, *contracted* talent rather than silently dropping them from the
+  // active roster. It must not invent a booking or close the request.
+  const generated=await withWorldTransaction(db.pool,tx=>
+   publishBackstageRequests(tx,worldId,1));
+  assert.equal(generated.newMessages,1);
+  const incoming=(await readPortablePersonaWorkspace(db.pool,{...context,
+   personId:"f"})).conversations[0]!;
+  assert.equal(incoming.kind,"MEDICAL_SUPPORT");
+  assert.equal(incoming.status,"PENDING");
   assert.equal((await withWorldTransaction(db.pool,tx=>
    closeUnavailableBackstageRequests(tx,worldId,1))).closed,0);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]));
   const heard=await decideBackstageRequest(db.pool,{...context,
-   conversationId:"request-f",requestId:"talk-medical",
+   conversationId:incoming.conversationId,requestId:"talk-medical",
    expectedRevision:await revision(),decision:"TALK"});
   assert.equal(heard.status,"APPLIED");
   const medical=(await readPortablePersonaWorkspace(db.pool,{...context,
