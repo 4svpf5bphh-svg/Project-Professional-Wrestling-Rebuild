@@ -61,8 +61,7 @@ for(const width of [320,390])test(`Phase 48 ${width}px booking uses actual wages
  await expect(costs).toContainText("Known fees exceed the show talent limit");
  await expect(costs).toContainText("selected cash reserve");
  await expect(costs).toContainText("Excludes tickets, venues, production, travel");
- expect(methods).toEqual(["planner","load"],
-  "The financial briefing is part of the one existing Card load, not another Business RPC");
+ expect(methods).toEqual(["planner","load"]); // No separate Finance RPC
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
