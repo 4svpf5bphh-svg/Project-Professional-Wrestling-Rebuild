@@ -125,6 +125,13 @@ test("player books and certifies two weeks with a renewed show-week contract and
      " VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',5,$5,9000)",
      [worldId,contracts[index],person,promotionId,index===0?0:52]);
    }
+   // A wrestler pitched this exact rivalry, but the manager must book it.
+   await tx.query("INSERT INTO ppw_backstage_requests("+
+    "world_id,request_id,promotion_id,person_id,related_person_id,kind,"+
+    "created_week_index,status,decision,responded_week_index,rival_verified_matches)"+
+    " VALUES($1,'joe-pitched-mistico',$2,'joe','mistico',"+
+    "'RIVALRY_PITCH',0,'ANSWERED','EXPLORE_RIVALRY',0,2)",
+    [worldId,promotionId]);
    for(const [index,showId] of [firstShow,secondShow].entries())
     await tx.query("INSERT INTO ppw_booking_drafts("+
      "world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,"+
@@ -143,6 +150,9 @@ test("player books and certifies two weeks with a renewed show-week contract and
    .find(p=>p.programmeId===programmeId);
   assert.equal(feud?.status,"ACTIVE");
   assert.equal(feud?.activityCount,0);
+  assert.equal(feud?.wrestlerOrigin?.initiatorId,"joe");
+  assert.equal(feud?.wrestlerOrigin?.opponentId,"mistico");
+  assert.equal(feud?.wrestlerOrigin?.acceptedWeekIndex,0);
   const selected=await cardTalentAsActor(context,worldId,promotionId,
    firstShow,"",null,20);
   assert.deepEqual(new Set(selected.talent.filter(p=>p.available)
@@ -156,6 +166,10 @@ test("player books and certifies two weeks with a renewed show-week contract and
   let card=await showCardEditorAsActor(context,worldId,promotionId,firstShow);
   assert.deepEqual(card.slots.map(s=>s.slotId),["main","aftermath"]);
   assert.deepEqual(card.programmeLinks,[{slotId:"aftermath",programmeId}]);
+  const beforeBell=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.equal(beforeBell.activityCount,0,
+   "A booked chapter is never certified prematurely");
   const linked=await read<{slot_id:string;kind:string}>(
    "SELECT slot_id,kind FROM ppw_programme_match_activities"+
    " WHERE world_id=$1 AND promotion_id=$2 AND programme_id=$3"+
@@ -191,6 +205,7 @@ test("player books and certifies two weeks with a renewed show-week contract and
   assert.equal(story.matchCount,1);
   assert.equal(story.segmentCount,1);
   assert.equal(story.sideBWins,1);
+  assert.equal(story.wrestlerOrigin?.requestId,"joe-pitched-mistico");
   assert.deepEqual(new Set(story.recentActivity.map(x=>x.kind)),
    new Set(["MATCH","SEGMENT"]));
   const charged=await read<{performers_count:number;dates_charged:number}>(
@@ -263,6 +278,9 @@ test("player books and certifies two weeks with a renewed show-week contract and
   assert.equal(finished.sideBWins,1);
   assert.equal(finished.finale?.resolvedWeekIndex,1);
   assert.equal(finished.finale?.resolvedWinnerSide,"A");
+  assert.equal(finished.wrestlerOrigin?.initiatorId,"joe");
+  assert.equal(finished.wrestlerOrigin?.recordedWeekIndex,0,
+   "Only genuine accepted-pitch follow-through is recorded");
   assert.equal((await read<{n:number}>(
    "SELECT count(*)::integer AS n FROM ppw_ledger_events"+
    " WHERE world_id=$1 AND event_type='PROGRAMME_FINALE_DELIVERED'",
@@ -293,7 +311,8 @@ test("player books and certifies two weeks with a renewed show-week contract and
     "ppw_command_receipts","ppw_promotion_alignment_changes",
     "ppw_programme_match_activities","ppw_card_slots","ppw_booking_drafts",
     "ppw_contract_offers","ppw_contract_renewal_proposals",
-    "ppw_programme_creative_agreements","ppw_programme_side_refs",
+    "ppw_programme_creative_agreements","ppw_backstage_requests",
+    "ppw_programme_side_refs",
     "ppw_programme_participants","ppw_programmes",
     "ppw_contracts","ppw_people","ppw_venues",
     "ppw_promotion_controls","ppw_memberships","ppw_promotions","ppw_markets",
