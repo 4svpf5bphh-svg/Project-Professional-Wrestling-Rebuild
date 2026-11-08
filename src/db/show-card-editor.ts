@@ -230,6 +230,46 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "SELECT slot_id,position,kind,payload FROM ppw_card_slots"+
    " WHERE world_id=$1 AND draft_id=$2 ORDER BY position LIMIT 101",
    [id.worldId,id.showId]));
+  // Exactly one other-card read, bounded to this promotion and week.
+  // It is indexed and has no per-wrestler round trips.
+  const otherSlots=await tx.query<{
+   show_id:string;show_name:string|null;kind:string;payload:unknown
+  }>([
+   "SELECT d.draft_id AS show_id,d.show_name,s.kind,s.payload",
+   "FROM ppw_booking_drafts d JOIN ppw_card_slots s",
+   "ON s.world_id=d.world_id AND s.draft_id=d.draft_id",
+   "WHERE d.world_id=$1 AND d.promotion_id=$2",
+   "AND d.year=$3 AND d.week=$4 AND d.draft_id<>$5",
+   "AND d.status IN ('DRAFT','SUBMITTED')",
+   "ORDER BY d.draft_id,s.position LIMIT 121"
+  ].join(" "),[id.worldId,id.promotionId,show.year,show.week,id.showId]);
+  if(otherSlots.length>120)throw new Error("Other show workload exceeded safe bound");
+  const otherByPerson=new Map<string,{
+   personId:string;showId:string;showName:string;kind:"MATCH"|"PHYSICAL_ANGLE"
+  }>();
+  for(const other of otherSlots){
+   const payload=other.payload&&typeof other.payload==="object"&&
+    !Array.isArray(other.payload)?other.payload as Record<string,unknown>:null;
+   if(!payload)continue;
+   const kind=other.kind==="MATCH"?"MATCH":
+    other.kind==="SEGMENT"&&["ATTACK","POST_MATCH_ASSAULT","RESCUE"]
+     .includes(String(payload.kind))?"PHYSICAL_ANGLE":null;
+   if(!kind)continue; // No physical load for promos or pre-recorded videos.
+   const runIn=kind==="MATCH"?readBookedInterference(other.payload):null;
+   const people=[...readCardParticipants(other.payload).map(x=>x.personId),
+    ...(runIn?.contractId?[runIn.personId]:[])];
+   for(const personId of new Set(people)){
+    const key=JSON.stringify([other.show_id,personId]);
+    const previous=otherByPerson.get(key);
+    if(!previous||kind==="MATCH")otherByPerson.set(key,{
+     personId,showId:other.show_id,showName:other.show_name?.trim()||"another show",
+     kind
+    });
+    if(otherByPerson.size>200)
+     throw new Error("Other show wrestler evidence exceeded safe bound");
+   }
+  }
+  const otherShowWorkloads=[...otherByPerson.values()];
   const personIds=[...new Set(slots.flatMap(s=>[
    ...readCardParticipants(s.payload).map(p=>p.personId),
    ...(s.kind==="MATCH"&&readBookedInterference(s.payload)?
@@ -458,6 +498,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    advisers:(show.advisers??[]).map(member=>({...member,
     name:staffNames.get(member.staffId)??null})),
    bookingFinancials:show.booking_financials??null,
+   otherShowWorkloads,
    selectedPeople:selectedPeople.map(p=>({
    personId:p.person_id,name:p.name,division:p.booking_division,
    alignment:effectiveWrestlerAlignment(show.seed,p.person_id,p.alignment,null),

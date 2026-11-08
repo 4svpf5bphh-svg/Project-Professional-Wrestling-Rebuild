@@ -6,6 +6,9 @@ import type {EditorMatch} from "../ui/card-editor-model.js";
 import type {EditorSegment} from "../ui/card-segment-model.js";
 import type {StaffRole} from "./world-staff.js";
 import {stipulationInjuryRisk} from "./match-stipulations.js";
+export type OtherShowWorkload={
+ personId:string;showId:string;showName:string;kind:"MATCH"|"PHYSICAL_ANGLE"
+};
 export type StaffNote={
  role:StaffRole|"HOUSE";level:"WATCH"|"INFO";
  title:string;message:string;
@@ -209,6 +212,30 @@ export function showWorkloadNotes(slotId:string,current:EditorMatch|EditorSegmen
   "of one physical appearance and coordinate recovery"+
   (elevated?", especially with the current fatigue or wear.":".")+
   " This is a workload warning, not a predicted injury.")];
+}
+/** Other same-week shows are authored plans, not completed injuries or paid dates. */
+export function crossShowWorkloadNotes(current:EditorMatch|EditorSegment,
+ otherShows:readonly OtherShowWorkload[],people:readonly AdvisorPerson[],
+ staffed:ReadonlySet<StaffRole>):StaffNote[]{
+ const physical=new Set<EditorSegment["kind"]>(["ATTACK","POST_MATCH_ASSAULT","RESCUE"]);
+ const isMatch="teams" in current;
+ if(!isMatch&&!physical.has(current.kind))return [];
+ const ids=new Set(isMatch?current.teams.flat().flatMap(p=>p?[p.personId]:[]):
+  [...current.actors,...current.targets].map(p=>p.personId));
+ if(!ids.size)return [];
+ const overlaps=otherShows.filter(x=>ids.has(x.personId));
+ if(!overlaps.length)return [];
+ const names=new Map(people.map(p=>[p.personId,p.name]));
+ const featured=[...new Set(overlaps.map(x=>x.personId))]
+  .map(id=>names.get(id)??id).slice(0,3);
+ const shows=[...new Set(overlaps.map(x=>x.showName))].slice(0,2);
+ const role:StaffNote["role"]=staffed.has("MEDICAL")?"MEDICAL":
+  staffed.has("ROAD_AGENT")?"ROAD_AGENT":"HOUSE";
+ return [note(role,"WATCH","Physical commitments on another show this week",
+  featured.join(", ")+(featured.length===1?" is":" are")+
+  " also planned for physical work at "+shows.join(" and ")+
+  ". Review both cards, match lengths and recovery time before World Lock. "+
+  "Those other bookings are provisional, not confirmed injuries or extra charges.")];
 }
 export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  appearanceFee:number;dates:number;signingBonus:number;

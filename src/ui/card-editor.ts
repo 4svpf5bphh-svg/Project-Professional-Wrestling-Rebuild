@@ -40,7 +40,7 @@ import {bookingChoiceAdvice,applyBookingAdjustment} from "../domain/booking-choi
 import {hasConcurrentCardChange} from "./card-draft-conflict.js";
 import {forecastCardAppearanceFees,forecastIncrementalAppearanceFees} from "../domain/card-appearance-forecast.js";
 import {bookingFinanceBrief} from "../domain/booking-financial-brief.js";
-import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
+import {matchStaffNotes,angleStaffNotes,showWorkloadNotes,crossShowWorkloadNotes,matchPartnershipNotes,type StaffNote,type AdvisorPerson} from "../domain/staff-context-advice.js";
 import type {StaffRole} from "../domain/world-staff.js";
 import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {reconcileDraftAgreements} from "./card-contract-reconciliation.js";
@@ -194,13 +194,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const people=advisorPeople(),staffed=team();
   const workload=showWorkloadNotes(slotId,(match??segment)!,activeMatches,
    activeSegments,people,staffed);
+  const otherWeek=crossShowWorkloadNotes((match??segment)!,
+   view?.otherShowWorkloads??[],people,staffed);
   if(match){
-   const all=[...workload,...matchStaffNotes(match,people,staffed),
+   const all=[...otherWeek,...workload,...matchStaffNotes(match,people,staffed),
     ...matchPartnershipNotes(match,people,staffed)];
    return [...all.filter(n=>n.level==="WATCH"),...all.filter(n=>n.level==="INFO")].slice(0,6);
   }
   const cast=view?.programmes.find(p=>p.programmeId===segment!.programmeId)?.cast??[];
-  return [...workload,...angleStaffNotes(segment!,people,staffed,
+  return [...otherWeek,...workload,...angleStaffNotes(segment!,people,staffed,
    cast.map(p=>p.personId))].slice(0,5);
  }
  /** One optional next action at a time, using the same locally authored
