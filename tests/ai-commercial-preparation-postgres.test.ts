@@ -68,7 +68,7 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   const cardRows=await withWorldTransaction(db.pool,tx=>tx.query<{
     draft_id:string;slot_id:string;position:number;payload:{
       participants:{personId:string;contractId:string}[];
-      scriptedWinner:string;intent:string;plannedFinish:string;
+      scriptedWinner:string;intent:string;plannedFinish:string;championshipId?:string;
       matchType?:"SINGLES"|"TAG";family?:string;scriptedWinnerSide?:string;
       sides?:{sideId:string;participants:{personId:string;contractId:string}[]}[];
       plannedLengthMinutes:number;mainEvent:boolean;scriptedBy:string;
