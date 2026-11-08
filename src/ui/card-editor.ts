@@ -2295,6 +2295,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          if(!grid.childElementCount)return child;
          panel.append(grid);
          const native=el("div","ppw-guide-native-choice");
+         // An invisible native change-dispatcher is not a second screen-reader
+         // control competing with the visible, keyboard-operable tile group.
+         native.setAttribute("aria-hidden","true");
          select.tabIndex=-1;
          native.append(child);panel.append(native);
          return panel;

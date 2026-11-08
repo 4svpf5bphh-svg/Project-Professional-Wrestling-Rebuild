@@ -490,8 +490,8 @@ test("320px: Medical reduces an authored bloody attack only when explicitly tapp
  await choice.getByRole("button",{name:"Reduce physical intensity"}).click();
  await expect(choice).toHaveCount(0);
  await dialog.getByRole("button",{name:"← Revise script"}).click();
- await expect(dialog.getByLabel("Attack intensity")).toHaveValue("WARNING");
- await expect(dialog.getByLabel("Visible aftermath")).toHaveValue("OFFICIALS_SEPARATE");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Attack intensity"] .ppw-guide-script-tile[data-value="WARNING"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Visible aftermath"] .ppw-guide-script-tile[data-value="OFFICIALS_SEPARATE"]')).toHaveAttribute("aria-pressed","true");
  await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
  const review=dialog.locator(".ppw-guide-staff-review");
  await expect(review).toContainText("Check condition before this physical scene");

@@ -250,8 +250,8 @@ test("iPhone booker can author a Face or Heel turn for a contracted wrestler wit
  await expect(dialog.getByText("Alice",{exact:true})).toBeVisible();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.getByRole("group",{name:"How the turn is shown choices"})).toBeVisible();
- await expect(dialog.getByLabel("Storytelling purpose")).toHaveValue("EXPLAIN_TURN");
- await expect(dialog.getByLabel("Exact location")).toHaveValue("IN_RING");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"] .ppw-guide-script-tile[data-value="EXPLAIN_TURN"]')).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.locator('.ppw-guide-script-choice[data-field="Exact location"] .ppw-guide-script-tile[data-value="IN_RING"]')).toHaveAttribute("aria-pressed","true");
  await dialog.locator('.ppw-guide-script-choice[data-field="New alignment"] .ppw-guide-script-tile[data-value="FACE"]').click();
  await dialog.locator('.ppw-guide-script-choice[data-field="How the turn is shown"] .ppw-guide-script-tile[data-value="REJECT_OLD_SELF"]').click();
  await dialog.getByRole("group",{name:"How the turn is shown choices"}).scrollIntoViewIfNeeded();
