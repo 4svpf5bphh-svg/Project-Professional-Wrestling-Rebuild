@@ -223,9 +223,12 @@ test("iPhone Planner fixes a signed Thursday TV slot while PPVs default to Satur
   .toBeVisible();
  await expect(page.getByRole("group",{name:"Show day"})).toHaveCount(0);
  await page.getByRole("button",{name:"Save show"}).click();
- expect(calls.filter(c=>c.method==="planShow")).toEqual([
+ await expect.poll(()=>calls.filter(c=>c.method==="planShow")).toEqual([
   {method:"planShow",day:4}
  ]);
+ // The button's async handler may not finish before a Playwright click returns.
+ // Assert the exact request and completed Planner transition, not a fixed delay.
+ await expect(page.getByRole("button",{name:"Book PPV · Autumn Slam"})).toBeVisible();
  await page.getByRole("button",{name:"Book PPV · Autumn Slam"}).click();
  const ppv=page.getByRole("group",{name:"Show day"});
  await expect(ppv.getByRole("button",{name:"Saturday"})).toHaveAttribute("aria-pressed","true");
