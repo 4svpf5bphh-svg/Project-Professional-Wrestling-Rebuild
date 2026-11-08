@@ -138,9 +138,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  function draw(){
   clearClock();root.classList.add("ppw-home");root.replaceChildren();
   const masthead=el("header","ppw-home-head");
-  masthead.append(el("span","ppw-home-brand","THE LIVING WRESTLING WORLD"),
-   el("h1","","Your World"),
-   el("p","ppw-home-small","Your promotion. Your decisions. One shared wrestling universe."));
+  masthead.append(el("span","ppw-home-brand","PPW / WORLD DESK"),
+   el("h1","","Your World"));
   root.append(masthead);
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!loaded){
@@ -155,7 +154,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    root.append(control("Try again","Refresh promotion",()=>void load(),"↻"));
    return;
   }
-  const {world,promotion,membership}=overview;
+  const {world,promotion}=overview;
   const key=world.year+":"+world.week;
   const deadlineDue=world.phase==="OPEN"&&(
    expiredOnScreen===key||
@@ -175,12 +174,21 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   heroTop.append(live);
   const identity=el("div","ppw-home-promotion-identity");
   const mark=el("span","ppw-home-promotion-mark",brand.mark);
-  if(logo){logo.loading="eager";logo.onload=()=>mark.dataset.logoReady="true";
-   logo.onerror=()=>logo.remove();mark.append(logo);}
+  if(logo){
+   logo.loading="eager";
+   logo.onload=()=>{
+    mark.dataset.logoReady="true";
+    identity.dataset.logoReady="true";
+   };
+   logo.onerror=()=>{
+    logo.remove();
+    delete mark.dataset.logoReady;
+    delete identity.dataset.logoReady;
+   };
+   mark.append(logo);
+  }
   identity.append(mark,el("h2","",promotion?.name??"Choose a promotion"));
-  hero.append(heroTop,
-   el("div","ppw-home-broadcast","PPW / PROMOTION CONTROL"),
-   identity,
+  hero.append(heroTop,identity,
    ...(promotion?.promoterPrestige&&port.openAchievements?[
     createPromoterPrestigeCrest({
      rank:promotion.promoterPrestige.rank,
@@ -191,18 +199,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     })
    ]:[]),
    ...(promotion?.homeMarketName?[el("p","ppw-home-territory",
-    "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]),
-   el("p","ppw-home-small",deadlineDue?
-    "Booking has closed. Check the World before making further plans.":
-    world.phase==="OPEN"?
-    "The booking window is open. Your creative choices remain yours.":
-    world.phase==="LOCKED"?"This week's cards are locked. The show lineup is final.":
-    "This week's shows are taking place. The new standings will follow."));
-  const tags=el("div","ppw-home-tags");
-  tags.append(el("span","",world.phase),
-   el("span","",promotion?.tier??membership),
-   el("span","","One shared wrestling universe"));
-  hero.append(tags);
+    "HOME TERRITORY  /  "+promotion.homeMarketName)]:[]));
   const check=el("button","ppw-home-status-refresh",
    loading?"Checking World…":"Check World status") as HTMLButtonElement;
   check.type="button";check.disabled=loading;check.onclick=()=>void load();
@@ -228,10 +225,14 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    const dashboard=el("section","ppw-home-dashboard");
    dashboard.setAttribute("aria-label","Your promotion at a glance");
    const next=promotion.nextShow;
-   const nextAction=control(next?"NEXT SHOW · "+next.showName:"BOOK YOUR NEXT SHOW",
+   const needsCard=!!next&&!next.ready&&!!promotion.attention?.unpreparedShow;
+   const nextAction=control(
+    needsCard?"Finish your booking card · "+next!.showName:
+     next?"NEXT SHOW · "+next.showName:"Plan this week's show",
     next?"Year "+next.year+" · Week "+next.week+" · "+
      (next.ready?"Card ready for showtime":"Finish preparing the card"):
-     "Set an event date and start booking your card.",port.planner,"▣");
+     "Set a date and start booking.",
+    needsCard?port.openUnfinishedCard??port.planner:port.planner,"▣");
    nextAction.classList.add("ppw-home-next-action");
    if(next?.ready)nextAction.dataset.ready="true";
    dashboard.append(nextAction);
@@ -355,11 +356,10 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
        .finally(()=>{claimingKP=false;draw();});
      },icon:"★",level:"priority"});
    }
-  if(bookingOpen&&attention?.plannedShows===0)
-   items.push({title:"Plan this week's show",detail:
-    "No show is on your promotion's calendar this week.",
-    action:port.planner,icon:"◷",level:"priority"});
-  if(bookingOpen&&attention?.unpreparedShow)
+  // The next-show tile above is already the single booking action.
+  // Only retain this fallback when an older overview cannot supply its
+  // draft-show identity despite reporting an unfinished card.
+  if(bookingOpen&&attention?.unpreparedShow&&!promotion.nextShow)
    items.push({title:"Finish your booking card",detail:
     "Review and confirm your current card.",
     action:port.openUnfinishedCard??port.planner,icon:"▤",level:"priority"});
@@ -418,8 +418,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    items.push({title:"Financial pressure",detail:
     "Current financial outlook: "+promotion.financialDistress+". Review commitments and runway.",
     action:port.business,icon:"!",level:"important"});
-  if(!items.length)brief.append(el("p","ppw-home-brief-clear",
-   "Your desk is clear for now. Review your next show whenever you're ready."));
   for(const item of items){
    const entry=control(item.title,item.detail,item.action,item.icon);
    entry.classList.add("ppw-home-action-"+item.level);
@@ -440,7 +438,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }else brief.append(entry);
   }
   // Immediate decisions are above passive links; no additional reads.
-  root.insertBefore(brief,stats);
+  if(items.length)root.insertBefore(brief,stats);
   // Secondary news is one compact inbox; accepted offers already have their
   // own primary action and acknowledgement above the dashboard.
   const inboxBody=el("div","ppw-home-inbox-body");

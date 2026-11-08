@@ -5,7 +5,7 @@ const overview={world:{revision:4,name:"PPW",year:2,week:7,phase:"OPEN",
  cash:1000000,debt:0,lastWeeklyNet:10,financialDistress:"HEALTHY"}};
 const session={worldId:"world",playerId:"owner",csrfToken:"opaque",overview,
  availablePromotions:[]};
-test("iPhone World News awards, official and dirt sheets render on demand and never spill plans",async({page})=>{
+test("iPhone World News awards, official and dirt sheets render on demand and never spill plans",async({page},testInfo)=>{
  await page.setViewportSize({width:390,height:844});
  const calls:string[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -87,6 +87,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(dispatch).toContainText("Fight Night");
  await expect(dispatch.getByRole("button",{name:"Read the completed show"})).toBeVisible();
  await expect(page.locator(".ppw-news-official")).not.toContainText("GROQ");
+ await page.locator(".ppw-news-official").screenshot({
+  path:testInfo.outputPath("phase45-official-news-390.png")});
 
  const officialThread=page.locator(".ppw-news-official .ppw-hot-tag-thread").first();
  await officialThread.locator("summary").click();
@@ -127,6 +129,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(dirtMark).toBeVisible();
  await expect(dirtMark).toHaveAttribute("src","/branding/news-dirt.webp");
  await expect.poll(()=>dirtMark.evaluate(img=>(img as HTMLImageElement).naturalWidth)).toBe(420);
+ await page.locator(".ppw-news-dirt").screenshot({
+  path:testInfo.outputPath("phase45-dirt-sheets-390.png")});
 
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"Creative shake-up?"})).toBeVisible();
  await expect(page.getByText("RUMOUR / NOT CONFIRMED")).toBeVisible();

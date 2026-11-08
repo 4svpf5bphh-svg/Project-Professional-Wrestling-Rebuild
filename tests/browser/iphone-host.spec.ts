@@ -7,6 +7,25 @@ const overview={
 };
 const current={worldId:"genesis",playerId:"test-owner",
  csrfToken:"opaque-browser-csrf",overview,availablePromotions:[]};
+test("Home stays compact and avoids duplicate statuses or empty task panels at 320/390",async({page})=>{
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>route.fulfill({json:
+  route.request().postDataJSON().method==="overview"?overview:{}}));
+ for(const width of [320,390]){
+  await page.setViewportSize({width,height:844});
+  await page.goto("/#/home");
+  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+  await expect(page.locator(".ppw-home-brief")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-tags")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-broadcast")).toHaveCount(0);
+  const height=await page.locator(".ppw-home-hero").evaluate(el=>el.getBoundingClientRect().height);
+  expect(height).toBeLessThan(270);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ }
+});
+
 test("iPhone signs in and opens every department through a single drawer",async({page})=>{
  let signedIn=false;const methods:string[]=[];
  await page.route("**/api/session",async route=>{
