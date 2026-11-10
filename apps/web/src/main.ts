@@ -334,7 +334,7 @@ function renderSection(){
    session.canManualAdvance?async(year,week)=>command("/api/playtest-booking",{
     confirm:"EXTEND_SHARED_BOOKING",year,week
    },session?.csrfToken):undefined,
-   async()=>{await offerUnseenLegendReveals(scope,view);}   });break;
+   async()=>{await offerUnseenLegendReveals(scope,view);});break;
   case "planner":{
    const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
    mountPlannerPage(view,scope,back,
