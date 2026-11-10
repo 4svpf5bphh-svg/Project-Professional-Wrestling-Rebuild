@@ -413,3 +413,8 @@
  .ppw-news-edition-banner{padding:12px 11px}
  .ppw-news-previous-weeks{padding:9px 10px 12px}
 }
+
+/* Existing owner-confirmed post-show voice desk survives weekly grouping. */
+.ppw-news-voices-heading{display:block;margin:10px 0 3px;
+ font:900 10px/1.45 system-ui;letter-spacing:.09em;color:#a9d9f3}
+.ppw-news-dirt .ppw-news-voices-heading{color:#ffe0bc}
