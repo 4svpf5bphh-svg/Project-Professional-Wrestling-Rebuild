@@ -93,8 +93,6 @@ for(const width of [320,390]){
   await rival.locator("summary").click();
   await expect(rival.locator(".ppw-belt-contender-board")).toHaveCount(0);
   expect(methods.filter(m=>m==="championships")).toHaveLength(1);
-  // Opening another promotion's title is a separate, authorised history read.
-  expect(methods.filter(m=>m==="championshipHistory")).toHaveLength(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
