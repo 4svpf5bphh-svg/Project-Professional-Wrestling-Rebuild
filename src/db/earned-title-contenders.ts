@@ -28,8 +28,16 @@ export async function readEarnedTitleContendersInTransaction(
  const roster=await tx.query<RosterRow>(`
   SELECT DISTINCT ON (p.person_id) p.person_id,p.name,p.booking_division,p.status,
    p.momentum,p.popularity
-  FROM ppw_people p JOIN ppw_contracts c ON c.world_id=p.world_id
-    AND c.person_id=p.person_id AND c.promotion_id=$2
+  FROM ppw_people p
+  JOIN ppw_promotions booking ON booking.world_id=p.world_id
+   AND booking.promotion_id=$2
+  JOIN ppw_contracts c ON c.world_id=p.world_id
+    AND c.person_id=p.person_id
+    AND (c.promotion_id=$2 OR
+     (c.promotion_id=booking.parent_promotion_id AND EXISTS(
+      SELECT 1 FROM ppw_wrestler_promotion_affiliations a
+      WHERE a.world_id=p.world_id AND a.person_id=p.person_id
+       AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY')))
   WHERE p.world_id=$1 AND (p.status='ACTIVE' OR p.person_id=ANY($4::text[]))
     AND p.booking_division IN ('MEN','WOMEN')
     AND c.status='SIGNED' AND c.start_week_index<=$3
