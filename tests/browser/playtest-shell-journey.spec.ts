@@ -9,13 +9,19 @@ const session={worldId:"genesis",playerId:"owner",csrfToken:"csrf",
 
 test("World status confirmation updates the promotion banner without a duplicate session read",async({page})=>{
  await page.setViewportSize({width:390,height:844});
- let reads=0,sessionReads=0;
+ let reads=0,sessionReads=0,vaultChecks=0;
  await page.route("**/api/session",route=>{
   sessionReads++;
   return route.fulfill({json:session});
  });
  await page.route("**/api/card",route=>{
   const method=route.request().postDataJSON().method;
+  if(method==="legendsVault"){
+   vaultChecks++;
+   return route.fulfill({json:{
+    worldYear:1,worldWeek:6,curated:0,entries:[],balance:0
+   }});
+  }
   if(method!=="overview")throw new Error("Unexpected Home request "+method);
   reads++;
   const changed=reads===1?{...world,revision:5,phase:"LOCKED"}:
@@ -29,7 +35,10 @@ test("World status confirmation updates the promotion banner without a duplicate
  await expect(page.getByRole("heading",{name:"The World has moved on"})).toBeVisible();
  await expect(page.locator(".ppw-shell-brand small")).toContainText("Y1 W6");
  expect(reads).toBe(2);
+ await expect.poll(()=>vaultChecks).toBe(1);
  expect(sessionReads).toBe(1);
+ // Detect a genuine shared-week change with one bounded reveal check;
+ // no duplicate session read, background polling, or forced empty ceremony.
 });
 
 test("bottom Business navigation enters the correct desk and Back restores the premium show",async({page})=>{
