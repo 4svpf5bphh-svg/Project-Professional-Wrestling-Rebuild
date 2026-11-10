@@ -70,14 +70,19 @@ export async function readWorldAiBookingContext(
       (r.status='ACTIVE' AND r.holder_type='TEAM' AND r.team_id IS NOT NULL))
    ORDER BY c.promotion_id,c.prestige DESC,c.championship_id LIMIT 257`,
    [worldId,promotionIds]),
-   // One indexed narrow query for the entire AI World batch, not per club.
+   // One World batch: at most 32 recent career entries per AI promotion.
+   // Bounded transfer and fair sampling even with the full 128 AI companies.
    tx.query<{promotion_id:string;show_id:string;match_id:string;
     person_id:string;performer_side:string;won:boolean;week_index:number;
     format:"SINGLES"|"TAG";
     popularity_before:number;rating_stars:number|null;
     title_match:boolean;major_event:boolean}>(`
+    WITH ranked AS (
     SELECT s.promotion_id,s.show_id,e.match_id,e.person_id,
      e.performer_side,e.won,e.format,(s.year-1)*52+s.week-1 AS week_index,
+     row_number() OVER(PARTITION BY s.promotion_id
+      ORDER BY s.year DESC,s.week DESC,s.show_id,e.match_id,e.person_id)
+      AS form_rank,
      coalesce((e.before_stats->>'popularity')::double precision,50)
       AS popularity_before,
      f.rating_stars::double precision AS rating_stars,
@@ -101,8 +106,11 @@ export async function readWorldAiBookingContext(
      AND f.show_id=s.show_id AND f.match_id=e.match_id
     WHERE s.world_id=$1 AND s.promotion_id=ANY($2::text[])
      AND (s.year-1)*52+s.week-1 BETWEEN $3 AND $4
-    ORDER BY s.year DESC,s.week DESC,s.promotion_id,e.match_id,e.person_id
-    LIMIT 4097`,
+    )
+    SELECT promotion_id,show_id,match_id,person_id,performer_side,won,
+     format,week_index,popularity_before,rating_stars,title_match,major_event
+    FROM ranked WHERE form_rank<=32
+    ORDER BY promotion_id,form_rank LIMIT 4096`,
     [worldId,promotionIds,Math.max(0,weekIndex-13),weekIndex-1]),
  ]);
  if(programmeRows.length>256||titleRows.length>256||teamRows.length>512||
