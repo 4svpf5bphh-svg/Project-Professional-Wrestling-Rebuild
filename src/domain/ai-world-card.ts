@@ -99,10 +99,19 @@ export function chooseAiTitleChallenger(input:{
   !Number.isSafeInteger(input.year)||input.year<1||
   !Number.isInteger(input.week)||input.week<1||input.week>52)
   throw new Error("Invalid AI championship challenger context");
- const champion=input.roster.find(p=>p.personId===input.holderId);
+ // Contract renewals may leave two legitimate active deal records for
+ // the same wrestler in one AI World batch. An identity is still one entrant.
+ const byPerson=new Map<string,AiRosterCandidate>();
+ for(const person of input.roster){
+  const previous=byPerson.get(person.personId);
+  if(!previous||person.contractId<previous.contractId)
+   byPerson.set(person.personId,person);
+ }
+ const unique=[...byPerson.values()];
+ const champion=byPerson.get(input.holderId);
  if(!champion)return null;
  const strength=(p:AiRosterCandidate)=>p.popularity+p.momentum+p.recognition;
- const candidates=input.roster.filter(p=>p.personId!==input.holderId&&
+ const candidates=unique.filter(p=>p.personId!==input.holderId&&
   p.bookingDivision===champion.bookingDivision)
   .sort((a,b)=>strength(b)-strength(a)||a.personId.localeCompare(b.personId,"en"));
  if(!candidates.length)return null;
@@ -110,7 +119,7 @@ export function chooseAiTitleChallenger(input:{
  // New Worlds without certified form still use the original deterministic
  // star-led fallback, never a fabricated 1–5 contender ranking.
  const earned=rankEarnedContenders({
-  candidates:input.roster.map(p=>({id:p.personId,name:p.personId,
+  candidates:unique.map(p=>({id:p.personId,name:p.personId,
    format:"SINGLES" as const,division:p.bookingDivision,
    momentum:p.momentum,popularity:p.popularity})),
   results:input.recentResults??[],
