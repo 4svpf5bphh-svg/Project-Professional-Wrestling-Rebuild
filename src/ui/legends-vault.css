@@ -451,3 +451,10 @@ html.ppw-legend-modal-open,html.ppw-legend-modal-open body{
   font-size:.69rem;margin:0;
  }
 }
+
+/* iPhone bottom-drawer safety. The last collectible actions must be reachable
+   above the fixed navigation even at 320px with a Home Screen safe area. */
+html[data-ppw-screen="legends"] .ppw-industry{
+ padding-bottom:calc(140px + env(safe-area-inset-bottom))!important}
+html[data-ppw-screen="collection"] .ppw-collection-screen{
+ padding-bottom:calc(135px + env(safe-area-inset-bottom))!important}
