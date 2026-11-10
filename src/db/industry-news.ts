@@ -10,8 +10,16 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
  if(![worldId,promotionId,playerId].every(s=>typeof s==="string"&&s.length>0&&s.length<=200))
   throw new Error("Invalid World News viewer");
  return withSqlClient(pool,async tx=>{
-  const auth=await tx.query<{year:number;week:number}>(`
-   SELECT w.year,w.week FROM ppw_worlds w
+  const auth=await tx.query<{year:number;week:number;
+   published_year:number|null;published_week:number|null}>(`
+   SELECT w.year,w.week,latest.year AS published_year,
+    latest.week AS published_week
+   FROM ppw_worlds w
+   LEFT JOIN LATERAL (
+    SELECT year,week FROM ppw_world_news_weeks y
+    WHERE y.world_id=w.world_id
+    ORDER BY year DESC,week DESC LIMIT 1
+   ) latest ON true
    JOIN ppw_promotion_controls c ON c.world_id=w.world_id
     AND c.promotion_id=$3 AND c.player_id=$2 AND c.active
    JOIN ppw_memberships m ON m.world_id=w.world_id AND m.player_id=$2
@@ -91,7 +99,11 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
     ORDER BY c.year DESC,c.week DESC,c.show_id LIMIT 26`,
     [...params,playerId,promotionId])
   ]);
-  return {voices:voices.filter(v=>typeof v.headline==="string"&&
+  return {latestEdition:auth[0]!.published_year!==null&&
+    auth[0]!.published_week!==null?{
+      year:auth[0]!.published_year!,week:auth[0]!.published_week!
+    }:null,
+   voices:voices.filter(v=>typeof v.headline==="string"&&
    v.headline.length<=145&&typeof v.summary==="string"&&v.summary.length<=480)
    .map(v=>({year:v.year,week:v.week,showId:v.show_id,
     showName:v.show_name,promotionName:v.promotion_name,
