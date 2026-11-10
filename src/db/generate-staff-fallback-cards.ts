@@ -279,7 +279,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
               roster,holderId:t.holderId,championshipId:t.championshipId,
               worldSeed:String(worlds[0]!.seed),promotionId,year,week,
               recentPairs:recent.get(promotionId)??[],
-             recentResults:context?.recentSingles.get(promotionId)??[],
+             recentResults:[...(context?.recentSingles.get(promotionId)??[]),
+                ...(context?.recentTags.get(promotionId)??[])],
             });
             return candidate?[{kind:"SINGLES_TITLE" as const,
               aId:t.holderId,bId:candidate.personId,holderId:t.holderId,
@@ -302,7 +303,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             starPreference:profile.ai_star_preference
           }),
             recentPairs:recent.get(promotionId)??[],
-             recentResults:context?.recentSingles.get(promotionId)??[],
+             recentResults:[...(context?.recentSingles.get(promotionId)??[]),
+                ...(context?.recentTags.get(promotionId)??[])],
             featuredPairs:[...challengers,...rivals],
             establishedPartners,
             establishedTeams:context?.teams,
@@ -382,7 +384,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
            roster,holderId:title.holderId,championshipId:title.championshipId,
            worldSeed:String(worlds[0]!.seed),promotionId,year,week,
            recentPairs:recent.get(promotionId)??[],
-           recentResults:context?.recentSingles.get(promotionId)??[]
+           recentResults:[...(context?.recentSingles.get(promotionId)??[]),
+                ...(context?.recentTags.get(promotionId)??[])]
           });
           return challenger?[{kind:"SINGLES_TITLE" as const,
            aId:title.holderId,bId:challenger.personId,
@@ -406,7 +409,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             starPreference:profile.ai_star_preference
           }),
           recentPairs:recent.get(promotionId)??[],
-             recentResults:context?.recentSingles.get(promotionId)??[],
+             recentResults:[...(context?.recentSingles.get(promotionId)??[]),
+                ...(context?.recentTags.get(promotionId)??[])],
           featuredPairs:[...titleChallenges,
            ...(context?.programmes.get(promotionId)??[])],
           establishedTeams:context?.teams,
