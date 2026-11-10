@@ -65,7 +65,8 @@ async function fixture(pool:TransactionPool,worldId:string,kind:"VENUE"|"WRESTLE
 async function cleanup(pool:TransactionPool,worldId:string){
  await withWorldTransaction(pool,async tx=>{
   for(const table of [
-   "ppw_completed_match_evidence","ppw_completed_show_segments","ppw_completed_show_matches",
+   "ppw_completed_match_evidence","ppw_completed_show_segments","ppw_individual_field_career_effects","ppw_tag_match_career_effects",
+    "ppw_completed_show_matches",
    "ppw_completed_shows","ppw_show_resolutions","ppw_week_resolution_seals",
    "ppw_week_resource_clearances","ppw_week_arbitration_proposals",
    "ppw_week_staff_fallback_runs","ppw_week_prepared_finalizations",
