@@ -327,15 +327,15 @@ test("AI tag champions are real teams and may defend against new legal partners"
 });
 
 test("AI contender deduplicates overlapping signed contract renewals",()=>{
- const double=[...roster,{...roster[3]!,contractId:"older-renewal"}];
+ const double=[...roster,{...roster[4]!,contractId:"older-renewal"}];
  const args={roster:double,holderId:"talent-01",championshipId:"belt",
   worldSeed:"51",promotionId:"p",year:1,week:10,
-  recentResults:[{id:"talent-03",format:"SINGLES" as const,weekIndex:9,
+  recentResults:[{id:"talent-04",format:"SINGLES" as const,weekIndex:9,
    won:true,opponentStrength:80,ratingStars:3.9,
    titleMatch:false,majorEvent:false}]};
- assert.equal(chooseAiTitleChallenger(args)?.personId,"talent-03");
+ assert.equal(chooseAiTitleChallenger(args)?.personId,"talent-04");
  assert.equal(chooseAiTitleChallenger({...args,roster:[...double].reverse()})?.personId,
-  "talent-03");
+  "talent-04");
 });
 test("AI title rivals reward certified underdog wins over an unproven popularity leader",()=>{
  const evidence=[
