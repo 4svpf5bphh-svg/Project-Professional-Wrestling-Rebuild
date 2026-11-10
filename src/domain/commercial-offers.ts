@@ -46,7 +46,9 @@ export function commercialCompanyName(code:string):string{
 }
 const good=(n:number|null):n is number=>n!==null&&Number.isFinite(n)&&n>0;
 const term=(base:number,percent:number)=>Math.round(base*(1+percent));
-/** Small promotions earn fractional household audiences: network expectations\n * must be reachable on sensible regional reach, while national and global\n * prestige requirements remain demanding and unchanged.\n */
+/** Small promotions earn fractional household audiences: network expectations
+ * must be reachable on sensible regional reach, while national and global\n * prestige requirements remain demanding and unchanged.
+ */
 export const COMMERCIAL_TIER_RATING_TARGET:Readonly<Record<string,number>>={
  LOCAL:.10,INDEPENDENT:.14,RISING:.38,NATIONAL:1.35,GLOBAL:3.1
 };
@@ -68,10 +70,10 @@ export function partnerResponse(code:string,input:{
  const rating=input.averageTvRating;
  if(code.startsWith("BROADCAST_")&&typeof rating==="number"&&Number.isFinite(rating)){
   const target=broadcasterRatingTarget(code,input.tier);
-  if(rating>=target*1.2)return "Your "+rating.toFixed(1)+" rating beats our "+
-   target.toFixed(1)+" target. Let's talk about a stronger deal.";
-  if(rating<target*.8)return "The "+rating.toFixed(1)+" rating is below "+
-   "our "+target.toFixed(1)+" target. We need to see improvement.";
+  if(rating>=target*1.2)return "Your "+formatTvRating(rating)+" rating beats our "+
+   formatTvRating(target)+" target. Let's talk about a stronger deal.";
+  if(rating<target*.8)return "The "+formatTvRating(rating)+" rating is below "+
+   "our "+formatTvRating(target)+" target. We need to see improvement.";
  }
  // Sponsors have different standards and respond only to completed-show
  // evidence. Public statements never disclose hidden acceptance odds.
