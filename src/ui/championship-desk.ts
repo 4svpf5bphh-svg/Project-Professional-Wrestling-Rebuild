@@ -15,6 +15,9 @@ export interface ChampionshipPort extends Partial<TournamentPort> {
  loadHistory(promotionId:string,championshipId:string,cursor:ReignCursor|null):Promise<ChampionshipHistory>;
  openWrestler?(id:string):void;
  openTeam?(id:string):void;
+ /** This opens an ordinary authorised show and an unsaved editable match. */
+ planTitleChallenge?(choice:{championshipId:string;holderId:string;
+  holderName:string;challengerId:string;challengerName:string}):void;
 }
 const element=(tag:string,cls="",text="")=>{
  const e=document.createElement(tag);e.className=cls;e.textContent=text;return e;};
@@ -251,6 +254,18 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
       candidate.wins+"W · "+candidate.losses+"L · "+
       candidate.score.toFixed(1)+" form");
      entry.append(place,wrestler,form);
+     if(title.division==="SINGLES"&&title.holderId&&title.holderName&&
+      port.planTitleChallenge&&directory.canEdit){
+      const plan=element("button","ppw-title-contender-plan",
+       "Plan title challenge") as HTMLButtonElement;
+      plan.type="button";
+      plan.onclick=()=>port.planTitleChallenge!({
+       championshipId:title.championshipId,holderId:title.holderId!,
+       holderName:title.holderName!,challengerId:candidate.id,
+       challengerName:candidate.name
+      });
+      entry.append(plan);
+     }
      contenderPanel.append(entry);
     }
     history.append(contenderPanel);
