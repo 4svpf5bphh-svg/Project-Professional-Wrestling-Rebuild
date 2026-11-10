@@ -69,6 +69,25 @@ test("certified singles wins and protected losses persist once, rollback cleanly
   assert.ok(byId.get(winner)!.after.momentum>byId.get(winner)!.before.momentum);
   assert.ok(byId.get(loser)!.after.momentum<=byId.get(loser)!.before.momentum||
    projection.projections[0]!.score.criticalRatingStars>=4);
+  // The World resolver inserts immutable completed match facts before career
+  // settlement. This fixture supplies that exact FK contract (not fake careers).
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_completed_shows(
+    world_id,promotion_id,show_id,year,week,resolution_id,
+    crowd_response,receipt_json,receipt_digest)
+    VALUES($1,$2,$3,1,1,'regression',75,'{}'::jsonb,repeat('a',64))`,
+    [worldId,promotionId,showId]);
+   await tx.query(`INSERT INTO ppw_completed_show_matches(
+    world_id,show_id,match_id,position,crowd_response,
+    actual_finish,actual_winner_side)
+    VALUES($1,$2,'main',0,75,'CLEAN_PIN','A')`,[worldId,showId]);
+  });
+  const readHistory=()=>withWorldTransaction(db.pool,tx=>tx.query<{
+   person_id:string;won:boolean;performer_side:string;actual_winner_side:string;
+   before_stats:{momentum:number};after_stats:{momentum:number}
+  }>(`SELECT person_id,won,performer_side,actual_winner_side,before_stats,after_stats
+    FROM ppw_individual_field_career_effects
+    WHERE world_id=$1 AND show_id=$2 ORDER BY person_id`,[worldId,showId]));
   const before=await inspect();
   await assert.rejects(withWorldTransaction(db.pool,async tx=>{
    const result=await settleCanonicalSinglesCareerConsequences(tx,projection);
@@ -76,9 +95,19 @@ test("certified singles wins and protected losses persist once, rollback cleanly
    throw new Error("intentional settlement rollback");
   }),/intentional settlement rollback/);
   assert.deepEqual(await inspect(),before,"A failed certification cannot award momentum");
+  assert.equal((await readHistory()).length,0,
+   "A failed certification cannot persist a fabricated career result");
   const result=await withWorldTransaction(db.pool,tx=>
    settleCanonicalSinglesCareerConsequences(tx,projection));
   assert.deepEqual(result,{performers:2,matches:1});
+  const records=await readHistory();
+  assert.equal(records.length,2,"Exact singles result is present in the original career ledger");
+  assert.deepEqual(records.map(r=>r.won),[false,true],
+   "Both winner and loser are recorded, not just the winning wrestler");
+  assert.equal(records.find(r=>r.person_id===winner)!.actual_winner_side,"A");
+  assert.equal(records.find(r=>r.person_id===winner)!.performer_side,"A");
+  assert.ok(records.find(r=>r.person_id===winner)!.after_stats.momentum>
+   records.find(r=>r.person_id===winner)!.before_stats.momentum);
   const after=await inspect();
   for(const p of after){
    const e=byId.get(p.person_id)!;
@@ -100,6 +129,9 @@ test("certified singles wins and protected losses persist once, rollback cleanly
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("DELETE FROM ppw_week_resource_clearances WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_individual_field_career_effects WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_completed_show_matches WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_people WHERE world_id=$1",[worldId]);
