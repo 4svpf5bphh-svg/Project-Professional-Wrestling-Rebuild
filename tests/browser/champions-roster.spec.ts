@@ -96,3 +96,68 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+for(const width of [320,390]){
+ test(`Earned title challenger chooses a real future show and gets an unsaved champion match at ${width}px`,
+ async({page})=>{
+  await page.setViewportSize({width,height:780});
+  const calls:string[]=[];
+  const planner={worldName:"Genesis",promotionName:"Home Wrestling",
+   year:1,week:5,worldRevision:4,canEdit:true,homeMarketId:"home",
+   venues:[],weeks:[{year:1,week:5,offset:0,required:true,major:false,
+    canEdit:true,scheduled:[],shows:[{draftId:"actual-show",year:1,week:5,
+     status:"DRAFT",eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+     marketName:"Home",venueName:"Arena",ticketStrategy:"STANDARD",
+     ready:false,slots:0,bookingClass:"REGULAR",showSeriesId:null,
+     showName:"Ascension"}]}]};
+  const card={showId:"actual-show",year:1,week:5,worldRevision:4,
+   canEdit:true,ready:false,day:5,venueId:"arena",showName:"Ascension",
+   promotionName:"Home Wrestling",venueName:"Arena",marketName:"Home",
+   bookingClass:"REGULAR",ticketStrategy:"STANDARD",
+   championships:[{championshipId:"men",name:"Men's World Title",
+    division:"SINGLES",bookingDivision:"MEN",holderName:"Champion",
+    vacant:false}],programmes:[],programmeLinks:[],selectedPeople:[],slots:[]};
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const input=r.request().postDataJSON() as {method:string;search?:string};
+   calls.push(input.method);
+   if(input.method==="championships")return r.fulfill({json:{
+    worldName:"Genesis",year:1,week:5,viewerPromotionId:"home",
+    canEdit:true,worldRevision:4,
+    titles:[{...title("home","Men's World Title"),championshipId:"men",
+     bookingDivision:"MEN",holderId:"champ",holderName:"Champion",
+     currentReignId:"r1"}],
+    contenders:{men:[{id:"worker",name:"Earned Challenger",
+     format:"SINGLES",division:"MEN",rank:1,score:18,wins:3,losses:0,
+     lastResultWeek:4,titleMatches:0,momentum:70,popularity:45}]}
+   }});
+   if(input.method==="planner")return r.fulfill({json:planner});
+   if(input.method==="load")return r.fulfill({json:card});
+   if(input.method==="talent"){
+    const person=input.search==="Champion"?{personId:"champ",name:"Champion"}:
+     {personId:"worker",name:"Earned Challenger"};
+    return r.fulfill({json:{talent:[{...person,contractId:"deal-"+person.personId,
+     available:true,division:"MEN",popularity:70,momentum:70,
+     recognition:70,stamina:70,fatigue:0}],cursor:null}});
+   }
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/championships");
+  const belt=page.locator(".ppw-belt-card").first();
+  await belt.locator("summary").click();
+  await belt.getByRole("button",{name:"Plan title challenge"}).click();
+  await expect(page).toHaveURL(/#\/planner/);
+  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
+  await expect(page.getByText("Champion vs Earned Challenger")).toBeVisible();
+  await page.getByRole("button",{name:"Start title match"}).click();
+  await expect(page.getByRole("dialog",{name:/Edit match/})).toBeVisible();
+  await expect(page.getByRole("dialog",{name:/Edit match/}))
+   .toContainText("Champion");
+  await expect(page.getByRole("dialog",{name:/Edit match/}))
+   .toContainText("Earned Challenger");
+  expect(calls.filter(x=>x==="talent")).toHaveLength(2);
+  expect(calls).not.toContain("save");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
