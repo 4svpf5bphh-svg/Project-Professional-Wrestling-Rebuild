@@ -31,7 +31,7 @@ test("Named PPV press stories distinguish saved answers, refusals and skipped qu
  assert.match(refused[0]!.title,/Josh Robinson says no comment/);
  assert.match(refused[0]!.summary,/declined/);
  assert.match(refused[0]!.summary,/No comment/);
- assert.match(refused[1]!.summary,/unverified/);
+ assert.match(refused[1]!.summary,/reason has not been established/);
  assert.equal(refused[1]!.certainty,"SPECULATION");
  const direct=publishablePressEditorial(premium,"Josh Robinson",new Map([["MAIN_EVENT",0]]));
  assert.match(direct[0]!.summary,/The audience saw it/);
