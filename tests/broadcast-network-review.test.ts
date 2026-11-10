@@ -1,4 +1,6 @@
 import test from "node:test";
+import {projectShowAudience} from "../src/domain/show-audience.js";
+import {broadcasterRatingTarget,formatTvRating} from "../src/domain/commercial-offers.js";
 import assert from "node:assert/strict";
 import {assessBroadcastNetwork,broadcasterReaction,
  type BroadcastNetworkTerms,type CertifiedNetworkWeek}
@@ -54,4 +56,35 @@ test("review never crosses signed term or mutates its input",()=>{
  assert.equal(JSON.stringify(a),original);
  assert.throws(()=>assessBroadcastNetwork(deal,[ep(14,1.2),ep(14,1.4)],14),/duplicate/);
  assert.throws(()=>assessBroadcastNetwork({...deal,airingDay:8},[],10),/Invalid/);
+});
+
+test("regional network targets match achievable certified TV ratings without relaxing major networks",()=>{
+ const audience=(tier:"LOCAL"|"INDEPENDENT"|"RISING"|"NATIONAL",mediaReach:number)=>
+  projectShowAudience({tier,eventType:"REGULAR",mediaReach,awareness:55,
+   liveStrength:55,loyalty:55,wrestlingInterest:60,expectedDemand:4500,
+   averageMatchRating:3.25}).householdRating!;
+ const at=(tier:BroadcastNetworkTerms["tier"],offerCode:string,rating:number)=>
+  assessBroadcastNetwork({...deal,tier,offerCode,airingDay:5},
+   [ep(15,rating)],15)!;
+ const local=at("LOCAL","BROADCAST_STABLE",audience("LOCAL",20));
+ const indie=at("INDEPENDENT","BROADCAST_INDIE",audience("INDEPENDENT",35));
+ const rising=at("RISING","BROADCAST_GROWTH",audience("RISING",35));
+ assert.equal(local.rating,.1);
+ assert.equal(indie.rating,.1);
+ assert.equal(rising.rating,.3);
+ assert.equal(local.status,"ON_TARGET");
+ assert.equal(indie.status,"WATCH");
+ assert.equal(rising.status,"WATCH");
+ assert.equal(local.bonusEligible,true);
+ assert.equal(indie.bonusEligible,true);
+ assert.equal(rising.bonusEligible,true);
+ assert.equal(indie.missedConsecutively,0);
+ assert.equal(rising.missedConsecutively,0);
+ assert.equal(at("INDEPENDENT","BROADCAST_INDIE",0).status,"BELOW_TARGET",
+  "Poor or missing TV audiences still fail; the network has not been silenced");
+ assert.equal(at("NATIONAL","BROADCAST_TV",audience("NATIONAL",35)).status,"BELOW_TARGET");
+ assert.equal(broadcasterRatingTarget("BROADCAST_TV","NATIONAL"),1.69);
+ assert.equal(broadcasterRatingTarget("BROADCAST_GLOBAL","GLOBAL"),4.5);
+ assert.equal(formatTvRating(.1),"0.10");
+ assert.equal(formatTvRating(1.69),"1.7");
 });
