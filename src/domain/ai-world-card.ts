@@ -9,6 +9,7 @@ import {chooseStaffFallbackSchedule,type ExistingShowBooking} from "./staff-show
 import type {StaffWrestlerCandidate} from "./staff-fallback-card.js";
 import type {EventType} from "./legacy-show-economics.js";
 import type {AiPromotionStrategy} from "./ai-promotion-strategy.js";
+import {rankEarnedContenders,type CertifiedContenderResult} from "./earned-contenders.js";
 export interface AiRosterCandidate extends StaffWrestlerCandidate{
  momentum:number;popularity:number;recognition:number;presentation:number;matchCraft:number;
 }
@@ -20,6 +21,7 @@ export interface AiCardInput{
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
  strategy?:AiPromotionStrategy;
  recentPairs?:readonly string[];
+ recentResults?:readonly CertifiedContenderResult[];
  establishedPartners?:readonly {aId:string;bId:string}[];
  establishedTeams?:readonly {teamId:string;aId:string;bId:string}[];
  tagTitles?:readonly {championshipId:string;holderTeamId:string|null;heat:number;bookingDivision?:"MEN"|"WOMEN"|null}[];
@@ -91,6 +93,7 @@ export function chooseAiTitleChallenger(input:{
  roster:readonly AiRosterCandidate[];holderId:string;championshipId:string;
  worldSeed:string;promotionId:string;year:number;week:number;
  recentPairs?:readonly string[];
+ recentResults?:readonly CertifiedContenderResult[];
 }):AiRosterCandidate|null{
  if(!input.holderId||!input.championshipId||!input.worldSeed||!input.promotionId||
   !Number.isSafeInteger(input.year)||input.year<1||
@@ -103,8 +106,24 @@ export function chooseAiTitleChallenger(input:{
   p.bookingDivision===champion.bookingDivision)
   .sort((a,b)=>strength(b)-strength(a)||a.personId.localeCompare(b.personId,"en"));
  if(!candidates.length)return null;
+ // A confirmed recent winner earns a challenge ahead of an unproven star.
+ // New Worlds without certified form still use the original deterministic
+ // star-led fallback, never a fabricated 1–5 contender ranking.
+ const earned=rankEarnedContenders({
+  candidates:input.roster.map(p=>({id:p.personId,name:p.personId,
+   format:"SINGLES" as const,division:p.bookingDivision,
+   momentum:p.momentum,popularity:p.popularity})),
+  results:input.recentResults??[],
+  currentWeekIndex:(input.year-1)*52+input.week-1,
+  format:"SINGLES",division:champion.bookingDivision,
+  championId:input.holderId,limit:24
+ }).filter(x=>x.wins>0);
+ const byId=new Map(candidates.map(p=>[p.personId,p]));
+ const worthy=earned.slice(0,6).map(x=>byId.get(x.id))
+  .filter((x):x is AiRosterCandidate=>x!==undefined);
  const peak=strength(candidates[0]!);
- const shortlist=candidates.filter(p=>peak-strength(p)<=24).slice(0,4);
+ const shortlist=worthy.length?worthy:
+  candidates.filter(p=>peak-strength(p)<=24).slice(0,4);
  const offset=parseInt(hash(["ppw-ai-title-v1",input.worldSeed,input.promotionId,
   input.championshipId]).slice(0,8),16)%shortlist.length;
  const starting=(offset+Math.floor(((input.year-1)*52+input.week-1)/4))%shortlist.length;
@@ -124,6 +143,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   input.roster.length>256||input.activeVenues.length>256||
   input.bookedShows.length>128||(input.recentPairs?.length??0)>1024||
   (input.featuredPairs?.length??0)>256||
+  (input.recentResults?.length??0)>4096||
   (input.establishedPartners?.length??0)>512||
   (input.establishedTeams?.length??0)>512||
   (input.tagTitles?.length??0)>256)
