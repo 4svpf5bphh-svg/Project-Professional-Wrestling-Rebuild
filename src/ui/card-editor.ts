@@ -490,7 +490,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   try{
    const title=view.championships.find(t=>
     t.championshipId===focus.championshipId&&t.division==="SINGLES");
-   if(!title||title.vacant||title.holderName!==focus.holderName){
+   if(!title||title.vacant||title.holderId!==focus.holderId){
     error="The championship holder changed. Reopen My Champions to "+
      "check the real current challenger and title status.";
     return;
