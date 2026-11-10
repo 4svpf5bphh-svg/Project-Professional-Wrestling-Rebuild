@@ -46,9 +46,13 @@ export async function readEarnedTitleContendersInTransaction(
   JOIN ppw_tag_team_members m ON m.world_id=t.world_id
     AND m.team_id=t.team_id AND m.active
   WHERE t.world_id=$1 AND t.status='ACTIVE'
-  GROUP BY t.team_id,t.name
-  HAVING count(*)=2
-  ORDER BY t.team_id LIMIT 257`,[worldId]);
+   AND m.person_id=ANY($2::text[])
+  GROUP BY t.world_id,t.team_id,t.name
+  HAVING count(*)=2 AND count(*)=(
+   SELECT count(*) FROM ppw_tag_team_members allm
+   WHERE allm.world_id=t.world_id AND allm.team_id=t.team_id
+    AND allm.active)
+  ORDER BY t.team_id LIMIT 257`,[worldId,roster.map(p=>p.person_id)]);
  if(teams.length>256)throw new Error("Contender tag-team limit exceeded");
  const pairToTeam=new Map<string,TeamRow>();
  const candidates:ContenderCandidate[]=roster.map(p=>({
