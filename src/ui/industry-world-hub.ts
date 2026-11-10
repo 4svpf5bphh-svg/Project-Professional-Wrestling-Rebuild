@@ -804,6 +804,17 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       el("strong","ppw-news-poster-rating",
        award.ratingUnit==="STARS"?award.rating.toFixed(2)+" ★":
         Math.round(award.rating)+"/100 CROWD"));
+     // Awards lead to their real completed show, never a mock replay,
+     // fabricated award score or rival manager's future booking.
+     if(award.promotionId===view.ownPromotionId&&port.openOwnResults){
+      const watch=btn("Read completed show",()=>port.openOwnResults?.(award.showId));
+      watch.classList.add("ppw-news-poster-open");poster.append(watch);
+     }else if(view.broadcasts.some(b=>b.promotionId===award.promotionId&&
+      b.showId===award.showId&&b.humanManaged)&&port.publicResults){
+      const watch=btn("Read rival results",()=>void readRivalResult(
+       award.promotionId,award.showId));
+      watch.classList.add("ppw-news-poster-open");poster.append(watch);
+     }
      features.append(poster);
     }
     section.append(features);
@@ -853,6 +864,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const item=el("article","ppw-news-story");
     item.dataset.newsYear=String(story.year);
     item.dataset.newsWeek=String(story.week);
+    if(story.id.startsWith("press:"))item.classList.add("ppw-news-press");
     if(index===0)item.classList.add("ppw-news-lead");
     const wild=!official&&story.id.startsWith("wild:");
     const byline=dirtSheetByline(story.id);
@@ -917,6 +929,11 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     }
     thread.append(content);
     item.append(thread);
+    if(official&&story.id.startsWith("press:")&&
+      story.promotionId===view.ownPromotionId&&port.openOwnResults){
+     const open=btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId));
+     open.classList.add("ppw-news-press-open");item.append(open);
+    }
     section.append(item);
    }
    if(official){
