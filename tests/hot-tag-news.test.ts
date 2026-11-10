@@ -105,3 +105,26 @@ test("HOT TAG shows verified network voices only beneath a matching published st
  assert.equal(comments.length,3);
  assert.ok(comments.some(c=>/ratings|viewers|network|broadcast|TV|schedule/.test(c.text)));
 });
+
+test("Press-conference HOT TAG reacts to the actual type of saved answer",()=>{
+ const article={...rumour,year:3,week:22,desk:"OFFICIAL" as const,
+  id:"press:official:ppv-one",title:"Josh Robinson says no comment after Armageddon",
+  summary:'Josh declined the question, replying "No comment. You will have to wait for the next show."'};
+ const noComment=projectHotTagNewsThread(article);
+ assert.equal(noComment.length,3);
+ assert.match(noComment[0]!.text,/no comment|refusal|reason|words/i);
+ assert.ok(noComment.every(p=>!p.text.includes("Josh Robinson:")));
+ assert.deepEqual(noComment,projectHotTagNewsThread(article));
+ const evasive=projectHotTagNewsThread({...article,
+  title:"Josh Robinson keeps details close after Armageddon"});
+ assert.match(evasive[0]!.text,/promoter|sidestep|cards|details|answer/i);
+ const direct=projectHotTagNewsThread({...article,
+  title:"Josh Robinson addresses the wrestling press after Armageddon"});
+ assert.match(direct[0]!.text,/answered|on.record|manager has spoken/i);
+ assert.notDeepEqual(noComment,evasive);
+ assert.notDeepEqual(evasive,direct);
+ const dirts=projectHotTagNewsThread({...article,
+  id:"press:rumour:ppv-one",desk:"DIRT",title:"No comment after Armageddon"});
+ assert.match(dirts[0]!.text,/no comment|refusal|reason|words/i);
+ assert.equal(new Set(dirts.map(p=>p.text)).size,3);
+});
