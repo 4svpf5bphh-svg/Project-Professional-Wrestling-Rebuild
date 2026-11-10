@@ -46,9 +46,9 @@ export function commercialCompanyName(code:string):string{
 }
 const good=(n:number|null):n is number=>n!==null&&Number.isFinite(n)&&n>0;
 const term=(base:number,percent:number)=>Math.round(base*(1+percent));
-/** Ratings are household percentages; a regional 0.2 is not a national 2.0. */
+/** Small promotions earn fractional household audiences: network expectations\n * must be reachable on sensible regional reach, while national and global\n * prestige requirements remain demanding and unchanged.\n */
 export const COMMERCIAL_TIER_RATING_TARGET:Readonly<Record<string,number>>={
- LOCAL:.12,INDEPENDENT:.25,RISING:.52,NATIONAL:1.35,GLOBAL:3.1
+ LOCAL:.10,INDEPENDENT:.14,RISING:.38,NATIONAL:1.35,GLOBAL:3.1
 };
 export function broadcasterRatingTarget(code:string,tier:string):number{
  const base=COMMERCIAL_TIER_RATING_TARGET[tier]??.25;
