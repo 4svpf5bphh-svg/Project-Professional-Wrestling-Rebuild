@@ -4,6 +4,8 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
+import {readEarnedTitleContendersInTransaction} from "./earned-title-contenders.js";
+import type {EarnedContender} from "../domain/earned-contenders.js";
 
 export interface ChampionshipCard {
  promotionId:string;championshipId:string;promotionName:string;name:string;
@@ -19,6 +21,8 @@ export interface ChampionshipDirectory {
  worldName:string;year:number;week:number;worldRevision:number;canEdit:boolean;
  viewerPromotionId:string;
  titles:ChampionshipCard[];
+ /** Private promotion-only 26-week form; World titles reveal no rival plans. */
+ contenders?:Record<string,EarnedContender[]>;
 }
 export interface ReignCursor {startWeekIndex:number;reignId:string}
 export interface ChampionshipReign {
@@ -94,9 +98,13 @@ export async function readChampionshipDirectory(pool:TransactionPool,
  ORDER BY CASE WHEN c.status='ACTIVE' THEN 0 ELSE 1 END,
  c.prestige DESC,p.name,c.name,c.championship_id LIMIT 201`,[worldId]);
   if(rows.length>200)throw new Error("World championship directory exceeds safe page limit");
+  const titles=rows.map(card);
+  const contenders=await readEarnedTitleContendersInTransaction(
+   tx,worldId,viewerPromotionId,(owner.year-1)*52+owner.week-1,
+   titles.filter(t=>t.promotionId===viewerPromotionId));
   return {worldName:owner.world_name,year:owner.year,week:owner.week,
    worldRevision:Number(owner.revision),canEdit:owner.can_edit,
-   viewerPromotionId,titles:rows.map(card)};
+   viewerPromotionId,titles,contenders};
  });
 }
 export async function readChampionshipHistory(pool:TransactionPool,

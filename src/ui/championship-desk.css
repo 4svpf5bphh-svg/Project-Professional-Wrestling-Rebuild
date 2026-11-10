@@ -259,3 +259,30 @@
  border:1px solid #85b5c2;border-radius:12px;background:#10283b;color:#fff}
 .ppw-title-create-screen .ppw-title-more{font-size:15px;font-weight:850}
 @media(max-width:350px){.ppw-title-create-kind{font-size:12px;padding:8px 5px}}
+
+/* Phase 49: one compact evidence-led contender board per opened owner title. */
+#game .ppw-belt-contender-board{display:grid;gap:9px;padding:12px 0;
+ border-top:1px solid #ffffff30;margin:12px 0 4px;min-width:0}
+#game .ppw-belt-contender-board h3{margin:0;font:850 15px/1.3 system-ui;
+ color:#f6e2b8;text-transform:uppercase;letter-spacing:.05em}
+#game .ppw-belt-contender-board>.ppw-muted{margin:0;color:#bdc9d7;
+ font:600 12px/1.5 system-ui}
+#game .ppw-belt-contender{display:grid;grid-template-columns:34px minmax(0,1fr);
+ gap:4px 10px;align-items:center;border:1px solid #7898b455;
+ border-radius:10px;padding:9px 10px;background:#121f30;min-width:0}
+#game .ppw-belt-contender-rank{grid-row:span 2;font:900 17px/1 system-ui;
+ color:#ecc880;text-align:center}
+#game .ppw-belt-contender-name{text-align:left;padding:0;background:none;
+ border:none;min-height:27px;font:850 15px/1.25 system-ui;
+ color:#f9f2e5;overflow-wrap:anywhere}
+#game .ppw-belt-contender-name:not(:disabled){cursor:pointer;text-decoration:underline;
+ text-decoration-color:#e5bb7d77;text-underline-offset:4px}
+#game .ppw-belt-contender-form{font:650 12px/1.3 system-ui;color:#c2d7e4;
+ font-variant-numeric:tabular-nums}
+@media(max-width:350px){#game .ppw-belt-contender{padding:8px;gap:4px 7px}}
+
+#game .ppw-title-contender-plan{grid-column:2;justify-self:start;min-height:39px;
+ border-radius:8px;border:1px solid #e6bc72;background:#483c2e;
+ color:#fff3d7;font:800 12px/1.2 system-ui;padding:8px 11px;cursor:pointer}
+#game .ppw-title-contender-plan:focus-visible{outline:3px solid #a7d9f8;
+ outline-offset:2px}

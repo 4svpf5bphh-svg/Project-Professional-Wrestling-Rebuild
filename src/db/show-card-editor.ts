@@ -383,10 +383,11 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   const titles=await tx.query<{
    championship_id:string;name:string;division:"SINGLES"|"TAG";
    booking_division:"MEN"|"WOMEN"|null;
-   holder_name:string|null;current_reign_id:string|null;
+   holder_name:string|null;holder_id:string|null;current_reign_id:string|null;
   }>([
    "SELECT c.championship_id,c.name,c.division,c.current_reign_id,c.booking_division,",
-   "COALESCE(p.name,t.name) AS holder_name FROM ppw_championships c",
+   "COALESCE(p.name,t.name) AS holder_name,r.person_id AS holder_id",
+   "FROM ppw_championships c",
    "LEFT JOIN ppw_championship_reigns r ON r.world_id=c.world_id",
    "AND r.promotion_id=c.promotion_id AND r.championship_id=c.championship_id",
    "AND r.reign_id=c.current_reign_id AND r.status='ACTIVE'",
@@ -522,7 +523,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    championships:titles.map(c=>({championshipId:c.championship_id,
     name:c.name,division:c.division,
     bookingDivision:c.booking_division,holderName:c.holder_name,
-    vacant:c.current_reign_id===null})),
+    holderId:c.holder_id,vacant:c.current_reign_id===null})),
    programmes:activeProgrammes.map(p=>{
     const direction=p.follow_up&&typeof p.follow_up==="object"?
      p.follow_up as Record<string,unknown>:null;
