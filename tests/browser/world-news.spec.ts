@@ -82,6 +82,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("4.75 ★")).toBeVisible();
  await expect(page.getByText("88/100 CROWD")).toBeVisible();
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"A certified classic"})).toBeVisible();
+ await expect(page.locator(".ppw-news-official .ppw-news-voices-heading"))
+  .toHaveText("THE PROMOTION / POST-SHOW DISPATCHES");
  const dispatch=page.locator(".ppw-news-official .ppw-news-voice");
  await expect(dispatch).toHaveCount(1);
  await expect(dispatch).toContainText("Alice's night earns an official dispatch");
