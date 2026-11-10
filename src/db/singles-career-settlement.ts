@@ -57,5 +57,31 @@ export async function settleCanonicalSinglesCareerConsequences(
  `,[projection.worldId,JSON.stringify(values)]);
  if(written.length!==effects.length)
   throw new Error("Singles wrestler baseline moved; entire show must roll back");
+ // A singles winner's original PPW form must remain verifiable in the same
+ // certified ledger as multi-person and tag results. Without this receipt,
+ // historic win/loss records and contenders never see the actual singles bout.
+ const history=scored.flatMap(p=>p.consequencesPreview!.performers.map(member=>({
+  show_id:projection.showId,match_id:p.slotId,person_id:member.personId,
+  actual_winner_side:p.personIds[0]===p.consequencesPreview!.actualWinnerId?"A":"B",
+  performer_side:p.personIds[0]===member.personId?"A":"B",
+  won:member.won,before_stats:member.before,after_stats:member.after,
+  injury_severity:member.injury?.severity??null,
+  injury_weeks_out:member.injury?.weeksOut??null,
+ })));
+ const recorded=await tx.query<{person_id:string}>(`
+  INSERT INTO ppw_individual_field_career_effects(
+   world_id,show_id,match_id,person_id,actual_winner_side,
+   performer_side,won,before_stats,after_stats,injury_severity,injury_weeks_out)
+  SELECT $1,x.show_id,x.match_id,x.person_id,x.actual_winner_side,
+   x.performer_side,x.won,x.before_stats,x.after_stats,
+   x.injury_severity,x.injury_weeks_out
+  FROM jsonb_to_recordset($2::jsonb) AS x(
+   show_id text,match_id text,person_id text,
+   actual_winner_side text,performer_side text,won boolean,
+   before_stats jsonb,after_stats jsonb,
+   injury_severity text,injury_weeks_out integer)
+  RETURNING person_id`,[projection.worldId,JSON.stringify(history)]);
+ if(recorded.length!==history.length)
+  throw new Error("Incomplete certified singles career history");
  return {performers:written.length,matches:scored.length};
 }
