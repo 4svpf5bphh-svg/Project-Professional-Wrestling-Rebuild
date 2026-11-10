@@ -1,0 +1,57 @@
+/** Apply the original singles match career consequences after an authoritative
+ * completed show has been inserted. The precomputed preview is deterministic
+ * and never mutates wrestler records until this one bounded World transaction.
+ *
+ * Tag and multi-person formats settle separately. No independent timer, random
+ * reroll or second receipt can cause duplicate momentum awards.
+ */
+import type {SqlRows} from "./world-operations.js";
+import type {previewArchivedShowMatchScoresInTransaction}
+ from "./legacy-match-scoring.js";
+type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScoresInTransaction>>;
+
+export async function settleCanonicalSinglesCareerConsequences(
+ tx:SqlRows,projection:Projection,
+):Promise<{performers:number;matches:number}>{
+ const singles=projection.projections.filter(p=>p.tag===null&&p.multi===null);
+ if(!singles.length)return {performers:0,matches:0};
+ if(singles.length>50||singles.some(p=>!p.consequencesPreview||
+  p.consequencesPreview.performers.length!==2))
+  throw new Error("Incomplete certified singles career consequences");
+ const effects=singles.flatMap(p=>p.consequencesPreview!.performers);
+ if(effects.length!==singles.length*2||effects.length>100||
+   new Set(effects.map(p=>p.personId)).size!==effects.length||
+   effects.some(p=>Object.values(p.before).some(n=>!Number.isFinite(n))||
+    Object.values(p.after).some(n=>!Number.isFinite(n))||
+    Object.values(p.before).some(n=>n<0||n>100)||
+    Object.values(p.after).some(n=>n<0||n>100)))
+  throw new Error("Singles career settlement requires unique valid wrestlers");
+ const values=effects.map(p=>({
+  person_id:p.personId,
+  before_fatigue:p.before.fatigue,after_fatigue:p.after.fatigue,
+  before_wear:p.before.wear,after_wear:p.after.wear,
+  before_momentum:p.before.momentum,after_momentum:p.after.momentum,
+  before_recognition:p.before.recognition,after_recognition:p.after.recognition,
+  before_popularity:p.before.popularity,after_popularity:p.after.popularity
+ }));
+ const written=await tx.query<{person_id:string}>(`
+  UPDATE ppw_people p SET
+   fatigue=x.after_fatigue,wear=x.after_wear,
+   momentum=x.after_momentum,recognition=x.after_recognition,
+   popularity=x.after_popularity
+  FROM jsonb_to_recordset($2::jsonb) AS x(
+   person_id text,before_fatigue double precision,after_fatigue double precision,
+   before_wear double precision,after_wear double precision,
+   before_momentum double precision,after_momentum double precision,
+   before_recognition double precision,after_recognition double precision,
+   before_popularity double precision,after_popularity double precision)
+  WHERE p.world_id=$1 AND p.person_id=x.person_id AND p.status='ACTIVE'
+   AND p.fatigue=x.before_fatigue AND p.wear=x.before_wear
+   AND p.momentum=x.before_momentum
+   AND p.recognition=x.before_recognition AND p.popularity=x.before_popularity
+  RETURNING p.person_id
+ `,[projection.worldId,JSON.stringify(values)]);
+ if(written.length!==effects.length)
+  throw new Error("Singles wrestler baseline moved; entire show must roll back");
+ return {performers:written.length,matches:singles.length};
+}
