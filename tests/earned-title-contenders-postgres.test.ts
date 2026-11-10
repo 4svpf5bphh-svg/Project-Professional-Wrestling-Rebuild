@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
-import {withWorldTransaction} from "../src/db/transaction.js";
+import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {readChampionshipDirectory} from "../src/db/championship-history.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
@@ -93,9 +93,15 @@ test("owned men, women and genuine two-person teams earn contenders from sealed 
    // Signed-only candidates: the very popular outsider has no match licence.
   });
   const meter=new MeasuredQuerySession("owner-championship-contenders");
-  const counted=meter.wrapPool(db.pool);
+  const counted:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]){
+     return meter.execute(()=>client.query<T>(sql,args));
+    }};
+  }};
   const directory=await readChampionshipDirectory(counted,world,player,promotion);
-  assert.equal(meter.snapshot().sqlRequests,5,
+  assert.equal(meter.sample().queryCount,5,
    "A whole owner contender page must not query per belt or wrestler");
   assert.deepEqual(directory.contenders?.men?.map(x=>x.id),["worker","star"],
    "Actual recent winner outranks the bigger celebrity who lost");
