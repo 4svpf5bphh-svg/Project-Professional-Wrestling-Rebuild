@@ -54,6 +54,9 @@ export function broadcasterRatingTarget(code:string,tier:string):number{
  const base=COMMERCIAL_TIER_RATING_TARGET[tier]??.25;
  return Math.round(base*(COMMERCIAL_COMPANIES[code]?.ratingPressure??1)*100)/100;
 }
+/** Preserve useful scale below one Nielsen point. */
+export const formatTvRating=(rating:number):string=>rating<1?
+ rating.toFixed(2):rating.toFixed(1);
 export function partnerResponse(code:string,input:{
  tier:string;averageTvRating?:number|null;crowd?:number|null;
  current:boolean;heldBy?:string|null;
