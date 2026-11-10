@@ -126,7 +126,7 @@ export async function readWorldAiBookingContext(
   tagChampionships.set(row.promotion_id,entries);
  }
  const recentSingles=new Map<string,CertifiedContenderResult[]>();
- const grouped=new Map<string,typeof formRows>();
+ const grouped=new Map<string,Array<(typeof formRows)[number]>>();
  for(const row of formRows){
   const key=row.promotion_id+"\u0000"+row.show_id+"\u0000"+row.match_id;
   const group=grouped.get(key)??[];group.push(row);grouped.set(key,group);
