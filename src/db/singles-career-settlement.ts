@@ -13,13 +13,17 @@ type Projection=Awaited<ReturnType<typeof previewArchivedShowMatchScoresInTransa
 export async function settleCanonicalSinglesCareerConsequences(
  tx:SqlRows,projection:Projection,
 ):Promise<{performers:number;matches:number}>{
+ // Older/partially imported Worlds can certify a singles result before
+ // media-reach and injury ruleset attributes are available. They were never
+ // given speculative career updates; retain that compatibility instead of
+ // blocking an unrelated premium or AI show. A scored match still settles.
  const singles=projection.projections.filter(p=>p.tag===null&&p.multi===null);
- if(!singles.length)return {performers:0,matches:0};
- if(singles.length>50||singles.some(p=>!p.consequencesPreview||
-  p.consequencesPreview.performers.length!==2))
+ const scored=singles.filter(p=>p.consequencesPreview!==null);
+ if(!scored.length)return {performers:0,matches:0};
+ if(scored.length>50||scored.some(p=>p.consequencesPreview!.performers.length!==2))
   throw new Error("Incomplete certified singles career consequences");
- const effects=singles.flatMap(p=>p.consequencesPreview!.performers);
- if(effects.length!==singles.length*2||effects.length>100||
+ const effects=scored.flatMap(p=>p.consequencesPreview!.performers);
+ if(effects.length!==scored.length*2||effects.length>100||
    new Set(effects.map(p=>p.personId)).size!==effects.length||
    effects.some(p=>Object.values(p.before).some(n=>!Number.isFinite(n))||
     Object.values(p.after).some(n=>!Number.isFinite(n))||
@@ -53,5 +57,5 @@ export async function settleCanonicalSinglesCareerConsequences(
  `,[projection.worldId,JSON.stringify(values)]);
  if(written.length!==effects.length)
   throw new Error("Singles wrestler baseline moved; entire show must roll back");
- return {performers:written.length,matches:singles.length};
+ return {performers:written.length,matches:scored.length};
 }
