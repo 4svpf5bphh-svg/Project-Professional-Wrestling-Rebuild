@@ -345,3 +345,28 @@ test("AI title rivals reward certified underdog wins over an unproven popularity
  assert.ok(chooseAiTitleChallenger({...input,recentResults:[]}),
   "A new AI World with no certified results retains PPW's original legal fallback");
 });
+
+test("AI tag championship rewards a verified rising team rather than repeating a famous challenger",()=>{
+ const named=[
+  {teamId:"t-champ",aId:"talent-01",bId:"talent-02"},
+  {teamId:"t-star",aId:"talent-04",bId:"talent-05"},
+  {teamId:"t-risers",aId:"talent-16",bId:"talent-17"}
+ ];
+ const card=chooseAiWorldCard({...base,eventType:"MAJOR",
+  establishedTeams:named,tagTitles:[{championshipId:"tag-belt",
+   holderTeamId:"t-champ",heat:91,bookingDivision:"MEN"}],
+  recentResults:[{id:"t-risers",format:"TAG",weekIndex:3,won:true,
+   opponentStrength:94,ratingStars:4.4,titleMatch:false,majorEvent:true},
+   {id:"t-star",format:"TAG",weekIndex:3,won:false,
+    opponentStrength:38,ratingStars:2.7,titleMatch:false,majorEvent:false}]
+ });
+ assert.equal(card.status,"READY");
+ if(card.status!=="READY")return;
+ const tag=card.matches.find(x=>x.championshipId==="tag-belt");
+ assert.ok(tag,"The genuine title holder must still defend");
+ assert.equal(tag?.matchType,"TAG");
+ assert.ok(tag!.participants.some(p=>p.personId==="talent-01"));
+ assert.ok(tag!.participants.some(p=>p.personId==="talent-16"));
+ assert.ok(tag!.participants.some(p=>p.personId==="talent-17"));
+ assert.ok(tag!.participants.every(p=>!["talent-04","talent-05"].includes(p.personId)));
+});
