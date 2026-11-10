@@ -100,8 +100,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
        c.tv_rating/(
         (CASE p.tier
          WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
-         WHEN 'RISING' THEN .52 WHEN 'INDEPENDENT' THEN .25
-         ELSE .12 END) *
+         WHEN 'RISING' THEN .38 WHEN 'INDEPENDENT' THEN .14
+         ELSE .10 END) *
         (CASE d.offer_code
          WHEN 'BROADCAST_GLOBAL' THEN 1.45
          WHEN 'BROADCAST_TV' THEN 1.25
@@ -113,8 +113,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
       d.offer_code IN ('SPONSOR_TECH','SPONSOR_LUXURY') AND
       c.tv_rating >= (CASE p.tier
        WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
-       WHEN 'RISING' THEN .52 WHEN 'INDEPENDENT' THEN .25
-       ELSE .12 END) THEN .025
+       WHEN 'RISING' THEN .38 WHEN 'INDEPENDENT' THEN .14
+       ELSE .10 END) THEN .025
      ELSE 0 END))::bigint AS amount
   FROM ppw_commercial_deals d
   JOIN certified c ON c.promotion_id=d.promotion_id
