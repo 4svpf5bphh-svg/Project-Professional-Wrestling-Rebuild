@@ -115,6 +115,8 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   assert.equal(replay.published,false);
   const result=await readIndustryWorldNews(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:owner});
+  assert.deepEqual(result.latestEdition,{year:1,week:1},
+   "This Week must cite a sealed edition, not the current open booking week");
   assert.equal(result.awards[0]!.kind,"MATCH");
   assert.deepEqual(result.annualAwards,[],"Year-end honours need a complete 52-week ledger");
   assert.equal(result.awards[0]!.promotionName,"Promotion 1");
@@ -153,6 +155,8 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   });
   const annual=await readIndustryWorldNews(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:owner});
+  assert.deepEqual(annual.latestEdition,{year:1,week:52},
+   "At New Year, the final previous-year issue remains This Week until a new edition certifies");
   assert.equal(annual.annualAwards.length,2);
   assert.equal(annual.annualAwards.find(a=>a.kind==="MATCH")?.rating,4.75);
   assert.equal(annual.annualAwards.find(a=>a.kind==="ANGLE")?.rating,92);
