@@ -217,7 +217,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
        [input.worldId,all.filter(x=>x.status==="AI_MANAGED").map(x=>x.promotion_id)]):[];
       const profilesByPromotion=new Map(profiles.map(x=>[x.promotion_id,x]));
       const context=aiNeeded?await readWorldAiBookingContext(tx,input.worldId,
-        all.filter(x=>x.status==="AI_MANAGED").map(x=>x.promotion_id)):null;
+        all.filter(x=>x.status==="AI_MANAGED").map(x=>x.promotion_id),weekIndex):null;
       const generated:Generated[]=[];
       const unfilled:Unfilled[]=[];
       const contractBalances=new Map(candidates.map(c=>[c.contract_id,c.remaining_dates]));
@@ -279,6 +279,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
               roster,holderId:t.holderId,championshipId:t.championshipId,
               worldSeed:String(worlds[0]!.seed),promotionId,year,week,
               recentPairs:recent.get(promotionId)??[],
+             recentResults:context?.recentSingles.get(promotionId)??[],
             });
             return candidate?[{kind:"SINGLES_TITLE" as const,
               aId:t.holderId,bId:candidate.personId,holderId:t.holderId,
@@ -301,6 +302,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             starPreference:profile.ai_star_preference
           }),
             recentPairs:recent.get(promotionId)??[],
+             recentResults:context?.recentSingles.get(promotionId)??[],
             featuredPairs:[...challengers,...rivals],
             establishedPartners,
             establishedTeams:context?.teams,
@@ -376,12 +378,12 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
            }
            const champion=rosterById.get(title.holderId);
           if(!champion)return [];
-          const challenger=roster.filter(x=>
-           x.personId!==title.holderId&&
-           x.bookingDivision===champion.bookingDivision)
-           .sort((a,b)=>(b.popularity+b.momentum+b.recognition)-
-            (a.popularity+a.momentum+a.recognition)||
-            a.personId.localeCompare(b.personId,"en"))[0];
+          const challenger=chooseAiTitleChallenger({
+           roster,holderId:title.holderId,championshipId:title.championshipId,
+           worldSeed:String(worlds[0]!.seed),promotionId,year,week,
+           recentPairs:recent.get(promotionId)??[],
+           recentResults:context?.recentSingles.get(promotionId)??[]
+          });
           return challenger?[{kind:"SINGLES_TITLE" as const,
            aId:title.holderId,bId:challenger.personId,
            holderId:title.holderId,championshipId:title.championshipId,
@@ -404,6 +406,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             starPreference:profile.ai_star_preference
           }),
           recentPairs:recent.get(promotionId)??[],
+             recentResults:context?.recentSingles.get(promotionId)??[],
           featuredPairs:[...titleChallenges,
            ...(context?.programmes.get(promotionId)??[])],
           establishedTeams:context?.teams,
