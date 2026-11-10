@@ -85,8 +85,8 @@ for(const width of [320,390]){
   const dirt=page.locator(".ppw-news-dirt .ppw-news-press");
   await expect(dirt).toHaveCount(1);
   await expect(dirt).toContainText("What happens after Armageddon?");
-  await expect(dirt.getByRole("button",{name:"Read the completed PPV"})).toHaveCount(0,
-   "A rumour must not impersonate a confirmed result link");
+  await expect(dirt.getByRole("button",{name:"Read the completed PPV"}),
+   "A rumour must not impersonate a confirmed result link").toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
   expect(requests.filter(p=>p.method==="publicResults")[0]?.targetPromotionId).toBe("rival");
