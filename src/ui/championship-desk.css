@@ -280,3 +280,9 @@
 #game .ppw-belt-contender-form{font:650 12px/1.3 system-ui;color:#c2d7e4;
  font-variant-numeric:tabular-nums}
 @media(max-width:350px){#game .ppw-belt-contender{padding:8px;gap:4px 7px}}
+
+#game .ppw-title-contender-plan{grid-column:2;justify-self:start;min-height:39px;
+ border-radius:8px;border:1px solid #e6bc72;background:#483c2e;
+ color:#fff3d7;font:800 12px/1.2 system-ui;padding:8px 11px;cursor:pointer}
+#game .ppw-title-contender-plan:focus-visible{outline:3px solid #a7d9f8;
+ outline-offset:2px}
