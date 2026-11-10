@@ -117,6 +117,16 @@ test("owned men, women and genuine two-person teams earn contenders from sealed 
   const repeat=await read();
   assert.deepEqual(repeat.contenders,directory.contenders,
    "Reopening the same World week cannot reroll title rankings");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_championships SET booking_division=NULL WHERE world_id=$1",
+   [world]));
+  const legacy=await read();
+  assert.deepEqual(legacy.contenders?.men?.map(x=>x.id),["worker","star"],
+   "An original unassigned men's world title still has a real ranking");
+  assert.deepEqual(legacy.contenders?.tag?.map(x=>x.id),["team-a","team-b"],
+   "A legacy universal tag belt still recognises certified 2v2 form");
+  assert.ok(legacy.contenders?.women?.some(x=>x.id==="w1"),
+   "A vacant unassigned legacy championship can find an eligible winner");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_tag_match_career_effects",
