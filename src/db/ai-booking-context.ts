@@ -1,4 +1,5 @@
 import type {SqlRows} from "./world-operations.js";
+import type {CertifiedContenderResult} from "../domain/earned-contenders.js";
 /** Targeted canonical title, programme and established-team context.
  * The 4 bounded reads are per WORLD stage, never per show/match.
  * Nothing is inferred from an absent championship or unknown programme.
@@ -10,13 +11,16 @@ export interface AiBookingContext{
  partners:Map<string,string[]>;
  teams:readonly {teamId:string;aId:string;bId:string}[];
  tagChampionships:Map<string,Array<{championshipId:string;holderTeamId:string|null;heat:number;bookingDivision:"MEN"|"WOMEN"|null}>>;
+ /** Verified 13-week singles evidence; one read shared among all AI clubs. */
+ recentSingles:Map<string,CertifiedContenderResult[]>;
 }
 export async function readWorldAiBookingContext(
- tx:SqlRows,worldId:string,promotionIds:readonly string[],
+ tx:SqlRows,worldId:string,promotionIds:readonly string[],weekIndex:number,
 ):Promise<AiBookingContext>{
- if(promotionIds.length>128||new Set(promotionIds).size!==promotionIds.length)
+ if(!Number.isSafeInteger(weekIndex)||weekIndex<0||
+  promotionIds.length>128||new Set(promotionIds).size!==promotionIds.length)
   throw new Error("Invalid AI booking context batch");
- const [programmeRows,titleRows,teamRows,tagTitleRows]=await Promise.all([
+ const [programmeRows,titleRows,teamRows,tagTitleRows,formRows]=await Promise.all([
   tx.query<{promotion_id:string;programme_id:string;heat:number;
     a_id:string;b_id:string}>(`
    SELECT p.promotion_id,p.programme_id,p.heat,
@@ -65,8 +69,35 @@ export async function readWorldAiBookingContext(
       (r.status='ACTIVE' AND r.holder_type='TEAM' AND r.team_id IS NOT NULL))
    ORDER BY c.promotion_id,c.prestige DESC,c.championship_id LIMIT 257`,
    [worldId,promotionIds]),
+   // One indexed narrow query for the entire AI World batch, not per club.
+   tx.query<{promotion_id:string;show_id:string;match_id:string;
+    person_id:string;performer_side:string;won:boolean;week_index:number;
+    popularity_before:number;rating_stars:number|null;
+    title_match:boolean;major_event:boolean}>(`
+    SELECT s.promotion_id,s.show_id,e.match_id,e.person_id,
+     e.performer_side,e.won,(s.year-1)*52+s.week-1 AS week_index,
+     coalesce((e.before_stats->>'popularity')::double precision,50)
+      AS popularity_before,
+     f.rating_stars::double precision AS rating_stars,
+     EXISTS(SELECT 1 FROM ppw_championship_contests t
+      WHERE t.world_id=s.world_id AND t.show_id=s.show_id
+       AND t.slot_id=e.match_id) AS title_match,
+     coalesce(d.event_type='MAJOR',false) AS major_event
+    FROM ppw_completed_shows s
+    JOIN ppw_individual_field_career_effects e
+      ON e.world_id=s.world_id AND e.show_id=s.show_id
+    LEFT JOIN ppw_booking_drafts d ON d.world_id=s.world_id
+     AND d.draft_id=s.show_id
+    LEFT JOIN ppw_completed_match_report_facts f ON f.world_id=s.world_id
+     AND f.show_id=s.show_id AND f.match_id=e.match_id
+    WHERE s.world_id=$1 AND s.promotion_id=ANY($2::text[])
+     AND (s.year-1)*52+s.week-1 BETWEEN $3 AND $4
+    ORDER BY s.year DESC,s.week DESC,s.promotion_id,e.match_id,e.person_id
+    LIMIT 4097`,
+    [worldId,promotionIds,Math.max(0,weekIndex-13),weekIndex-1]),
  ]);
- if(programmeRows.length>256||titleRows.length>256||teamRows.length>512||tagTitleRows.length>256)
+ if(programmeRows.length>256||titleRows.length>256||teamRows.length>512||
+  tagTitleRows.length>256||formRows.length>4096)
   throw new Error("AI World booking context exceeds indexed bounds");
  const programmes=new Map<string,AiBookingContext["programmes"] extends Map<string,infer V>?V:never>();
  for(const row of programmeRows){
@@ -94,7 +125,24 @@ export async function readWorldAiBookingContext(
    holderTeamId:row.team_id,heat:row.prestige,bookingDivision:row.booking_division});
   tagChampionships.set(row.promotion_id,entries);
  }
+ const recentSingles=new Map<string,CertifiedContenderResult[]>();
+ const grouped=new Map<string,typeof formRows>();
+ for(const row of formRows){
+  const key=row.promotion_id+"\u0000"+row.show_id+"\u0000"+row.match_id;
+  const group=grouped.get(key)??[];group.push(row);grouped.set(key,group);
+ }
+ for(const group of grouped.values())for(const row of group){
+  const rivals=group.filter(x=>x.performer_side!==row.performer_side);
+  if(!rivals.length)continue;
+  const entries=recentSingles.get(row.promotion_id)??[];
+  entries.push({id:row.person_id,format:"SINGLES",
+   weekIndex:Number(row.week_index),won:row.won,
+   opponentStrength:rivals.reduce((sum,x)=>sum+Number(x.popularity_before),0)/rivals.length,
+   ratingStars:row.rating_stars===null?null:Number(row.rating_stars),
+   titleMatch:row.title_match,majorEvent:row.major_event});
+  recentSingles.set(row.promotion_id,entries);
+ }
  return {programmes,championships,partners,
   teams:teamRows.map(r=>({teamId:r.team_id,aId:r.person_a,bId:r.person_b})),
-  tagChampionships};
+  tagChampionships,recentSingles};
 }
