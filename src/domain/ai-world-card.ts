@@ -261,9 +261,28 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
     }):undefined;
   const qualifiedTeams=eligibleTagTitle?.bookingDivision?
    tagCandidates.filter(t=>t.a!.bookingDivision===eligibleTagTitle.bookingDivision):tagCandidates;
+  const tagContenders=eligibleTagTitle?
+   (["MEN","WOMEN"] as const).flatMap(division=>rankEarnedContenders({
+    candidates:qualifiedTeams.map(t=>({id:t.teamId,name:t.teamId,
+     format:"TAG" as const,division:t.a!.bookingDivision,
+     momentum:(t.a!.momentum+t.b!.momentum)/2,
+     popularity:(t.a!.popularity+t.b!.popularity)/2})),
+    results:input.recentResults??[],
+    currentWeekIndex:(input.year-1)*52+input.week-1,
+    format:"TAG",division,
+    championId:eligibleTagTitle.holderTeamId,limit:24
+   })).filter(t=>t.wins>0):[];
+  const teamForm=new Map(tagContenders.map(t=>[t.id,t.score]));
+  // Named teams with verified winning form outrank an untested makeshift
+  // duo. A newly created World falls back to the original stable ordering.
+  const orderedTeams=[...qualifiedTeams].sort((a,b)=>{
+   const aScore=teamForm.get(a.teamId),bScore=teamForm.get(b.teamId);
+   return Number(bScore!==undefined)-Number(aScore!==undefined)||
+    (bScore??0)-(aScore??0);
+  });
   const firstTeam=eligibleTagTitle?.holderTeamId?
-   qualifiedTeams.find(t=>t.teamId===eligibleTagTitle.holderTeamId):qualifiedTeams[0];
-  const secondTeam=firstTeam?qualifiedTeams.find(t=>t.teamId!==firstTeam.teamId&&
+   orderedTeams.find(t=>t.teamId===eligibleTagTitle.holderTeamId):orderedTeams[0];
+  const secondTeam=firstTeam?orderedTeams.find(t=>t.teamId!==firstTeam.teamId&&
   t.a!.bookingDivision===firstTeam.a!.bookingDivision &&
   ![firstTeam.aId,firstTeam.bId].includes(t.aId)&&
   ![firstTeam.aId,firstTeam.bId].includes(t.bId)):undefined;
