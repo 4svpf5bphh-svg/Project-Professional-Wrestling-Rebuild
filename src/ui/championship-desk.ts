@@ -223,6 +223,38 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
    historyIntro.append(element("h3","","Championship lineage"),
     element("span","",title.status==="ACTIVE"?"ACTIVE LINEAGE":"INACTIVE TITLE"));
    history.append(historyIntro);
+   // Ranked contenders exist only for the owner's licensed roster, and only
+   // after a genuinely certified match. A celebrity with no result is not #1.
+   const contenders=title.promotionId===directory.viewerPromotionId?
+    directory.contenders?.[title.championshipId]:undefined;
+   const contenderPanel=contenders===undefined?null:
+    element("section","ppw-belt-contender-board");
+   if(contenderPanel){
+    contenderPanel.append(element("h3","","Title contenders"),
+     element("p","ppw-muted","Last 26 weeks · certified match form"));
+    if(contenders.length===0)
+     contenderPanel.append(element("p","ppw-muted",
+      "No earned contenders yet. Book matches to establish the rankings."));
+    for(const candidate of contenders){
+     const entry=element("div","ppw-belt-contender");
+     const place=element("strong","ppw-belt-contender-rank",
+      "#"+candidate.rank);
+     const wrestler=element("button","ppw-title-holder ppw-belt-contender-name",
+      candidate.name) as HTMLButtonElement;
+     wrestler.type="button";
+     if(candidate.format==="SINGLES"&&port.openWrestler)
+      wrestler.onclick=()=>port.openWrestler!(candidate.id);
+     else if(candidate.format==="TAG"&&port.openTeam)
+      wrestler.onclick=()=>port.openTeam!(candidate.id);
+     else wrestler.disabled=true;
+     const form=element("span","ppw-belt-contender-form",
+      candidate.wins+"W · "+candidate.losses+"L · "+
+      candidate.score.toFixed(1)+" form");
+     entry.append(place,wrestler,form);
+     contenderPanel.append(entry);
+    }
+    history.append(contenderPanel);
+   }
    if(title.lastContestWeekIndex!==undefined&&title.lastContestWeekIndex!==null)
     history.append(element("p","ppw-title-heritage-fact",
      "Last certified title contest: "+week(title.lastContestWeekIndex)));
@@ -239,7 +271,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
      const data=await port.loadHistory(title.promotionId,title.championshipId,page);
      pending.remove();
      if(!loaded){
-      history.replaceChildren(historyIntro);
+      history.replaceChildren(historyIntro,...(contenderPanel?[contenderPanel]:[]));
       if(!data.reigns.length)history.append(element("p","ppw-muted",
        "No reign recorded yet. The belt is awaiting its first champion."));
      }
