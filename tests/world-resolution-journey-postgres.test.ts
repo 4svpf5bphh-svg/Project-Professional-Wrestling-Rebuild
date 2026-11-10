@@ -324,7 +324,9 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
    for(const table of ["ppw_programme_resolved_activities",
     "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
     "ppw_wrestler_relationships","ppw_completed_match_evidence",
-    "ppw_completed_show_segments","ppw_completed_show_matches",
+    "ppw_completed_show_segments",
+    "ppw_individual_field_career_effects","ppw_tag_match_career_effects",
+    "ppw_completed_show_matches",
     // Real match medical absences reference completed shows: delete these
     // within the disposable World before removing their parent receipts.
     "ppw_medical_absences",
