@@ -418,3 +418,20 @@
 .ppw-news-voices-heading{display:block;margin:10px 0 3px;
  font:900 10px/1.45 system-ui;letter-spacing:.09em;color:#a9d9f3}
 .ppw-news-dirt .ppw-news-voices-heading{color:#ffe0bc}
+
+/* Published editorial has a route back to the actual finished show.
+   Keep controls legible within the approved PPW artwork and on 320px phones. */
+.ppw-news .ppw-news-poster-open{align-self:flex-start;margin-top:12px;
+ min-height:44px;padding:9px 12px;font:800 12px/1.3 system-ui;
+ border:1px solid #ddc29d;background:#182f47;color:#fff5df;
+ border-radius:10px;cursor:pointer;max-width:100%}
+.ppw-news .ppw-news-poster-open:focus-visible,
+.ppw-news .ppw-news-press-open:focus-visible{
+ outline:3px solid #ffdc9b;outline-offset:3px}
+.ppw-news .ppw-news-poster-open:hover{background:#2b4f6e}
+.ppw-news .ppw-news-press-open{align-self:flex-start;min-height:44px;
+ border-radius:9px;font-size:12px}
+.ppw-news .ppw-news-press{border-left:4px solid #b68653!important}
+.ppw-news-official .ppw-news-press .ppw-news-story-title{
+ font-style:italic!important}
+.ppw-news-dirt .ppw-news-press{border-left-color:#dfa9b0!important}
