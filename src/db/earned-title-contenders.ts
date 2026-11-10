@@ -8,6 +8,7 @@ import {rankEarnedContenders,type ContenderCandidate,
 import type {ChampionshipCard} from "./championship-history.js";
 
 type RosterRow={person_id:string;name:string;booking_division:"MEN"|"WOMEN";
+ status:string;
  momentum:number;popularity:number};
 type TeamRow={team_id:string;name:string;members:string[]};
 type EvidenceRow={
@@ -25,18 +26,20 @@ export async function readEarnedTitleContendersInTransaction(
   currentWeekIndex<0||titles.length>200)
   throw new Error("Invalid earned-contender scope");
  const roster=await tx.query<RosterRow>(`
-  SELECT DISTINCT ON (p.person_id) p.person_id,p.name,p.booking_division,
+  SELECT DISTINCT ON (p.person_id) p.person_id,p.name,p.booking_division,p.status,
    p.momentum,p.popularity
   FROM ppw_people p JOIN ppw_contracts c ON c.world_id=p.world_id
     AND c.person_id=p.person_id AND c.promotion_id=$2
-  WHERE p.world_id=$1 AND p.status='ACTIVE'
+  WHERE p.world_id=$1 AND (p.status='ACTIVE' OR p.person_id=ANY($4::text[]))
     AND p.booking_division IN ('MEN','WOMEN')
     AND c.status='SIGNED' AND c.start_week_index<=$3
     AND c.expires_week_index>=$3
     AND (c.remaining_dates>0 OR
       (c.family='EXCLUSIVE' AND c.remaining_dates IS NULL))
   ORDER BY p.person_id,c.start_week_index DESC,c.contract_id
-  LIMIT 257`,[worldId,promotionId,currentWeekIndex]);
+  LIMIT 257`,[worldId,promotionId,currentWeekIndex,
+   titles.filter(t=>t.promotionId===promotionId).map(t=>t.holderId)
+    .filter((x):x is string=>x!==null)]);
  if(roster.length>256)throw new Error("Contender signed roster limit exceeded");
  const own=new Map(roster.map(p=>[p.person_id,p]));
  const teams=await tx.query<TeamRow>(`
@@ -55,13 +58,14 @@ export async function readEarnedTitleContendersInTransaction(
   ORDER BY t.team_id LIMIT 257`,[worldId,roster.map(p=>p.person_id)]);
  if(teams.length>256)throw new Error("Contender tag-team limit exceeded");
  const pairToTeam=new Map<string,TeamRow>();
- const candidates:ContenderCandidate[]=roster.map(p=>({
+ const candidates:ContenderCandidate[]=roster.filter(p=>p.status==="ACTIVE").map(p=>({
   id:p.person_id,name:p.name,format:"SINGLES",division:p.booking_division,
   momentum:Number(p.momentum),popularity:Number(p.popularity)
  }));
  for(const team of teams){
   const people=team.members.map(id=>own.get(id));
-  if(people.length!==2||people.some(p=>!p)||people[0]!.booking_division!==
+  if(people.length!==2||people.some(p=>!p||p.status!=="ACTIVE")||
+   people[0]!.booking_division!==
    people[1]!.booking_division)continue;
   const key=teamKey(team.members);
   if(pairToTeam.has(key))continue;
@@ -151,9 +155,19 @@ export async function readEarnedTitleContendersInTransaction(
   // Titles predating PPW's gender divisions have booking_division NULL.
   // A held legacy belt follows its *real* champion's division. Vacant open
   // belts compare both eligible pools without forging a gender or holder.
-  const holder=candidates.find(c=>c.id===title.holderId&&c.format===title.division);
-  const divisions:readonly ("MEN"|"WOMEN")[]=title.bookingDivision?
-   [title.bookingDivision]:holder?[holder.division]:["MEN","WOMEN"];
+  const holderPerson=title.division==="SINGLES"&&title.holderId?
+   own.get(title.holderId):undefined;
+  const holderTeam=title.division==="TAG"&&title.holderId?
+   teams.find(t=>t.team_id===title.holderId):undefined;
+  const holderTeamPeople=holderTeam?.members.map(id=>own.get(id))??[];
+  const holderTeamDivision=holderTeamPeople.length===2&&
+   holderTeamPeople[0]?.booking_division===holderTeamPeople[1]?.booking_division?
+    holderTeamPeople[0]?.booking_division:undefined;
+  // A medically absent reigning champion still defines an unassigned belt's
+  // division. An open vacant belt can consider either eligible division.
+  const division=title.bookingDivision??holderPerson?.booking_division??
+   holderTeamDivision;
+  const divisions:readonly ("MEN"|"WOMEN")[]=division?[division]:["MEN","WOMEN"];
   const board=divisions.flatMap(division=>rankEarnedContenders({
    candidates,results,currentWeekIndex,limit:5,
    format:title.division,division,championId:title.holderId}));
