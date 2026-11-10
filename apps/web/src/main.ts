@@ -6,6 +6,7 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
  consumeBackstageRivalryFocus,
  consumeBookingFocus,clearBookingFocus,consumeProgrammeBookingFocus,
+ consumeTitleChallengeFocus,
  type ProgrammeBookingFocus}
  from "../../../src/web/card-browser.js";
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
@@ -343,7 +344,8 @@ function renderSection(){
        activeBooking?.showId===showId)bookingDirty=dirty;
      },section=>openSection(section),storyFocus?.programmeId,
      storyFocus?.ideaKind,
-     consumeBookingFocus(scope.worldId,scope.promotionId)??undefined);
+     consumeBookingFocus(scope.worldId,scope.promotionId)??undefined,
+     consumeTitleChallengeFocus(scope.worldId,scope.promotionId)??undefined);
    }
    break;
   }
