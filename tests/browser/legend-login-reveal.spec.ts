@@ -57,8 +57,8 @@ for(const width of [320,390]){
    await expect(card).toHaveJSProperty("naturalHeight",1440);
    await expect(reveal.locator(".ppw-ceremony-identity"))
     .toHaveAttribute("aria-label","The Underground Never Forgets");
-   expect(seen.has(entry.id)).toBe(false,
-    "A presentation must not be pre-acknowledged by navigation");
+   expect(seen.has(entry.id),
+    "A presentation must not be pre-acknowledged by navigation").toBe(false);
    await reveal.getByRole("button",{name:"Continue to the Vault"}).click();
    await expect.poll(()=>seen.has(entry.id)).toBe(true);
   }
@@ -69,8 +69,8 @@ for(const width of [320,390]){
   await page.goto("/#/news");
   await expect(page).toHaveURL(/#\/news$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  expect(requests.filter(x=>x==="legendsVault")).toHaveLength(1,
-   "No unnecessary second Vault check after both reveals are seen");
+  expect(requests.filter(x=>x==="legendsVault"),
+   "No unnecessary second Vault check after both reveals are seen").toHaveLength(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
