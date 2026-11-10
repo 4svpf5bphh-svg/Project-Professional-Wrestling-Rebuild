@@ -90,8 +90,7 @@ for(const width of [320,390]){
   await expect(own.locator(".ppw-belt-contender")).not.toContainText("Reigning Champion");
   const rival=page.locator(".ppw-belt-card").nth(1);
   await rival.locator("summary").click();
-  await expect(rival.locator(".ppw-belt-contender-board")).toHaveCount(0,
-   "Another company's roster form is private");
+  await expect(rival.locator(".ppw-belt-contender-board")).toHaveCount(0);
   expect(requests).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
