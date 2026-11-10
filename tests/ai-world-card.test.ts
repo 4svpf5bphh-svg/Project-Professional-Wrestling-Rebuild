@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {chooseAiWorldCard,type AiRosterCandidate} from "../src/domain/ai-world-card.js";
+import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate} from "../src/domain/ai-world-card.js";
 const roster=Array.from({length:22},(_,i):AiRosterCandidate=>({
  personId:"talent-"+String(i).padStart(2,"0"),contractId:"deal-"+i,
  bookingDivision:i%3===0?"WOMEN":"MEN",weeklyCapacity:7,
@@ -324,4 +324,24 @@ test("AI tag champions are real teams and may defend against new legal partners"
  if(forged.status==="READY")
   assert.ok(forged.matches.every(m=>m.championshipId!=="held-tag"),
    "A non-existent holding team can never enter a title defense");
+});
+
+test("AI title rivals reward certified underdog wins over an unproven popularity leader",()=>{
+ const evidence=[
+  {id:"talent-19",format:"SINGLES" as const,weekIndex:7,won:true,
+   opponentStrength:90,ratingStars:4.2,titleMatch:false,majorEvent:true},
+  {id:"talent-19",format:"SINGLES" as const,weekIndex:6,won:true,
+   opponentStrength:88,ratingStars:3.6,titleMatch:false,majorEvent:false},
+  {id:"talent-02",format:"SINGLES" as const,weekIndex:7,won:false,
+   opponentStrength:42,ratingStars:2.5,titleMatch:false,majorEvent:false}
+ ];
+ const input={roster,holderId:"talent-01",championshipId:"world-belt",
+  worldSeed:"51",promotionId:"p",year:1,week:9,
+  recentResults:evidence};
+ assert.equal(chooseAiTitleChallenger(input)?.personId,"talent-19",
+  "The strongest recent earned run outranks a famous wrestler without wins");
+ assert.equal(chooseAiTitleChallenger({...input,roster:[...roster].reverse()})?.personId,
+  "talent-19","Rival AI ranking is independent of roster insertion order");
+ assert.ok(chooseAiTitleChallenger({...input,recentResults:[]}),
+  "A new AI World with no certified results retains PPW's original legal fallback");
 });
