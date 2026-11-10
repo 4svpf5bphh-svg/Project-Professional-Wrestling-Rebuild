@@ -6,7 +6,7 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
  consumeBackstageRivalryFocus,
  consumeBookingFocus,clearBookingFocus,consumeProgrammeBookingFocus,
- consumeTitleChallengeFocus,
+ consumeTitleChallengeFocus,clearTitleChallengeFocus,
  type ProgrammeBookingFocus}
  from "../../../src/web/card-browser.js";
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
@@ -257,7 +257,9 @@ function renderSection(){
  const section=readHostSection(location.hash);
  if(section==="admin"&&!session.canManualAdvance&&!session.canAiBenchmark){location.hash=hostSectionHash("home");return;}
  if(section!=="card"){bookingDirty=false;activeBooking=null;}
- if(section!=="card"&&section!=="planner")clearBookingFocus();
+ if(section!=="card"&&section!=="planner"){
+  clearBookingFocus();clearTitleChallengeFocus();
+ }
  const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
  pendingBackstagePersonId=null;
  clearLegendRevealPortal();
@@ -428,7 +430,7 @@ window.addEventListener("ppw:open-backstage",event=>{
 async function loadSession(){
  const sequence=++sessionReadSequence;
  pendingBackstagePersonId=null;pendingLegends=null;
- clearLegendRevealPortal();
+ clearBookingFocus();clearTitleChallengeFocus();clearLegendRevealPortal();
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
  document.body.classList.remove("ppw-drawer-active");
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
