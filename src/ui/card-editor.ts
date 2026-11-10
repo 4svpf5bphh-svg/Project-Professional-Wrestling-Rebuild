@@ -59,6 +59,8 @@ export interface CardEditorPort{
  focusProgrammeIdeaKind?:ProgrammeAngleIdea["kind"];
  /** One-shot dossier route. Must re-check signed rights for the selected show. */
  focusWrestler?:{personId:string;name:string};
+ focusTitleChallenge?:{championshipId:string;holderId:string;holderName:string;
+  challengerId:string;challengerName:string};
  talent(search:string,cursor:TalentPage["cursor"]):Promise<TalentPage>;
  save(input:{requestId:string;expectedRevision:number;
   matches:{slotId:string;payload:unknown}[];
@@ -153,6 +155,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let stableChoicesLoading=false;
  let specialOwned:readonly string[]|null=null,specialBusy=false;
  let focusedPerson=port.focusWrestler??null,focusBusy=false;
+ let focusedChallenge=port.focusTitleChallenge??null;
  let formatChoice:Format="SINGLES";
  let focusedRivalryId:string|null=port.focusProgrammeId??null;
  let rivalryIdeasOpen=Boolean(port.focusProgrammeId);
@@ -478,6 +481,54 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    focusedPerson=null;order.push(id);expanded=id;
    slotBookingSteps.set(id,"CAST");
    resetGuideScroll=true;startWizard(id);
+  }catch(e){error=errorText(e);}
+  finally{focusBusy=false;render();}
+ }
+ async function startEarnedTitleChallenge(){
+  if(!focusedChallenge||!view?.canEdit||saving||focusBusy)return;
+  const focus=focusedChallenge;focusBusy=true;error="";render();
+  try{
+   const title=view.championships.find(t=>
+    t.championshipId===focus.championshipId&&t.division==="SINGLES");
+   if(!title||title.vacant||title.holderName!==focus.holderName){
+    error="The championship holder changed. Reopen My Champions to "+
+     "check the real current challenger and title status.";
+    return;
+   }
+   if([focus.holderId,focus.challengerId].some(personId=>
+     [...matches.values()].some(m=>assignedIds(m).includes(personId)))){
+    error="One of these wrestlers is already in a match on this card.";
+    return;
+   }
+   // A ranking never grants booking rights. Revalidate the actual signed
+   // agreements and medical clearance for this selected show's week.
+   const pages=await Promise.all([focus.holderName,focus.challengerName]
+    .map(name=>port.talent(name,null)));
+   const ids=[focus.holderId,focus.challengerId];
+   const selected=pages.map((page,i)=>page.talent.find(x=>
+    x.personId===ids[i]&&x.available));
+   if(selected.some(x=>!x)){
+    error="The champion or challenger is unavailable for this show's week. "+
+     "Check contract dates and medical clearance.";
+    return;
+   }
+   const [champ,challenger]=selected;
+   if(!champ||!challenger||champ.division!==challenger.division||
+      title.bookingDivision&&title.bookingDivision!==champ.division){
+    error="These wrestlers cannot challenge for the same championship division.";
+    return;
+   }
+   roster.set(champ.personId,{...champ});
+   roster.set(challenger.personId,{...challenger});
+   const id="match-"+crypto.randomUUID();
+   let match=newEditorMatch(id,"SINGLES");
+   match=assignPerformer(match,0,0,{personId:champ.personId,contractId:champ.contractId});
+   match=assignPerformer(match,1,0,{personId:challenger.personId,contractId:challenger.contractId});
+   matches.set(id,{...match,championshipId:focus.championshipId});
+   guidedPickerSlots.add(id);
+   focusedChallenge=null;order.push(id);expanded=id;
+   slotBookingSteps.set(id,"CAST");resetGuideScroll=true;startWizard(id);
+   // Only the manager's final confirmation and Save may persist this match.
   }catch(e){error=errorText(e);}
   finally{focusBusy=false;render();}
  }
@@ -844,6 +895,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    },!mutable()||focusBusy,"ppw-primary"),
     button("Start a promo",()=>void startFocusedBooking("ANGLE"),
      !mutable()||focusBusy));
+   focus.append(actions);root.append(focus);
+  }
+  if(focusedChallenge){
+   const choice=focusedChallenge;
+   const focus=el("section","ppw-card-wrestler-focus ppw-card-title-focus");
+   focus.append(el("span","ppw-eyebrow","EARNED TITLE CHALLENGE"),
+    el("strong","",choice.holderName+" vs "+choice.challengerName),
+    el("p","","The title and signed match rights will be checked for this "+
+     "show. You script the finish and choose when to save."));
+   const actions=el("div","ppw-card-wrestler-actions");
+   actions.append(button(focusBusy?"Checking booking rights…":"Start title match",
+    ()=>void startEarnedTitleChallenge(),!mutable()||focusBusy,"ppw-primary"),
+    button("Not now",()=>{focusedChallenge=null;render();},focusBusy));
    focus.append(actions);root.append(focus);
   }
   // Staff advice lives in the final booking briefing, not on the running order.
