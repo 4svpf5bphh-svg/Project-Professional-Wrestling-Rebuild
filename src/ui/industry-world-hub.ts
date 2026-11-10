@@ -88,6 +88,19 @@ function arrangeNewsEditions(
   const k=key(year,week),items=datedNodes.get(k)??[];
   items.push(n);datedNodes.set(k,items);
  };
+ // The original newsroom explicitly identifies saved owner-verified
+ // post-show remarks. Keep that heading after dividing stories by week.
+ const appendIssue=(target:HTMLElement,items:readonly HTMLElement[])=>{
+  let dispatchLabelled=false;
+  for(const item of items){
+   if(item.classList.contains("ppw-news-voice")&&!dispatchLabelled){
+    target.append(el("span","ppw-news-voices-heading",
+     "THE PROMOTION / POST-SHOW DISPATCHES"));
+    dispatchLabelled=true;
+   }
+   target.append(item);
+  }
+ };
  for(const n of [...section.children]){
   if(!(n instanceof HTMLElement))continue;
   if(n.classList.contains("ppw-news-voices")){
@@ -111,7 +124,7 @@ function arrangeNewsEditions(
  section.append(banner,current);
  const currentItems=datedNodes.get(now)??[];
  datedNodes.delete(now);
- for(const item of currentItems)current.append(item);
+ appendIssue(current,currentItems);
  if(!currentItems.length){
   current.append(emptyMessage??el("p","ppw-industry-empty",official?
    "No confirmed stories filed in this edition. Earlier reports are below.":
@@ -128,7 +141,7 @@ function arrangeNewsEditions(
    const group=el("section","ppw-news-previous-edition");
    group.append(el("h3","ppw-news-previous-clock",
     "YEAR "+year+" · WEEK "+week));
-   for(const item of datedNodes.get(weekIndex)??[])group.append(item);
+   appendIssue(group,datedNodes.get(weekIndex)??[]);
    archive.append(group);
   }
   for(const awards of olderAwards)archive.append(awards);
