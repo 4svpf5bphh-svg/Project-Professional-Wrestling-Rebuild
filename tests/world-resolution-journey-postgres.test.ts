@@ -196,6 +196,7 @@ test("two promotions resolve, certify and publish after restart without double c
     "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
     "ppw_wrestler_relationships",
     "ppw_medical_absences","ppw_completed_match_evidence","ppw_completed_show_segments",
+    "ppw_individual_field_career_effects","ppw_tag_match_career_effects",
     "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",
     "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
