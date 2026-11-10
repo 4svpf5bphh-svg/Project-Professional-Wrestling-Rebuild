@@ -144,11 +144,19 @@ export async function readEarnedTitleContendersInTransaction(
  const earned:Record<string,EarnedContender[]>={};
  for(const title of titles){
   if(title.promotionId!==promotionId||title.status!=="ACTIVE")continue;
-  const division=title.bookingDivision;
-  if(division!=="MEN"&&division!=="WOMEN")continue;
-  earned[title.championshipId]=rankEarnedContenders({
+  // Titles predating PPW's gender divisions have booking_division NULL.
+  // A held legacy belt follows its *real* champion's division. Vacant open
+  // belts compare both eligible pools without forging a gender or holder.
+  const holder=candidates.find(c=>c.id===title.holderId&&c.format===title.division);
+  const divisions:readonly ("MEN"|"WOMEN")[]=title.bookingDivision?
+   [title.bookingDivision]:holder?[holder.division]:["MEN","WOMEN"];
+  const board=divisions.flatMap(division=>rankEarnedContenders({
    candidates,results,currentWeekIndex,limit:5,
-   format:title.division,division,championId:title.holderId});
+   format:title.division,division,championId:title.holderId}));
+  earned[title.championshipId]=board.sort((a,b)=>b.score-a.score||
+   b.wins-a.wins||a.name.localeCompare(b.name,"en")||
+   a.id.localeCompare(b.id,"en"))
+   .slice(0,5).map((x,i)=>({...x,rank:i+1}));
  }
  return earned;
 }
