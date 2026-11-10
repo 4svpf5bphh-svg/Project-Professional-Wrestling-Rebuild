@@ -115,7 +115,7 @@ for(const width of [320,390]){
    promotionName:"Home Wrestling",venueName:"Arena",marketName:"Home",
    bookingClass:"REGULAR",ticketStrategy:"STANDARD",
    championships:[{championshipId:"men",name:"Men's World Title",
-    division:"SINGLES",bookingDivision:"MEN",holderName:"Champion",
+    division:"SINGLES",bookingDivision:"MEN",holderId:"champ",holderName:"Champion",
     vacant:false}],programmes:[],programmeLinks:[],selectedPeople:[],slots:[]};
   await page.route("**/api/session",r=>r.fulfill({json:session}));
   await page.route("**/api/card",r=>{
