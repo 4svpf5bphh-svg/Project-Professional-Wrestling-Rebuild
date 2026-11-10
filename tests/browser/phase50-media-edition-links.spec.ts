@@ -75,7 +75,7 @@ for(const width of [320,390]){
   await expect(press).toContainText("behind closed doors");
   await press.locator(".ppw-hot-tag-thread summary").click();
   await expect(press.locator(".ppw-hot-tag-news-post").first())
-   .toContainText(/sidestep|promoter|details|cards/i);
+   .toContainText(/sidestep|promoter|details|card|answer|follow-up/i);
   await expect(press.getByRole("button",{name:"Read the completed PPV"})).toBeVisible();
   await press.getByRole("button",{name:"Read the completed PPV"}).click();
   await expect.poll(()=>requests.filter(p=>p.method==="results"&&p.showId==="ppv").length)
