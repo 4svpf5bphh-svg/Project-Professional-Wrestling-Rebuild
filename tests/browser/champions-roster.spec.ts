@@ -51,11 +51,11 @@ for(const width of [320,390]){
 for(const width of [320,390]){
  test(`Earned champions' contenders are readable and private at ${width}px`,async({page})=>{
   await page.setViewportSize({width,height:780});
-  let requests=0;
+  const methods:string[]=[];
   await page.route("**/api/session",r=>r.fulfill({json:session}));
   await page.route("**/api/card",r=>{
-   requests++;
    const method=r.request().postDataJSON().method as string;
+   methods.push(method);
    if(method!=="championships")return r.fulfill({json:{}});
    return r.fulfill({json:{
     worldName:"Genesis",year:1,week:21,viewerPromotionId:"home",canEdit:false,
@@ -92,7 +92,9 @@ for(const width of [320,390]){
   const rival=page.locator(".ppw-belt-card:visible").nth(1);
   await rival.locator("summary").click();
   await expect(rival.locator(".ppw-belt-contender-board")).toHaveCount(0);
-  expect(requests).toBe(1);
+  expect(methods.filter(m=>m==="championships")).toHaveLength(1);
+  // Opening another promotion's title is a separate, authorised history read.
+  expect(methods.filter(m=>m==="championshipHistory")).toHaveLength(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
@@ -147,8 +149,12 @@ for(const width of [320,390]){
   const belt=page.locator(".ppw-belt-card").first();
   await belt.locator("summary").click();
   await belt.getByRole("button",{name:"Plan title challenge"}).click();
-  await expect(page).toHaveURL(/#\/planner/);
+  // Planner automatically opens the real draft when there is only one.
+  // Both the transient Planner and the final exact-card route are valid.
+  await expect(page).toHaveURL(/#\/(?:card|planner(?:\/card)?)/);
   await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
+  expect(calls).toContain("planner");
+  expect(calls).toContain("load");
   await expect(page.getByText("Champion vs Earned Challenger")).toBeVisible();
   await page.getByRole("button",{name:"Start title match"}).click();
   await expect(page.getByRole("dialog",{name:/Edit match/})).toBeVisible();
