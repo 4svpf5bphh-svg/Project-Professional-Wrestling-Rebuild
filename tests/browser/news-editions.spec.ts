@@ -64,7 +64,7 @@ for(const width of [320,390]){
     document.documentElement.scrollWidth-innerWidth);
    expect(safe,`No ${desk} iPhone horizontal overflow`).toBeLessThanOrEqual(1);
   }
-  expect(calls).toEqual(["industry","industryNews"],
-   "Chronology is client-side over the existing single cached News read");
+  expect(calls,
+   "Chronology is client-side over the existing single cached News read").toEqual(["industry","industryNews"]);
  });
 }
