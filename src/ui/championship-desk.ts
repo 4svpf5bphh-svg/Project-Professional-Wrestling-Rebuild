@@ -229,7 +229,7 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
     directory.contenders?.[title.championshipId]:undefined;
    const contenderPanel=contenders===undefined?null:
     element("section","ppw-belt-contender-board");
-   if(contenderPanel){
+   if(contenderPanel&&contenders){
     contenderPanel.append(element("h3","","Title contenders"),
      element("p","ppw-muted","Last 26 weeks · certified match form"));
     if(contenders.length===0)
