@@ -87,7 +87,7 @@ for(const width of [320,390]){
   await expect(own.locator(".ppw-belt-contender").first()).toContainText(
    "3W · 0L");
   // Verify the champion isn't accidentally included in the contender list.
-  await expect(own.locator(".ppw-belt-contender")).not.toContainText("Reigning Champion");
+  await expect(own.locator(".ppw-belt-contender").filter({hasText:"Reigning Champion"})).toHaveCount(0);
   const rival=page.locator(".ppw-belt-card").nth(1);
   await rival.locator("summary").click();
   await expect(rival.locator(".ppw-belt-contender-board")).toHaveCount(0);
