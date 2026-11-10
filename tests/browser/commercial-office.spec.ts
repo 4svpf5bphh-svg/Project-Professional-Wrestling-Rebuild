@@ -64,7 +64,7 @@ test("320px Business commercial agreements are optional, readable and consented 
  await expect(page.getByText(/Commercial agreement signed/)).toBeVisible();
  await expect(page.getByText(/26 weeks left on this agreement/)).toBeVisible();
  await expect(page.locator(".ppw-commercial-partner-review")).toContainText("AT RISK");
- await expect(page.locator(".ppw-commercial-partner-review")).toContainText("0.0 TV");
+ await expect(page.locator(".ppw-commercial-partner-review")).toContainText("0.00 TV");
  await expect(page.getByText("US$312,000 weekly guarantee")).toBeVisible();
  const catalogue=page.locator(".ppw-commercial-market-browser");
  await expect(catalogue).not.toHaveAttribute("open","");
