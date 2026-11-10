@@ -141,25 +141,33 @@ export async function settleWeeklyFatigueRecovery(
  * One batched write for accepted injuries; model commentary has no authority.
  */
 export async function applyVerifiedMedicalLoadInTransaction(
- tx:SqlRows,worldId:string,injuries:readonly AcceptedMedicalInjury[]):Promise<void>{
+ tx:SqlRows,worldId:string,injuries:readonly AcceptedMedicalInjury[],
+ careerApplied:readonly string[]=[]):Promise<void>{
  if(injuries.length===0)return;
  if(!worldId||injuries.length>100)throw new Error("Invalid certified injury load");
+ if(careerApplied.length>100||new Set(careerApplied).size!==careerApplied.length)
+  throw new Error("Invalid already-scored medical career participants");
+ const settled=new Set(careerApplied);
  const seen=new Set<string>(),effects=injuries.map(x=>{
   if(!x.personId||seen.has(x.personId))throw new Error("Duplicate medical effect");
   seen.add(x.personId);
   const stats=({MINOR:[35,0.5],MODERATE:[50,1.5],
    MAJOR:[65,3],SEVERE:[80,5]} as const)[x.severity];
   if(!stats)throw new Error("Invalid certified injury severity");
-  return {person_id:x.personId,fatigue_floor:stats[0],wear_delta:stats[1]};
+  return {person_id:x.personId,fatigue_floor:stats[0],wear_delta:stats[1],
+   already_scored:settled.has(x.personId)};
  });
  const rows=await tx.query<{person_id:string}>(`
   UPDATE ppw_people p
   SET status='INJURED',
-   fatigue=greatest(coalesce(p.fatigue,0),x.fatigue_floor),
-   wear=round(least(100::numeric,
-    coalesce(p.wear,0)::numeric+x.wear_delta),1)::double precision
+   fatigue=CASE WHEN x.already_scored THEN p.fatigue
+    ELSE greatest(coalesce(p.fatigue,0),x.fatigue_floor) END,
+   wear=CASE WHEN x.already_scored THEN p.wear
+    ELSE round(least(100::numeric,
+     coalesce(p.wear,0)::numeric+x.wear_delta),1)::double precision END
   FROM jsonb_to_recordset($2::jsonb)
-   AS x(person_id text,fatigue_floor double precision,wear_delta numeric)
+   AS x(person_id text,fatigue_floor double precision,wear_delta numeric,
+    already_scored boolean)
   WHERE p.world_id=$1 AND p.person_id=x.person_id AND p.status='ACTIVE'
   RETURNING p.person_id`,[worldId,JSON.stringify(effects)]);
  if(rows.length!==effects.length)
