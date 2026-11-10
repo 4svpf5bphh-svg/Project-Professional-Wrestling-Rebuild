@@ -7,7 +7,7 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {settleCertifiedWorldLegends} from "../src/db/legends-settlement.js";
 import {findLegend} from "../src/domain/legends-catalogue.js";
 import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../src/db/legend-reveal-pilot.js";
-import {readLegendsVault,markLegendRevealSeen} from "../src/db/legends-vault.js";
+import {readLegendsVault,markLegendRevealSeen,hasUnseenLegendReveal} from "../src/db/legends-vault.js";
 import {applyKayfabeAction} from "../src/db/kayfabe-points.js";
 import {readWrestlerDirectory} from "../src/db/wrestler-directory.js";
 import {recruitDistressedAiRosters} from "../src/db/living-world-promotions.js";
@@ -83,6 +83,10 @@ test("certified classics introduce Legends as competing free agents once; accoun
   const replay=await withWorldTransaction(db.pool,tx=>
    settleCertifiedWorldLegends(tx,world,1,1));
   assert.deepEqual(replay,{processed:false,unlocked:[]});
+  assert.equal(await hasUnseenLegendReveal(db.pool,a),true,
+   "A real World Legend unlock must trigger a future signed-in ceremony");
+  assert.equal(await hasUnseenLegendReveal(db.pool,b),true,
+   "Each human manager has an independent one-time reveal");
   const readA=await readLegendsVault(db.pool,a);
   const readB=await readLegendsVault(db.pool,b);
   assert.deepEqual(readA.entries.map(x=>[x.id,x.unlocked]),
@@ -105,6 +109,10 @@ test("certified classics introduce Legends as competing free agents once; accoun
   assert.ok(marketplace.people.some(p=>p.name==="Jerry Lynn"));
   await markLegendRevealSeen(db.pool,a,"jerry-lynn");
   await markLegendRevealSeen(db.pool,a,"jerry-lynn");
+  assert.equal(await hasUnseenLegendReveal(db.pool,a),false,
+   "Returning to PPW cannot replay an already acknowledged ceremony");
+  assert.equal(await hasUnseenLegendReveal(db.pool,b),true,
+   "Another manager must not lose a reveal because the first saw it");
   const after=await readLegendsVault(db.pool,a);
   assert.equal(after.entries.find(x=>x.id==="jerry-lynn")?.revealSeen,true);
   assert.equal(after.entries.find(x=>x.id==="jerry-lynn")?.collectibleReady,true);
@@ -141,6 +149,8 @@ test("certified classics introduce Legends as competing free agents once; accoun
    SELECT contract_id FROM ppw_contracts
    WHERE world_id=$1 AND person_id=ANY($2::text[])`,[world,personIds]))).length,0);
   await assert.rejects(readLegendsVault(db.pool,{...a,playerId:other}),/access denied/);
+  await assert.rejects(hasUnseenLegendReveal(db.pool,{...a,playerId:other}),
+   /access denied/,"A session cannot query another manager's Legend status");
   // Later certified World weeks continue to honour the queued cumulative
   // achievement; nothing arrives just because a client opened the Vault.
   await withWorldTransaction(db.pool,async tx=>{

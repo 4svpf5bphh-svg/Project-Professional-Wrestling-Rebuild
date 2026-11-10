@@ -40,6 +40,7 @@ type SessionView={
   promotion:null|{id:string;name:string};
  };
  canManualAdvance?:boolean;canAiBenchmark?:boolean;
+ unseenLegendReveal?:boolean;
  availablePromotions:{id:string;name:string;tier:string;
   homeMarketName?:string|null;rosterSize?:number}[];
 };
@@ -251,6 +252,25 @@ document.addEventListener("keydown",e=>{
   document.querySelector<HTMLButtonElement>('.ppw-bottom-root[data-root="'+drawerRoot+'"]')?.focus();
  }
 });
+/** One Vault query only after real World publication or an observed change.
+ * The pending unlock is per-player and never read through background polling.
+ */
+async function offerUnseenLegendReveals(scope:CardSessionScope,view:HTMLElement){
+ try{
+  const newest=await createCardClient(scope)("legendsVault") as LegendsVaultView;
+  if(!view.isConnected||!session?.overview.promotion||
+   session.worldId!==scope.worldId||
+   session.overview.promotion.id!==scope.promotionId)return;
+  if(newest.entries.some(e=>e.unlocked&&!e.revealSeen)){
+   pendingLegends=newest;
+   if(location.hash!==legendsVaultHash)location.hash=legendsVaultHash;
+   else renderSection();
+  }
+ }catch{
+  // A failed optional check cannot undo World certification. The next
+  // authenticated sign-in retries it without a provider call or timer.
+ }
+}
 function renderSection(){
  if(!session?.overview?.promotion)return;
  document.documentElement.dataset.ppwPromotion=promotionBrand(session.overview.promotion.name).key;
@@ -286,7 +306,12 @@ function renderSection(){
    // An explicit World status check can update the shell without another read.
    if(!updated||!view.isConnected||!session?.overview.promotion||
     session.worldId!==scope.worldId||session.overview.promotion.id!==scope.promotionId)return;
+   const changed=updated.world.year!==session.overview.world.year||
+    updated.world.week!==session.overview.world.week;
    session.overview.world=updated.world;
+   // No repeated World polling. One Vault check if a shared week's
+   // change was already observed by the current Home request.
+   if(changed)void offerUnseenLegendReveals(scope,view);
    const line=account.querySelector<HTMLElement>(".ppw-shell-brand small");
    if(line)line.textContent=(session.ownerName?session.ownerName+" · ":"")+
     "Y"+updated.world.year+" W"+updated.world.week+" · "+updated.world.name;
@@ -309,20 +334,7 @@ function renderSection(){
    session.canManualAdvance?async(year,week)=>command("/api/playtest-booking",{
     confirm:"EXTEND_SHARED_BOOKING",year,week
    },session?.csrfToken):undefined,
-   async()=>{
-    // One targeted check only after successful manual World publication.
-    try{
-     const newest=await createCardClient(scope)("legendsVault") as LegendsVaultView;
-     if(!view.isConnected||!session?.overview.promotion)return;
-     if(newest.entries.some(e=>e.unlocked&&!e.revealSeen)){
-      pendingLegends=newest;
-      if(location.hash!==legendsVaultHash)location.hash=legendsVaultHash;
-      else renderSection();
-     }
-    }catch{
-     // The World has already advanced; Home retains the unseen Legends cue.
-    }
-   });break;
+   async()=>{await offerUnseenLegendReveals(scope,view);});break;
   case "planner":{
    const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
    mountPlannerPage(view,scope,back,
@@ -477,8 +489,16 @@ async function loadSession(){
   if(session.ownerName===null){showOwnerName();return;}
   if(session.overview.membership!=="ACTIVE"){showJoin();return;}
   if(!session.overview.promotion){showClaim();return;}
-  renderSection();
-  presentOpening();
+  if(session.unseenLegendReveal){
+   // A human booker can return after another manager advances the World.
+   // Deliver the actual one-time tier ceremony, never just a news badge.
+   // A redirect never acknowledges the reveal; Continue/Skip does.
+   if(location.hash!==legendsVaultHash)location.hash=legendsVaultHash;
+   else renderSection();
+  }else{
+   renderSection();
+   presentOpening();
+  }
  }catch(e){
   if(sequence!==sessionReadSequence)return;
   game.replaceChildren();
