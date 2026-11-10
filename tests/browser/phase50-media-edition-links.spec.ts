@@ -68,7 +68,7 @@ for(const width of [320,390]){
   await rivalAward.getByRole("button",{name:"Read rival results"}).click();
   await expect.poll(()=>requests.filter(p=>p.method==="publicResults").length).toBe(1);
   await expect(page.getByText("Rival Live")).toBeVisible();
-  await page.goto("/#/news");
+  await page.reload();
   const press=page.locator(".ppw-news-official .ppw-news-press");
   await expect(press).toHaveCount(1);
   await expect(press).toContainText("Josh Robinson keeps details close");
@@ -80,7 +80,7 @@ for(const width of [320,390]){
   await press.getByRole("button",{name:"Read the completed PPV"}).click();
   await expect.poll(()=>requests.filter(p=>p.method==="results"&&p.showId==="ppv").length)
    .toBe(1);
-  await page.goto("/#/news");
+  await page.reload();
   await page.getByRole("button",{name:"Dirt Sheets"}).click();
   const dirt=page.locator(".ppw-news-dirt .ppw-news-press");
   await expect(dirt).toHaveCount(1);
