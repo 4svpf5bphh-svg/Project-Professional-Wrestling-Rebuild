@@ -104,6 +104,7 @@ export type TitleChallengeFocus={worldId:string;promotionId:string;
  championshipId:string;holderId:string;holderName:string;
  challengerId:string;challengerName:string};
 let pendingTitleChallenge:TitleChallengeFocus|null=null;
+export function clearTitleChallengeFocus(){pendingTitleChallenge=null;}
 export function queueTitleChallengeFocus(focus:TitleChallengeFocus){
  if(Object.values(focus).some(x=>typeof x!=="string"||
   !x.trim()||x.length>200)||focus.holderId===focus.challengerId)return;
