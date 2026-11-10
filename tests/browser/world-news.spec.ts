@@ -81,6 +81,10 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(page.getByText("ANGLE OF THE WEEK")).toBeVisible();
  await expect(page.getByText("4.75 ★")).toBeVisible();
  await expect(page.getByText("88/100 CROWD")).toBeVisible();
+ await expect(page.locator('.ppw-news-poster[data-kind="angle"]')
+  .getByRole("button",{name:"Read completed show"})).toBeVisible();
+ await expect(page.locator('.ppw-news-poster[data-kind="match"]')
+  .getByRole("button",{name:"Read completed show"}),"AI promotions do not expose private card detail through human awards").toHaveCount(0);
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"A certified classic"})).toBeVisible();
  await expect(page.locator(".ppw-news-official .ppw-news-voices-heading"))
   .toHaveText("THE PROMOTION / POST-SHOW DISPATCHES");
