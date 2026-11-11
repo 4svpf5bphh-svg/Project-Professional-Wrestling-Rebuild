@@ -49,9 +49,6 @@ for(const width of [320,390]){
    {name:"CWA Premium"}).click();
   await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Premium"})).toBeVisible();
   await page.getByRole("button",{name:"Confirm Year 1"}).click();
-  console.log("PPW YEAR CONFIRM",width,JSON.stringify(saves),
-   await page.locator(".ppw-calendar-year-plan").innerText(),
-   await page.locator(".ppw-calendar-error").allTextContents());
   await expect(page.getByText("Confirmed for Year 1")).toBeVisible();
   expect(saves).toHaveLength(1);
   const first=saves[0] as {year:number;events:{seriesId:string;week:number}[]};
@@ -78,9 +75,6 @@ test("annual confirm retries a lost acknowledgement using exactly one idempotenc
  });
  await page.goto("/#/calendar");
  await page.getByRole("button",{name:"Confirm Year 1"}).click();
- console.log("PPW YEAR LOST RESPONSE",JSON.stringify(saved),
-  await page.locator(".ppw-calendar-year-plan").innerText(),
-  await page.locator(".ppw-calendar-error").allTextContents());
  await expect(page.getByText(/Booking request failed|Could not save the PPV year/i)).toBeVisible();
  await page.getByRole("button",{name:"Confirm Year 1"}).click();
  await expect.poll(()=>saved.length).toBe(2);
@@ -103,9 +97,6 @@ test("stale World revision preserves selected PPVs without falsely reporting suc
  await page.getByRole("button",{name:"Year 1 week 20 — available"}).click();
  await page.locator(".ppw-calendar-year-picker").getByRole("button",{name:"CWA Premium"}).click();
  await page.getByRole("button",{name:"Confirm Year 1"}).click();
- console.log("PPW YEAR STALE",JSON.stringify(saves),
-  await page.locator(".ppw-calendar-year-plan").innerText(),
-  await page.locator(".ppw-calendar-error").allTextContents());
  await expect(page.getByText(/chosen PPV dates are preserved/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Premium"})).toBeVisible();
  await page.getByRole("button",{name:"Confirm Year 1"}).click();
