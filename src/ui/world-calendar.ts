@@ -5,6 +5,9 @@ import {createPromotionLogo} from "./promotion-logo.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
  from "../domain/show-calendar.js";
+import {validateAnnualPremiumEvents,type AnnualPremiumEvent,
+ type PremiumPolicy} from "../domain/annual-premium-plan.js";
+import type {StandingTier} from "../domain/annual-promotion-standing.js";
 import type {CalendarBooking} from "../db/calendar-workspace.js";
 import {calendarBookingForSeries,calendarBookingLocation,calendarBookingState}
  from "./calendar-booked-show.js";
@@ -19,12 +22,17 @@ export interface CalendarPort{
  load():Promise<{promotionId?:string;promotionName:string;year:number;week:number;worldRevision:number;
  canEdit:boolean;eventPosterStyle?:string|null;broadcastPackage?:string|null;series:ShowSeries[];
  bookings?:CalendarBooking[];
+ annual?:{tier:StandingTier;policy:PremiumPolicy;years:{
+  year:number;confirmed:boolean;events:AnnualPremiumEvent[];
+  suggested:AnnualPremiumEvent[]}[]};
  weeks:{year:number;week:number;offset:number;shows:ShowSeries[]}[];
  worldWeeks?:{year:number;week:number;offset:number;events:{
  promotionId:string;promotionName:string;seriesId:string;name:string;
  role:ShowRole;eventType:string;importance:number}[]}[]}>;
  save(input:{requestId:string;expectedRevision:number;series:ShowSeries}):Promise<unknown>;
  archive(input:{requestId:string;expectedRevision:number;seriesId:string}):Promise<unknown>;
+ saveAnnual?(input:{requestId:string;expectedRevision:number;
+  year:number;events:AnnualPremiumEvent[]}):Promise<unknown>;
 }
 const node=(tag:string,text="",css="")=>{
  const el=document.createElement(tag);el.textContent=text;el.className=css;return el;};
@@ -36,6 +44,9 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  let editing:ShowSeries|null=null,busy=false,error="",expanded=false;
  let mode:"mine"|"world"="mine",ppvOnly=false,manageExpanded=false;
  let pendingChange:{fingerprint:string;requestId:string}|null=null;
+ let yearChosen:number|null=null,yearActiveWeek:number|null=null;
+ const yearlyDrafts=new Map<number,AnnualPremiumEvent[]>();
+ let pendingYear:{fingerprint:string;requestId:string}|null=null;
  function button(name:string,click:()=>void,disabled=false){
   const b=node("button",name,"ppw-calendar-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=click;return b;
@@ -178,6 +189,147 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   section.append(save,button("Cancel",()=>{editing=null;error="";render();},busy));
   refresh();
   return section;
+ }
+ /** Year-opening PPV commitments are weeks/identities, not early match cards.
+  * One compact world command on confirmation; buttons never write on tap. */
+ function yearData(){
+  if(!data?.annual)return null;
+  if(yearChosen===null||!data.annual.years.some(x=>x.year===yearChosen))
+   yearChosen=data.week===1?data.year:data.year+1;
+  return data.annual.years.find(x=>x.year===yearChosen)??null;
+ }
+ function yearEvents(year:number):AnnualPremiumEvent[]{
+  const yearRow=data?.annual?.years.find(x=>x.year===year);
+  if(!yearRow)return [];
+  return yearlyDrafts.get(year)??(yearRow.confirmed?yearRow.events:yearRow.suggested);
+ }
+ function changeYearEvent(year:number,week:number,seriesId:string|null){
+  const without=yearEvents(year).filter(x=>x.week!==week);
+  if(seriesId)without.push({year,week,seriesId} as AnnualPremiumEvent);
+  // The temporary shape has no year field; keep only canonical committed
+  // payload fields. Sorting creates stable idempotent request fingerprints.
+  yearlyDrafts.set(year,without.map(x=>({seriesId:x.seriesId,week:x.week}))
+   .sort((a,b)=>a.week-b.week||a.seriesId.localeCompare(b.seriesId)));
+  pendingYear=null;render();
+ }
+ async function confirmAnnual(){
+  const selected=yearData(),annual=data?.annual;
+  if(!selected||!annual||!data||busy||!port.saveAnnual)return;
+  const events=yearEvents(selected.year);
+  try{
+   validateAnnualPremiumEvents({year:selected.year,tier:annual.tier,events,
+    series:data.series,originalName:data.promotionName,
+    previous:selected.year===data.year+1?yearEvents(data.year):undefined});
+  }catch(e){error=e instanceof Error?e.message:"Review your annual PPV dates";render();return;}
+  const input={year:selected.year,expectedRevision:data.worldRevision,events};
+  const fingerprint=JSON.stringify(input);
+  if(!pendingYear||pendingYear.fingerprint!==fingerprint)
+   pendingYear={fingerprint,requestId:crypto.randomUUID()};
+  const requestId=pendingYear.requestId;
+  busy=true;error="";render();
+  try{
+   const result=await port.saveAnnual({...input,requestId});
+   const status=result&&typeof result==="object"&&"status" in result?
+    String(result.status):"";
+   if(status==="STALE"){
+    data=await port.load();pendingYear=null;
+    throw new Error("The World changed. Your chosen PPV dates are preserved. Review and confirm again.");
+   }
+   if(status!=="APPLIED"&&status!=="REPLAYED")
+    throw new Error("The annual calendar wasn't confirmed. Review and retry.");
+   data=await port.load();yearlyDrafts.delete(selected.year);
+   pendingYear=null;yearActiveWeek=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Could not save the PPV year";}
+  finally{busy=false;render();}
+ }
+ function annualPlanner(){
+  if(!data?.annual)return null;
+  const annual=data.annual,chosen=yearData()!;
+  const rootSection=node("section","","ppw-calendar-panel ppw-calendar-year-plan");
+  rootSection.append(node("span","THE YEAR AHEAD","ppw-calendar-schedule-kicker"),
+   node("h2","Plan your PPVs"));
+  const summary=node("p",
+   data.promotionName+" · "+annual.tier+" · "+
+   annual.policy.minimum+"–"+annual.policy.maximum+
+   " major events per 52-week year","ppw-calendar-year-subtitle");
+  rootSection.append(summary);
+  const years=node("div","","ppw-calendar-year-toggle");
+  for(const row of annual.years){
+   const choose=button("Year "+row.year,()=>{
+    yearChosen=row.year;yearActiveWeek=null;error="";render();
+   },busy);
+   choose.setAttribute("aria-pressed",String(chosen.year===row.year));
+   years.append(choose);
+  }
+  rootSection.append(years);
+  const events=yearEvents(chosen.year);
+  const lockedCurrent=chosen.year===data.year&&data.week>1&&!chosen.confirmed;
+  const canEdit=data.canEdit&&!!port.saveAnnual&&!lockedCurrent&&!busy;
+  const dated=new Map(events.map(x=>[x.week,x.seriesId]));
+  rootSection.append(node("p",
+   (chosen.confirmed?"Confirmed for Year ":"Suggested for Year ")+chosen.year+
+   " · "+events.length+" of "+annual.policy.maximum+" dates"+
+   (events.length<annual.policy.minimum?" · Below the expected minimum":""),
+   "ppw-calendar-year-count"));
+  if(lockedCurrent)rootSection.append(node("p",
+   "This year's existing dates stay protected. Plan next year before the season begins.",
+   "ppw-calendar-year-notice"));
+  else if(!chosen.confirmed)rootSection.append(node("p",
+   "Suggested dates are not live yet. Choose your show weeks and confirm the year. Match cards and venues come later.",
+   "ppw-calendar-year-notice"));
+  const series=new Map(data.series.filter(x=>x.eventType==="MAJOR")
+   .map(x=>[x.seriesId,x]));
+  const quarters=node("div","","ppw-calendar-quarters");
+  for(let quarter=0;quarter<4;quarter++){
+   const part=node("section","","ppw-calendar-quarter");
+   part.append(node("h3","Quarter "+(quarter+1),"ppw-calendar-quarter-heading"));
+   const grid=node("div","","ppw-calendar-week-grid");
+   for(let i=1;i<=13;i++){
+    const week=quarter*13+i,seriesId=dated.get(week);
+    const show=seriesId?series.get(seriesId):null;
+    const picked=week===yearActiveWeek;
+    const date=button("W"+String(week).padStart(2,"0"),()=>{
+     yearActiveWeek=week;render();
+    },!canEdit);
+    date.classList.add("ppw-calendar-week-button");
+    date.dataset.hasEvent=String(!!show);
+    date.setAttribute("aria-pressed",String(picked));
+    date.setAttribute("aria-label","Year "+chosen.year+" week "+week+
+     (show?" — "+show.name:" — available"));
+    if(show)date.append(node("small",show.name));
+    grid.append(date);
+   }
+   part.append(grid);quarters.append(part);
+  }
+  rootSection.append(quarters);
+  if(yearActiveWeek!==null&&canEdit){
+   const picker=node("section","","ppw-calendar-year-picker");
+   picker.append(node("strong","YEAR "+chosen.year+" · WEEK "+yearActiveWeek),
+    node("p","Pick an event for this week. Nothing is booked until you confirm."));
+   const choices=node("div","","ppw-calendar-year-choices");
+   for(const show of series.values()){
+    const selected=button(show.name,()=>{
+     changeYearEvent(chosen.year,yearActiveWeek!,show.seriesId);
+    });
+    selected.setAttribute("aria-pressed",String(dated.get(yearActiveWeek)===show.seriesId));
+    choices.append(selected);
+   }
+   const clear=button("Leave week free",()=>changeYearEvent(chosen.year,yearActiveWeek!,null));
+   choices.append(clear);picker.append(choices);rootSection.append(picker);
+  }
+  if(canEdit){
+   rootSection.append(button("Use recommended dates",()=>{
+    yearlyDrafts.set(chosen.year,[...chosen.suggested]);yearActiveWeek=null;
+    pendingYear=null;error="";render();
+   },busy));
+   const commit=button(chosen.confirmed?"Save revised year":"Confirm Year "+chosen.year,
+    ()=>void confirmAnnual(),busy);
+   commit.classList.add("ppw-calendar-year-confirm");rootSection.append(commit);
+  }
+  rootSection.append(node("small",
+   "A confirmed year reserves show names and weeks only. TV broadcasts keep their contracted slots; PPV cards, venues and costs are planned closer to the event.",
+   "ppw-calendar-year-footer"));
+  return rootSection;
  }
  /** Broadcast-style public event identity; no network or invented attendance. */
  function eventTile(name:string,role:ShowRole,eventType:string,
@@ -370,7 +522,9 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     "The World has no public event announcements in this window.",
     "ppw-calendar-empty"));
   }
-  root.append(upcoming,management);
+  const yearly=annualPlanner();
+  if(yearly)root.append(yearly,upcoming,management);
+  else root.append(upcoming,management);
  }
  void load();
 }
