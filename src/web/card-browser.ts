@@ -912,6 +912,7 @@ export function mountCalendarPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
   load:()=>call("calendar"),
   save:input=>call("saveCalendar",input),
   archive:input=>call("archiveCalendar",input),
+  saveAnnual:input=>call("saveAnnualPremium",input),
   openCard:draftId=>onOpenBooking?onOpenBooking(draftId):
    mountBookingPage(root,{...scope,showId:draftId}),
   openPlanner:target=>mountPlannerPage(root,scope,
