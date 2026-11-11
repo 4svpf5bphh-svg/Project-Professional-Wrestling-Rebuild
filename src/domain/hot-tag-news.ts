@@ -262,9 +262,15 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  // said, not an invented press quote or the same generic rumour under every
  // event. These are fan reactions, never attributed to the manager.
  const press=story.id.startsWith("press:");
- const pressMode=/no comment|declined/i.test(story.title)?"DECLINED":
+ const pressMode=/ends the press conference without taking questions|no answers from/i.test(story.title)?"SKIPPED":
+  /no comment|declined/i.test(story.title)?"DECLINED":
   /details close|no concrete/i.test(story.title)?"EVASIVE":"DIRECT";
  const pressSpecific=press?
+  pressMode==="SKIPPED"?[
+   "The manager ended the scrum without answering anything. No quote to dissect this time. 🎤",
+   "Three questions prepared, zero answers. That is a very short press conference. 😂",
+   "A skipped scrum is not a secret contract announcement. We have no statement to work with. 🧐"
+  ]:
   pressMode==="DECLINED"?[
    "The microphone went to the booker and the answer was NO COMMENT. The group chat has exploded. 🎤",
    "A refusal is on the record. Any grand theory about the reason is still fan-fiction. 🧐",

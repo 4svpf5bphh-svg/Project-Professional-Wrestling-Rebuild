@@ -39,8 +39,11 @@ jobs:
         run: npm run web:build
       - name: Verify deployable original Legends artwork and correct Taz photo
         run: node scripts/verify-legend-release-bundle.mjs
+      # Hosted runners already supply Chromium's system libraries. Avoid
+      # re-running apt against Ubuntu mirrors: temporary DNS outages there
+      # prevent any gameplay tests from running despite valid app code.
       - name: Install Chromium for iPhone host testing
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Run authenticated browser host smoke tests
         run: npm run test:browser
       - name: Save mobile presentation evidence

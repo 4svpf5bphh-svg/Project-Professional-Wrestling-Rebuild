@@ -96,6 +96,12 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
   assert.equal(ended.dismissed,true);
   assert.equal(ended.questions[0]?.answerIndex,1);
   assert.equal(ended.questions[1]?.answerIndex,null);
+  await assert.rejects(answerPremiumScrum(db.pool,scope,"NEXT_CHAPTER",0),
+   /press conference has ended/,
+   "A stale browser may not publish fresh manager words after closing");
+  await assert.rejects(answerPremiumScrum(db.pool,scope,"MAIN_EVENT",1),
+   /press conference has ended/,
+   "Even a replay must not alter the now-published transcript");
   const marker=await withWorldTransaction(db.pool,tx=>tx.query<{
    question_id:string;answer_index:number}>(`
    SELECT question_id,answer_index FROM ppw_premium_media_scrum_answers
@@ -105,6 +111,82 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
    {question_id:"DISMISSED",answer_index:0},
    {question_id:"MAIN_EVENT",answer_index:1}
   ]);
+
+  // A second genuine certified PPV: no press answers were given. The
+  // explicit closure publishes public silence; merely having a show does not.
+  const silentScope={...scope,showId:"ppv-two"};
+  const silentReceipt={...receipt,showId:"ppv-two",week:2,
+   resolutionId:"ppv-two-result"};
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,2)",[worldId]);
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,booking_class,show_name) VALUES($1,'ppv-two','crown',1,2,'SUBMITTED','PREMIUM','Second PPV')",[worldId]);
+   await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,'ppv-two','main',0,'MATCH',$2::jsonb)",[worldId,JSON.stringify(card)]);
+   await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,'crown','ppv-two',1,2,'ppv-two-result',87,$2::jsonb,repeat('b',64))",
+    [worldId,JSON.stringify(silentReceipt)]);
+   await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side) VALUES($1,'ppv-two','main',0,92,'CLEAN_PIN','A')",[worldId]);
+  });
+  const beforeSilent=await withWorldTransaction(db.pool,tx=>tx.query<{
+   story_key:string}>(`
+   SELECT story_key FROM ppw_world_news_items
+   WHERE world_id=$1 AND show_id='ppv-two'`,[worldId]));
+  assert.equal(beforeSilent.length,0,"Absence is never a refusal or reported quotation");
+  await assert.rejects(dismissPremiumScrum(db.pool,{...silentScope,playerId:rival}),
+   /unavailable|controller|permission/i);
+  assert.deepEqual(await dismissPremiumScrum(db.pool,silentScope),
+   {dismissed:true,saved:true});
+  assert.deepEqual(await dismissPremiumScrum(db.pool,silentScope),
+   {dismissed:true,saved:false});
+  const silentNews=await withWorldTransaction(db.pool,tx=>tx.query<{
+   story_key:string;title:string;summary:string;certainty:string}>(`
+    SELECT story_key,title,summary,certainty FROM ppw_world_news_items
+    WHERE world_id=$1 AND show_id='ppv-two' ORDER BY story_key`,[worldId]));
+  assert.equal(silentNews.length,2,"One official story and one speculative Dirt Sheet");
+  assert.ok(silentNews.some(x=>x.certainty==="CONFIRMED"&&
+   x.title.includes("without taking questions")));
+  assert.ok(silentNews.some(x=>x.certainty==="SPECULATION"));
+  assert.doesNotMatch(JSON.stringify(silentNews),
+   /said "No comment"|refused to answer/i);
+  await assert.rejects(answerPremiumScrum(db.pool,silentScope,"MAIN_EVENT",2),
+   /press conference has ended/);
+
+  // Race a third session's explicit end against a legitimate answer. The
+  // owner control row must serialise the winner: either a saved answer AND
+  // published accurate quote, or no answer AND press silence, never a lie.
+  const racedScope={...scope,showId:"ppv-three"};
+  const racedReceipt={...receipt,showId:"ppv-three",week:3,
+   resolutionId:"ppv-three-result"};
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,3)",[worldId]);
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,booking_class,show_name) VALUES($1,'ppv-three','crown',1,3,'SUBMITTED','PREMIUM','Third PPV')",[worldId]);
+   await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,'ppv-three','main',0,'MATCH',$2::jsonb)",[worldId,JSON.stringify(card)]);
+   await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,'crown','ppv-three',1,3,'ppv-three-result',87,$2::jsonb,repeat('c',64))",
+    [worldId,JSON.stringify(racedReceipt)]);
+   await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side) VALUES($1,'ppv-three','main',0,92,'CLEAN_PIN','A')",[worldId]);
+  });
+  const [racedAnswer,racedClose]=await Promise.allSettled([
+   answerPremiumScrum(db.pool,racedScope,"MAIN_EVENT",0),
+   dismissPremiumScrum(db.pool,racedScope)
+  ]);
+  assert.equal(racedClose.status,"fulfilled");
+  const raced=await readPremiumScrum(db.pool,racedScope);
+  assert.equal(raced.dismissed,true);
+  const answerWasSaved=racedAnswer.status==="fulfilled";
+  assert.equal(raced.questions[0]?.answerIndex,answerWasSaved?0:null);
+  if(!answerWasSaved)assert.match(String(racedAnswer.reason),/press conference has ended/);
+  const racedNews=await withWorldTransaction(db.pool,tx=>tx.query<{
+   title:string;summary:string;certainty:string}>(`
+   SELECT title,summary,certainty FROM ppw_world_news_items
+   WHERE world_id=$1 AND show_id='ppv-three' ORDER BY story_key`,[worldId]));
+  assert.equal(racedNews.length,2);
+  const official=racedNews.find(x=>x.certainty==="CONFIRMED")!;
+  assert.ok(official);
+  if(answerWasSaved){
+   assert.match(official.summary,/What happened in that ring speaks for itself/);
+   assert.match(official.summary,/2 remaining questions were left unanswered/);
+  }else{
+   assert.match(official.title,/without taking questions/);
+   assert.doesNotMatch(official.summary,/speaks for itself/);
+  }
   const immutable=await withWorldTransaction(db.pool,tx=>tx.query<{
    crowd_response:number;actual_finish:string}>(`
    SELECT c.crowd_response::double precision AS crowd_response,m.actual_finish FROM ppw_completed_shows c
