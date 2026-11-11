@@ -26,7 +26,8 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
   execute:async tx=>{
    const rows=await tx.query<CommercialEvidence&{year:number;week:number;
     management_mode:string;existing_kinds:string[];
-    recentTvEpisodes:number;averageTvRating:number|null}>(`
+    recentTvEpisodes:number;averageTvRating:number|null;
+    recentPremiumShows:number;averagePpvBuys:number|null}>(`
     SELECT w.year,w.week,p.management_mode,p.tier,p.media_reach AS "mediaReach",
      p.weekly_media_income::numeric::float8 AS "weeklyMediaIncome",
      p.weekly_sponsor_income::numeric::float8 AS "weeklySponsorIncome",
@@ -34,6 +35,8 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
      results.crowd::float8 AS "averageCrowd",
      results.tv_episodes AS "recentTvEpisodes",
      results.average_rating::float8 AS "averageTvRating",
+     results.ppv_count AS "recentPremiumShows",
+     results.average_ppv_buys::float8 AS "averagePpvBuys",
       ARRAY(SELECT d.kind FROM ppw_commercial_deals d
       WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
        AND d.status='ACTIVE') AS existing_kinds
@@ -45,10 +48,15 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
      AND p.promotion_id=c.promotion_id AND p.lifecycle='ACTIVE'
     LEFT JOIN LATERAL (
      SELECT count(*)::integer AS completed,avg(r.crowd_response) AS crowd,
-      count(r.tv_rating)::integer AS tv_episodes,avg(r.tv_rating) AS average_rating
+      count(r.tv_rating)::integer AS tv_episodes,avg(r.tv_rating) AS average_rating,
+      count(r.ppv_buys)::integer AS ppv_count,
+      avg(r.ppv_buys) AS average_ppv_buys
      FROM (SELECT r.year,r.week,r.crowd_response,
-      CASE WHEN econ.audience_format='TV' THEN econ.tv_household_rating END
-       AS tv_rating FROM ppw_completed_shows r
+      CASE WHEN econ.audience_format='TV' AND
+       draft.booking_class='REGULAR' THEN econ.tv_household_rating END AS tv_rating,
+      CASE WHEN draft.booking_class='PREMIUM' AND econ.audience_format='PPV'
+       THEN econ.ppv_buys END AS ppv_buys
+      FROM ppw_completed_shows r
       JOIN ppw_show_economics econ ON econ.world_id=r.world_id
        AND econ.show_id=r.show_id AND econ.promotion_id=r.promotion_id
       JOIN ppw_booking_drafts draft ON draft.world_id=r.world_id

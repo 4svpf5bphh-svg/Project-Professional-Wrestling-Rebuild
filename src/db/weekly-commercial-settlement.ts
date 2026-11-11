@@ -203,7 +203,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // human-controlled companies are never entered into automatic agreements.
  const owners=await tx.query<CommercialEvidence&{
   promotion_id:string;management_mode:string;active_kinds:string[];
-  recentShowDay:number|null;recentTvEpisodes:number;averageTvRating:number|null
+  recentShowDay:number|null;recentTvEpisodes:number;averageTvRating:number|null;
+  recentPremiumShows:number;averagePpvBuys:number|null
  }>(`
  SELECT p.promotion_id,p.management_mode,p.tier,
   p.media_reach AS "mediaReach",
@@ -213,6 +214,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   recent.crowd::double precision AS "averageCrowd",
   recent.tv_count AS "recentTvEpisodes",
   recent.tv_rating::double precision AS "averageTvRating",
+  recent.ppv_count AS "recentPremiumShows",
+  recent.ppv_average::double precision AS "averagePpvBuys",
   (SELECT draft.show_day FROM ppw_booking_drafts draft
    JOIN ppw_completed_shows c ON c.world_id=draft.world_id
     AND c.show_id=draft.draft_id AND c.promotion_id=draft.promotion_id
@@ -227,11 +230,14 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  LEFT JOIN LATERAL (
   SELECT count(*)::integer AS completed,avg(crowd_response) AS crowd,
    count(tv_household_rating)::integer AS tv_count,
-   avg(tv_household_rating) AS tv_rating
+   avg(tv_household_rating) AS tv_rating,
+   count(ppv_buys)::integer AS ppv_count,avg(ppv_buys) AS ppv_average
   FROM (
    SELECT show.year,show.week,show.crowd_response,
-    CASE WHEN econ.audience_format='TV'
-     THEN econ.tv_household_rating END AS tv_household_rating
+    CASE WHEN econ.audience_format='TV' AND draft.booking_class='REGULAR'
+     THEN econ.tv_household_rating END AS tv_household_rating,
+    CASE WHEN econ.audience_format='PPV' AND draft.booking_class='PREMIUM'
+     THEN econ.ppv_buys END AS ppv_buys
     FROM ppw_completed_shows show
    JOIN ppw_show_economics econ ON econ.world_id=show.world_id
     AND econ.show_id=show.show_id AND econ.promotion_id=show.promotion_id

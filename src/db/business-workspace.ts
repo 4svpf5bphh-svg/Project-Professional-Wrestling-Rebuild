@@ -271,12 +271,19 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    show.tv_household_rating!==null);
   const averageTvRating=tvReceipts.length?tvReceipts.reduce((n,show)=>
    n+Number(show.tv_household_rating),0)/tvReceipts.length:null;
+  const premiumReceipts=certified.filter(show=>
+   show.booking_class==="PREMIUM"&&show.audience_format==="PPV"&&
+   show.ppv_buys!==null);
+  const averagePpvBuys=premiumReceipts.length?
+   premiumReceipts.reduce((n,show)=>n+Number(show.ppv_buys),0)/
+    premiumReceipts.length:null;
   const allQualified=commercialOffers({
    tier:w.tier,mediaReach:w.media_reach,weeklyMediaIncome:weeklyMedia,
    weeklySponsorIncome:weeklySponsor,completedShows:certified.length,
    averageCrowd:certified.length?
     certified.reduce((n,show)=>n+Number(show.crowd_response),0)/certified.length:null,
-   recentTvEpisodes:tvReceipts.length,averageTvRating
+   recentTvEpisodes:tvReceipts.length,averageTvRating,
+   recentPremiumShows:premiumReceipts.length,averagePpvBuys
   });
   const earnedOffers=allQualified.filter(offer=>
    !w.commercial_deals.some(d=>d.kind===offer.kind)&&
@@ -330,6 +337,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    }),commercialOffers:earnedOffers,
    partnerInventory:w.world_partner_claims,averageTvRating,
    recentTvEpisodes:tvReceipts.length,
+   recentPremiumShows:premiumReceipts.length,averagePpvBuys,
    recentAverageCrowd:certified.length?Math.round(
     certified.reduce((n,show)=>n+Number(show.crowd_response),0)/
      certified.length*10)/10:null,
