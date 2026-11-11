@@ -31,7 +31,8 @@ export interface CalendarBooking {
  day:number|null;venueName:string|null;marketName:string|null;
  ready:boolean;
 }
-type Owner={name:string;tier:StandingTier;year:number;week:number;revision:string|number;
+type Owner={name:string;tier:StandingTier;year:number;week:number;
+ premium_plan_start_year:number;revision:string|number;
  booking_open:boolean;cadence:number;major_interval:number|null;event_poster:string|null;broadcast_package:string|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
@@ -43,7 +44,7 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
  if(![scope.worldId,scope.promotionId,scope.playerId].every(validId))
   throw new Error("Invalid show calendar identity");
  const rows=await tx.query<Owner>([
- "SELECT p.name,p.tier,w.year,w.week,w.revision,",
+ "SELECT p.name,p.tier,w.year,w.week,w.premium_plan_start_year,w.revision,",
  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
  "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
   "(SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,",
@@ -105,7 +106,13 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   const series=await load(tx,scope,owned);
   const ownerAnnual=await readAnnualPremiumPlans(tx,scope.worldId,
    scope.promotionId,owned.year,owned.year+1);
-  const ownerPlans=plansMap(ownerAnnual);
+  const ownerPlans=new Map(plansMap(ownerAnnual));
+  // No row means legacy recurrence ONLY before a saved World's policy
+  // activation year. Once active, the player must explicitly confirm dates:
+  // the old fourth-week schedule cannot silently fill another season.
+  for(const year of [owned.year,owned.year+1])
+   if(year>=owned.premium_plan_start_year&&!ownerPlans.has(year))
+    ownerPlans.set(year,[]);
   // Public recurrence only. Never expose a rival promotion's private draft,
   // intended venue, ticket strategy or planned wrestler appearances.
   const rows=await tx.query<{
@@ -218,12 +225,22 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    else if(!promotion.series.length)
     promotion.series=defaults(row.promotion_name,row.cadence,row.major_interval??4);
   }
+  const effectiveWorldPlans=new Map<string,Map<number,AnnualPremiumEvent[]>>();
+  for(const [id,promotion] of promotions){
+   const calendar=new Map(sharedPlans.get(id)??[]);
+   for(const year of [owned.year,owned.year+1]){
+    if(year<owned.premium_plan_start_year||calendar.has(year))continue;
+    calendar.set(year,promotion.managementMode==="AI"?
+     suggestedAnnualPremiumEvents(promotion.series,promotion.tier,year,promotion.name):[]);
+   }
+   effectiveWorldPlans.set(id,calendar);
+  }
   const start=weekIndex(owned.year,owned.week);
   const worldWeeks=Array.from({length:12},(_,offset)=>{
    const index=start+offset;
    const events=[...promotions].flatMap(([promotionId,promotion])=>
     scheduledSeriesOnWeek(promotion.series,Math.floor(index/52)+1,
-     index%52+1,sharedPlans.get(promotionId)).map(s=>({
+     index%52+1,effectiveWorldPlans.get(promotionId)).map(s=>({
      promotionId,promotionName:promotion.name,seriesId:s.seriesId,name:s.name,
      role:s.role,eventType:s.eventType,importance:s.importance
     }))).sort((a,b)=>b.importance-a.importance||
@@ -233,10 +250,12 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   if(worldWeeks.reduce((total,w)=>total+w.events.length,0)>512)
    throw new Error("World calendar occurrence budget exceeded");
   const annualYears=[owned.year,owned.year+1].map(year=>({
-   year,confirmed:ownerPlans.has(year),events:projectYearEvents(series,year,ownerPlans),
+   year,confirmed:ownerAnnual.some(plan=>plan.year===year),
+   events:projectYearEvents(series,year,ownerPlans),
    suggested:suggestedAnnualPremiumEvents(series,owned.tier,year,owned.name)
   }));
-  return {annual:{tier:owned.tier,policy:premiumPolicy(owned.tier),
+  return {annual:{tier:owned.tier,policyStartYear:owned.premium_plan_start_year,
+   policy:premiumPolicy(owned.tier),
     years:annualYears},worldWeeks,bookings,eventPosterStyle:owned.event_poster,
     broadcastPackage:owned.broadcast_package,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
