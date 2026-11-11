@@ -402,8 +402,8 @@ function trueFinish(summary:string,method:string):boolean{
  if(method.includes("most falls"))return /\b(?:most falls|more falls|ahead on falls|led on falls|leading on falls)\b/i.test(summary)&&
   /\b(?:clock|time limit|time expired|time ran out)\b/i.test(summary)&&
   !/\b\d+\s*(?:-|to)\s*\d+\b/.test(summary);
- if(method.includes("decisive second fall"))return /\b(?:second fall|two out of three falls|decisive fall)\b/i.test(summary)&&
-  !/\b(?:only one fall|first fall alone won|won by escape)\b/i.test(summary);
+ if(method.includes("decisive second fall"))return /\b(?:second (?:winning |decisive )?fall|decisive (?:second )?fall|earned (?:his|her|their|the) second fall|two winning falls)\b/i.test(summary)&&
+  !/\b(?:only one fall|first fall alone won|without (?:another|a second) fall|won by escape)\b/i.test(summary);
  if(method.includes("first to bleed"))return /\b(?:first (?:to )?bleed|first blood|drew (?:the first )?blood|made .{1,80} bleed)\b/i.test(summary)&&!invalidSpecial.test(summary);
  if(method.includes("casket lid"))return /\b(?:casket|coffin)\b/i.test(summary)&&
   /\b(?:lid|shut|closed|closing)\b/i.test(summary)&&!invalidSpecial.test(summary);
