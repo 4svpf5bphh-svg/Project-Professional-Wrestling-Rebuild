@@ -30,7 +30,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    standing_prestige:number|null;standing_fan:number|null;
    standing_business:number|null;standing_talent:number|null;
    standing_year:number|null;
-   competition:PromotionCompetitionCard|null;
+   cp:PromotionCompetitionCard|null;
    finance_event_count:number;finance_categories:FinanceLine[];
    finance_recent:FinanceEntry[];
    commercial_deals:{dealId:string;kind:"BROADCAST"|"SPONSOR";offerCode:string;
@@ -79,7 +79,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      standing.talent_reputation AS standing_talent,
      standing.last_evaluated_year AS standing_year,
      ${promotionCompetitionProjectionSql("w.world_id","p.promotion_id")}
-      AS competition,
+      AS cp,
      financial.finance_event_count,financial.finance_categories,financial.finance_recent,
      CASE WHEN plan.world_id IS NULL THEN NULL ELSE jsonb_build_object(
       'weeklyWageLimit',plan.weekly_wage_limit::double precision,
@@ -295,14 +295,14 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     certified.reduce((n,show)=>n+Number(show.crowd_response),0)/certified.length:null,
    recentTvEpisodes:tvReceipts.length,averageTvRating,
    recentPremiumShows:premiumReceipts.length,averagePpvBuys,
-   competition:w.competition,currentWeekIndex:now
+   competition:w.cp,currentWeekIndex:now
   });
   const earnedOffers=allQualified.filter(offer=>
    !w.commercial_deals.some(d=>d.kind===offer.kind)&&
    !w.world_partner_claims.some(held=>held.offerCode===offer.code));
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
-   competition:w.competition??null,
+   competition:w.cp??null,
    kpBrandStyle:w.kp_style,creativeIdentity,
    worldRevision:Number(w.revision),
    homeMarketName:w.home_market_name,mediaReach:w.media_reach,

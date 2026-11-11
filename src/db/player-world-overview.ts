@@ -75,7 +75,7 @@ export async function readPlayerWorldOverview(
    medical_clearances:unknown;world_stories:unknown;
    kp_claim_available:boolean|null;unseen_legends:number|null;
    standing:unknown;next_show:unknown;latest_show:unknown;
-   competition:PromotionCompetitionCard|null;
+   cp:PromotionCompetitionCard|null;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -95,7 +95,7 @@ export async function readPlayerWorldOverview(
     public_news.world_stories,kp.kp_claim_available,legends.unseen_legends,
     dashboard.standing,dashboard.next_show,dashboard.latest_show,
     ${promotionCompetitionProjectionSql("w.world_id","owned.promotion_id")}
-     AS competition
+     AS cp
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -579,7 +579,7 @@ export async function readPlayerWorldOverview(
    membership:x.membership_status??"NONE",
    promotion:x.promotion_id!==null?{
     id:x.promotion_id,name:x.promotion_name!,tier:x.tier!,
-    competition:x.competition??null,
+    competition:x.cp??null,
     promoterPrestige:{rank:achievementSummary.rank,
      earnedCount:achievementSummary.earnedCount,total:achievementSummary.total,
      prestigeScore:achievementSummary.prestigeScore},
