@@ -75,9 +75,11 @@ export function decodeAnnualPremiumSnapshot(raw:unknown):StoredAnnualPremiumPlan
 }
 async function ownerSnapshot(tx:SqlRows,scope:AnnualPremiumScope){
  const rows=await tx.query<{name:string;tier:StandingTier;cadence:number;
-  interval:number|null;year:number;week:number;booking_open:boolean}>(`
+  interval:number|null;year:number;week:number;booking_open:boolean;
+  premium_plan_start_year:number}>(`
  SELECT p.name,p.tier,p.event_cadence_weeks AS cadence,
   w.major_event_interval_weeks AS interval,w.year,w.week,
+  w.premium_plan_start_year,
   (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open
  FROM ppw_worlds w
  JOIN ppw_promotions p ON p.world_id=w.world_id AND p.promotion_id=$2
@@ -103,6 +105,14 @@ export async function saveAnnualPremiumPlan(pool:TransactionPool,input:AnnualPre
    if(!auth.booking_open)throw new Error("Annual planning is closed during World Lock");
    if(input.year!==auth.year&&input.year!==auth.year+1)
     throw new Error("Choose this World year or next year");
+   if(input.year<auth.premium_plan_start_year)
+    throw new Error("This saved World's current-year PPVs are grandfathered and cannot be rewritten");
+   if(input.year===auth.year&&auth.week>1){
+    const existing=await readAnnualPremiumPlans(tx,input.worldId,
+     input.promotionId,input.year,input.year);
+    if(!existing.length)throw new Error(
+     "This year's PPV planning has closed; choose next year");
+   }
    const configured=await tx.query<{
     series_id:string;name:string;role:ShowSeries["role"];
     event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
@@ -119,8 +129,9 @@ export async function saveAnnualPremiumPlan(pool:TransactionPool,input:AnnualPre
    })):defaults(auth.name,auth.cadence,auth.interval??4);
    const prior=input.year>1?await readAnnualPremiumPlans(tx,input.worldId,
     input.promotionId,input.year-1,input.year-1):[];
-   const previous=prior.length?prior[0]!.events:input.year>1?
-    projectYearEvents(series,input.year-1):[];
+   const previous=prior.length?prior[0]!.events:
+    input.year>1&&input.year-1<auth.premium_plan_start_year?
+     projectYearEvents(series,input.year-1):[];
    // Nothing already booked or certified can be moved by confirming a new
    // yearly plan; even an old unlinked PPV is protected at its actual week.
    const reserved=await tx.query<{week:number;series_id:string|null}>(`

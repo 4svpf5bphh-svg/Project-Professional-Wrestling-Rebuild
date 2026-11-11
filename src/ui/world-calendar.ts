@@ -22,7 +22,7 @@ export interface CalendarPort{
  load():Promise<{promotionId?:string;promotionName:string;year:number;week:number;worldRevision:number;
  canEdit:boolean;eventPosterStyle?:string|null;broadcastPackage?:string|null;series:ShowSeries[];
  bookings?:CalendarBooking[];
- annual?:{tier:StandingTier;policy:PremiumPolicy;years:{
+ annual?:{tier:StandingTier;policyStartYear?:number;policy:PremiumPolicy;years:{
   year:number;confirmed:boolean;events:AnnualPremiumEvent[];
   suggested:AnnualPremiumEvent[]}[]};
  weeks:{year:number;week:number;offset:number;shows:ShowSeries[]}[];
@@ -205,9 +205,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  }
  function changeYearEvent(year:number,week:number,seriesId:string|null){
   const without=yearEvents(year).filter(x=>x.week!==week);
-  if(seriesId)without.push({year,week,seriesId} as AnnualPremiumEvent);
-  // The temporary shape has no year field; keep only canonical committed
-  // payload fields. Sorting creates stable idempotent request fingerprints.
+  if(seriesId)without.push({week,seriesId});
   yearlyDrafts.set(year,without.map(x=>({seriesId:x.seriesId,week:x.week}))
    .sort((a,b)=>a.week-b.week||a.seriesId.localeCompare(b.seriesId)));
   pendingYear=null;render();
@@ -219,7 +217,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   try{
    validateAnnualPremiumEvents({year:selected.year,tier:annual.tier,events,
     series:data.series,originalName:data.promotionName,
-    previous:selected.year===data.year+1?yearEvents(data.year):undefined});
+    previous:selected.year===data.year+1?
+     data.annual.years.find(x=>x.year===data.year)?.events:undefined});
   }catch(e){error=e instanceof Error?e.message:"Review your annual PPV dates";render();return;}
   const input={year:selected.year,expectedRevision:data.worldRevision,events};
   const fingerprint=JSON.stringify(input);
@@ -263,7 +262,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   }
   rootSection.append(years);
   const events=yearEvents(chosen.year);
-  const lockedCurrent=chosen.year===data.year&&data.week>1&&!chosen.confirmed;
+  const lockedCurrent=chosen.year<(data.annual.policyStartYear??1)||
+   chosen.year===data.year&&data.week>1&&!chosen.confirmed;
   const canEdit=data.canEdit&&!!port.saveAnnual&&!lockedCurrent&&!busy;
   const dated=new Map(events.map(x=>[x.week,x.seriesId]));
   rootSection.append(node("p",

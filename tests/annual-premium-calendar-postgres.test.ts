@@ -55,6 +55,14 @@ test("one 52-week PPV confirmation creates playable booked events, protects them
   assert.equal(firstMeasure.meter.assertBudget({maxQueries:3,maxResultBytes:18000}).queryCount,3);
   assert.equal(before.annual?.tier,"LOCAL");
   assert.equal(before.annual?.policyStartYear,1);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET premium_plan_start_year=2 WHERE world_id=$1",[worldId]));
+  await assert.rejects(saveAnnualPremiumPlan(db.pool,{...scope,
+   requestId:"do-not-touch-live-year",expectedRevision:0,year:1,
+   events:before.annual!.years[0]!.suggested}),
+   /grandfathered and cannot be rewritten/);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET premium_plan_start_year=1 WHERE world_id=$1",[worldId]));
   assert.equal(before.annual?.years[0]?.confirmed,false);
   assert.deepEqual(before.annual?.years[0]?.events,[]);
   assert.equal(before.annual?.years[0]?.suggested.length,3);

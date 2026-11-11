@@ -189,6 +189,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   promotionId:input.promotionId,showId:input.showId,
   preferredDay:null,preferredVenueId:null,personIds:[],
   excludedDays:input.excludedDays,
+  preferredDays:input.eventType==="MAJOR"?[6,7]:undefined,
   availableVenueIds:input.activeVenues,bookedShows:input.bookedShows});
  if(!schedule)return {status:"UNFILLED",reason:"NO_VENUE_OR_DAY"};
  const available=eligible.filter(p=>!occupiedSameDay(schedule.day,p.personId));
