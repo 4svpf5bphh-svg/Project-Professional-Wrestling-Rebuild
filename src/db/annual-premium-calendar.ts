@@ -54,6 +54,25 @@ export async function readAnnualPremiumPlans(tx:SqlRows,worldId:string,
 export function plansMap(rows:readonly StoredAnnualPremiumPlan[]):PremiumPlans{
  return new Map(rows.map(p=>[p.year,p.events]));
 }
+/** One indexed annual-plan JSON aggregate can ride on the existing owner
+ * snapshot query, avoiding an extra Neon network round-trip on page view. */
+export function decodeAnnualPremiumSnapshot(raw:unknown):StoredAnnualPremiumPlan[]{
+ if(raw===null)return [];
+ if(!Array.isArray(raw)||raw.length>3)
+  throw new Error("Invalid annual planning snapshot");
+ return raw.map(value=>{
+  if(!value||typeof value!=="object"||Array.isArray(value))
+   throw new Error("Invalid annual planning snapshot row");
+  const row=value as Record<string,unknown>;
+  if(!validYears(row.year as number)||typeof row.tierAtCommit!=="string"||
+   !Number.isSafeInteger(row.confirmedWeekIndex)||
+   (row.confirmedWeekIndex as number)<0)
+   throw new Error("Invalid annual year metadata");
+  return {year:row.year as number,events:validatedEvents(row.events),
+   tierAtCommit:row.tierAtCommit as StandingTier,
+   confirmedWeekIndex:row.confirmedWeekIndex as number};
+ });
+}
 async function ownerSnapshot(tx:SqlRows,scope:AnnualPremiumScope){
  const rows=await tx.query<{name:string;tier:StandingTier;cadence:number;
   interval:number|null;year:number;week:number;booking_open:boolean}>(`
