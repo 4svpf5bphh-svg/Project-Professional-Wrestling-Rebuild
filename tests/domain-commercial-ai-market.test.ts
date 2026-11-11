@@ -54,3 +54,17 @@ test("fair alphabetical tie-breaking and sponsor personality remain deterministi
  assert.equal(digital.find(x=>x.offer.kind==="SPONSOR")?.offer.code,"SPONSOR_TECH");
  assert.equal(digital.find(x=>x.offer.kind==="SPONSOR")?.promotion.promotion_id,"rising");
 });
+
+test("an AI sponsor can favour certified PPV buyers without inventing a TV win",()=>{
+ const ordinary=candidate("a-weekly",.6,78,{tier:"NATIONAL",
+  completedShows:11,recentPremiumShows:0,averagePpvBuys:null});
+ const premium=candidate("z-ppv",.6,78,{tier:"NATIONAL",
+  completedShows:11,recentPremiumShows:1,averagePpvBuys:210000});
+ const occupied=new Set(["SPONSOR_LUXURY","SPONSOR_TECH","SPONSOR_PARTNER",
+  "SPONSOR_GEAR","SPONSOR_FOOD"]);
+ const deals=awardAiCommercialPartners([ordinary,premium],occupied);
+ assert.equal(deals.find(x=>x.offer.kind==="SPONSOR")?.promotion.promotion_id,
+  "z-ppv");
+ assert.equal(deals.find(x=>x.offer.kind==="BROADCAST")?.promotion.promotion_id,
+  "a-weekly");
+});

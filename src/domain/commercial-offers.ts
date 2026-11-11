@@ -1,6 +1,7 @@
 /** Fictional commercial universe; terms come from certified shows, not client cash.
  * One live broadcaster and sponsor at a time. AI and players use this catalogue.
  */
+import {PPV_TIER_BASE_BUYS} from "./show-audience.js";
 export type CommercialKind="BROADCAST"|"SPONSOR";
 export type CommercialOffer={
  code:string;kind:CommercialKind;name:string;description:string;
@@ -11,6 +12,9 @@ export type CommercialEvidence={
  tier:string;mediaReach:number|null;weeklyMediaIncome:number|null;
  weeklySponsorIncome:number|null;completedShows:number;averageCrowd:number|null;
  recentTvEpisodes?:number;averageTvRating?:number|null;
+ // Only PPV-format, PREMIUM-class, completed shows count; not a calendar
+ // reservation, TV/streamer audience or a future booking draft.
+ recentPremiumShows?:number;averagePpvBuys?:number|null;
 };
 export const COMMERCIAL_COMPANIES:Readonly<Record<string,{
  name:string;tagline:string;preference:string;
@@ -46,6 +50,16 @@ export function commercialCompanyName(code:string):string{
 }
 const good=(n:number|null):n is number=>n!==null&&Number.isFinite(n)&&n>0;
 const term=(base:number,percent:number)=>Math.round(base*(1+percent));
+ /** Premium audiences only strengthen new sponsors; never change an
+ * existing contract, ticket income, PPV buys or TV household ratings.
+ */
+export function certifiedPremiumSponsorLift(e:CommercialEvidence):number{
+ const reference=PPV_TIER_BASE_BUYS[e.tier as keyof typeof PPV_TIER_BASE_BUYS];
+ const count=e.recentPremiumShows??0,buys=e.averagePpvBuys;
+ if(!reference||!Number.isSafeInteger(count)||count<1||
+  typeof buys!=="number"||!Number.isFinite(buys)||buys<=0)return 0;
+ return Math.max(0,Math.min(.12,(buys/reference-.55)*.14));
+}
 /** Small promotions earn fractional household audiences: network expectations
  * must be reachable on sensible regional reach, while national and global\n * prestige requirements remain demanding and unchanged.
  */
@@ -104,6 +118,7 @@ export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
  // The audience premium is additional guaranteed weekly income and remains
  // deliberately capped; it does not invent or post revenue before signing.
  const earnedPremium=sample?Math.max(-.06,Math.min(.24,(ratio-1)*.17)):0;
+ const verifiedPpvLift=certifiedPremiumSponsorLift(e);
  if(count<3||crowd<48)return [];
  const offers:CommercialOffer[]=[];
  const add=(code:string,kind:CommercialKind,base:number,percent:number,
@@ -111,9 +126,12 @@ export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
   const company=COMMERCIAL_COMPANIES[code]!;
   // Identity copy lives in the already-shipped client catalogue; do not
   // transfer it repeatedly in every Business workspace RPC.
-  offers.push({code,kind,name:company.name,description,
+  offers.push({code,kind,name:company.name,
+   description:kind==="SPONSOR"&&verifiedPpvLift>0?
+    description+" Certified PPV buyers strengthen these new sponsor terms.":description,
    weeklyIncome:Math.max(0,Math.round(term(base,percent)*(1+earnedPremium*
-    (kind==="BROADCAST"?1:.4)))),
+    (kind==="BROADCAST"?1:.4)+
+    (kind==="SPONSOR"?verifiedPpvLift:0)))),
    // Reach is a percentage-sized, 0–100 audience index. New TV terms
    // may improve distribution but never put the World above its valid cap.
    reachIncrease:Math.max(0,Math.min(100-Math.min(100,reach??0),

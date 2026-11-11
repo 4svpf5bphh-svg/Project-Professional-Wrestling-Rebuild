@@ -113,3 +113,26 @@ test("sponsors react in different voices to certified strong and weak crowd runs
  assert.match(disappointed,/Our board expects a stronger presentation/);
  assert.notEqual(wild,prestige);
 });
+
+test("only certified premium PPV buys improve new sponsor offers, never TV terms",()=>{
+ const ordinary={...settled,tier:"RISING",completedShows:8,averageCrowd:77};
+ const baseline=commercialOffers(ordinary);
+ assert.deepEqual(commercialOffers({...ordinary,recentPremiumShows:0,
+  averagePpvBuys:1_000_000}),baseline);
+ assert.deepEqual(commercialOffers({...ordinary,recentPremiumShows:2,
+  averagePpvBuys:null}),baseline);
+ const actual=commercialOffers({...ordinary,recentPremiumShows:1,
+  averagePpvBuys:48_000});
+ const code="SPONSOR_PARTNER";
+ assert.ok(actual.find(x=>x.code===code)!.weeklyIncome>
+  baseline.find(x=>x.code===code)!.weeklyIncome);
+ assert.match(actual.find(x=>x.code===code)!.description,/Certified PPV buyers/);
+ assert.deepEqual(actual.filter(x=>x.kind==="BROADCAST"),
+  baseline.filter(x=>x.kind==="BROADCAST"));
+ const enormous=commercialOffers({...ordinary,recentPremiumShows:1,
+  averagePpvBuys:1_000_000_000});
+ const capped=commercialOffers({...ordinary,recentPremiumShows:1,
+  averagePpvBuys:480_000});
+ assert.equal(enormous.find(x=>x.code===code)?.weeklyIncome,
+  capped.find(x=>x.code===code)?.weeklyIncome);
+});
