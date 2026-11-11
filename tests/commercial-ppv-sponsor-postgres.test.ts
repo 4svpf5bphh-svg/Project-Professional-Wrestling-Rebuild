@@ -24,7 +24,7 @@ test("real certified PPV buys improve the shown and signed sponsor terms; future
    promotionId:promotion,requestId:"ppv-sponsor-claim",expectedRevision:1});
   assert.equal(claim.status,"APPLIED");
   await withWorldTransaction(db.pool,async tx=>{
-   await tx.query(`UPDATE ppw_worlds SET week=5,
+   await tx.query(`UPDATE ppw_worlds SET week=6,
     next_lock_at=clock_timestamp()+interval '2 days'
     WHERE world_id=$1`,[world]);
    for(let week=1;week<=3;week++){
@@ -57,8 +57,31 @@ test("real certified PPV buys improve the shown and signed sponsor terms; future
     INSERT INTO ppw_booking_drafts
      (world_id,draft_id,promotion_id,year,week,status,show_day,
       booking_class,event_type,show_name)
-    VALUES($1,'upcoming-ppv',$2,1,4,'DRAFT',7,'PREMIUM','MAJOR',
+    VALUES($1,'upcoming-ppv',$2,1,7,'DRAFT',7,'PREMIUM','MAJOR',
      'Summer Riot')`,[world,promotion]);
+   // A streaming-included PLE is a certified *premium* broadcast with TV
+   // viewers, not paid PPV buys or an ordinary contracted TV episode.
+   await tx.query(`
+    INSERT INTO ppw_booking_drafts
+     (world_id,draft_id,promotion_id,year,week,status,show_day,
+      booking_class,event_type,show_name)
+    VALUES($1,'streaming-ple',$2,1,5,'SUBMITTED',7,'PREMIUM','MAJOR',
+     'Included Streaming Special')`,[world,promotion]);
+   await tx.query(`
+    INSERT INTO ppw_completed_shows
+     (world_id,promotion_id,show_id,year,week,resolution_id,
+      crowd_response,receipt_json,receipt_digest)
+    VALUES($1,$2,'streaming-ple',1,5,'streaming-result',77,
+     '{}'::jsonb,repeat('c',64))`,[world,promotion]);
+   await tx.query(`
+    INSERT INTO ppw_show_economics
+     (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
+      gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
+      total_cost,net_result,incremental_cash,audience_format,
+      tv_household_rating,estimated_viewers)
+    VALUES($1,'streaming-ple',$2,1,5,800,1100,175000,25000,35000,
+     15000,25000,100000,75000,75000,'TV',0.9,1125000)`,
+    [world,promotion]);
   });
   const baseline=await readBusinessWorkspace(db.pool,{worldId:world,
    promotionId:promotion,playerId:owner});
@@ -66,6 +89,8 @@ test("real certified PPV buys improve the shown and signed sponsor terms; future
   assert.ok(sponsor0,"Three certified television broadcasts earn basic sponsor");
   assert.equal(baseline.recentPremiumShows,0);
   assert.equal(baseline.averagePpvBuys,null);
+  assert.equal(baseline.recentTvEpisodes,3,
+   "An included streaming PLE is not a regular TV episode");
   assert.doesNotMatch(sponsor0!.description,/Certified PPV buyers/);
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`

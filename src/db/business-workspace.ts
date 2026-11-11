@@ -267,8 +267,11 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   },{workrate:0,spectacle:0,stars:0,stories:0,
    knownMatches:0,completedShows:0});
   const creativeIdentity=earnedPromotionIdentity(creative);
-  const tvReceipts=certified.filter(show=>show.audience_format==="TV"&&
-   show.tv_household_rating!==null);
+  // A streamed PLE can have measured viewers without becoming a weekly
+  // Nielsen broadcast. Keep the Business preview identical to the signing
+  // and AI-bid rules: only certified REGULAR television affects TV terms.
+  const tvReceipts=certified.filter(show=>show.booking_class==="REGULAR"&&
+   show.audience_format==="TV"&&show.tv_household_rating!==null);
   const averageTvRating=tvReceipts.length?tvReceipts.reduce((n,show)=>
    n+Number(show.tv_household_rating),0)/tvReceipts.length:null;
   const premiumReceipts=certified.filter(show=>
