@@ -17,6 +17,7 @@ import {settleWeeklyPromotionHealth} from "./weekly-finance-health.js";
 import {settleRecurringWorldFinances} from "./weekly-recurring-finances.js";
 import {expireAndRetainAiContracts} from "./ai-contract-continuity.js";
 import {settleCommercialWorldWeek} from "./weekly-commercial-settlement.js";
+import {reviewWorldPromotionCompetition} from "./promotion-competition.js";
 import {evaluateYearEndPromotionStandings} from "./annual-promotion-standing.js";
 import {settleWeekLocalMarkets} from "./market-response.js";
 import {refreshWorldProgrammeSignals} from "./programme-week-signals.js";
@@ -260,6 +261,12 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
        await evaluateYearEndPromotionStandings(tx,input.worldId,year,week);
        await settleAnnualPromotionScale(tx,input.worldId,year,week);
       }
+      // Make the competitor a living promotion-level relationship rather
+      // than a weekly TV-only selector. After Year 52 tier changes, the
+      // next circuit review sees the actual promotion size. The review is
+      // batched and runs only on first/each eighth certified World week
+      // and the annual transition; all outcomes stay in this World txn.
+      await reviewWorldPromotionCompetition(tx,input.worldId,year,week);
       // Apply accepted renewals only at the end of the paid current term.
       await tx.query(`UPDATE ppw_contracts c SET
           start_week_index=c.expires_week_index+1,
