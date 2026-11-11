@@ -213,12 +213,12 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  async function confirmAnnual(){
   const selected=yearData(),annual=data?.annual;
   if(!selected||!annual||!data||busy||!port.saveAnnual)return;
-  const events=yearEvents(selected.year);
+  const events=yearEvents(selected.year),currentYear=data.year;
   try{
    validateAnnualPremiumEvents({year:selected.year,tier:annual.tier,events,
     series:data.series,originalName:data.promotionName,
-    previous:selected.year===data.year+1?
-     data.annual.years.find(x=>x.year===data.year)?.events:undefined});
+    previous:selected.year===currentYear+1?
+     annual.years.find(x=>x.year===currentYear)?.events:undefined});
   }catch(e){error=e instanceof Error?e.message:"Review your annual PPV dates";render();return;}
   const input={year:selected.year,expectedRevision:data.worldRevision,events};
   const fingerprint=JSON.stringify(input);
