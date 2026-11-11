@@ -54,8 +54,8 @@ for(const width of [320,390]){
   const first=saves[0] as {year:number;events:{seriesId:string;week:number}[]};
   expect(first.year).toBe(1);
   expect(first.events.map(x=>x.week)).toEqual([12,20,29,46]);
-  expect(calls).toEqual(["calendar","saveAnnualPremium","calendar"],
-   "No database calls from viewing or tapping week cells");
+  expect(calls,"No database calls from viewing or tapping week cells")
+   .toEqual(["calendar","saveAnnualPremium","calendar"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
