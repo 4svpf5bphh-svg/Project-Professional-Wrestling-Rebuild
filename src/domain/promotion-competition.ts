@@ -6,13 +6,14 @@ export interface CompetitionCandidate{
  promotionId:string;tier:string;mediaReach:number|null;
  homeMarketId:string|null;humanManaged:boolean;
  completedShows:number;averageCrowd:number|null;
- averageTvRating:number|null;
+ averageAttendance:number|null;averageTvRating:number|null;
  previousRivalId:string|null;previousSinceWeekIndex:number|null;
 }
 export interface CompetitionSelection{
  promotionId:string;rivalId:string|null;nextTargetId:string|null;
  sinceWeekIndex:number;ownShows:number;rivalShows:number;
  ownCrowd:number|null;rivalCrowd:number|null;
+ ownAttendance:number|null;rivalAttendance:number|null;
  ownReach:number|null;rivalReach:number|null;
  ownTvRating:number|null;rivalTvRating:number|null;
  changed:boolean;
@@ -27,13 +28,16 @@ function score(own:CompetitionCandidate,other:CompetitionCandidate):number{
  const market=own.homeMarketId!==null&&own.homeMarketId===other.homeMarketId;
  const crowd=own.averageCrowd!==null&&other.averageCrowd!==null?
   Math.max(0,10-Math.abs(own.averageCrowd-other.averageCrowd)/5):0;
+ const attendance=own.averageAttendance!==null&&other.averageAttendance!==null?
+  Math.max(0,12-Math.abs(own.averageAttendance-other.averageAttendance)/
+   Math.max(100,Math.max(own.averageAttendance,other.averageAttendance)) *20):0;
  const tv=own.averageTvRating!==null&&other.averageTvRating!==null?
   Math.max(0,10-Math.abs(own.averageTvRating-other.averageTvRating)*4):0;
  // Comparable humans should naturally meet on the local circuit, but a
  // stronger AI competitor can displace them if the companies diverge.
  return 115-gap*33-Math.min(26,reachDiff/3)+
   (market?19:0)+(other.humanManaged?(gap===0?25:10):0)+
-  crowd+tv+Math.min(5,other.completedShows);
+  crowd+attendance+tv+Math.min(5,other.completedShows);
 }
 export function selectPromotionCompetition(
  companies:readonly CompetitionCandidate[],weekIndex:number
@@ -68,6 +72,8 @@ export function selectPromotionCompetition(
    sinceWeekIndex:changed?weekIndex:own.previousSinceWeekIndex??weekIndex,
    ownShows:own.completedShows,rivalShows:selected?.completedShows??0,
    ownCrowd:own.averageCrowd,rivalCrowd:selected?.averageCrowd??null,
+   ownAttendance:own.averageAttendance,
+   rivalAttendance:selected?.averageAttendance??null,
    ownReach:own.mediaReach,rivalReach:selected?.mediaReach??null,
    ownTvRating:own.averageTvRating,rivalTvRating:selected?.averageTvRating??null,
    changed

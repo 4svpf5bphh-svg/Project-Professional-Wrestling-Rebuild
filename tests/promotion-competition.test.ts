@@ -7,7 +7,7 @@ const company=(id:string,tier:string,reach:number,
  since:number|null=null):CompetitionCandidate=>({
  promotionId:id,tier,mediaReach:reach,homeMarketId:market,
  humanManaged:human,completedShows:6,averageCrowd:70,
- averageTvRating:null,previousRivalId:previous,
+ averageAttendance:400,averageTvRating:null,previousRivalId:previous,
  previousSinceWeekIndex:since
 });
 test("two small human managers naturally compete before anyone has TV",()=>{

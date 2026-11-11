@@ -8,7 +8,8 @@ import {selectPromotionCompetition,type CompetitionCandidate}
 type Row={
  promotion_id:string;tier:string;media_reach:number|string|null;
  home_market_id:string|null;human_managed:boolean;
- completed_shows:number;average_crowd:string|null;average_tv_rating:string|null;
+ completed_shows:number;average_crowd:string|null;
+ average_attendance:string|null;average_tv_rating:string|null;
  previous_rival_id:string|null;previous_since_week_index:number|null;
 };
 export async function reviewWorldPromotionCompetition(
@@ -25,6 +26,7 @@ export async function reviewWorldPromotionCompetition(
   WITH recent AS (
    SELECT c.promotion_id,count(*)::integer AS completed_shows,
     avg(c.crowd_response)::numeric(5,1)::text AS average_crowd,
+    avg(e.attendance)::numeric(12,1)::text AS average_attendance,
     avg(e.tv_household_rating) FILTER(
      WHERE d.booking_class='REGULAR' AND e.audience_format='TV'
     )::numeric(5,2)::text AS average_tv_rating
@@ -42,7 +44,7 @@ export async function reviewWorldPromotionCompetition(
     WHERE control.world_id=p.world_id AND
      control.promotion_id=p.promotion_id AND control.active) AS human_managed,
    coalesce(recent.completed_shows,0) AS completed_shows,
-   recent.average_crowd,recent.average_tv_rating,
+   recent.average_crowd,recent.average_attendance,recent.average_tv_rating,
    prior.rival_promotion_id AS previous_rival_id,
    prior.rival_since_week_index AS previous_since_week_index
   FROM ppw_promotions p LEFT JOIN recent ON
@@ -59,6 +61,7 @@ export async function reviewWorldPromotionCompetition(
   homeMarketId:r.home_market_id,humanManaged:r.human_managed,
   completedShows:r.completed_shows,
   averageCrowd:r.average_crowd===null?null:Number(r.average_crowd),
+  averageAttendance:r.average_attendance===null?null:Number(r.average_attendance),
   averageTvRating:r.average_tv_rating===null?null:Number(r.average_tv_rating),
   previousRivalId:r.previous_rival_id,
   previousSinceWeekIndex:r.previous_since_week_index
@@ -69,13 +72,16 @@ export async function reviewWorldPromotionCompetition(
    world_id,promotion_id,rival_promotion_id,target_promotion_id,
    rival_since_week_index,reviewed_week_index,
    own_show_count,rival_show_count,own_avg_crowd,rival_avg_crowd,
+   own_avg_attendance,rival_avg_attendance,
    own_reach,rival_reach,own_tv_rating,rival_tv_rating)
   SELECT $1,x.promotion_id,x.rival_id,x.target_id,
    x.since_week,$2,x.own_shows,x.rival_shows,x.own_crowd,x.rival_crowd,
+   x.own_attendance,x.rival_attendance,
    x.own_reach,x.rival_reach,x.own_tv,x.rival_tv
   FROM jsonb_to_recordset($3::jsonb) AS x(
    promotion_id text,rival_id text,target_id text,since_week integer,
    own_shows integer,rival_shows integer,own_crowd numeric,rival_crowd numeric,
+   own_attendance numeric,rival_attendance numeric,
    own_reach numeric,rival_reach numeric,own_tv numeric,rival_tv numeric)
   ON CONFLICT(world_id,promotion_id) DO UPDATE SET
    rival_promotion_id=excluded.rival_promotion_id,
@@ -86,6 +92,8 @@ export async function reviewWorldPromotionCompetition(
    rival_show_count=excluded.rival_show_count,
    own_avg_crowd=excluded.own_avg_crowd,
    rival_avg_crowd=excluded.rival_avg_crowd,
+   own_avg_attendance=excluded.own_avg_attendance,
+   rival_avg_attendance=excluded.rival_avg_attendance,
    own_reach=excluded.own_reach,rival_reach=excluded.rival_reach,
    own_tv_rating=excluded.own_tv_rating,
    rival_tv_rating=excluded.rival_tv_rating
@@ -93,6 +101,7 @@ export async function reviewWorldPromotionCompetition(
   promotion_id:s.promotionId,rival_id:s.rivalId,target_id:s.nextTargetId,
   since_week:s.sinceWeekIndex,own_shows:s.ownShows,rival_shows:s.rivalShows,
   own_crowd:s.ownCrowd,rival_crowd:s.rivalCrowd,
+  own_attendance:s.ownAttendance,rival_attendance:s.rivalAttendance,
   own_reach:s.ownReach,rival_reach:s.rivalReach,
   own_tv:s.ownTvRating,rival_tv:s.rivalTvRating
  })))]);
@@ -107,6 +116,7 @@ export interface PromotionCompetitionCard {
  sinceWeekIndex:number;reviewedWeekIndex:number;
  ownShowCount:number;rivalShowCount:number;
  ownAvgCrowd:number|null;rivalAvgCrowd:number|null;
+ ownAvgAttendance:number|null;rivalAvgAttendance:number|null;
  ownReach:number|null;rivalReach:number|null;
  ownTvRating:number|null;rivalTvRating:number|null;
  targetName:string|null;targetTier:string|null;
@@ -122,6 +132,8 @@ export function promotionCompetitionProjectionSql(world:string,owner:string):str
    'reviewedWeekIndex',c.reviewed_week_index,
    'ownShowCount',c.own_show_count,'rivalShowCount',c.rival_show_count,
    'ownAvgCrowd',c.own_avg_crowd,'rivalAvgCrowd',c.rival_avg_crowd,
+   'ownAvgAttendance',c.own_avg_attendance,
+   'rivalAvgAttendance',c.rival_avg_attendance,
    'ownReach',c.own_reach,'rivalReach',c.rival_reach,
    'ownTvRating',c.own_tv_rating,'rivalTvRating',c.rival_tv_rating,
    'targetName',target.name,'targetTier',target.tier)

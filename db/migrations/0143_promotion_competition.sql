@@ -12,6 +12,8 @@ CREATE TABLE ppw_promotion_competition(
  rival_show_count integer NOT NULL DEFAULT 0 CHECK(rival_show_count>=0),
  own_avg_crowd numeric(5,1),
  rival_avg_crowd numeric(5,1),
+ own_avg_attendance numeric(12,1),
+ rival_avg_attendance numeric(12,1),
  own_reach numeric(5,1),
  rival_reach numeric(5,1),
  own_tv_rating numeric(5,2),
