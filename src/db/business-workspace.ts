@@ -246,6 +246,9 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     JOIN ppw_promotions p ON p.world_id=e.world_id
      AND p.promotion_id=e.promotion_id AND p.lifecycle='ACTIVE'
     JOIN ppw_booking_drafts d ON d.world_id=e.world_id AND d.draft_id=e.show_id
+     AND d.status='SUBMITTED' AND d.booking_class='REGULAR'
+    JOIN ppw_completed_shows certified ON certified.world_id=e.world_id
+     AND certified.show_id=e.show_id AND certified.promotion_id=e.promotion_id
     WHERE e.world_id=$1 AND e.audience_format='TV' AND e.tv_household_rating IS NOT NULL
      AND (e.year-1)*52+e.week-1 BETWEEN $2-5 AND $2
     ORDER BY e.promotion_id,e.year DESC,e.week DESC,e.show_id DESC LIMIT 36

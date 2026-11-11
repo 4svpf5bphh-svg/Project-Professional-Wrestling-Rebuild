@@ -91,6 +91,9 @@ test("real certified PPV buys improve the shown and signed sponsor terms; future
   assert.equal(baseline.averagePpvBuys,null);
   assert.equal(baseline.recentTvEpisodes,3,
    "An included streaming PLE is not a regular TV episode");
+  assert.equal(baseline.competitorBroadcasts.some(x=>
+   x.showName==="Included Streaming Special"),false,
+   "A streaming-only PLE must not enter the certified TV battle");
   assert.doesNotMatch(sponsor0!.description,/Certified PPV buyers/);
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`

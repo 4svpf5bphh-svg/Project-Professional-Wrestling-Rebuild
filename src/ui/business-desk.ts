@@ -752,7 +752,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    }else rivalry.append(el("h3","","The circuit is taking shape"),
     el("p","ppw-ratings-circuit-status",
      "The first completed World week will establish your nearest rival."));
-   section.append(rivalry);
+   // Preserve the original one-screen TV face-off on 320/390px when a
+   // World has not yet completed its first circuit-rivalry review.
+   if(circuit)section.append(rivalry);
    const ranking=view.competitorBroadcasts??[];
    const own=ranking.find(episode=>episode.isYours)??null;
    const others=ranking.filter(episode=>!episode.isYours);
@@ -824,6 +826,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     section.append(position);
    }
    const episodes=view.shows.filter(show=>
+    (show.bookingClass===undefined||show.bookingClass==="REGULAR")&&
     show.audience?.format==="TV"&&typeof show.audience.householdRating==="number")
     .slice(0,6).reverse();
    const trend=el("section","ppw-ratings-war-trend");
