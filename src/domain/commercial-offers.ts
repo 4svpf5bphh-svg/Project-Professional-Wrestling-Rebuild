@@ -1,6 +1,7 @@
 /** Fictional commercial universe; terms come from certified shows, not client cash.
  * One live broadcaster and sponsor at a time. AI and players use this catalogue.
  */
+import {PPV_TIER_BASE_BUYS} from "./show-audience.js";
 export type CommercialKind="BROADCAST"|"SPONSOR";
 export type CommercialOffer={
  code:string;kind:CommercialKind;name:string;description:string;
@@ -49,14 +50,11 @@ export function commercialCompanyName(code:string):string{
 }
 const good=(n:number|null):n is number=>n!==null&&Number.isFinite(n)&&n>0;
 const term=(base:number,percent:number)=>Math.round(base*(1+percent));
-const ppvBaseline:Readonly<Record<string,number>>={
- LOCAL:900,INDEPENDENT:9000,RISING:48000,NATIONAL:210000,GLOBAL:740000
-};
-/** Premium audiences only strengthen new sponsors; never change an
+ /** Premium audiences only strengthen new sponsors; never change an
  * existing contract, ticket income, PPV buys or TV household ratings.
  */
 export function certifiedPremiumSponsorLift(e:CommercialEvidence):number{
- const reference=ppvBaseline[e.tier];
+ const reference=PPV_TIER_BASE_BUYS[e.tier as keyof typeof PPV_TIER_BASE_BUYS];
  const count=e.recentPremiumShows??0,buys=e.averagePpvBuys;
  if(!reference||!Number.isSafeInteger(count)||count<1||
   typeof buys!=="number"||!Number.isFinite(buys)||buys<=0)return 0;
