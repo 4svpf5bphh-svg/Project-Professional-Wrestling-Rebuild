@@ -5,7 +5,7 @@
 import {randomUUID} from "node:crypto";
 import {defaults,seriesDue,type ShowSeries} from "../domain/show-calendar.js";
 import {scheduledSeriesOnWeek} from "../domain/annual-premium-plan.js";
-import {readAnnualPremiumPlans,plansMap}
+import {decodeAnnualPremiumSnapshot,plansMap}
  from "./annual-premium-calendar.js";
 import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
@@ -62,7 +62,7 @@ const weekIndex=(year:number,week:number)=>(year-1)*52+week-1;
 function dateAt(index:number){return {year:Math.floor(index/52)+1,week:index%52+1};}
 type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
- premium_plan_start_year:number;
+ premium_plan_start_year:number;annual_plans:unknown;
  major_interval:number|null;home_market_id:string|null;event_poster:string|null;
  broadcast_package:string|null;
  broadcast_slot:{offerCode:string;day:number|null;hour:number|null;
@@ -84,7 +84,13 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
     WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
      AND d.kind='BROADCAST' AND d.status='ACTIVE'
      AND d.end_week_index >= (w.year-1)*52+w.week-1
-    ORDER BY d.end_week_index DESC LIMIT 1) AS broadcast_slot
+    ORDER BY d.end_week_index DESC LIMIT 1) AS broadcast_slot,
+   (SELECT coalesce(jsonb_agg(jsonb_build_object('year',pplan.year,
+    'events',pplan.events,'tierAtCommit',pplan.tier_at_commit,
+    'confirmedWeekIndex',pplan.confirmed_week_index) ORDER BY pplan.year),'[]'::jsonb)
+    FROM ppw_annual_premium_plans pplan
+    WHERE pplan.world_id=w.world_id AND pplan.promotion_id=p.promotion_id
+      AND pplan.year BETWEEN w.year AND w.year+1) AS annual_plans
    FROM ppw_worlds w
  JOIN ppw_promotions p ON p.world_id=w.world_id AND p.promotion_id=$2
  JOIN ppw_promotion_controls c ON c.world_id=w.world_id
@@ -205,9 +211,8 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
   importance:x.importance,active:x.active,posterStyle:x.poster_style
  })):defaults(owned.promotion_name,owned.cadence,owned.major_interval??4);
- const planYears=await readAnnualPremiumPlans(tx,s.worldId,s.promotionId,
-  owned.year,dateAt(start+6).year);
- const yearly=new Map(plansMap(planYears));
+ const yearly=new Map(plansMap(
+  decodeAnnualPremiumSnapshot(owned.annual_plans)));
  for(const year of [owned.year,dateAt(start+6).year])
   if(year>=owned.premium_plan_start_year&&!yearly.has(year))
    yearly.set(year,[]);
@@ -299,8 +304,8 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const selected=input.showSeriesId?
     series.find(s=>s.seriesId===input.showSeriesId):null;
    if(input.showSeriesId&&!selected)throw new Error("Show identity not on this promotion's calendar");
-   const plan=new Map(plansMap(await readAnnualPremiumPlans(tx,input.worldId,
-    input.promotionId,input.year,input.year)));
+   const plan=new Map(plansMap(
+    decodeAnnualPremiumSnapshot(auth.annual_plans)));
    if(input.year>=auth.premium_plan_start_year&&!plan.has(input.year))
     plan.set(input.year,[]);
    if(selected&&!scheduledSeriesOnWeek(series,input.year,input.week,plan)
