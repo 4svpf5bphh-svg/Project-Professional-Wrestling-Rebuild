@@ -28,10 +28,14 @@ const show:CompletedShowView={showId:"new",showName:"Collision",
  year:2,week:4,matchCount:3,angleCount:1,crowdResponse:79,
  entries:[angle,joe,another,noMatch]};
 const history:RingsideMemory={priorMatches:[
- {when:"Y2 W2",wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN"},
- {when:"Y2 W3",wrestlers:["Cody Rhodes","MJF"],winners:["MJF"],finish:"FLASH_PIN"},
- {when:"Y2 W5",wrestlers:["Samoa Joe","Matt Riddle"],winners:["Matt Riddle"],finish:"SUBMISSION"},
- {when:"Y1 W1",wrestlers:["Samoa Joe","Someone else"],winners:["Someone else"],finish:"CLEAN_PIN"},
+ {when:"Y2 W2",wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN",
+  sides:[["Kenny Omega"],["PAC"]]},
+ {when:"Y2 W3",wrestlers:["Cody Rhodes","MJF"],winners:["MJF"],finish:"FLASH_PIN",
+  sides:[["Cody Rhodes"],["MJF"]]},
+ {when:"Y2 W5",wrestlers:["Samoa Joe","Matt Riddle"],winners:["Matt Riddle"],finish:"SUBMISSION",
+  sides:[["Samoa Joe"],["Matt Riddle"]]},
+ {when:"Y1 W1",wrestlers:["Samoa Joe","Someone else"],winners:["Someone else"],finish:"CLEAN_PIN",
+  sides:[["Samoa Joe"],["Someone else"]]},
  ],programmes:[]};
 test("linked promo and match share a story without pretending the earlier angle caused it",()=>{
  const notes=verifiedSlotStoryThreads(show,history);
@@ -57,17 +61,29 @@ test("only opposite-side participants sharing a certified prior match receive ca
  assert.equal(outside[0],null);
  const together=matchup("together",4,"Kenny Omega","Cody Rhodes");
  const teamed:typeof history={...history,priorMatches:[{when:"Y2 W1",
-  wrestlers:["Kenny Omega","Cody Rhodes","PAC","MJF"],winners:["Kenny Omega"],finish:"CLEAN_PIN"}]};
- // A shared match is not proof of opposing teams in the historical bout.
+  wrestlers:["Kenny Omega","Cody Rhodes","PAC","MJF"],winners:["Kenny Omega"],
+  finish:"CLEAN_PIN",sides:[["Kenny Omega","Cody Rhodes"],["PAC","MJF"]]}]};
+ // Two former TEAMMATES cannot be narrated as prior opponents.
  const label=verifiedSlotStoryThreads({...show,entries:[together]},teamed)[0];
- assert.equal(label?.previousSharedMatch?.winner,"Kenny Omega");
- assert.equal(label?.rivalry,undefined);
+ assert.equal(label,null);
+ const opposed:typeof history={...history,priorMatches:[{when:"Y2 W1",
+  wrestlers:["Kenny Omega","Cody Rhodes","PAC","MJF"],winners:["Kenny Omega"],
+  finish:"CLEAN_PIN",sides:[["Kenny Omega","PAC"],["Cody Rhodes","MJF"]]}]};
+ assert.equal(verifiedSlotStoryThreads({...show,entries:[together]},opposed)[0]
+  ?.previousSharedMatch?.winner,"Kenny Omega");
+ // An old flat history record without side evidence fails closed.
+ const unproven:typeof history={...history,priorMatches:[{when:"Y2 W1",
+  wrestlers:["Kenny Omega","Cody Rhodes"],winners:["Kenny Omega"],finish:"CLEAN_PIN"}]};
+ assert.equal(verifiedSlotStoryThreads({...show,entries:[together]},unproven)[0],null);
 });
 test("future and same-week history is suppressed even when stale data is supplied",()=>{
  const bad:RingsideMemory={priorMatches:[{when:"Y2 W5",
-  wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN"},
- {when:"Y2 W4",wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN"},
- {when:"not a date",wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN"}],programmes:[]};
+  wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN",
+  sides:[["Kenny Omega"],["PAC"]]},
+ {when:"Y2 W4",wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN",
+  sides:[["Kenny Omega"],["PAC"]]},
+ {when:"not a date",wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN",
+  sides:[["Kenny Omega"],["PAC"]]}],programmes:[]};
  assert.deepEqual(verifiedSlotStoryThreads({...show,entries:[another]},bad),[null]);
 });
 test("Groq's compact factual brief has different private history per slot and no global dump",()=>{

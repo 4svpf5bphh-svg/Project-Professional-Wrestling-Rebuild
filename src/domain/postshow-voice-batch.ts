@@ -43,13 +43,21 @@ const roadAgentNextStep=(issue:string,matchType:string|null)=>{
   default:return "Review the next card's pacing and match placement";
  }
 };
+/** The low-cost news brief must carry every canonical winning method. An
+ * otherwise correct paid-provider summary must not turn an unusual finish into
+ * a pinfall just because the source descriptor says only "certified result". */
 const finish=(s:string)=>({
  CLEAN_PIN:"three-count pinfall",FLASH_PIN:"surprise pinfall",SUBMISSION:"submission",
- DISQUALIFICATION:"disqualification",FOREIGN_OBJECT:"recorded controversial finish",
- PROTECTED_FINISH:"recorded disputed finish",INJURY_STOPPAGE:"referee stoppage",
+ DISQUALIFICATION:"disqualification",FOREIGN_OBJECT:"controversial finish",
+ PROTECTED_FINISH:"disputed finish",INJURY_STOPPAGE:"referee stoppage",
  OVER_THE_TOP_ROPE:"over-the-top-rope elimination",RETRIEVAL:"prize retrieval",
- TABLE_BREAK:"table break",TEN_COUNT:"ten-count knockout",VERBAL_SURRENDER:"verbal I Quit surrender"
-} as Record<string,string>)[s]??"the certified result";
+ TABLE_BREAK:"opponent through a table",TEN_COUNT:"unanswered ten-count",
+ MOST_FALLS:"most falls when the Iron Man clock expired",
+ SECOND_FALL:"decisive second fall in Two out of Three Falls",
+ VERBAL_SURRENDER:"verbal I Quit surrender",
+ FIRST_BLOOD:"opponent first to bleed",
+ CASKET_CLOSE:"casket lid closure"
+} as Record<string,string>)[s]??"unclassified finish";
 export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
  const bouts=show.entries.filter(e=>e.type==="MATCH"&&
   e.matchContext?.winnerNames?.length&&e.matchContext.sides?.length);
@@ -161,12 +169,17 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
 }
 const forbidden=/\b(?:arrested|suspended|fired|hospitali[sz]ed|signed a (?:new |multi)|signed with|released from|contract dispute|backstage altercation|real injury|concussion|fractured|broken neck|died|deceased|secretly met|officially challenged)\b/i;
 const unsupported=/\b(?:AI|simulation|rating of \d|\d(?:\.\d+)?[\s\u2010-\u2015-]*stars?|booking algorithm|match engine|player controlled)\b/i;
+/** "Suspended prize" is ladder wrestling, not a wrestler's disciplinary
+ * suspension. Only equipment noun phrases get this exception. */
+const equipmentSuspension=(value:string)=>value.replace(
+ /\bsuspended (?:prize|briefcase|belt|title|championship)\b/gi,
+ "overhead prize");
 function words(v:unknown,min:number,max:number,limit:number):string|null{
  if(typeof v!=="string"||v.length>limit||/\n|\r|[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(v))
   return null;
  const s=v.trim();
  if(s.split(/\s+/).length<min||s.split(/\s+/).length>max||
-  forbidden.test(s)||unsupported.test(s)||/<[^>]+>/.test(s))return null;
+  forbidden.test(equipmentSuspension(s))||unsupported.test(s)||/<[^>]+>/.test(s))return null;
  return s;
 }
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==="object"&&!Array.isArray(v)?
@@ -267,6 +280,13 @@ export function localPostShowVoiceCopy(show:CompletedShowView):PostShowVoiceCopy
   const others=opposition.slice(0,3).join(" and ");
   const format=/i quit/i.test(main.matchType)?"the I Quit match":
    /steel cage/i.test(main.matchType)?"the Steel Cage match":
+   /first blood/i.test(main.matchType)?"the First Blood match":
+   /casket/i.test(main.matchType)?"the Casket match":
+   /two out of three|two of three/i.test(main.matchType)?"the Two out of Three Falls match":
+   /tables/i.test(main.matchType)?"the Tables match":
+   /ladder/i.test(main.matchType)?"the Ladder match":
+   /tlc/i.test(main.matchType)?"the TLC match":
+   /last man standing/i.test(main.matchType)?"the Last Man Standing match":
    /\b(?:[2-9]v[2-9]|tag|trios)\b/i.test(main.matchType)?"a tag-team match":
    /iron man/i.test(main.matchType)?"the Iron Man match":
    "the scheduled match";
@@ -275,9 +295,16 @@ export function localPostShowVoiceCopy(show:CompletedShowView):PostShowVoiceCopy
    /submission/i.test(main.finish)?"by submission":
    /disqualification/i.test(main.finish)?"by disqualification":
    /retrieval/i.test(main.finish)?"by prize retrieval":
-   /ten-count/i.test(main.finish)?"by ten-count knockout":
+   /unanswered ten-count/i.test(main.finish)?"by an unanswered ten-count":
+   /most falls/i.test(main.finish)?"by leading on falls when the clock expired":
+   /decisive second fall/i.test(main.finish)?"with the decisive second fall":
+   /first to bleed/i.test(main.finish)?"when the opponent was first to bleed":
+   /casket lid/i.test(main.finish)?"by closing the casket lid":
+   /through a table/i.test(main.finish)?"by putting the opponent through a table":
    /elimination/i.test(main.finish)?"by elimination":
-   "in the recorded decision";
+   /referee stoppage/i.test(main.finish)?"after a referee stoppage":
+   /controversial finish|disputed finish/i.test(main.finish)?"after a disputed ending":
+   "in the match";
   const crowd=main.crowd==="strong"?"The match drew a strong reaction from the crowd.":
    main.crowd==="mixed-positive"?"The crowd responded positively to the contest.":
    main.crowd==="mixed"?"The crowd response was mixed.":
@@ -361,13 +388,29 @@ export function blendPostShowVoiceCopy(
 }
 
 function trueFinish(summary:string,method:string):boolean{
+ const invalidSpecial=/\b(?:pinned|pinfall|three[- ]count|tap(?:ped)? out|won by submission|submission victory)\b/i;
  if(method.includes("I Quit"))return /\b(?:i quit|verbally surrendered|verbal surrender|said (?:the words|i quit)|conceded verbally)\b/i.test(summary)&&
   !/\b(?:pinned|won (?:by|via) (?:a )?pinfall|three.count|tapped out|forced (?:\w+\s+){0,5}to tap out|won (?:by|via) (?:a )?submission)\b/i.test(summary);
  if(method.includes("pinfall"))return /\b(?:pinfall|pinned|three.count|pin(?:ning)? (?:victory|win))\b/i.test(summary)&&
   !/\b(?:won by submission|won by surrender|won by escape)\b/i.test(summary);
  if(method.includes("submission"))return /\b(?:submission|submitted|tapped out)\b/i.test(summary)&&
   !/\b(?:won by pinfall|won with a pinfall)\b/i.test(summary);
- return true;
+ if(method.includes("prize retrieval"))return /\b(?:retriev(?:e|ed|al|ing)|unhooked|pulled down|grabbed the suspended prize)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ if(method.includes("through a table"))return /\btable\b/i.test(summary)&&
+  /\b(?:through|brok(?:e|en)|shatter(?:ed)?|collapsed)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ if(method.includes("unanswered ten-count"))return /\b(?:ten[- ]count|count of ten|failed to (?:rise|stand|answer)|could not (?:beat|answer) the count)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ if(method.includes("most falls"))return /\b(?:most falls|more falls|ahead on falls|led on falls|leading on falls)\b/i.test(summary)&&
+  /\b(?:clock|time limit|time expired|time ran out)\b/i.test(summary)&&
+  !/\b\d+\s*(?:-|to)\s*\d+\b/.test(summary);
+ if(method.includes("decisive second fall"))return /\b(?:second (?:winning |decisive )?fall|decisive (?:second )?fall|earned (?:his|her|their|the) second fall|two winning falls)\b/i.test(summary)&&
+  !/\b(?:only one fall|first fall alone won|without (?:another|a second) fall|won by escape)\b/i.test(summary);
+ if(method.includes("first to bleed"))return /\b(?:first (?:to )?bleed|first blood|drew (?:the first )?blood|made .{1,80} bleed)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ if(method.includes("casket lid"))return /\b(?:casket|coffin)\b/i.test(summary)&&
+  /\b(?:lid|shut|closed|closing)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ if(method.includes("over-the-top-rope"))return /\b(?:over[- ]the[- ]top[- ]rope|over the top rope)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ if(method.includes("disqualification"))return /\b(?:disqualif(?:ied|ication)|referee called for the bell)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ if(method.includes("referee stoppage"))return /\b(?:stoppage|stopped the match|stopped the contest)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ return !/\b(?:won by (?:pinfall|submission|escape)|tapped out to win)\b/i.test(summary);
 }
 const factTokens=/\b(?:win|won|winning|victor(?:y|ious)?|defeat(?:ed)?|pinn?(?:ed|ing|fall)?|three.count|submission|submit(?:ted)?|surrender(?:ed)?|i quit|falls?|eliminat(?:ed|ion)|retriev(?:ed|al)|count.out|disqualif(?:ied|ication)|decis(?:ion|ive)|result|prevailed)\b/i;
 function unverifiedWin(summary:string,source:PostShowVoiceBrief):boolean{
@@ -379,7 +422,15 @@ function unverifiedWin(summary:string,source:PostShowVoiceBrief):boolean{
   .some(name=>[" defeated"," beat"," pinned"," submitted"," won"," prevailed",
    " secured the victory"].some(verb=>text.includes(name.toLowerCase()+verb)));
 }
-const unsourcedNews=/\b(?:injur(?:ed|y|ies)|concussion|blood(?:ied|y)|hospital|broken (?:bone|neck)|new champion|title change|signed|suspended|arrested|contract negotiation|backstage fight)\b/i;
+const unsourcedNews=/\b(?:injur(?:ed|y|ies)|concussion|blood(?:ied|y)|bleed(?:ing|s)?|bled|hospital|broken (?:bone|neck)|new champion|title change|signed|suspended|arrested|contract negotiation|backstage fight)\b/i;
+/** A First Blood finish proves bleeding happened, but does NOT prove an
+ * injury or any backstage/medical consequence. Nothing else waives the guard. */
+function hasUnverifiedNewsConsequence(summary:string,method:string):boolean{
+ const allowed=method.includes("first to bleed")?
+  summary.replace(/\b(?:first blood|blood|bleed(?:ing|s)?|bled)\b/gi,""):summary;
+ return unsourcedNews.test(method.includes("prize retrieval")?
+  equipmentSuspension(allowed):allowed);
+}
 /** Reject booking two verified same-side partners AGAINST each other as a
  * "rematch." Such advice was incorrectly passed in a real 20B tag trial.
  */
@@ -410,7 +461,8 @@ export function validatePostShowVoiceCopy(
   has(summary,n))&&factTokens.test(summary)&&
   trueFinish(summary,source.mainEvent.finish)&&
   (options.preserveHistoricStyle||!mechanicalNews.test(summary))&&
-  !unverifiedWin(summary,source)&&!unsourcedNews.test(summary)){
+  !unverifiedWin(summary,source)&&
+  !hasUnverifiedNewsConsequence(summary,source.mainEvent.finish)){
   const winner=source.mainEvent.winners[0]!;
   // Do not invert the main-event finish or pass off a submission as a pin.
   const outcome=source.mainEvent.finish;

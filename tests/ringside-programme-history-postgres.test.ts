@@ -112,6 +112,8 @@ test("historic Ringside joins exactly its own settled rivalry chapters and prior
   assert.equal(memory.programmes.length,0,
    "Exact programme context is already in the five-query completed show");
   assert.deepEqual(memory.priorMatches.map(x=>x.winners),[["Matt Riddle"]]);
+  assert.deepEqual(memory.priorMatches[0]?.sides,[["Samoa Joe"],["Matt Riddle"]],
+   "The original canonical match sides must survive the bounded history projection");
   assert.equal(meter.assertBudget({maxQueries:7,maxResultBytes:160_000}).queryCount,7,
    "Five verified-show reads plus two previous-match reads, not the former eight");
   await assert.rejects(readCompletedShowView(db.pool,{...scope,playerId:"intruder"}),
