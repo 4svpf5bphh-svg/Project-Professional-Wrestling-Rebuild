@@ -57,6 +57,21 @@ test("certified/dated cards survive year editing and World New Year",()=>{
  validateAnnualPremiumEvents({year:2,tier:"LOCAL",events:e.slice(0,2),
   series:s,grandfathered:[{week:e[0]!.week,seriesId:null}]});
 });
+test("a named yearly PPV edition keeps original identity and protects booked name",()=>{
+ const series=defaults("Example",1,4);
+ const first=suggestedAnnualPremiumEvents(series,"LOCAL",2,"Example")[0]!;
+ const named={...first,name:"Crossfire"};
+ validateAnnualPremiumEvents({year:2,tier:"LOCAL",series,events:[named]});
+ assert.deepEqual(projectYearEvents(series,2,new Map([[2,[named]]])),[named]);
+ assert.equal(scheduledSeriesOnWeek(series,2,named.week,new Map([[2,[named]]]))
+  .find(s=>s.eventType==="MAJOR")?.name,"Crossfire");
+ assert.throws(()=>validateAnnualPremiumEvents({year:2,tier:"LOCAL",series,
+  events:[{...named,name:"Different"}],
+  grandfathered:[{week:named.week,seriesId:named.seriesId,name:"Crossfire"}]}),
+ /cannot be cancelled, renamed or moved/);
+ assert.throws(()=>validateAnnualPremiumEvents({year:2,tier:"LOCAL",series,
+  events:[{...named,name:" "}] }),/edition name/);
+});
 test("historic WWE/AEW annual event names are never replaced or invented",()=>{
  for(const name of ["WWE","AEW"]){
   const s=defaults(name,1,4);
@@ -64,5 +79,8 @@ test("historic WWE/AEW annual event names are never replaced or invented",()=>{
   assert.deepEqual(plans,projectYearEvents(s,3));
   validateAnnualPremiumEvents({year:3,tier:"GLOBAL",events:plans,
    series:s,originalName:name});
+  assert.throws(()=>validateAnnualPremiumEvents({year:3,tier:"GLOBAL",
+   events:plans.map((x,i)=>i===0?{...x,name:"Not official"}:x),
+   series:s,originalName:name}),/Official annual/);
  }
 });

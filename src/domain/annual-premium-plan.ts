@@ -5,7 +5,9 @@
  */
 import {seriesDue,weekIndex,type ShowSeries} from "./show-calendar.js";
 import type {StandingTier} from "./annual-promotion-standing.js";
-export interface AnnualPremiumEvent {seriesId:string;week:number}
+export interface AnnualPremiumEvent {seriesId:string;week:number;
+ /** An optional edition title, separate from the annually reusable series. */
+ name?:string}
 export interface AnnualPremiumPlan {year:number;events:AnnualPremiumEvent[]}
 export type PremiumPlans=ReadonlyMap<number,readonly AnnualPremiumEvent[]>;
 export interface PremiumPolicy {minimum:number;maximum:number;recommended:number;minGap:number}
@@ -26,7 +28,7 @@ export function projectYearEvents(series:readonly ShowSeries[],
   throw new Error("Invalid PPW calendar year");
  const active=series.filter(s=>s.active&&s.eventType==="MAJOR");
  const overrides=plans?.get(year);
- if(overrides)return [...overrides].map(e=>({seriesId:e.seriesId,week:e.week}))
+ if(overrides)return [...overrides].map(e=>({...e}))
    .sort((a,b)=>a.week-b.week||a.seriesId.localeCompare(b.seriesId));
  const first=weekIndex(year,1);
  return Array.from({length:52},(_,i)=>active.filter(s=>seriesDue(s,first+i))
@@ -38,11 +40,14 @@ export function scheduledSeriesOnWeek(series:readonly ShowSeries[],year:number,
  if(!Number.isSafeInteger(week)||week<1||week>52)
   throw new Error("Invalid PPW calendar week");
  const index=weekIndex(year,week),plan=plans?.get(year);
- return series.filter(s=>s.active&&(
-  s.eventType==="REGULAR"?seriesDue(s,index):
-   plan!==undefined?plan.some(e=>e.week===week&&e.seriesId===s.seriesId):
-    seriesDue(s,index)
- ));
+ return series.flatMap(s=>{
+  if(!s.active)return [];
+  if(s.eventType==="REGULAR")return seriesDue(s,index)?[s]:[];
+  if(plan===undefined)return seriesDue(s,index)?[s]:[];
+  const edition=plan.find(e=>e.week===week&&e.seriesId===s.seriesId);
+  if(!edition)return [];
+  return [edition.name?{...s,name:edition.name}:s];
+ });
 }
 const fixedWeeks:Record<number,readonly number[]>={
  3:[12,29,46],4:[7,20,33,46],6:[5,14,23,32,41,50],
@@ -65,7 +70,7 @@ export function suggestedAnnualPremiumEvents(series:readonly ShowSeries[],
 export function validateAnnualPremiumEvents(input:{
  year:number;tier:StandingTier;events:readonly AnnualPremiumEvent[];
  series:readonly ShowSeries[];previous?:readonly AnnualPremiumEvent[];
- grandfathered?:readonly {week:number;seriesId:string|null}[];
+ grandfathered?:readonly {week:number;seriesId:string|null;name?:string|null}[];
  originalName?:string;
 }):void{
  const {year,events,series}=input;
@@ -80,6 +85,9 @@ export function validateAnnualPremiumEvents(input:{
   if(!e||typeof e.seriesId!=="string"||!eligible.has(e.seriesId)||
    !Number.isSafeInteger(e.week)||e.week<1||e.week>52)
    throw new Error("Choose an existing active premium event and World week");
+  if(e.name!==undefined&&(typeof e.name!=="string"||
+   !e.name.trim()||e.name.trim().length>80))
+   throw new Error("Premium edition name must be 1–80 characters");
   if(occupied.has(e.week))throw new Error("Only one PPV or special per World week");
   occupied.add(e.week);
  }
@@ -88,8 +96,10 @@ export function validateAnnualPremiumEvents(input:{
   if(!Number.isSafeInteger(e.week)||e.week<1||e.week>52)
    throw new Error("Invalid existing show commitment");
   if(!events.some(x=>x.week===e.week&&
-    (e.seriesId===null||x.seriesId===e.seriesId)))
-   throw new Error("Booked or certified premium events cannot be cancelled or moved");
+    (e.seriesId===null||x.seriesId===e.seriesId)&&
+    (e.name===null||e.name===undefined||
+     (x.name??series.find(s=>s.seriesId===x.seriesId)?.name)===e.name)))
+   throw new Error("Booked or certified premium events cannot be cancelled, renamed or moved");
  }
  if(events.length>Math.max(policy.maximum,locked.length))
   throw new Error("This promotion cannot schedule more than "+
@@ -100,6 +110,12 @@ export function validateAnnualPremiumEvents(input:{
  const original=(input.originalName??"").trim().toUpperCase();
  const protectedLegacy=(original==="WWE"||original==="AEW")?
   projectYearEvents(series,year):[];
+ for(const e of events){
+  const official=protectedLegacy.find(x=>x.seriesId===e.seriesId&&x.week===e.week);
+  const seriesName=series.find(x=>x.seriesId===e.seriesId)?.name;
+  if(official&&e.name!==undefined&&e.name!==seriesName)
+   throw new Error("Official annual WWE/AEW event names cannot be rewritten");
+ }
  const unchanged=(a:AnnualPremiumEvent,b:AnnualPremiumEvent)=>
   a.week===b.week&&a.seriesId===b.seriesId;
  const sorted=[...events].sort((a,b)=>a.week-b.week);

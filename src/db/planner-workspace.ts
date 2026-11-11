@@ -301,15 +301,18 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
     cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
     importance:x.importance,active:x.active
    })):defaults(auth.promotion_name,auth.cadence,auth.major_interval??4);
-   const selected=input.showSeriesId?
+   const identity=input.showSeriesId?
     series.find(s=>s.seriesId===input.showSeriesId):null;
-   if(input.showSeriesId&&!selected)throw new Error("Show identity not on this promotion's calendar");
+   if(input.showSeriesId&&!identity)
+    throw new Error("Show identity not on this promotion's calendar");
    const plan=new Map(plansMap(
     decodeAnnualPremiumSnapshot(auth.annual_plans)));
    if(input.year>=auth.premium_plan_start_year&&!plan.has(input.year))
     plan.set(input.year,[]);
-   if(selected&&!scheduledSeriesOnWeek(series,input.year,input.week,plan)
-    .some(x=>x.seriesId===selected.seriesId))
+   const due=scheduledSeriesOnWeek(series,input.year,input.week,plan);
+   const selected=input.showSeriesId?
+    due.find(s=>s.seriesId===input.showSeriesId):null;
+   if(identity&&!selected)
     throw new Error("This show is not scheduled in your confirmed annual calendar");
    const event:PlannedEventType=selected?.eventType??"REGULAR";
    if(input.eventType!==event)

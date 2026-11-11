@@ -34,7 +34,12 @@ function validatedEvents(raw:unknown):AnnualPremiumEvent[]{
   if(!validId(e.seriesId)||!Number.isSafeInteger(e.week)||
    (e.week as number)<1||(e.week as number)>52)
    throw new Error("Invalid yearly event week or identity");
-  return {seriesId:e.seriesId as string,week:e.week as number};
+  const name=e.name;
+  if(name!==undefined&&(typeof name!=="string"||
+   name.trim().length<1||name.trim().length>80))
+   throw new Error("Invalid premium event edition name");
+  return {seriesId:e.seriesId as string,week:e.week as number,
+   ...(typeof name==="string"?{name:name.trim()}:{})};
  });
 }
 export async function readAnnualPremiumPlans(tx:SqlRows,worldId:string,
@@ -134,8 +139,10 @@ export async function saveAnnualPremiumPlan(pool:TransactionPool,input:AnnualPre
      projectYearEvents(series,input.year-1):[];
    // Nothing already booked or certified can be moved by confirming a new
    // yearly plan; even an old unlinked PPV is protected at its actual week.
-   const reserved=await tx.query<{week:number;series_id:string|null}>(`
-    SELECT DISTINCT week,show_series_id AS series_id FROM ppw_booking_drafts
+   const reserved=await tx.query<{week:number;series_id:string|null;
+    name:string|null}>(`
+    SELECT DISTINCT week,show_series_id AS series_id,show_name AS name
+    FROM ppw_booking_drafts
     WHERE world_id=$1 AND promotion_id=$2 AND year=$3
      AND booking_class='PREMIUM'
      AND (status IN ('DRAFT','SUBMITTED') OR
@@ -144,7 +151,7 @@ export async function saveAnnualPremiumPlan(pool:TransactionPool,input:AnnualPre
          AND completed.show_id=ppw_booking_drafts.draft_id))
     ORDER BY week,series_id LIMIT 54`,[input.worldId,input.promotionId,input.year]);
    if(reserved.length>52)throw new Error("Too many previously booked PPVs");
-   const locked=reserved.map(r=>({week:r.week,seriesId:r.series_id}));
+   const locked=reserved.map(r=>({week:r.week,seriesId:r.series_id,name:r.name}));
    const now=weekIndex(auth.year,auth.week);
    // No retroactive change to existing yearly dates or certified history.
    const earlier=await readAnnualPremiumPlans(tx,input.worldId,
@@ -153,7 +160,8 @@ export async function saveAnnualPremiumPlan(pool:TransactionPool,input:AnnualPre
     const priorEvents=earlier.length?earlier[0]!.events:
      projectYearEvents(series,input.year);
     for(const e of priorEvents.filter(e=>weekIndex(input.year,e.week)<now)){
-     if(!events.some(x=>x.week===e.week&&x.seriesId===e.seriesId))
+     if(!events.some(x=>x.week===e.week&&x.seriesId===e.seriesId&&
+      x.name===e.name))
       throw new Error("Past PPV calendar dates cannot be rewritten");
     }
    }
