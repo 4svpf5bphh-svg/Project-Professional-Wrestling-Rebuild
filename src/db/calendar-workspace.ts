@@ -122,7 +122,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   // intended venue, ticket strategy or planned wrestler appearances.
   const rows=await tx.query<{
    promotion_id:string;promotion_name:string;tier:StandingTier;
-   management_mode:string;cadence:number;
+   management_mode:string;controlled:boolean;cadence:number;
    major_interval:number|null;series_id:string|null;name:string|null;
    role:ShowSeries["role"]|null;event_type:ShowSeries["eventType"]|null;
    cadence_weeks:number|null;anchor_week:number|null;
@@ -131,6 +131,10 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    poster_style:string|null;owned_bookings:unknown;annual_plans:unknown;
   }>([
    "SELECT p.promotion_id,p.name AS promotion_name,p.tier,p.management_mode,",
+   "EXISTS(SELECT 1 FROM ppw_promotion_controls active_control",
+   "WHERE active_control.world_id=p.world_id",
+   "AND active_control.promotion_id=p.promotion_id AND active_control.active)",
+   "AS controlled,",
    "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
    "s.series_id,s.name,s.role,s.event_type,s.cadence_weeks,s.anchor_week,s.importance,",
    "s.earned_prestige,s.celebrated_editions,s.last_celebrated_week_index,",
@@ -216,12 +220,12 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    sharedPlans.set(row.promotion_id,details);
   }
   const promotions=new Map<string,{name:string;tier:StandingTier;
-   managementMode:string;series:ShowSeries[]}>();
+   managementMode:string;controlled:boolean;series:ShowSeries[]}>();
   for(const row of rows){
    let promotion=promotions.get(row.promotion_id);
    if(!promotion){
     promotion={name:row.promotion_name,tier:row.tier,
-     managementMode:row.management_mode,series:[]};
+     managementMode:row.management_mode,controlled:row.controlled,series:[]};
     promotions.set(row.promotion_id,promotion);
    }
    if(row.series_id&&row.name&&row.role&&row.event_type&&
@@ -241,7 +245,11 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    const calendar=new Map(sharedPlans.get(id)??[]);
    for(const year of [owned.year,owned.year+1]){
     if(year<owned.premium_plan_start_year||calendar.has(year))continue;
-    calendar.set(year,promotion.managementMode==="AI"?
+    // No manager owns an unclaimed AI rival even if its original label
+    // predates the World AI handoff. A human-owned promotion must actually
+    // confirm its premium dates before they appear as announcements.
+    const ai=!promotion.controlled||promotion.managementMode==="AI";
+    calendar.set(year,ai?
      suggestedAnnualPremiumEvents(promotion.series,promotion.tier,year,promotion.name):[]);
    }
    effectiveWorldPlans.set(id,calendar);
