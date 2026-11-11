@@ -204,8 +204,9 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   return yearlyDrafts.get(year)??(yearRow.confirmed?yearRow.events:yearRow.suggested);
  }
  function changeYearEvent(year:number,week:number,seriesId:string|null){
+  const previous=yearEvents(year).find(x=>x.week===week&&x.seriesId===seriesId);
   const without=yearEvents(year).filter(x=>x.week!==week);
-  if(seriesId)without.push({week,seriesId});
+  if(seriesId)without.push(previous?{...previous}:{week,seriesId});
   yearlyDrafts.set(year,without.map(x=>({seriesId:x.seriesId,week:x.week}))
    .sort((a,b)=>a.week-b.week||a.seriesId.localeCompare(b.seriesId)));
   pendingYear=null;render();

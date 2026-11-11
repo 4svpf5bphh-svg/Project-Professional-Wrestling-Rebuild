@@ -8,6 +8,8 @@ import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readSixWeekPlanner,planShowWeek} from "../src/db/planner-workspace.js";
+import {readPromotionCalendar} from "../src/db/calendar-workspace.js";
+import {saveAnnualPremiumPlan} from "../src/db/annual-premium-calendar.js";
 import {requestBroadcastDay} from "../src/db/broadcast-day-request.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("Signed weekly TV day is enforced by Planner; a network-approved change moves drafts, never PPV dates",{
@@ -75,12 +77,21 @@ test("Signed weekly TV day is enforced by Planner; a network-approved change mov
    VALUES($1,$2,'weekday-ppv','Weekend Challenge','PREMIUM',
     'MAJOR',4,3,80,true)
    ON CONFLICT DO NOTHING`,[world,promotion]));
+  // This is a new World, so an extra PPV series is not automatically due.
+  // A manager must confirm the annual event weeks before booking one.
+  const yearly=(await readPromotionCalendar(db.pool,scope)).annual!.years[0]!;
+  const proposed=yearly.suggested.map((edition,i)=>i===0?
+   {seriesId:"weekday-ppv",week:4,name:"Weekend Challenge"}:edition);
+  const committed=await saveAnnualPremiumPlan(db.pool,{...scope,
+   requestId:"confirm-network-ppv-year",expectedRevision:resaved.revision,
+   year:planner.year,events:proposed});
+  assert.equal(committed.status,"APPLIED");
   const ppvSchedule=await readSixWeekPlanner(db.pool,scope);
   const premiumWeek=ppvSchedule.weeks.find(w=>w.scheduled.some(x=>x.eventType==="MAJOR"));
   assert.ok(premiumWeek,"One premium event must be available in a six-week season window");
   const premium=premiumWeek!.scheduled.find(s=>s.eventType==="MAJOR")!;
   const ppv=await planShowWeek(db.pool,{...scope,requestId:"weekend-ppv",
-   expectedRevision:resaved.revision,year:premiumWeek!.year,week:premiumWeek!.week,
+   expectedRevision:committed.revision,year:premiumWeek!.year,week:premiumWeek!.week,
    eventType:"MAJOR",showSeriesId:premium.seriesId,day:6,
    marketId:venue.marketId,venueId:venue.venueId,ticketStrategy:"PREMIUM"});
   assert.equal(ppv.status,"APPLIED");
@@ -98,7 +109,8 @@ test("Signed weekly TV day is enforced by Planner; a network-approved change mov
   assert.equal(proof[0]!.airing_day,4);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_commercial_bonus_receipts","ppw_commercial_deals",
+   for(const table of ["ppw_annual_premium_plans",
+    "ppw_commercial_bonus_receipts","ppw_commercial_deals",
     "ppw_show_economics","ppw_completed_show_matches","ppw_completed_shows",
     "ppw_card_slots","ppw_booking_drafts","ppw_contract_offers",
     "ppw_contract_renewal_proposals","ppw_contract_date_requests",

@@ -49,6 +49,11 @@ for(const width of [320,390]){
    {name:"CWA Premium"}).click();
   await page.getByLabel("PPV edition name").fill("CWA Summer Slam");
   await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Summer Slam"})).toBeVisible();
+  // Choosing the same branded series again must not erase a manually named
+  // edition before the manager confirms the year's dates.
+  await page.locator(".ppw-calendar-year-picker")
+   .getByRole("button",{name:"CWA Premium"}).click();
+  await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Summer Slam"})).toBeVisible();
   await page.getByRole("button",{name:"Confirm Year 1"}).click();
   await expect(page.getByText("Confirmed for Year 1")).toBeVisible();
   expect(saves).toHaveLength(1);

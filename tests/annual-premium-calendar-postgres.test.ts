@@ -47,8 +47,10 @@ test("one 52-week PPV confirmation creates playable booked events, protects them
    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1),($2)",[playerId,other]);
    await tx.query(`INSERT INTO ppw_memberships(world_id,player_id,status)
     VALUES($1,$2,'ACTIVE'),($1,$3,'ACTIVE')`,[worldId,playerId,other]);
+   // The other human is a World member without rights to the player's
+   // CWA company. WWE is unclaimed, therefore AI-scheduled and public.
    await tx.query(`INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id)
-    VALUES($1,$2,'indie'),($1,$3,'rival')`,[worldId,playerId,other]);
+    VALUES($1,$2,'indie')`,[worldId,playerId]);
   });
   const firstMeasure=measure("year-owner-calendar");
   const before=await readPromotionCalendar(firstMeasure.pool,scope);
