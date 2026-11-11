@@ -291,7 +291,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    averageCrowd:certified.length?
     certified.reduce((n,show)=>n+Number(show.crowd_response),0)/certified.length:null,
    recentTvEpisodes:tvReceipts.length,averageTvRating,
-   recentPremiumShows:premiumReceipts.length,averagePpvBuys
+   recentPremiumShows:premiumReceipts.length,averagePpvBuys,
+   competition:w.competition,currentWeekIndex:now
   });
   const earnedOffers=allQualified.filter(offer=>
    !w.commercial_deals.some(d=>d.kind===offer.kind)&&

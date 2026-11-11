@@ -2,6 +2,8 @@
  * Offers are generated from completed show evidence, never from a client price.
  */
 import {randomUUID} from "node:crypto";
+import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
+ from "./promotion-competition.js";
 import {applyWorldCommand} from "./world-commands.js";
 import type {TransactionPool} from "./transaction.js";
 import {commercialOffers,COMMERCIAL_COMPANIES,type CommercialKind,type CommercialEvidence}
@@ -27,7 +29,8 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
    const rows=await tx.query<CommercialEvidence&{year:number;week:number;
     management_mode:string;existing_kinds:string[];
     recentTvEpisodes:number;averageTvRating:number|null;
-    recentPremiumShows:number;averagePpvBuys:number|null}>(`
+    recentPremiumShows:number;averagePpvBuys:number|null;
+    competition:PromotionCompetitionCard|null}>(`
     SELECT w.year,w.week,p.management_mode,p.tier,p.media_reach AS "mediaReach",
      p.weekly_media_income::numeric::float8 AS "weeklyMediaIncome",
      p.weekly_sponsor_income::numeric::float8 AS "weeklySponsorIncome",
@@ -37,6 +40,8 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
      results.average_rating::float8 AS "averageTvRating",
      results.ppv_count AS "recentPremiumShows",
      results.average_ppv_buys::float8 AS "averagePpvBuys",
+     ${promotionCompetitionProjectionSql("w.world_id","p.promotion_id")}
+      AS competition,
       ARRAY(SELECT d.kind FROM ppw_commercial_deals d
       WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
        AND d.status='ACTIVE') AS existing_kinds
@@ -71,7 +76,8 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
    if(rows.length!==1)throw new Error("Only your promotion can sign a commercial deal");
    const p=rows[0]!,start=(p.year-1)*52+p.week-1;
    // An active agreement prevents speculative replacement/compound upgrades.
-   const valid=commercialOffers(p).find(x=>x.code===input.offerCode);
+   const valid=commercialOffers({...p,
+    currentWeekIndex:start}).find(x=>x.code===input.offerCode);
    if(!valid)throw new Error("This commercial offer is no longer available");
    if(p.existing_kinds.includes(valid.kind))
     throw new Error("A current agreement must expire before new terms are available");
