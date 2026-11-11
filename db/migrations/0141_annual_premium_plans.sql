@@ -15,3 +15,12 @@ CREATE TABLE ppw_annual_premium_plans (
   REFERENCES ppw_promotions(world_id,promotion_id) ON DELETE CASCADE
 );
 -- PK covers all year/owner lookups, including the bounded one-year rollover.
+
+-- Existing live/playtest Worlds keep their current-year PPV programme.
+-- Only their NEXT year enters the new annual-policy gate. Worlds created
+-- after this migration get year-one planning (DEFAULT 1) automatically.
+-- This row is small and read with the existing World authority snapshot.
+ALTER TABLE ppw_worlds
+ ADD COLUMN premium_plan_start_year integer NOT NULL DEFAULT 1
+ CHECK (premium_plan_start_year BETWEEN 1 AND 10001);
+UPDATE ppw_worlds SET premium_plan_start_year=year+1;
