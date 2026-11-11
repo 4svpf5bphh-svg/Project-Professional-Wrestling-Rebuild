@@ -9,6 +9,12 @@ import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import {defaults,occurrences,seriesDue,dateAt,validateSchedule,validateSeries,weekIndex,
  type ShowSeries} from "../domain/show-calendar.js";
+import {premiumPolicy,projectYearEvents,scheduledSeriesOnWeek,
+ suggestedAnnualPremiumEvents,type AnnualPremiumEvent}
+ from "../domain/annual-premium-plan.js";
+import type {StandingTier} from "../domain/annual-promotion-standing.js";
+import {readAnnualPremiumPlans,plansMap}
+ from "./annual-premium-calendar.js";
 export interface CalendarScope {worldId:string;promotionId:string;playerId:string}
 export interface SeriesMutation extends CalendarScope {
  requestId:string;expectedRevision:number;series:ShowSeries;
@@ -25,7 +31,7 @@ export interface CalendarBooking {
  day:number|null;venueName:string|null;marketName:string|null;
  ready:boolean;
 }
-type Owner={name:string;year:number;week:number;revision:string|number;
+type Owner={name:string;tier:StandingTier;year:number;week:number;revision:string|number;
  booking_open:boolean;cadence:number;major_interval:number|null;event_poster:string|null;broadcast_package:string|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
@@ -37,7 +43,7 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
  if(![scope.worldId,scope.promotionId,scope.playerId].every(validId))
   throw new Error("Invalid show calendar identity");
  const rows=await tx.query<Owner>([
- "SELECT p.name,w.year,w.week,w.revision,",
+ "SELECT p.name,p.tier,w.year,w.week,w.revision,",
  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
  "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
   "(SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,",
@@ -97,10 +103,14 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
  return withSqlClient(pool,async tx=>{
   const owned=await owner(tx,scope);
   const series=await load(tx,scope,owned);
+  const ownerAnnual=await readAnnualPremiumPlans(tx,scope.worldId,
+   scope.promotionId,owned.year,owned.year+1);
+  const ownerPlans=plansMap(ownerAnnual);
   // Public recurrence only. Never expose a rival promotion's private draft,
   // intended venue, ticket strategy or planned wrestler appearances.
   const rows=await tx.query<{
-   promotion_id:string;promotion_name:string;cadence:number;
+   promotion_id:string;promotion_name:string;tier:StandingTier;
+   management_mode:string;cadence:number;
    major_interval:number|null;series_id:string|null;name:string|null;
    role:ShowSeries["role"]|null;event_type:ShowSeries["eventType"]|null;
    cadence_weeks:number|null;anchor_week:number|null;
@@ -108,7 +118,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    celebrated_editions:number|null;last_celebrated_week_index:number|null;
    poster_style:string|null;owned_bookings:unknown;
   }>([
-   "SELECT p.promotion_id,p.name AS promotion_name,",
+   "SELECT p.promotion_id,p.name AS promotion_name,p.tier,p.management_mode,",
    "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
    "s.series_id,s.name,s.role,s.event_type,s.cadence_weeks,s.anchor_week,s.importance,",
    "s.earned_prestige,s.celebrated_editions,s.last_celebrated_week_index,",
@@ -164,11 +174,36 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
     showName:b.showName,status:b.status,day:b.day,venueName:b.venueName,
     marketName:b.marketName,ready:b.ready} as CalendarBooking;
   });
-  const promotions=new Map<string,{name:string;series:ShowSeries[]}>();
+  // Two years and 128 possible promotions, fetched in one indexed public
+  // projection. No per-company N+1 and no future private card information.
+  const planRows=await tx.query<{promotion_id:string;year:number;events:unknown}>(`
+   SELECT promotion_id,year,events FROM ppw_annual_premium_plans
+   WHERE world_id=$1 AND year IN ($2,$3)
+   ORDER BY promotion_id,year LIMIT 257`,
+   [scope.worldId,owned.year,owned.year+1]);
+  if(planRows.length>256)throw new Error("World annual planning limit exceeded");
+  const sharedPlans=new Map<string,Map<number,AnnualPremiumEvent[]>>();
+  for(const row of planRows){
+   if(!Array.isArray(row.events)||row.events.length>52)
+    throw new Error("Invalid public annual plan");
+   const details=row.events.map((item:unknown)=>{
+    if(!item||typeof item!=="object"||Array.isArray(item)||
+     typeof (item as {seriesId?:unknown}).seriesId!=="string"||
+     !Number.isSafeInteger((item as {week?:unknown}).week))
+     throw new Error("Invalid public annual event");
+    return item as AnnualPremiumEvent;
+   });
+   let list=sharedPlans.get(row.promotion_id);
+   if(!list){list=new Map();sharedPlans.set(row.promotion_id,list);}
+   list.set(row.year,details);
+  }
+  const promotions=new Map<string,{name:string;tier:StandingTier;
+   managementMode:string;series:ShowSeries[]}>();
   for(const row of rows){
    let promotion=promotions.get(row.promotion_id);
    if(!promotion){
-    promotion={name:row.promotion_name,series:[]};
+    promotion={name:row.promotion_name,tier:row.tier,
+     managementMode:row.management_mode,series:[]};
     promotions.set(row.promotion_id,promotion);
    }
    if(row.series_id&&row.name&&row.role&&row.event_type&&
@@ -187,7 +222,8 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   const worldWeeks=Array.from({length:12},(_,offset)=>{
    const index=start+offset;
    const events=[...promotions].flatMap(([promotionId,promotion])=>
-    promotion.series.filter(s=>seriesDue(s,index)).map(s=>({
+    scheduledSeriesOnWeek(promotion.series,Math.floor(index/52)+1,
+     index%52+1,sharedPlans.get(promotionId)).map(s=>({
      promotionId,promotionName:promotion.name,seriesId:s.seriesId,name:s.name,
      role:s.role,eventType:s.eventType,importance:s.importance
     }))).sort((a,b)=>b.importance-a.importance||
@@ -196,11 +232,18 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   });
   if(worldWeeks.reduce((total,w)=>total+w.events.length,0)>512)
    throw new Error("World calendar occurrence budget exceeded");
-  return {worldWeeks,bookings,eventPosterStyle:owned.event_poster,
+  const annualYears=[owned.year,owned.year+1].map(year=>({
+   year,confirmed:ownerPlans.has(year),events:projectYearEvents(series,year,ownerPlans),
+   suggested:suggestedAnnualPremiumEvents(series,owned.tier,year,owned.name)
+  }));
+  return {annual:{tier:owned.tier,policy:premiumPolicy(owned.tier),
+    years:annualYears},worldWeeks,bookings,eventPosterStyle:owned.event_poster,
     broadcastPackage:owned.broadcast_package,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
    series:series.filter(s=>s.active),
-   weeks:occurrences(series,weekIndex(owned.year,owned.week),52)};
+   weeks:occurrences(series,weekIndex(owned.year,owned.week),52).map(w=>({
+    ...w,shows:scheduledSeriesOnWeek(series,w.year,w.week,ownerPlans)
+   }))};
  });
 }
 export async function upsertPromotionSeries(pool:TransactionPool,input:SeriesMutation){
