@@ -13,7 +13,7 @@ import {premiumPolicy,projectYearEvents,scheduledSeriesOnWeek,
  suggestedAnnualPremiumEvents,type AnnualPremiumEvent}
  from "../domain/annual-premium-plan.js";
 import type {StandingTier} from "../domain/annual-promotion-standing.js";
-import {readAnnualPremiumPlans,plansMap}
+import {decodeAnnualPremiumSnapshot,plansMap}
  from "./annual-premium-calendar.js";
 export interface CalendarScope {worldId:string;promotionId:string;playerId:string}
 export interface SeriesMutation extends CalendarScope {
@@ -33,7 +33,7 @@ export interface CalendarBooking {
 }
 type Owner={name:string;tier:StandingTier;year:number;week:number;
  premium_plan_start_year:number;revision:string|number;
- booking_open:boolean;cadence:number;major_interval:number|null;event_poster:string|null;broadcast_package:string|null};
+ booking_open:boolean;cadence:number;major_interval:number|null;annual_plans:unknown;event_poster:string|null;broadcast_package:string|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
  importance:number;active:boolean;poster_style:string|null;earned_prestige:number;
@@ -48,7 +48,13 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
  "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
   "(SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,",
-   "(SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package",
+   "(SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,",
+  "(SELECT coalesce(jsonb_agg(jsonb_build_object('year',plan.year,",
+  "'events',plan.events,'tierAtCommit',plan.tier_at_commit,",
+  "'confirmedWeekIndex',plan.confirmed_week_index) ORDER BY plan.year),'[]'::jsonb)",
+  "FROM ppw_annual_premium_plans plan WHERE plan.world_id=w.world_id",
+  "AND plan.promotion_id=p.promotion_id AND plan.year BETWEEN w.year AND w.year+1)",
+  "AS annual_plans",
  "FROM ppw_worlds w JOIN ppw_promotions p ON p.world_id=w.world_id",
  "AND p.promotion_id=$2 JOIN ppw_promotion_controls c ON c.world_id=w.world_id",
  "AND c.promotion_id=p.promotion_id AND c.player_id=$3 AND c.active",
@@ -104,8 +110,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
  return withSqlClient(pool,async tx=>{
   const owned=await owner(tx,scope);
   const series=await load(tx,scope,owned);
-  const ownerAnnual=await readAnnualPremiumPlans(tx,scope.worldId,
-   scope.promotionId,owned.year,owned.year+1);
+  const ownerAnnual=decodeAnnualPremiumSnapshot(owned.annual_plans);
   const ownerPlans=new Map(plansMap(ownerAnnual));
   // No row means legacy recurrence ONLY before a saved World's policy
   // activation year. Once active, the player must explicitly confirm dates:
@@ -123,7 +128,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    cadence_weeks:number|null;anchor_week:number|null;
    importance:number|null;earned_prestige:number|null;
    celebrated_editions:number|null;last_celebrated_week_index:number|null;
-   poster_style:string|null;owned_bookings:unknown;
+   poster_style:string|null;owned_bookings:unknown;annual_plans:unknown;
   }>([
    "SELECT p.promotion_id,p.name AS promotion_name,p.tier,p.management_mode,",
    "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
@@ -133,6 +138,12 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
     "AND sp.promotion_id=$2 AND s.promotion_id=$2 AND sp.player_id=$4",
     "AND sp.series_id=s.series_id)",
     "AS poster_style,",
+   "CASE WHEN row_number() OVER(PARTITION BY p.promotion_id ORDER BY s.series_id)=1",
+   "THEN (SELECT coalesce(jsonb_agg(jsonb_build_object('year',plan.year,",
+   "'events',plan.events) ORDER BY plan.year),'[]'::jsonb)",
+   "FROM ppw_annual_premium_plans plan WHERE plan.world_id=p.world_id",
+   "AND plan.promotion_id=p.promotion_id AND plan.year IN(w.year,w.year+1))",
+   "END AS annual_plans,",
    "CASE WHEN row_number() OVER(ORDER BY p.promotion_id,s.series_id)=1 THEN",
    "(SELECT coalesce(jsonb_agg(jsonb_build_object(",
    "'draftId',d.draft_id,'year',d.year,'week',d.week,",
@@ -181,28 +192,28 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
     showName:b.showName,status:b.status,day:b.day,venueName:b.venueName,
     marketName:b.marketName,ready:b.ready} as CalendarBooking;
   });
-  // Two years and 128 possible promotions, fetched in one indexed public
-  // projection. No per-company N+1 and no future private card information.
-  const planRows=await tx.query<{promotion_id:string;year:number;events:unknown}>(`
-   SELECT promotion_id,year,events FROM ppw_annual_premium_plans
-   WHERE world_id=$1 AND year IN ($2,$3)
-   ORDER BY promotion_id,year LIMIT 257`,
-   [scope.worldId,owned.year,owned.year+1]);
-  if(planRows.length>256)throw new Error("World annual planning limit exceeded");
+  // Fold both years of *public* annual identities into the existing
+  // per-promotion World read. Zero additional SQL network round-trips.
   const sharedPlans=new Map<string,Map<number,AnnualPremiumEvent[]>>();
-  for(const row of planRows){
-   if(!Array.isArray(row.events)||row.events.length>52)
-    throw new Error("Invalid public annual plan");
-   const details=row.events.map((item:unknown)=>{
-    if(!item||typeof item!=="object"||Array.isArray(item)||
-     typeof (item as {seriesId?:unknown}).seriesId!=="string"||
-     !Number.isSafeInteger((item as {week?:unknown}).week))
-     throw new Error("Invalid public annual event");
-    return item as AnnualPremiumEvent;
-   });
-   let list=sharedPlans.get(row.promotion_id);
-   if(!list){list=new Map();sharedPlans.set(row.promotion_id,list);}
-   list.set(row.year,details);
+  for(const row of rows){
+   if(row.annual_plans===null)continue;
+   if(!Array.isArray(row.annual_plans)||row.annual_plans.length>2)
+    throw new Error("Invalid public annual plan snapshot");
+   const details=new Map<number,AnnualPremiumEvent[]>();
+   for(const raw of row.annual_plans){
+    if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+     !Number.isSafeInteger(raw.year)||!Array.isArray(raw.events)||
+     raw.events.length>52)throw new Error("Invalid public event dates");
+    const events=raw.events.map((item:unknown)=>{
+     if(!item||typeof item!=="object"||Array.isArray(item)||
+      typeof (item as {seriesId?:unknown}).seriesId!=="string"||
+      !Number.isSafeInteger((item as {week?:unknown}).week))
+      throw new Error("Invalid public annual event");
+     return item as AnnualPremiumEvent;
+    });
+    details.set(raw.year,events);
+   }
+   sharedPlans.set(row.promotion_id,details);
   }
   const promotions=new Map<string,{name:string;tier:StandingTier;
    managementMode:string;series:ShowSeries[]}>();
