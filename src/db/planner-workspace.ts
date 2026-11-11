@@ -4,6 +4,9 @@
  */
 import {randomUUID} from "node:crypto";
 import {defaults,seriesDue,type ShowSeries} from "../domain/show-calendar.js";
+import {scheduledSeriesOnWeek} from "../domain/annual-premium-plan.js";
+import {readAnnualPremiumPlans,plansMap}
+ from "./annual-premium-calendar.js";
 import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
 import type {SqlRows} from "./world-operations.js";
@@ -200,6 +203,9 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
   importance:x.importance,active:x.active,posterStyle:x.poster_style
  })):defaults(owned.promotion_name,owned.cadence,owned.major_interval??4);
+ const planYears=await readAnnualPremiumPlans(tx,s.worldId,s.promotionId,
+  owned.year,dateAt(start+6).year);
+ const yearly=plansMap(planYears);
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
@@ -230,9 +236,10 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
    home:v.market_id===owned.home_market_id})),
   weeks:Array.from({length:7},(_,offset)=>{
    const index=start+offset,when=dateAt(index);
+   const due=scheduledSeriesOnWeek(scheduled,when.year,when.week,yearly);
    return {...when,offset,required:true,
-    major:scheduled.some(x=>x.eventType==="MAJOR"&&seriesDue(x,index)),canEdit:owned.booking_open,
-    scheduled:scheduled.filter(x=>seriesDue(x,index)),
+    major:due.some(x=>x.eventType==="MAJOR"),canEdit:owned.booking_open,
+    scheduled:due,
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
      bookingClass:d.booking_class,showSeriesId:d.show_series_id,
       posterStyle:scheduled.find(x=>x.seriesId===d.show_series_id)?.posterStyle??null,
@@ -287,8 +294,11 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const selected=input.showSeriesId?
     series.find(s=>s.seriesId===input.showSeriesId):null;
    if(input.showSeriesId&&!selected)throw new Error("Show identity not on this promotion's calendar");
-   if(selected&&!seriesDue(selected,target))
-    throw new Error("This show is not scheduled for the chosen week");
+   const plan=plansMap(await readAnnualPremiumPlans(tx,input.worldId,
+    input.promotionId,input.year,input.year));
+   if(selected&&!scheduledSeriesOnWeek(series,input.year,input.week,plan)
+    .some(x=>x.seriesId===selected.seriesId))
+    throw new Error("This show is not scheduled in your confirmed annual calendar");
    const event:PlannedEventType=selected?.eventType??"REGULAR";
    if(input.eventType!==event)
     throw new Error("Show type must match the calendar event");
