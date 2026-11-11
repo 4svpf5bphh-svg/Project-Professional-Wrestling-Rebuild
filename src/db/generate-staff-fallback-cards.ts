@@ -5,6 +5,8 @@ import {chooseEmergencyStaffCard,orderStaffPromotions,type StaffWrestlerCandidat
 import type {ExistingShowBooking} from "../domain/staff-show-schedule.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {defaults,seriesDue,regularRole} from "../domain/show-calendar.js";
+import {suggestedAnnualPremiumEvents} from "../domain/annual-premium-plan.js";
+import type {StandingTier} from "../domain/annual-promotion-standing.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
 import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch,type AiCardInput} from "../domain/ai-world-card.js";
 import {aiPromotionStrategy} from "../domain/ai-promotion-strategy.js";
@@ -16,7 +18,7 @@ type Delegated={
   promotion_id:string;show_id:string|null;controller_player_id:string|null;
   owner_player_id:string|null;current_controller:string|null;
   delegated:boolean|null;status:string;management_mode:string;
-  promotion_name:string;cadence:number;
+  promotion_name:string;cadence:number;tier:StandingTier;
 };
 type SignedCandidate={
   promotion_id:string;person_id:string;contract_id:string;
@@ -82,7 +84,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         `SELECT a.promotion_id,a.show_id,a.controller_player_id,
           s.owner_player_id,s.allow_unfinished_fallback AS delegated,
           m.player_id AS current_controller,p.management_mode,a.status,
-           p.name AS promotion_name,p.event_cadence_weeks AS cadence
+           p.name AS promotion_name,p.event_cadence_weeks AS cadence,p.tier
          FROM ppw_week_continuity_assessments a
          JOIN ppw_promotions p ON p.world_id=a.world_id AND p.promotion_id=a.promotion_id
          LEFT JOIN ppw_promotion_controls c ON c.world_id=a.world_id
@@ -223,11 +225,17 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const contractBalances=new Map(candidates.map(c=>[c.contract_id,c.remaining_dates]));
       const duePremium=new Map<string,ReturnType<typeof defaults>[number]>();
       for(const d of all){
-        if(d.status!=="AI_MANAGED"||d.current_controller!==null||
-          !["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase()))continue;
-        const ppv=defaults(d.promotion_name,d.cadence,
-          worlds[0]!.major_event_interval_weeks??4).find(s=>
-            !regularRole(s.role)&&seriesDue(s,weekIndex));
+        if(d.status!=="AI_MANAGED"||d.current_controller!==null)continue;
+        // Reuse original promotion event identities and a deterministic
+        // year plan. No 52 cloned World rows, no LLM scheduling and no
+        // per-AI-promotion database calls. An AI's tier sets its real PPVs,
+        // not a fabricated special match on every fourth television show.
+        const identities=defaults(d.promotion_name,d.cadence,
+          worlds[0]!.major_event_interval_weeks??4);
+        const annual=suggestedAnnualPremiumEvents(identities,
+         d.tier,year,d.promotion_name);
+        const due=annual.find(e=>e.week===week);
+        const ppv=identities.find(s=>s.seriesId===due?.seriesId);
         if(ppv&&!existingPremiums.has(d.promotion_id))
           duePremium.set(d.promotion_id,ppv);
       }
@@ -256,17 +264,20 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const branded=["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase());
           const tv=branded?defaults(d.promotion_name,d.cadence,majorInterval??4)
             .find(s=>regularRole(s.role)&&seriesDue(s,weekIndex)):undefined;
-          const eventType:"REGULAR"|"MAJOR"=branded?"REGULAR":
-            majorInterval&&((weekIndex+1)%majorInterval===0)?"MAJOR":"REGULAR";
-          const importance=branded?tv?.importance??70:eventType==="MAJOR"?85:58;
+          // Standard weekly television no longer masquerades as a PPV on
+          // each global interval. A real MAJOR card is generated separately
+          // on a tier-appropriate yearly date below.
+          const eventType:"REGULAR"|"MAJOR"="REGULAR";
+          const importance=branded?tv?.importance??70:58;
           const roster=aiRoster.get(promotionId)??[];
           const byId=new Map(roster.map(p=>[p.personId,p]));
           const rivals=context?.programmes.get(promotionId)??[];
-          // Crown legitimate vacant titles on periodic TV if the AI's optional PPV
-           // is unstaffable. Existing champions defend at major events.
-           const titles=(context?.championships.get(promotionId)??[]).filter(t=>
-            eventType==="MAJOR"||(t.holderId===null&&weekIndex%4===0&&
-             !rivals.some(r=>r.heat>=85)));
+          // Vacant titles can still be crowned on periodic television.
+          // Defences are focused on title programmes and true PPVs rather
+          // than pseudo-premium regular broadcasts.
+          const titles=(context?.championships.get(promotionId)??[]).filter(t=>
+           t.holderId===null&&weekIndex%4===0&&
+           !rivals.some(r=>r.heat>=85));
           const challengers=titles.flatMap<AiFeaturedPair>(t=>{
             if(t.holderId===null){
               const pair=inauguralPair(roster,t.bookingDivision);
