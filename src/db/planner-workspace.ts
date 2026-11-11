@@ -62,6 +62,7 @@ const weekIndex=(year:number,week:number)=>(year-1)*52+week-1;
 function dateAt(index:number){return {year:Math.floor(index/52)+1,week:index%52+1};}
 type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
+ premium_plan_start_year:number;
  major_interval:number|null;home_market_id:string|null;event_poster:string|null;
  broadcast_package:string|null;
  broadcast_slot:{offerCode:string;day:number|null;hour:number|null;
@@ -72,6 +73,7 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
  SELECT w.name AS world_name,p.name AS promotion_name,w.year,w.week,
   w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
+  w.premium_plan_start_year,
   p.home_market_id,
    (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,
    (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,
@@ -205,7 +207,10 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  })):defaults(owned.promotion_name,owned.cadence,owned.major_interval??4);
  const planYears=await readAnnualPremiumPlans(tx,s.worldId,s.promotionId,
   owned.year,dateAt(start+6).year);
- const yearly=plansMap(planYears);
+ const yearly=new Map(plansMap(planYears));
+ for(const year of [owned.year,dateAt(start+6).year])
+  if(year>=owned.premium_plan_start_year&&!yearly.has(year))
+   yearly.set(year,[]);
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
@@ -294,8 +299,10 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const selected=input.showSeriesId?
     series.find(s=>s.seriesId===input.showSeriesId):null;
    if(input.showSeriesId&&!selected)throw new Error("Show identity not on this promotion's calendar");
-   const plan=plansMap(await readAnnualPremiumPlans(tx,input.worldId,
-    input.promotionId,input.year,input.year));
+   const plan=new Map(plansMap(await readAnnualPremiumPlans(tx,input.worldId,
+    input.promotionId,input.year,input.year)));
+   if(input.year>=auth.premium_plan_start_year&&!plan.has(input.year))
+    plan.set(input.year,[]);
    if(selected&&!scheduledSeriesOnWeek(series,input.year,input.week,plan)
     .some(x=>x.seriesId===selected.seriesId))
     throw new Error("This show is not scheduled in your confirmed annual calendar");
