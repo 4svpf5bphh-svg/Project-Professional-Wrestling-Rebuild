@@ -245,11 +245,15 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    const calendar=new Map(sharedPlans.get(id)??[]);
    for(const year of [owned.year,owned.year+1]){
     if(year<owned.premium_plan_start_year||calendar.has(year))continue;
-    // No manager owns an unclaimed AI rival even if its original label
-    // predates the World AI handoff. A human-owned promotion must actually
-    // confirm its premium dates before they appear as announcements.
-    const ai=!promotion.controlled||promotion.managementMode==="AI";
-    calendar.set(year,ai?
+    // Human ownership always wins, even over a stale AI management flag.
+    // True autonomous promotions use the same tier-based annual policy.
+    // Preserve the original named WWE/AEW event announcements for an
+    // unclaimed fixture, but never fabricate PPVs for an UNASSIGNED generic
+    // company with no manager or authorised AI scheduling.
+    const original=["WWE","AEW"].includes(promotion.name.trim().toUpperCase());
+    const publicSchedule=!promotion.controlled&&
+     (promotion.managementMode==="AI"||original);
+    calendar.set(year,publicSchedule?
      suggestedAnnualPremiumEvents(promotion.series,promotion.tier,year,promotion.name):[]);
    }
    effectiveWorldPlans.set(id,calendar);
