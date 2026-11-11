@@ -202,6 +202,9 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   results:go("results",()=>{void mountResultsArchivePage(root,scope,
    ()=>mountWorldHomePage(root,scope));}),
   business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
+  ratingsWar:()=>{
+   if(typeof window!=="undefined")window.location.hash="#/business/ratings";
+  },
   staff:go("staff",()=>mountStaffDesk(root,staffPort(root,scope,call))),
   industry:go("promotions",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
   news:go("news",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
