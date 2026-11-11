@@ -283,7 +283,7 @@ test("shortform news respects every certified special finish without spending an
    lawful:"Jett Mercer defeated Ronan Wolfe after Wolfe could not answer the referee's ten-count in their Last Man Standing fight, ending a physical match with a clear official decision.",
    false:"Jett Mercer pinned Ronan Wolfe for a three-count in the Last Man Standing match, finishing a long contest with a traditional wrestling victory."},
   {outcome:"MOST_FALLS",format:"Iron Man Match · SINGLES",word:"most falls",
-   lawful:"Jett Mercer finished ahead of Ronan Wolfe on falls when the Iron Man clock expired, securing the victory after a long contest that tested both wrestlers' endurance.",
+   lawful:"Jett Mercer finished ahead on falls against Ronan Wolfe when the Iron Man clock expired, securing the victory after a long contest that tested both wrestlers' endurance.",
    false:"Jett Mercer pinned Ronan Wolfe just once and won the Iron Man match immediately, with the clock still running after that decisive cover."},
   {outcome:"SECOND_FALL",format:"Two out of Three Falls · SINGLES",word:"decisive second fall",
    lawful:"Jett Mercer secured the decisive second fall against Ronan Wolfe in their Two out of Three Falls match, winning the contest after the opponents traded tactical adjustments.",

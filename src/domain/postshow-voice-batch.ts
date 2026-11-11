@@ -390,7 +390,7 @@ function trueFinish(summary:string,method:string):boolean{
   !/\b(?:won by submission|won by surrender|won by escape)\b/i.test(summary);
  if(method.includes("submission"))return /\b(?:submission|submitted|tapped out)\b/i.test(summary)&&
   !/\b(?:won by pinfall|won with a pinfall)\b/i.test(summary);
- if(method.includes("prize retrieval"))return /\b(?:retriev(?:ed|al)|unhooked|pulled down|grabbed the suspended prize)\b/i.test(summary)&&!invalidSpecial.test(summary);
+ if(method.includes("prize retrieval"))return /\b(?:retriev(?:e|ed|al|ing)|unhooked|pulled down|grabbed the suspended prize)\b/i.test(summary)&&!invalidSpecial.test(summary);
  if(method.includes("through a table"))return /\btable\b/i.test(summary)&&
   /\b(?:through|brok(?:e|en)|shatter(?:ed)?|collapsed)\b/i.test(summary)&&!invalidSpecial.test(summary);
  if(method.includes("unanswered ten-count"))return /\b(?:ten[- ]count|count of ten|failed to (?:rise|stand|answer)|could not (?:beat|answer) the count)\b/i.test(summary)&&!invalidSpecial.test(summary);
