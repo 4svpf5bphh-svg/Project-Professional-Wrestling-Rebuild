@@ -276,8 +276,12 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         const annual=Array.isArray(saved)?saved:proposed;
         const due=annual.find(e=>e&&typeof e==="object"&&
          "week" in e&&e.week===week);
-        const ppv=identities.find(s=>s.eventType==="MAJOR"&&s.active&&
+        const ppvIdentity=identities.find(s=>s.eventType==="MAJOR"&&s.active&&
          s.seriesId===due?.seriesId);
+        const edition=typeof due?.name==="string"&&due.name.trim()?
+         due.name.trim():null;
+        const ppv=ppvIdentity&&edition?
+         {...ppvIdentity,name:edition}:ppvIdentity;
         // Legacy generic AI never created optional dedicated PPV cards;
         // don't rewrite the currently published year on existing saves.
         if(oldYear&&saved===undefined&&

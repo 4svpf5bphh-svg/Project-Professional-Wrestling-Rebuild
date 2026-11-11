@@ -210,6 +210,16 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    .sort((a,b)=>a.week-b.week||a.seriesId.localeCompare(b.seriesId)));
   pendingYear=null;render();
  }
+ function renameYearEvent(year:number,week:number,name:string){
+  const current=yearEvents(year).find(x=>x.week===week);
+  if(!current||!data)return;
+  const seriesName=data.series.find(s=>s.seriesId===current.seriesId)?.name??"";
+  const trimmed=name.trim();
+  const revised=yearEvents(year).map(e=>e.week===week?
+   {...e,name:trimmed&&trimmed!==seriesName?trimmed:undefined}:e);
+  yearlyDrafts.set(year,revised);
+  pendingYear=null;
+ }
  async function confirmAnnual(){
   const selected=yearData(),annual=data?.annual;
   if(!selected||!annual||!data||busy||!port.saveAnnual)return;
@@ -265,7 +275,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const lockedCurrent=chosen.year<(data.annual.policyStartYear??1)||
    chosen.year===data.year&&data.week>1&&!chosen.confirmed;
   const canEdit=data.canEdit&&!!port.saveAnnual&&!lockedCurrent&&!busy;
-  const dated=new Map(events.map(x=>[x.week,x.seriesId]));
+  const dated=new Map(events.map(x=>[x.week,x]));
   rootSection.append(node("p",
    (chosen.confirmed?"Confirmed for Year ":"Suggested for Year ")+chosen.year+
    " · "+events.length+" of "+annual.policy.maximum+" dates"+
@@ -285,8 +295,9 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    part.append(node("h3","Quarter "+(quarter+1),"ppw-calendar-quarter-heading"));
    const grid=node("div","","ppw-calendar-week-grid");
    for(let i=1;i<=13;i++){
-    const week=quarter*13+i,seriesId=dated.get(week);
-    const show=seriesId?series.get(seriesId):null;
+    const week=quarter*13+i,edition=dated.get(week);
+    const show=edition?series.get(edition.seriesId):null;
+    const showName=edition?.name??show?.name;
     const picked=week===yearActiveWeek;
     const date=button("W"+String(week).padStart(2,"0"),()=>{
      yearActiveWeek=week;render();
@@ -295,8 +306,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     date.dataset.hasEvent=String(!!show);
     date.setAttribute("aria-pressed",String(picked));
     date.setAttribute("aria-label","Year "+chosen.year+" week "+week+
-     (show?" — "+show.name:" — available"));
-    if(show)date.append(node("small",show.name));
+     (showName?" — "+showName:" — available"));
+    if(showName)date.append(node("small",showName));
     grid.append(date);
    }
    part.append(grid);quarters.append(part);
@@ -311,11 +322,41 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     const selected=button(show.name,()=>{
      changeYearEvent(chosen.year,yearActiveWeek!,show.seriesId);
     });
-    selected.setAttribute("aria-pressed",String(dated.get(yearActiveWeek)===show.seriesId));
+    selected.setAttribute("aria-pressed",
+     String(dated.get(yearActiveWeek)?.seriesId===show.seriesId));
     choices.append(selected);
    }
    const clear=button("Leave week free",()=>changeYearEvent(chosen.year,yearActiveWeek!,null));
-   choices.append(clear);picker.append(choices);rootSection.append(picker);
+   choices.append(clear);picker.append(choices);
+   const currentEdition=dated.get(yearActiveWeek);
+   if(currentEdition){
+    const event=series.get(currentEdition.seriesId);
+    const named=node("label","","ppw-calendar-year-edition");
+    named.append(node("span","PPV edition name"));
+    const name=document.createElement("input");
+    name.type="text";name.maxLength=80;
+    name.setAttribute("aria-label","PPV edition name");
+    name.value=currentEdition.name??event?.name??"";
+    const official=["WWE","AEW"].includes(data.promotionName.trim().toUpperCase());
+    name.disabled=official;
+    name.oninput=()=>{
+     renameYearEvent(chosen.year,yearActiveWeek!,name.value);
+     const shown=name.value.trim()||event?.name||"";
+     const tile=root.querySelector<HTMLButtonElement>(
+      ".ppw-calendar-week-button[aria-pressed=true]");
+     if(tile&&shown){
+      const title=tile.querySelector("small");
+      if(title)title.textContent=shown;
+      tile.setAttribute("aria-label","Year "+chosen.year+" week "+yearActiveWeek+
+       " — "+shown);
+     }
+    };
+    named.append(name);
+    picker.append(named);
+    if(official)picker.append(node("p",
+     "Official annual event names are protected.","ppw-calendar-year-footer"));
+   }
+   rootSection.append(picker);
   }
   if(canEdit){
    rootSection.append(button("Use recommended dates",()=>{

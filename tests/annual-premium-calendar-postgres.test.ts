@@ -71,7 +71,8 @@ test("one 52-week PPV confirmation creates playable booked events, protects them
   assert.ok(before.worldWeeks.some(w=>w.events.some(e=>
    e.promotionId==="rival"&&e.name==="Royal Rumble")),
    "AI rivals use recognizable real-life premium dates even before the owner visits");
-  const suggested=before.annual!.years[0]!.suggested;
+  const suggested=before.annual!.years[0]!.suggested.map((event,i)=>i===0?
+   {...event,name:"CWA Spring Riot"}:event);
   const accepted=await dispatchCardRpc({pool:db.pool,actor:{playerId}},
    "saveAnnualPremium",{worldId,promotionId,
     requestId:"confirm-year-1",expectedRevision:0,year:1,events:suggested});
@@ -84,7 +85,7 @@ test("one 52-week PPV confirmation creates playable booked events, protects them
   assert.equal(saved.annual?.years[0]?.confirmed,true);
   assert.deepEqual(saved.annual?.years[0]?.events,suggested);
   assert.equal(saved.worldRevision,1);
-  assert.ok(saved.weeks[11]!.shows.some(s=>s.name==="CWA Premium"));
+  assert.ok(saved.weeks[11]!.shows.some(s=>s.name==="CWA Spring Riot"));
   assert.equal(saved.weeks[7]!.shows.filter(x=>x.eventType==="MAJOR").length,0);
   const badEvents=Array.from({length:5},(_,i)=>({
    seriesId:suggested[0]!.seriesId,week:3+i*10}));
@@ -101,7 +102,7 @@ test("one 52-week PPV confirmation creates playable booked events, protects them
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET week=12 WHERE world_id=$1",[worldId]));
   const atEvent=await readSixWeekPlanner(db.pool,scope);
-  assert.ok(atEvent.weeks[0]!.scheduled.some(s=>s.name==="CWA Premium"));
+  assert.ok(atEvent.weeks[0]!.scheduled.some(s=>s.name==="CWA Spring Riot"));
   await assert.rejects(planShowWeek(db.pool,{...scope,
    requestId:"off-date",expectedRevision:1,year:1,week:13,
    day:6,venueId:"cwa-arena",marketId:"home",
@@ -114,7 +115,7 @@ test("one 52-week PPV confirmation creates playable booked events, protects them
   assert.equal(booked.status,"APPLIED");
   const event=await readSixWeekPlanner(db.pool,scope);
   assert.equal(event.weeks[0]?.shows[0]?.bookingClass,"PREMIUM");
-  assert.equal(event.weeks[0]?.shows[0]?.showName,"CWA Premium");
+  assert.equal(event.weeks[0]?.shows[0]?.showName,"CWA Spring Riot");
   assert.equal(event.weeks[0]?.shows[0]?.day,6);
   await assert.rejects(saveAnnualPremiumPlan(db.pool,{...scope,
    requestId:"move-booked",expectedRevision:2,year:1,

@@ -47,13 +47,15 @@ for(const width of [320,390]){
   await week20.click();
   await page.locator(".ppw-calendar-year-picker").getByRole("button",
    {name:"CWA Premium"}).click();
-  await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Premium"})).toBeVisible();
+  await page.getByLabel("PPV edition name").fill("CWA Summer Slam");
+  await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Summer Slam"})).toBeVisible();
   await page.getByRole("button",{name:"Confirm Year 1"}).click();
   await expect(page.getByText("Confirmed for Year 1")).toBeVisible();
   expect(saves).toHaveLength(1);
   const first=saves[0] as {year:number;events:{seriesId:string;week:number}[]};
   expect(first.year).toBe(1);
   expect(first.events.map(x=>x.week)).toEqual([12,20,29,46]);
+  expect((first.events[1] as {name?:string}).name).toBe("CWA Summer Slam");
   expect(calls,"No database calls from viewing or tapping week cells")
    .toEqual(["calendar","saveAnnualPremium","calendar"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
