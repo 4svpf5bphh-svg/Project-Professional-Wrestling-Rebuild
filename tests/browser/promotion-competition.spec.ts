@@ -58,7 +58,7 @@ for(const width of [320,390]){
   await expect(desk.locator(".ppw-ratings-circuit")).toContainText("Regional Stars");
   await expect(desk.locator(".ppw-ratings-war-faceoff")).toContainText("No recent certified TV result");
   await expect(desk.getByText(/No certified TV broadcasts/)).toBeVisible();
-  expect(calls).toEqual(["overview","business"],"No extra rival polling or RPC");
+  expect(calls).toEqual(["overview","business"]);
   const box=await desk.locator(".ppw-ratings-circuit").boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
