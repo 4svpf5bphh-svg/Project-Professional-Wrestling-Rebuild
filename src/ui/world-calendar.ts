@@ -207,8 +207,10 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const previous=yearEvents(year).find(x=>x.week===week&&x.seriesId===seriesId);
   const without=yearEvents(year).filter(x=>x.week!==week);
   if(seriesId)without.push(previous?{...previous}:{week,seriesId});
-  yearlyDrafts.set(year,without.map(x=>({seriesId:x.seriesId,week:x.week}))
-   .sort((a,b)=>a.week-b.week||a.seriesId.localeCompare(b.seriesId)));
+  // Preserve the optional edition name on an unchanged show identity.
+  // Rebuilding only {seriesId,week} silently discarded that name.
+  yearlyDrafts.set(year,without.sort((a,b)=>
+   a.week-b.week||a.seriesId.localeCompare(b.seriesId)));
   pendingYear=null;render();
  }
  function renameYearEvent(year:number,week:number,name:string){
