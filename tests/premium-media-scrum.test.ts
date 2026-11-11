@@ -41,14 +41,14 @@ test("Named PPV press stories distinguish saved answers, refusals and skipped qu
  assert.doesNotMatch(skipped[0]!.title,/declines|refuses/);
  assert.deepEqual(publishablePressEditorial(premium,"Josh Robinson",new Map()),[],
   "No news before the manager attends and ends the session");
- const skipped=publishablePressEditorial(premium,"Josh Robinson",
+ const silentSession=publishablePressEditorial(premium,"Josh Robinson",
   new Map(),{sessionEnded:true});
- assert.equal(skipped.length,2);
+ assert.equal(silentSessionlength,2);
  assert.match(skipped[0]!.title,/ends the press conference without taking questions/);
  assert.match(skipped[0]!.summary,/without answering any of the three/);
  assert.equal(skipped[0]!.certainty,"CONFIRMED");
  assert.equal(skipped[1]!.certainty,"SPECULATION");
- assert.doesNotMatch(JSON.stringify(skipped),
+ assert.doesNotMatch(JSON.stringify(silentSession),
   /"No comment\.|declined|refused|Josh Robinson:|said "/i,
   "Explicit silence isn't an invented quote or a recorded refusal");
  const partial=publishablePressEditorial(premium,"Josh Robinson",
