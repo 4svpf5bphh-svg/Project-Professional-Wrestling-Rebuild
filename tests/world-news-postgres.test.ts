@@ -175,6 +175,7 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
     world_id,show_id,match_id,rating_stars,execution_quality,
     chemistry_modifier,actual_minutes)
     VALUES($1,'nextshow','nextmatch',4.5,82,1,17)`,[world]);
+   await tx.query("UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[world]);
    await tx.query(`INSERT INTO ppw_week_resolution_seals(
     world_id,year,week,certified_promotions) VALUES($1,1,2,1)`,[world]);
   });
