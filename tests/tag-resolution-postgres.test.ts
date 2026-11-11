@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {randomUUID} from "node:crypto";
+import {randomUUID,createHash} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
@@ -9,6 +9,10 @@ import {previewLegacyShowMatchStyles} from "../src/db/legacy-match-projection.js
 import {deriveArchivedMatchEvidence} from "../src/simulation/derive-archived-match-evidence.js";
 import {assembleArchivedShowResolution} from "../src/simulation/assemble-archived-show-resolution.js";
 import {resolveCanonicalShow} from "../src/db/resolve-canonical-show.js";
+import {settleCanonicalTagTitleContests}
+ from "../src/db/tag-championship-settlement.js";
+import {canonicalCompletedShowReceipt,type CompletedShowReceipt}
+ from "../src/domain/completed-show-receipt.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("PostgreSQL canonical 2v2: four contracted athletes, team chemistry, result evidence and retry-safe completed show",{
  skip:!url?"No disposable PostgreSQL":false,
@@ -179,6 +183,99 @@ test("PostgreSQL canonical 2v2: four contracted athletes, team chemistry, result
      "ppw_tag_team_members","ppw_tag_teams",
      "ppw_people","ppw_venues","ppw_promotions"])
     await tx.query(`DELETE FROM ${table} WHERE world_id=$1`,[worldId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});
+
+
+test("unformed challenger wins on a referee DQ but active tag champions retain the title without a fabricated team",{
+ skip:!url?"Disposable PostgreSQL required":false
+},async()=>{
+ const db=postgresPool(url!,3),worldId="tag-protected-"+randomUUID();
+ const promotionId="indie",showId="protected-show",slotId="duo-title";
+ const people=["p1","p2","p3","p4"];
+ const receipt:CompletedShowReceipt={
+  worldId,promotionId,showId,year:1,week:33,resolutionId:"protected-result",
+  crowdResponse:73,matches:[{matchId:slotId,position:0,crowdResponse:73,
+   actualFinish:"DISQUALIFICATION",actualWinnerSide:"B"}],segments:[]
+ };
+ const booked=[{slotId,championshipId:"tag-belt",sides:[
+  {sideId:"A",personIds:people.slice(0,2)},
+  {sideId:"B",personIds:people.slice(2,4)}
+ ]}];
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Protected tag title",seed:33,
+    rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:promotionId,name:"Indie",tier:"LOCAL"});
+   await tx.query(`
+    INSERT INTO ppw_people(world_id,person_id,name)
+    VALUES($1,'p1','One'),($1,'p2','Two'),($1,'p3','Three'),($1,'p4','Four')`,
+    [worldId]);
+   await tx.query(`
+    INSERT INTO ppw_tag_teams(world_id,team_id,name,status)
+    VALUES($1,'champions','Defending Champions','ACTIVE')`,[worldId]);
+   await tx.query(`
+    INSERT INTO ppw_tag_team_members(world_id,team_id,person_id)
+    VALUES($1,'champions','p1'),($1,'champions','p2')`,[worldId]);
+   await tx.query(`
+    INSERT INTO ppw_championships(world_id,promotion_id,championship_id,
+     name,division,status,prestige,current_reign_id)
+    VALUES($1,$2,'tag-belt','Tag World','TAG','ACTIVE',80,'reign-1')`,
+    [worldId,promotionId]);
+   await tx.query(`
+    INSERT INTO ppw_championship_reigns(world_id,promotion_id,
+     championship_id,reign_id,holder_type,team_id,status,start_week_index)
+    VALUES($1,$2,'tag-belt','reign-1','TEAM','champions','ACTIVE',0)`,
+    [worldId,promotionId]);
+   const canonical=canonicalCompletedShowReceipt(receipt);
+   const digest=createHash("sha256").update(canonical).digest("hex");
+   await tx.query(`
+    INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,
+     resolution_id,crowd_response,receipt_json,receipt_digest)
+    VALUES($1,$2,$3,1,33,'protected-result',73,$4::jsonb,$5)`,
+    [worldId,promotionId,showId,canonical,digest]);
+   await tx.query(`
+    INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,
+     position,crowd_response,actual_finish,actual_winner_side)
+    VALUES($1,$2,$3,0,73,'DISQUALIFICATION','B')`,
+    [worldId,showId,slotId]);
+  });
+  assert.deepEqual(await withWorldTransaction(db.pool,tx=>
+   settleCanonicalTagTitleContests(tx,receipt,booked)),
+   {contests:1,transfers:0});
+  const audit=await withWorldTransaction(db.pool,tx=>tx.query<{
+   winner_team_id:string|null;winning_pair_person_ids:string[]|null;
+   title_changed:boolean}>(`
+   SELECT winner_team_id,winning_pair_person_ids,title_changed
+   FROM ppw_championship_contests WHERE world_id=$1 AND show_id=$2`,
+   [worldId,showId]));
+  assert.deepEqual(audit,[{winner_team_id:null,
+   winning_pair_person_ids:["p3","p4"],title_changed:false}]);
+  const reign=await withWorldTransaction(db.pool,tx=>tx.query<{
+   team_id:string;defenses:number;status:string}>(`
+   SELECT team_id,defenses,status FROM ppw_championship_reigns
+   WHERE world_id=$1 AND reign_id='reign-1'`,[worldId]));
+  assert.deepEqual(reign,[{team_id:"champions",defenses:0,status:"ACTIVE"}],
+   "A DQ win by unformed challengers cannot change or defend the title");
+  const teamCount=await withWorldTransaction(db.pool,tx=>tx.query<{count:number}>(`
+   SELECT count(*)::integer AS count FROM ppw_tag_teams
+   WHERE world_id=$1`,[worldId]));
+  assert.equal(teamCount[0]?.count,1,
+   "The non-transfer winner pair must not become a fabricated active World team");
+  await assert.rejects(withWorldTransaction(db.pool,tx=>tx.query(`
+   UPDATE ppw_championship_contests SET title_changed=true
+   WHERE world_id=$1 AND show_id=$2`,[worldId,showId])),
+   /ppw_title_contest_one_winner/,
+   "No title change may be recorded without an active team holder");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_championship_contests","ppw_championship_reigns",
+    "ppw_championships","ppw_ledger_events","ppw_tag_team_members",
+    "ppw_tag_teams","ppw_completed_show_matches","ppw_completed_shows",
+    "ppw_people","ppw_promotions"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   }).finally(()=>db.close());
  }

@@ -106,7 +106,14 @@ export async function settleCanonicalTagTitleContests(
     [receipt.worldId,teamId,people]);
    winner=teamId;
   }
-  if(!winner)throw new Error("A tag-title holder must be an active World team");
+  // A non-title-changing result can give the match to a two-person
+  // challenger pair that has not formed a portable World tag team.
+  // Record the real winning wrestlers without inventing a team or
+  // incorrectly crediting the defending champion with the victory.
+  const winnerPair=winner===null?
+   [...booking.sides[winningSide]!.personIds].sort():null;
+  if(transfer&&!winner)
+   throw new Error("A title transfer requires a verified active World tag team");
   if(transfer){
    if(hasChampion){
     const updated=await tx.query<{reign_id:string}>(`
@@ -140,10 +147,12 @@ export async function settleCanonicalTagTitleContests(
   }
   await tx.query(`
    INSERT INTO ppw_championship_contests(world_id,promotion_id,
-    championship_id,show_id,slot_id,prior_reign_id,winner_team_id,title_changed)
-   VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+    championship_id,show_id,slot_id,prior_reign_id,
+    winner_team_id,winning_pair_person_ids,title_changed)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8::text[],$9)`,
    [receipt.worldId,receipt.promotionId,booking.championshipId,
-    receipt.showId,booking.slotId,current.reign_id,winner,transfer]);
+    receipt.showId,booking.slotId,current.reign_id,
+    winner,winnerPair,transfer]);
  }
  await tx.query(`
   INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
