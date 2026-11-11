@@ -39,7 +39,26 @@ test("Named PPV press stories distinguish saved answers, refusals and skipped qu
  const skipped=publishablePressEditorial(premium,"Josh Robinson",new Map([["BIG_PICTURE",1]]));
  assert.match(skipped[0]!.summary,/Some things worked/);
  assert.doesNotMatch(skipped[0]!.title,/declines|refuses/);
- assert.deepEqual(publishablePressEditorial(premium,"Josh Robinson",new Map()),[]);
+ assert.deepEqual(publishablePressEditorial(premium,"Josh Robinson",new Map()),[],
+  "No news before the manager attends and ends the session");
+ const skipped=publishablePressEditorial(premium,"Josh Robinson",
+  new Map(),{sessionEnded:true});
+ assert.equal(skipped.length,2);
+ assert.match(skipped[0]!.title,/ends the press conference without taking questions/);
+ assert.match(skipped[0]!.summary,/without answering any of the three/);
+ assert.equal(skipped[0]!.certainty,"CONFIRMED");
+ assert.equal(skipped[1]!.certainty,"SPECULATION");
+ assert.doesNotMatch(JSON.stringify(skipped),
+  /"No comment\.|declined|refused|Josh Robinson:|said "/i,
+  "Explicit silence isn't an invented quote or a recorded refusal");
+ const partial=publishablePressEditorial(premium,"Josh Robinson",
+  new Map([["BIG_PICTURE",1]]),{sessionEnded:true});
+ assert.match(partial[0]!.summary,/2 remaining questions were left unanswered/);
+ assert.match(partial[0]!.summary,/Some things worked, some things didn't/);
+ assert.doesNotMatch(partial[0]!.summary,/No comment/);
+ const full=publishablePressEditorial(premium,"Josh Robinson",new Map([
+  ["MAIN_EVENT",0],["BIG_PICTURE",1],["NEXT_CHAPTER",1]]),{sessionEnded:true});
+ assert.doesNotMatch(full[0]!.summary,/remaining question/);
  assert.deepEqual(publishablePressEditorial({...premium,bookingClass:"REGULAR"},
   "Josh Robinson",new Map([["MAIN_EVENT",2]])),[]);
 });

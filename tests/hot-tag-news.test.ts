@@ -123,6 +123,15 @@ test("Press-conference HOT TAG reacts to the actual type of saved answer",()=>{
  assert.match(direct[0]!.text,/answered|on.record|manager has spoken/i);
  assert.notDeepEqual(noComment,evasive);
  assert.notDeepEqual(evasive,direct);
+ const skippedArticle={...article,id:"press:official:ppv-skipped",
+  title:"Josh Robinson ends the press conference without taking questions after Armageddon",
+  summary:"Josh Robinson ended the post-show press session without answering any of the three questions."};
+ const skipped=projectHotTagNewsThread(skippedArticle);
+ assert.equal(skipped.length,3);
+ assert.match(skipped[0]!.text,/without answering|zero answers|skipped scrum/i);
+ assert.doesNotMatch(skipped[0]!.text,/refused|no comment|declined/i);
+ assert.notDeepEqual(skipped,noComment);
+ assert.deepEqual(skipped,projectHotTagNewsThread(skippedArticle));
  const dirts=projectHotTagNewsThread({...article,
   id:"press:rumour:ppv-one",desk:"DIRT",title:"No comment after Armageddon"});
  assert.match(dirts[0]!.text,/no comment|refusal|reason|words/i);
