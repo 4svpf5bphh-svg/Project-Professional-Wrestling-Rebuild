@@ -262,10 +262,16 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  // said, not an invented press quote or the same generic rumour under every
  // event. These are fan reactions, never attributed to the manager.
  const press=story.id.startsWith("press:");
+ const pressFollowup=story.id.startsWith("press:followup:");
  const pressMode=/ends the press conference without taking questions|no answers from/i.test(story.title)?"SKIPPED":
   /no comment|declined/i.test(story.title)?"DECLINED":
   /details close|no concrete/i.test(story.title)?"EVASIVE":"DIRECT";
  const pressSpecific=press?
+  pressFollowup?[
+   "That is an actual on-air follow-up after the press scrum. Now we're talking wrestling again. 🎤",
+   "Last week the microphones, this week the matches. At least we have a real broadcast to discuss. 📺",
+   "The press debate can continue, but the next show gave fans something concrete to watch. 👀"
+  ]:
   pressMode==="SKIPPED"?[
    "The manager ended the scrum without answering anything. No quote to dissect this time. 🎤",
    "Three questions prepared, zero answers. That is a very short press conference. 😂",

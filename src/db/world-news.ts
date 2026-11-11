@@ -8,6 +8,8 @@ import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 import {publishCertifiedWorldHeritage} from "./world-honours.js";
 import {continueWorldRumours} from "./world-rumour-continuity.js";
+import {composePostPressFollowthrough}
+ from "../domain/post-press-followthrough.js";
 
 type Broadcast = {
  show_id:string;promotion_id:string;promotion_name:string;show_name:string;
@@ -474,8 +476,27 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
   .map(p=>[p.person_id,p.career_stage!]));
  const awards=chooseWeeklyAwards(bouts,angles,names);
  const weeklyStories=composeWorldNews(bouts,angles,shows,titles,names,tournamentFinals,stages);
+ // Last week's PUBLIC, already published press words only. This indexed,
+ // World-Lock-only read never touches private drafts, wrestler DMs or the
+ // user's News screen. The two-human case is bounded to four source rows.
+ const previousIndex=(year-1)*52+week-2;
+ const prev={year:Math.floor(previousIndex/52)+1,week:previousIndex%52+1};
+ const priorPress=year===1&&week===1?[]:await tx.query<{
+  year:number;week:number;promotion_id:string;show_id:string;title:string}>(`
+  SELECT year,week,promotion_id,show_id,title FROM ppw_world_news_items
+  WHERE world_id=$1 AND year=$2 AND week=$3 AND desk='OFFICIAL'
+   AND story_key LIKE 'press:official:%'
+  ORDER BY promotion_id,story_key LIMIT 5`,[worldId,prev.year,prev.week]);
+ const pressFollowups=composePostPressFollowthrough({
+  year,week,previousPress:priorPress.map(x=>({
+   year:x.year,week:x.week,promotionId:x.promotion_id,
+   showId:x.show_id,title:x.title})),
+  currentShows:shows.map(s=>({showId:s.show_id,promotionId:s.promotion_id,
+   promotionName:s.promotion_name,showName:s.show_name})),
+  publishedStories:weeklyStories
+ });
  const followups=await continueWorldRumours(tx,worldId,year,week,weeklyStories);
- const stories=[...weeklyStories,...followups];
+ const stories=[...weeklyStories,...pressFollowups,...followups];
  if(awards.length)await tx.query(`
   INSERT INTO ppw_world_news_awards(world_id,year,week,kind,
    promotion_id,promotion_name,show_id,show_name,slot_id,title,
