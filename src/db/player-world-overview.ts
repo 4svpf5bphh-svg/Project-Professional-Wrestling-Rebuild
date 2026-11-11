@@ -2,6 +2,8 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {derivePromoterAchievements,EMPTY_PROMOTER_COUNTERS,type AchievementMetric} from "../domain/promoter-achievements.js";
 import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
+import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
+ from "./promotion-competition.js";
 
 export interface PlayerWorldOverview {
  world:{id:string;name:string;year:number;week:number;day:number;
@@ -11,6 +13,7 @@ export interface PlayerWorldOverview {
     milestoneFrame?:"GOLD"|"PLATINUM"|null;
     promoterPrestige?:{rank:string;earnedCount:number;total:number;prestigeScore:number};
    standing?:{position:number;total:number}|null;
+   competition?:PromotionCompetitionCard|null;
    nextShow?:{year:number;week:number;showName:string;ready:boolean;status:string}|null;
    latestShow?:{year:number;week:number;showName:string;crowdResponse:number}|null;
   lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null;
@@ -72,6 +75,7 @@ export async function readPlayerWorldOverview(
    medical_clearances:unknown;world_stories:unknown;
    kp_claim_available:boolean|null;unseen_legends:number|null;
    standing:unknown;next_show:unknown;latest_show:unknown;
+   competition:PromotionCompetitionCard|null;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
     w.phase,w.revision,
@@ -89,7 +93,9 @@ export async function readPlayerWorldOverview(
     notices.business_updates,notices.contract_alerts,notices.title_news,
     notices.injury_news,notices.medical_clearances,
     public_news.world_stories,kp.kp_claim_available,legends.unseen_legends,
-    dashboard.standing,dashboard.next_show,dashboard.latest_show
+    dashboard.standing,dashboard.next_show,dashboard.latest_show,
+    ${promotionCompetitionProjectionSql("w.world_id","owned.promotion_id")}
+     AS competition
    FROM ppw_worlds w
    LEFT JOIN ppw_memberships m
     ON m.world_id=w.world_id AND m.player_id=$2
@@ -573,6 +579,7 @@ export async function readPlayerWorldOverview(
    membership:x.membership_status??"NONE",
    promotion:x.promotion_id!==null?{
     id:x.promotion_id,name:x.promotion_name!,tier:x.tier!,
+    competition:x.competition??null,
     promoterPrestige:{rank:achievementSummary.rank,
      earnedCount:achievementSummary.earnedCount,total:achievementSummary.total,
      prestigeScore:achievementSummary.prestigeScore},

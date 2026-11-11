@@ -98,3 +98,39 @@ export async function reviewWorldPromotionCompetition(
  })))]);
  return {evaluated:selections.length,changed:selections.filter(s=>s.changed).length};
 }
+
+/** Cached bounded public rivalry projected in existing one-query owner
+ * Home and Business workspaces. Never sends private opponent information.
+ */
+export interface PromotionCompetitionCard {
+ promotionId:string;name:string;tier:string;humanManaged:boolean;
+ sinceWeekIndex:number;reviewedWeekIndex:number;
+ ownShowCount:number;rivalShowCount:number;
+ ownAvgCrowd:number|null;rivalAvgCrowd:number|null;
+ ownReach:number|null;rivalReach:number|null;
+ ownTvRating:number|null;rivalTvRating:number|null;
+ targetName:string|null;targetTier:string|null;
+}
+export function promotionCompetitionProjectionSql(world:string,owner:string):string{
+ return `(
+  SELECT jsonb_build_object(
+   'promotionId',r.promotion_id,'name',r.name,'tier',r.tier,
+   'humanManaged',EXISTS(SELECT 1 FROM ppw_promotion_controls human
+    WHERE human.world_id=r.world_id AND human.promotion_id=r.promotion_id
+    AND human.active),
+   'sinceWeekIndex',c.rival_since_week_index,
+   'reviewedWeekIndex',c.reviewed_week_index,
+   'ownShowCount',c.own_show_count,'rivalShowCount',c.rival_show_count,
+   'ownAvgCrowd',c.own_avg_crowd,'rivalAvgCrowd',c.rival_avg_crowd,
+   'ownReach',c.own_reach,'rivalReach',c.rival_reach,
+   'ownTvRating',c.own_tv_rating,'rivalTvRating',c.rival_tv_rating,
+   'targetName',target.name,'targetTier',target.tier)
+  FROM ppw_promotion_competition c
+  JOIN ppw_promotions r ON r.world_id=c.world_id
+   AND r.promotion_id=c.rival_promotion_id AND r.lifecycle='ACTIVE'
+  LEFT JOIN ppw_promotions target ON target.world_id=c.world_id
+   AND target.promotion_id=c.target_promotion_id AND target.lifecycle='ACTIVE'
+  WHERE c.world_id=${world} AND c.promotion_id=${owner}
+  LIMIT 1
+ )`;
+}
