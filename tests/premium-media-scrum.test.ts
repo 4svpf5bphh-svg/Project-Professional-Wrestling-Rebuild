@@ -43,11 +43,11 @@ test("Named PPV press stories distinguish saved answers, refusals and skipped qu
   "No news before the manager attends and ends the session");
  const silentSession=publishablePressEditorial(premium,"Josh Robinson",
   new Map(),{sessionEnded:true});
- assert.equal(silentSessionlength,2);
- assert.match(skipped[0]!.title,/ends the press conference without taking questions/);
- assert.match(skipped[0]!.summary,/without answering any of the three/);
- assert.equal(skipped[0]!.certainty,"CONFIRMED");
- assert.equal(skipped[1]!.certainty,"SPECULATION");
+ assert.equal(silentSession.length,2);
+ assert.match(silentSession[0]!.title,/ends the press conference without taking questions/);
+ assert.match(silentSession[0]!.summary,/without answering any of the three/);
+ assert.equal(silentSession[0]!.certainty,"CONFIRMED");
+ assert.equal(silentSession[1]!.certainty,"SPECULATION");
  assert.doesNotMatch(JSON.stringify(silentSession),
   /"No comment\.|declined|refused|Josh Robinson:|said "/i,
   "Explicit silence isn't an invented quote or a recorded refusal");
