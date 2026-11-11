@@ -132,6 +132,15 @@ test("Press-conference HOT TAG reacts to the actual type of saved answer",()=>{
  assert.doesNotMatch(skipped[0]!.text,/refused|no comment|declined/i);
  assert.notDeepEqual(skipped,noComment);
  assert.deepEqual(skipped,projectHotTagNewsThread(skippedArticle));
+ const followed=projectHotTagNewsThread({...article,
+  id:"press:followup:w2",title:"CWA returns to the ring after press scrutiny",
+  summary:"The certified broadcast gave wrestling fans another headline."});
+ assert.equal(followed.length,3);
+ assert.match(followed[0]!.text,/on.air follow.up|microphones|next show/i);
+ assert.deepEqual(followed,projectHotTagNewsThread({...article,
+  id:"press:followup:w2",title:"CWA returns to the ring after press scrutiny",
+  summary:"The certified broadcast gave wrestling fans another headline."}));
+ assert.notDeepEqual(followed,noComment);
  const dirts=projectHotTagNewsThread({...article,
   id:"press:rumour:ppv-one",desk:"DIRT",title:"No comment after Armageddon"});
  assert.match(dirts[0]!.text,/no comment|refusal|reason|words/i);

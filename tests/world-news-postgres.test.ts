@@ -148,9 +148,54 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   assert.ok(JSON.stringify(viaRpc).includes("AI Crown Night"));
   await assert.rejects(readIndustryWorldNews(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:"outsider"}),/access denied/);
+  // The PPV press answer belongs to the previous published week. After the
+  // next week's actual certified broadcast, World News can revisit the
+  // public statement without ever reading the private future booking.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_world_news_items(
+    world_id,year,week,story_key,desk,certainty,promotion_id,promotion_name,
+    show_id,title,summary,source_kind)
+    VALUES($1,1,1,'press:official:hshow','OFFICIAL','CONFIRMED',
+     'promotion-0','Promotion 0','hshow',
+     'Josh Robinson says no comment after Human Fight Night',
+     'Manager said No comment after the completed premium event.','EVENT')`,[world]);
+   await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_name,event_type,show_day)
+    VALUES($1,'nextshow','promotion-0',1,2,'SUBMITTED','Next Broadcast','REGULAR',2)`,[world]);
+   await tx.query(`INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
+    VALUES($1,'nextshow','nextmatch',1,'MATCH',$2::jsonb)`,
+    [world,payload(a!,b!)]);
+   await tx.query(`INSERT INTO ppw_completed_shows(
+    world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,
+    receipt_json,receipt_digest)
+    VALUES($1,'promotion-0','nextshow',1,2,'next-res',85,'{}',repeat('c',64))`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_show_matches(
+    world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side)
+    VALUES($1,'nextshow','nextmatch',1,90,'CLEAN_PIN','A')`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_match_report_facts(
+    world_id,show_id,match_id,rating_stars,execution_quality,
+    chemistry_modifier,actual_minutes)
+    VALUES($1,'nextshow','nextmatch',4.5,82,1,17)`,[world]);
+   await tx.query(`INSERT INTO ppw_week_resolution_seals(
+    world_id,year,week,certified_promotions) VALUES($1,1,2,1)`,[world]);
+  });
+  const nextIssue=await withWorldTransaction(db.pool,tx=>
+   publishCertifiedWorldNews(tx,world,1,2));
+  assert.equal(nextIssue.published,true);
+  const followup=await withWorldTransaction(db.pool,tx=>tx.query<{
+   story_key:string;title:string;summary:string;show_id:string}>(`
+    SELECT story_key,title,summary,show_id FROM ppw_world_news_items
+    WHERE world_id=$1 AND year=1 AND week=2 AND story_key LIKE 'press:followup:%'`,
+    [world]));
+  assert.equal(followup.length,1);
+  assert.equal(followup[0]!.show_id,"nextshow");
+  assert.match(followup[0]!.summary,/Next Broadcast/);
+  assert.match(followup[0]!.summary,/no comment/i);
+  assert.doesNotMatch(JSON.stringify(followup),/PRIVATE FUTURE PLANS/);
+  assert.equal((await withWorldTransaction(db.pool,tx=>
+   publishCertifiedWorldNews(tx,world,1,2))).published,false);
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`INSERT INTO ppw_world_news_weeks(world_id,year,week)
-    SELECT $1,1,generate_series(2,52)`,[world]);
+    SELECT $1,1,generate_series(2,52) ON CONFLICT DO NOTHING`,[world]);
    await tx.query(`UPDATE ppw_worlds SET year=2,week=1 WHERE world_id=$1`,[world]);
   });
   const annual=await readIndustryWorldNews(db.pool,{
