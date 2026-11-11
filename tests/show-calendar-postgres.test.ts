@@ -8,6 +8,7 @@ import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries}
  from "../src/db/calendar-workspace.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import {saveAnnualPremiumPlan} from "../src/db/annual-premium-calendar.js";
 import {readSixWeekPlanner} from "../src/db/planner-workspace.js";
 import type {TransactionPool} from "../src/db/transaction.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -86,18 +87,26 @@ test("A/B television show and extra annual PPV schedules are persistent and isol
   assert.equal(special.status,"APPLIED");
   if(special.status!=="APPLIED")throw new Error("Missing series receipt");
   const seriesId=special.result.seriesId;
+  assert.ok(!(await readPromotionCalendar(db.pool,scope)).weeks[1]!.shows.some(s=>s.seriesId===seriesId),
+   "A new World announces no premium event until the manager confirms the year");
+  assert.equal((await saveAnnualPremiumPlan(db.pool,{...scope,requestId:"confirm-ppv",
+   expectedRevision:3,year:1,events:[{seriesId,week:2}]})).status,"APPLIED");
   assert.ok((await readPromotionCalendar(db.pool,scope)).weeks[1]!.shows.some(s=>s.seriesId===seriesId));
+  await assert.rejects(archivePromotionSeries(db.pool,{...scope,requestId:"archive-confirmed",
+   expectedRevision:4,seriesId}),/confirmed annual PPV plan/);
+  assert.equal((await saveAnnualPremiumPlan(db.pool,{...scope,requestId:"remove-ppv",
+   expectedRevision:4,year:1,events:[]})).status,"APPLIED");
   assert.equal((await archivePromotionSeries(db.pool,{...scope,requestId:"archive",
-   expectedRevision:3,seriesId})).status,"APPLIED");
+   expectedRevision:5,seriesId})).status,"APPLIED");
   assert.ok(!(await readPromotionCalendar(db.pool,scope)).series.some(s=>s.seriesId===seriesId));
   await assert.rejects(archivePromotionSeries(db.pool,{...scope,requestId:"bad-archive",
-   expectedRevision:4,seriesId:flagship.seriesId}),/Flagship cannot/);
+   expectedRevision:6,seriesId:flagship.seriesId}),/Flagship cannot/);
   const counts=await withWorldTransaction(db.pool,tx=>tx.query<{total:string}>(
    "SELECT count(*)::text AS total FROM ppw_show_series WHERE world_id=$1",[worldId]));
   assert.equal(Number(counts[0]!.total),4);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_command_receipts","ppw_show_series",
+   for(const table of ["ppw_annual_premium_plans","ppw_command_receipts","ppw_show_series",
     "ppw_promotion_controls","ppw_memberships","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
@@ -126,8 +135,9 @@ test("WWE full 2026 PLE calendar persists atomically and AEW rivals remain visib
   assert.equal(before.series.filter(s=>s.eventType==="MAJOR").length,11);
   assert.ok(before.worldWeeks.some(w=>w.events.some(e=>
    e.promotionId==="aew"&&e.name==="Revolution")));
-  assert.ok(before.worldWeeks.some(w=>w.events.some(e=>
-   e.promotionId==="wwe"&&e.name==="Royal Rumble")));
+  assert.ok(!before.worldWeeks.some(w=>w.events.some(e=>
+   e.promotionId==="wwe"&&e.name==="Royal Rumble")),
+   "An owned new World must confirm the premium calendar before announcing PPVs");
   const money=before.series.find(s=>s.name==="Money in the Bank")!;
   const written=await upsertPromotionSeries(db.pool,{...scope,requestId:"seed-annual-ppvs",
    expectedRevision:0,series:{...money,name:"Money in the Bank"}});
@@ -139,6 +149,10 @@ test("WWE full 2026 PLE calendar persists atomically and AEW rivals remain visib
    "SELECT count(*)::integer AS count FROM ppw_show_series WHERE world_id=$1",[worldId]));
   assert.equal(count[0]!.count,13);
   assert.ok(!after.series.some(s=>s.name==="WWE Premium Live Event"));
+  const fullYear=(await readPromotionCalendar(db.pool,scope)).annual!.years[0]!.suggested;
+  assert.equal(fullYear.length,11);
+  assert.equal((await saveAnnualPremiumPlan(db.pool,{...scope,requestId:"confirm-wwe",
+   expectedRevision:1,year:1,events:fullYear})).status,"APPLIED");
   assert.equal((await readSixWeekPlanner(db.pool,scope)).weeks[4]!.scheduled
    .find(s=>s.eventType==="MAJOR")?.name,"Royal Rumble");
   assert.equal((await upsertPromotionSeries(db.pool,{...scope,
@@ -174,14 +188,17 @@ test("two independent calendar identities can be planned for the same week with 
    await tx.query("INSERT INTO ppw_promotion_market_states(world_id,promotion_id,market_id,awareness,live_strength,loyalty) VALUES($1,$2,'midlands',50,50,50)",[worldId,promotionId]);
    await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name,market_id,capacity,weekly_hire_cost) VALUES($1,'arena-a','Arena A','midlands',1000,3000),($1,'arena-b','Arena B','midlands',2000,5000)",[worldId]);
   });
+  const fullYear=(await readPromotionCalendar(db.pool,scope)).annual!.years[0]!.suggested;
+  assert.equal((await saveAnnualPremiumPlan(db.pool,{...scope,requestId:"wwe-year",
+   expectedRevision:0,year:1,events:fullYear})).status,"APPLIED");
   const input={...scope,year:1,week:5,day:5,marketId:"midlands",
    ticketStrategy:"STANDARD" as const};
-  const regular=await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:0,
+  const regular=await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:1,
    showSeriesId:"calendar-default-flagship",eventType:"REGULAR",venueId:"arena-a"});
   assert.equal(regular.status,"APPLIED");
   // Verify the browser RPC preserves PPV name and booking class.
   const ppv=await dispatchCardRpc({pool:db.pool,actor:{playerId}},"planShow",{
-   ...input,requestId:"ppv",expectedRevision:1,
+   ...input,requestId:"ppv",expectedRevision:2,
    showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
    day:7,venueId:"arena-b"});
   assert.equal((ppv as {status:string}).status,"APPLIED");
@@ -216,13 +233,13 @@ test("two independent calendar identities can be planned for the same week with 
    maxQueries:3,maxResultBytes:17000}).queryCount,3);
   assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.bookingClass).sort(),
    ["PREMIUM","REGULAR"]);
-  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"same-day",expectedRevision:2,
+  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"same-day",expectedRevision:3,
    showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
    day:5,venueId:"arena-b",draftId:(ppv as {result:{draftId:string}}).result.draftId}),/different days/);
-  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"bad",expectedRevision:2,
+  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"bad",expectedRevision:3,
    showSeriesId:"calendar-default-ppv-wrestlemania",eventType:"MAJOR",
    venueId:"arena-b"}),/not scheduled/);
-  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"double",expectedRevision:2,
+  await assert.rejects(planShowWeek(db.pool,{...input,requestId:"double",expectedRevision:3,
    showSeriesId:"calendar-default-ppv-royal-rumble",eventType:"MAJOR",
    venueId:"arena-b"}),/already has a planned show/);
   const stored=await withWorldTransaction(db.pool,tx=>tx.query<{booking_class:string;show_series_id:string}>(
@@ -237,11 +254,11 @@ test("two independent calendar identities can be planned for the same week with 
    ["PREMIUM",96,"Royal Rumble"],["REGULAR",76,"Monday Night Raw"]]);
   assert.deepEqual(planned.weeks[4]!.shows.map(s=>s.showName).sort(),
    ["Monday Night Raw","Royal Rumble"]);
-  assert.equal((await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:0,
+  assert.equal((await planShowWeek(db.pool,{...input,requestId:"tv",expectedRevision:1,
    showSeriesId:"calendar-default-flagship",eventType:"REGULAR",venueId:"arena-a"})).status,"REPLAYED");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_command_receipts","ppw_booking_drafts","ppw_venues",
+   for(const table of ["ppw_annual_premium_plans","ppw_command_receipts","ppw_booking_drafts","ppw_venues",
     "ppw_promotion_market_states","ppw_promotion_controls","ppw_memberships",
     "ppw_promotions","ppw_markets"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);

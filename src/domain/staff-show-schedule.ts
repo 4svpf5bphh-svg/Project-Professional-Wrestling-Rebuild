@@ -11,6 +11,7 @@ export interface StaffScheduleInput {
   availableVenueIds:readonly string[];
   bookedShows:readonly ExistingShowBooking[];
   excludedDays?:readonly number[];
+  preferredDays?:readonly number[];
 }
 export interface StaffScheduleChoice {day:number;venueId:string}
 
@@ -24,7 +25,9 @@ export function chooseStaffFallbackSchedule(input:StaffScheduleInput):StaffSched
     !Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||
     input.personIds.length>100||input.bookedShows.length>128||
     input.availableVenueIds.length>256||(input.excludedDays?.length??0)>7||
-    input.excludedDays?.some(day=>!Number.isInteger(day)||day<1||day>7))
+    input.excludedDays?.some(day=>!Number.isInteger(day)||day<1||day>7)||
+    (input.preferredDays?.length??0)>7||
+    input.preferredDays?.some(day=>!Number.isInteger(day)||day<1||day>7))
     throw new Error("Invalid staff schedule scope");
   if(input.preferredDay!==null &&
       (!Number.isInteger(input.preferredDay)||input.preferredDay<1||input.preferredDay>7))
@@ -42,7 +45,12 @@ export function chooseStaffFallbackSchedule(input:StaffScheduleInput):StaffSched
   const priority=(c:StaffScheduleChoice)=>createHash("sha256").update(JSON.stringify([
     "ppw-staff-schedule-v1",worldId,worldSeed,year,week,promotionId,c.day,c.venueId,
   ])).digest("hex");
+  // Premium attractions prefer weekends when there is a safe, free slot.
+  // Never veto an available weekday if weekend venues are all occupied.
+  const preferred=new Set(input.preferredDays??[]);
   candidates.sort((a,b)=>{
+    const preferredA=preferred.has(a.day)?0:1,preferredB=preferred.has(b.day)?0:1;
+    if(preferredA!==preferredB)return preferredA-preferredB;
     const x=priority(a),y=priority(b);
     return x<y?-1:x>y?1:a.day-b.day||a.venueId.localeCompare(b.venueId,"en");
   });

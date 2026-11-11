@@ -5,6 +5,8 @@ import {chooseEmergencyStaffCard,orderStaffPromotions,type StaffWrestlerCandidat
 import type {ExistingShowBooking} from "../domain/staff-show-schedule.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 import {defaults,seriesDue,regularRole} from "../domain/show-calendar.js";
+import {suggestedAnnualPremiumEvents} from "../domain/annual-premium-plan.js";
+import type {StandingTier} from "../domain/annual-promotion-standing.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
 import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch,type AiCardInput} from "../domain/ai-world-card.js";
 import {aiPromotionStrategy} from "../domain/ai-promotion-strategy.js";
@@ -16,7 +18,7 @@ type Delegated={
   promotion_id:string;show_id:string|null;controller_player_id:string|null;
   owner_player_id:string|null;current_controller:string|null;
   delegated:boolean|null;status:string;management_mode:string;
-  promotion_name:string;cadence:number;
+  promotion_name:string;cadence:number;tier:StandingTier;
 };
 type SignedCandidate={
   promotion_id:string;person_id:string;contract_id:string;
@@ -54,8 +56,9 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
     expectedRevision:input.expectedRevision,commandType:"GENERATE_WEEK_STAFF_FALLBACK_CARDS",
     execute:async tx=>{
       const worlds=await tx.query<{year:number;week:number;phase:string;seed:string|number;
-        show_economics_enabled:boolean;major_event_interval_weeks:number|null}>(
-        "SELECT year,week,phase,seed,show_economics_enabled,major_event_interval_weeks FROM ppw_worlds WHERE world_id=$1",[input.worldId],
+        show_economics_enabled:boolean;major_event_interval_weeks:number|null;
+        premium_plan_start_year:number}>(
+        "SELECT year,week,phase,seed,show_economics_enabled,major_event_interval_weeks,premium_plan_start_year FROM ppw_worlds WHERE world_id=$1",[input.worldId],
       );
       if(worlds.length!==1||worlds[0]!.phase!=="RESOLVING")
         throw new Error("Staff fallback requires World resolution");
@@ -82,7 +85,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         `SELECT a.promotion_id,a.show_id,a.controller_player_id,
           s.owner_player_id,s.allow_unfinished_fallback AS delegated,
           m.player_id AS current_controller,p.management_mode,a.status,
-           p.name AS promotion_name,p.event_cadence_weeks AS cadence
+           p.name AS promotion_name,p.event_cadence_weeks AS cadence,p.tier
          FROM ppw_week_continuity_assessments a
          JOIN ppw_promotions p ON p.world_id=a.world_id AND p.promotion_id=a.promotion_id
          LEFT JOIN ppw_promotion_controls c ON c.world_id=a.world_id
@@ -222,12 +225,67 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const unfilled:Unfilled[]=[];
       const contractBalances=new Map(candidates.map(c=>[c.contract_id,c.remaining_dates]));
       const duePremium=new Map<string,ReturnType<typeof defaults>[number]>();
+      const aiCompanyIds=all.filter(d=>d.status==="AI_MANAGED"&&
+       d.current_controller===null).map(d=>d.promotion_id);
+      // Optional saved annual commitments follow a promotion through human
+      // departure/AI takeover. One year-wide batch for every AI company.
+      const savedPlans=aiCompanyIds.length?await tx.query<{
+       promotion_id:string;events:unknown}>(`
+       SELECT promotion_id,events FROM ppw_annual_premium_plans
+       WHERE world_id=$1 AND year=$2 AND promotion_id=ANY($3::text[])
+       ORDER BY promotion_id LIMIT 129`,
+       [input.worldId,year,aiCompanyIds]):[];
+      if(savedPlans.length>128)throw new Error("AI annual plan batch limit exceeded");
+      const byPlan=new Map(savedPlans.map(p=>[p.promotion_id,p.events]));
+      const configuredSeries=aiCompanyIds.length?await tx.query<{
+       promotion_id:string;series_id:string;name:string;role:"FLAGSHIP"|
+        "SECONDARY"|"DEVELOPMENTAL"|"SPECIAL"|"PREMIUM";
+       event_type:"REGULAR"|"MAJOR";cadence_weeks:number;anchor_week:number;
+       importance:number;active:boolean}>(`
+        SELECT promotion_id,series_id,name,role,event_type,
+         cadence_weeks,anchor_week,importance,active FROM ppw_show_series
+        WHERE world_id=$1 AND promotion_id=ANY($2::text[]) AND active
+        ORDER BY promotion_id,series_id LIMIT 2049`,
+       [input.worldId,aiCompanyIds]):[];
+      if(configuredSeries.length>2048)throw new Error("AI calendar series batch exceeded");
+      const identitiesByPromotion=new Map<string,ReturnType<typeof defaults>>();
+      for(const row of configuredSeries){
+       const list=identitiesByPromotion.get(row.promotion_id)??[];
+       list.push({seriesId:row.series_id,name:row.name,role:row.role,
+        eventType:row.event_type,cadenceWeeks:row.cadence_weeks,
+        anchorWeek:row.anchor_week,importance:row.importance,active:row.active});
+       identitiesByPromotion.set(row.promotion_id,list);
+      }
       for(const d of all){
-        if(d.status!=="AI_MANAGED"||d.current_controller!==null||
-          !["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase()))continue;
-        const ppv=defaults(d.promotion_name,d.cadence,
-          worlds[0]!.major_event_interval_weeks??4).find(s=>
-            !regularRole(s.role)&&seriesDue(s,weekIndex));
+        if(d.status!=="AI_MANAGED"||d.current_controller!==null)continue;
+        // Reuse original promotion event identities and a deterministic
+        // year plan. No 52 cloned World rows, no LLM scheduling and no
+        // per-AI-promotion database calls. An AI's tier sets its real PPVs,
+        // not a fabricated special match on every fourth television show.
+        const identities=identitiesByPromotion.get(d.promotion_id)??
+         defaults(d.promotion_name,d.cadence,
+          worlds[0]!.major_event_interval_weeks??4);
+        const oldYear=year<worlds[0]!.premium_plan_start_year;
+        const saved=byPlan.get(d.promotion_id);
+        if(saved!==undefined&&!Array.isArray(saved))
+         throw new Error("Invalid AI annual PPV plan");
+        const proposed=oldYear?
+         identities.filter(s=>!regularRole(s.role)&&seriesDue(s,weekIndex))
+          .map(s=>({seriesId:s.seriesId,week})):
+         suggestedAnnualPremiumEvents(identities,d.tier,year,d.promotion_name);
+        const annual=Array.isArray(saved)?saved:proposed;
+        const due=annual.find(e=>e&&typeof e==="object"&&
+         "week" in e&&e.week===week);
+        const ppvIdentity=identities.find(s=>s.eventType==="MAJOR"&&s.active&&
+         s.seriesId===due?.seriesId);
+        const edition=typeof due?.name==="string"&&due.name.trim()?
+         due.name.trim():null;
+        const ppv=ppvIdentity&&edition?
+         {...ppvIdentity,name:edition}:ppvIdentity;
+        // Legacy generic AI never created optional dedicated PPV cards;
+        // don't rewrite the currently published year on existing saves.
+        if(oldYear&&saved===undefined&&
+         !["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase()))continue;
         if(ppv&&!existingPremiums.has(d.promotion_id))
           duePremium.set(d.promotion_id,ppv);
       }
@@ -256,17 +314,23 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const branded=["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase());
           const tv=branded?defaults(d.promotion_name,d.cadence,majorInterval??4)
             .find(s=>regularRole(s.role)&&seriesDue(s,weekIndex)):undefined;
-          const eventType:"REGULAR"|"MAJOR"=branded?"REGULAR":
-            majorInterval&&((weekIndex+1)%majorInterval===0)?"MAJOR":"REGULAR";
+          // Standard weekly television no longer masquerades as a PPV on
+          // each global interval. A real MAJOR card is generated separately
+          // on a tier-appropriate yearly date below.
+          const oldYear=year<worlds[0]!.premium_plan_start_year;
+          const eventType:"REGULAR"|"MAJOR"=oldYear&&!branded&&
+           majorInterval&&((weekIndex+1)%majorInterval===0)?"MAJOR":"REGULAR";
           const importance=branded?tv?.importance??70:eventType==="MAJOR"?85:58;
           const roster=aiRoster.get(promotionId)??[];
           const byId=new Map(roster.map(p=>[p.personId,p]));
           const rivals=context?.programmes.get(promotionId)??[];
-          // Crown legitimate vacant titles on periodic TV if the AI's optional PPV
-           // is unstaffable. Existing champions defend at major events.
-           const titles=(context?.championships.get(promotionId)??[]).filter(t=>
-            eventType==="MAJOR"||(t.holderId===null&&weekIndex%4===0&&
-             !rivals.some(r=>r.heat>=85)));
+          // Vacant titles can still be crowned on periodic television.
+          // Defences are focused on title programmes and true PPVs rather
+          // than pseudo-premium regular broadcasts.
+          const titles=(context?.championships.get(promotionId)??[]).filter(t=>
+           (eventType==="MAJOR"&&year<worlds[0]!.premium_plan_start_year)||
+           (t.holderId===null&&weekIndex%4===0&&
+            !rivals.some(r=>r.heat>=85)));
           const challengers=titles.flatMap<AiFeaturedPair>(t=>{
             if(t.holderId===null){
               const pair=inauguralPair(roster,t.bookingDivision);
@@ -331,17 +395,20 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             unfilled.push({promotionId,reason:choice.reason});continue;
           }
           const [a,b]=choice.performers;
+          // Delegated staff rescue remains a normal TV broadcast. Only
+          // old grandfathered Worlds retain the legacy fourth-week label;
+          // an actual yearly PPV requires its own committed PREMIUM card.
+          const legacyStaffMajor=year<worlds[0]!.premium_plan_start_year&&
+           worlds[0]!.major_event_interval_weeks!==null&&
+           (weekIndex+1)%(worlds[0]!.major_event_interval_weeks??1)===0;
           generated.push({promotionId,showId,day:choice.schedule.day,
             venueId:choice.schedule.venueId,
             participants:[{personId:a.personId,contractId:a.contractId},
               {personId:b.personId,contractId:b.contractId}],
             scriptedWinner:choice.scriptedWinner,bookingDivision:a.bookingDivision,
             origin:"STAFF_FALLBACK",bookingClass:"REGULAR",
-            eventType:worlds[0]!.major_event_interval_weeks!==null&&
-             (weekIndex+1)%(worlds[0]!.major_event_interval_weeks??1)===0?
-              "MAJOR":"REGULAR",
-            importance:worlds[0]!.major_event_interval_weeks!==null&&
-             (weekIndex+1)%(worlds[0]!.major_event_interval_weeks??1)===0?85:58,
+            eventType:legacyStaffMajor?"MAJOR":"REGULAR",
+            importance:legacyStaffMajor?85:58,
             seriesId:null,showName:null});
           booked.push({showId,day:choice.schedule.day,venueId:choice.schedule.venueId,
             personIds:[a.personId,b.personId]});

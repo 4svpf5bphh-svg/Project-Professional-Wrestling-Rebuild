@@ -27,6 +27,20 @@ test("staff never double-books the same wrestler or known venue",()=>{
   assert.notEqual(alternative!.day,3);
   assert.equal(alternative!.venueId,"main");
 });
+test("premium events try free weekend dates but gracefully fall back to weekdays",()=>{
+ const free=chooseStaffFallbackSchedule({...input,preferredDay:null,
+  bookedShows:[],preferredDays:[6,7]});
+ assert.ok(free&&[6,7].includes(free.day));
+ const fullWeekend=[6,7].flatMap(day=>["main","spare"].map(venueId=>({
+  showId:"blocked-"+day+"-"+venueId,day,venueId,personIds:[] as string[]
+ })));
+ const fallback=chooseStaffFallbackSchedule({...input,preferredDay:null,
+  bookedShows:fullWeekend,preferredDays:[6,7]});
+ assert.ok(fallback&&fallback.day>=1&&fallback.day<=5);
+ assert.throws(()=>chooseStaffFallbackSchedule({...input,preferredDays:[0]}),
+  /Invalid staff schedule/);
+});
+
 test("no listed venue or invalid day fails closed",()=>{
   assert.equal(chooseStaffFallbackSchedule({...input,availableVenueIds:[]}),null);
   assert.throws(()=>chooseStaffFallbackSchedule({...input,preferredDay:8}),/Invalid requested day/);

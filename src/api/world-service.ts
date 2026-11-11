@@ -2,6 +2,8 @@ import {readTournamentWorkspace,createTournament,cancelTournament,type CreateTou
  from "../db/tournament-workspace.js";
 import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries,
  type SeriesMutation,type ArchiveSeries} from "../db/calendar-workspace.js";
+import {saveAnnualPremiumPlan,type AnnualPremiumMutation}
+ from "../db/annual-premium-calendar.js";
 import {readSixWeekPlanner,planShowWeek,type PlanWeekInput}
  from "../db/planner-workspace.js";
 import {readTagTeamWorkspace,createTagTeam,nameTagTeam,createTrio,
@@ -480,6 +482,13 @@ export async function archiveCalendarAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.seriesId,"series");
  return archivePromotionSeries(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+export async function saveAnnualPremiumAsActor(context:WorldApiContext,
+ input:Omit<AnnualPremiumMutation,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return saveAnnualPremiumPlan(context.pool,{...input,playerId:context.actor.playerId});
 }
 
 /** A six-week controlled promotion planner; authenticated player is trusted. */

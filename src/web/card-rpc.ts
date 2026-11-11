@@ -3,6 +3,7 @@ import {BACKSTAGE_LABELS,type BackstageDecision}
  from "../domain/backstage-conversations.js";
 import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
+ saveAnnualPremiumAsActor,
  plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,signCommercialDealAsActor,
  requestBroadcastDayAsActor,
@@ -196,6 +197,18 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="archiveCalendar")
   return archiveCalendarAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,seriesId:id("seriesId")});
+ if(method==="saveAnnualPremium"){
+  if(!Number.isSafeInteger(p.year)||!Array.isArray(p.events)||
+   p.events.length>52||p.events.some(e=>
+    !e||typeof e!=="object"||Array.isArray(e)||
+    typeof (e as {seriesId?:unknown}).seriesId!=="string"||
+    !Number.isSafeInteger((e as {week?:unknown}).week)))
+   throw new Error("Invalid annual PPV dates");
+  return saveAnnualPremiumAsActor(context,{
+   worldId,promotionId,requestId,expectedRevision,year:p.year as number,
+   events:p.events as import("../domain/annual-premium-plan.js").AnnualPremiumEvent[]
+  });
+ }
  if(method==="planShow"){
   if(!Number.isSafeInteger(p.year)||!Number.isSafeInteger(p.week)||
    !Number.isSafeInteger(p.day)||typeof p.ticketStrategy!=="string"||

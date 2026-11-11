@@ -4,6 +4,9 @@
  */
 import {randomUUID} from "node:crypto";
 import {defaults,seriesDue,type ShowSeries} from "../domain/show-calendar.js";
+import {scheduledSeriesOnWeek} from "../domain/annual-premium-plan.js";
+import {decodeAnnualPremiumSnapshot,plansMap}
+ from "./annual-premium-calendar.js";
 import {withSqlClient} from "./postgres.js";
 import {applyWorldCommand} from "./world-commands.js";
 import type {SqlRows} from "./world-operations.js";
@@ -59,6 +62,7 @@ const weekIndex=(year:number,week:number)=>(year-1)*52+week-1;
 function dateAt(index:number){return {year:Math.floor(index/52)+1,week:index%52+1};}
 type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
+ premium_plan_start_year:number;annual_plans:unknown;
  major_interval:number|null;home_market_id:string|null;event_poster:string|null;
  broadcast_package:string|null;
  broadcast_slot:{offerCode:string;day:number|null;hour:number|null;
@@ -69,6 +73,7 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
  SELECT w.name AS world_name,p.name AS promotion_name,w.year,w.week,
   w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
+  w.premium_plan_start_year,
   p.home_market_id,
    (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,
    (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,
@@ -79,7 +84,13 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
     WHERE d.world_id=w.world_id AND d.promotion_id=p.promotion_id
      AND d.kind='BROADCAST' AND d.status='ACTIVE'
      AND d.end_week_index >= (w.year-1)*52+w.week-1
-    ORDER BY d.end_week_index DESC LIMIT 1) AS broadcast_slot
+    ORDER BY d.end_week_index DESC LIMIT 1) AS broadcast_slot,
+   (SELECT coalesce(jsonb_agg(jsonb_build_object('year',pplan.year,
+    'events',pplan.events,'tierAtCommit',pplan.tier_at_commit,
+    'confirmedWeekIndex',pplan.confirmed_week_index) ORDER BY pplan.year),'[]'::jsonb)
+    FROM ppw_annual_premium_plans pplan
+    WHERE pplan.world_id=w.world_id AND pplan.promotion_id=p.promotion_id
+      AND pplan.year BETWEEN w.year AND w.year+1) AS annual_plans
    FROM ppw_worlds w
  JOIN ppw_promotions p ON p.world_id=w.world_id AND p.promotion_id=$2
  JOIN ppw_promotion_controls c ON c.world_id=w.world_id
@@ -200,6 +211,11 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
   importance:x.importance,active:x.active,posterStyle:x.poster_style
  })):defaults(owned.promotion_name,owned.cadence,owned.major_interval??4);
+ const yearly=new Map(plansMap(
+  decodeAnnualPremiumSnapshot(owned.annual_plans)));
+ for(const year of [owned.year,dateAt(start+6).year])
+  if(year>=owned.premium_plan_start_year&&!yearly.has(year))
+   yearly.set(year,[]);
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
@@ -230,9 +246,10 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
    home:v.market_id===owned.home_market_id})),
   weeks:Array.from({length:7},(_,offset)=>{
    const index=start+offset,when=dateAt(index);
+   const due=scheduledSeriesOnWeek(scheduled,when.year,when.week,yearly);
    return {...when,offset,required:true,
-    major:scheduled.some(x=>x.eventType==="MAJOR"&&seriesDue(x,index)),canEdit:owned.booking_open,
-    scheduled:scheduled.filter(x=>seriesDue(x,index)),
+    major:due.some(x=>x.eventType==="MAJOR"),canEdit:owned.booking_open,
+    scheduled:due,
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
      bookingClass:d.booking_class,showSeriesId:d.show_series_id,
       posterStyle:scheduled.find(x=>x.seriesId===d.show_series_id)?.posterStyle??null,
@@ -284,11 +301,19 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
     cadenceWeeks:x.cadence_weeks,anchorWeek:x.anchor_week,
     importance:x.importance,active:x.active
    })):defaults(auth.promotion_name,auth.cadence,auth.major_interval??4);
-   const selected=input.showSeriesId?
+   const identity=input.showSeriesId?
     series.find(s=>s.seriesId===input.showSeriesId):null;
-   if(input.showSeriesId&&!selected)throw new Error("Show identity not on this promotion's calendar");
-   if(selected&&!seriesDue(selected,target))
-    throw new Error("This show is not scheduled for the chosen week");
+   if(input.showSeriesId&&!identity)
+    throw new Error("Show identity not on this promotion's calendar");
+   const plan=new Map(plansMap(
+    decodeAnnualPremiumSnapshot(auth.annual_plans)));
+   if(input.year>=auth.premium_plan_start_year&&!plan.has(input.year))
+    plan.set(input.year,[]);
+   const due=scheduledSeriesOnWeek(series,input.year,input.week,plan);
+   const selected=input.showSeriesId?
+    due.find(s=>s.seriesId===input.showSeriesId):null;
+   if(identity&&!selected)
+    throw new Error("This show is not scheduled in your confirmed annual calendar");
    const event:PlannedEventType=selected?.eventType??"REGULAR";
    if(input.eventType!==event)
     throw new Error("Show type must match the calendar event");

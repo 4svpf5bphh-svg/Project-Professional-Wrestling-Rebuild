@@ -49,7 +49,8 @@ export function bookingErrorCode(message:string):BookingErrorCode|null{
 export function cardActionDomain(method:string):
  "booking"|"kayfabe"|"legends"|"business"|"contracts"|"general"{
  if(["save","ready","load","talent","results","creativeConsent",
-  "planner","planShow","calendar","saveCalendar","archiveCalendar"].includes(method))
+  "planner","planShow","calendar","saveCalendar","archiveCalendar",
+   "saveAnnualPremium"].includes(method))
   return "booking";
  if(method.startsWith("kp")||method==="kpWorkspace")return "kayfabe";
  if(["renewContract","submitContractOffer","requestContractDates","withdrawContractRenewal",
