@@ -49,7 +49,7 @@ test("Ringside history is a few certified earlier, owner-scoped facts",async()=>
  assert.equal(queries.length,2,"Programme context is already in the completed show; no extra history query");
  assert.deepEqual(result.priorMatches,[{
   when:"Y1 W1",wrestlers:["Kenny Omega","Rival"],winners:["Rival"],
-  finish:"FLASH_PIN"
+  finish:"FLASH_PIN",sides:[["Kenny Omega"],["Rival"]]
  }]);
  assert.deepEqual(result.programmes,[]);
 });

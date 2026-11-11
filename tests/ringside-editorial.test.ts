@@ -124,6 +124,47 @@ test("repeat sentences are discarded while distinct editorial observations survi
 });
 
 
+
+test("Ringside recovers bad I Quit prose without losing Cage, First Blood or Casket evidence",()=>{
+ const finishes=["CLEAN_PIN","VERBAL_SURRENDER","FIRST_BLOOD",
+  "CASKET_CLOSE","CLEAN_PIN","CLEAN_PIN"];
+ const formats=["Steel Cage · SINGLES","I Quit Match · SINGLES",
+  "First Blood · SINGLES","Casket Match · SINGLES","SINGLES","SINGLES"];
+ const entries=finishes.map((outcome,i)=>({
+  ...example.entries[0]!,slotId:"special-"+i,position:i,outcome,
+  matchContext:{...example.entries[0]!.matchContext!,format:formats[i]!}
+ }));
+ const event:CompletedShowView={...example,entries,matchCount:6,angleCount:0};
+ const recaps=[
+  "Omega drove the challenger into the steel cage mesh before a clean three-count.",
+  "Omega raised the pressure until the opponent verbally surrendered, saying I quit.",
+  "The opponent was first to bleed, ending the match by the agreed rules.",
+  "Omega shut the casket lid to claim the official victory.",
+  "Omega trapped the opponent in a cradle for a clean three-count.",
+  "After an exchange of counters, Omega secured the three-count."
+ ];
+ const article={showHeadline:"An event worth covering",opening:"A night of hard choices.",
+  closing:"Every match led somewhere different.",
+  slots:entries.map((e,i)=>({slotId:e.slotId,headline:"Match "+(i+1),recap:recaps[i]!}))};
+ const broken={...article,slots:article.slots.map((s,i)=>i===1?{
+  ...s,recap:"Omega won when his opponent tapped out by submission."}:s)};
+ assert.throws(()=>validateRingsideCopy(broken,event),/I Quit/);
+ const result=recoverRingsideCopy(broken,event);
+ assert.equal(result?.replaced,1,"Only the wrong stipulation paragraph needs replacing");
+ assert.match(result?.review.slots[1]?.recap??"",/verbally surrendered|I quit/i);
+ assert.equal(result?.review.slots[0]?.recap,article.slots[0]?.recap);
+ assert.equal(result?.review.slots[2]?.recap,article.slots[2]?.recap);
+ assert.equal(result?.review.slots[3]?.recap,article.slots[3]?.recap);
+ assert.doesNotThrow(()=>validateRingsideCopy(result!.review,event));
+ const twoBad={...broken,slots:broken.slots.map((s,i)=>i===2?{
+  ...s,recap:"The referee counted three and announced the pinfall victory."}:s)};
+ assert.equal(recoverRingsideCopy(twoBad,event)?.replaced,2);
+ const threeBad={...twoBad,slots:twoBad.slots.map((s,i)=>i===3?{
+  ...s,recap:"Omega pinned the opponent for the clean win."}:s)};
+ assert.equal(recoverRingsideCopy(threeBad,event),null,
+  "Do not conceal a broadly unreliable provider article");
+});
+
 test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls",()=>{
  assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v8");
  assert.match(ringsideStipulationNote("I Quit Match · SINGLES")!.winningCondition,/VERBALLY/);

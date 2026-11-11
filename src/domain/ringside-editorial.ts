@@ -292,13 +292,24 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
    }
    const names=entry.matchContext?.winnerNames??[];
    const winner=names.length?names.join(" & "):"The winning side";
+   // Recovered editorial must preserve every unusual certified finish, not
+   // collapse I Quit, Casket, Iron Man or other stipulations to "won the match".
+   // This is pure local fallback: no second model call or history query.
    const finish:Record<string,string>={
     CLEAN_PIN:"secured a clean pinfall",FLASH_PIN:"snatched a sudden pinfall",
     SUBMISSION:"earned a submission victory",
     DISQUALIFICATION:"took the decision by disqualification",
     FOREIGN_OBJECT:"emerged victorious after a controversial ending",
     PROTECTED_FINISH:"prevailed after a contentious ending",
-    INJURY_STOPPAGE:"prevailed when the match was stopped"};
+    INJURY_STOPPAGE:"prevailed when the match was stopped",
+    RETRIEVAL:"retrieved the suspended prize to claim victory",
+    TABLE_BREAK:"won by putting the opponent through a table",
+    TEN_COUNT:"won when the opponent failed to answer the ten-count",
+    MOST_FALLS:"was ahead on falls when the Iron Man clock expired",
+    SECOND_FALL:"secured the decisive second fall",
+    VERBAL_SURRENDER:"won when the opponent verbally surrendered, saying 'I quit'",
+    FIRST_BLOOD:"won after the opponent was the first to bleed",
+    CASKET_CLOSE:"won by shutting the casket lid on the opponent"};
    const boutIndex=show.entries.slice(0,i).filter(e=>e.type==="MATCH").length;
    return {slotId:entry.slotId,headline:"The decision in the ring",
     recap:"The "+ordinal(boutIndex)+" bout belonged to "+winner+", who "+
