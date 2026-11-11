@@ -169,12 +169,17 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
 }
 const forbidden=/\b(?:arrested|suspended|fired|hospitali[sz]ed|signed a (?:new |multi)|signed with|released from|contract dispute|backstage altercation|real injury|concussion|fractured|broken neck|died|deceased|secretly met|officially challenged)\b/i;
 const unsupported=/\b(?:AI|simulation|rating of \d|\d(?:\.\d+)?[\s\u2010-\u2015-]*stars?|booking algorithm|match engine|player controlled)\b/i;
+/** "Suspended prize" is ladder wrestling, not a wrestler's disciplinary
+ * suspension. Only equipment noun phrases get this exception. */
+const equipmentSuspension=(value:string)=>value.replace(
+ /\bsuspended (?:prize|briefcase|belt|title|championship)\b/gi,
+ "overhead prize");
 function words(v:unknown,min:number,max:number,limit:number):string|null{
  if(typeof v!=="string"||v.length>limit||/\n|\r|[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(v))
   return null;
  const s=v.trim();
  if(s.split(/\s+/).length<min||s.split(/\s+/).length>max||
-  forbidden.test(s)||unsupported.test(s)||/<[^>]+>/.test(s))return null;
+  forbidden.test(equipmentSuspension(s))||unsupported.test(s)||/<[^>]+>/.test(s))return null;
  return s;
 }
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==="object"&&!Array.isArray(v)?
@@ -423,7 +428,8 @@ const unsourcedNews=/\b(?:injur(?:ed|y|ies)|concussion|blood(?:ied|y)|bleed(?:in
 function hasUnverifiedNewsConsequence(summary:string,method:string):boolean{
  const allowed=method.includes("first to bleed")?
   summary.replace(/\b(?:first blood|blood|bleed(?:ing|s)?|bled)\b/gi,""):summary;
- return unsourcedNews.test(allowed);
+ return unsourcedNews.test(method.includes("prize retrieval")?
+  equipmentSuspension(allowed):allowed);
 }
 /** Reject booking two verified same-side partners AGAINST each other as a
  * "rematch." Such advice was incorrectly passed in a real 20B tag trial.

@@ -322,6 +322,15 @@ test("shortform news respects every certified special finish without spending an
   headline:"Mercer wins the first blood battle",
   summary:blood.lawful+" Doctors later diagnosed Wolfe with a severe concussion."
  }})?.news??null,null,"Real blood does not prove a medical diagnosis");
+ const ladder=cases.find(x=>x.outcome==="RETRIEVAL")!;
+ const ladderBrief=postShowVoiceBrief({...base,entries:[{
+  ...base.entries[0]!,outcome:ladder.outcome,
+  matchContext:{...base.entries[0]!.matchContext!,format:ladder.format}}]});
+ assert.equal(validatePostShowVoiceCopy(ladderBrief,{news:{
+  headline:"Mercer won the ladder contest",
+  summary:ladder.lawful+" Officials then suspended Ronan Wolfe from the roster."
+ }})?.news??null,null,
+  "A suspended ladder prize does not authorise inventing wrestler discipline");
 });
 
 test("news avoids technical game copy yet respects an I Quit finish",()=>{
