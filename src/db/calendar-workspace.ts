@@ -292,6 +292,16 @@ export async function upsertPromotionSeries(pool:TransactionPool,input:SeriesMut
     throw new Error("Existing planned cards prevent changing this show recurrence or role");
    if(old?.role==="FLAGSHIP"&&record.role!=="FLAGSHIP")
     throw new Error("Flagship cannot be demoted");
+   if(old&&old.eventType!==record.eventType){
+    const promised=await tx.query<{year:number}>(`
+     SELECT year FROM ppw_annual_premium_plans
+     WHERE world_id=$1 AND promotion_id=$2 AND year >= $4
+      AND events @> jsonb_build_array(jsonb_build_object('seriesId',$3::text))
+     ORDER BY year LIMIT 1`,
+     [input.worldId,input.promotionId,seriesId,owned.year]);
+    if(promised.length)
+     throw new Error("A confirmed annual PPV plan uses this show identity; reschedule the year first");
+   }
    if(!old&&record.role==="FLAGSHIP")
     throw new Error("Flagship already exists; edit it instead");
    if(!old&&before.some(s=>s.seriesId===seriesId))
@@ -327,6 +337,14 @@ export async function archivePromotionSeries(pool:TransactionPool,input:ArchiveS
    const existing=before.find(s=>s.seriesId===input.seriesId&&s.active);
    if(!existing)throw new Error("Active show series not found");
    if(existing.role==="FLAGSHIP")throw new Error("Flagship cannot be archived");
+   const promised=await tx.query<{year:number}>(`
+    SELECT year FROM ppw_annual_premium_plans
+    WHERE world_id=$1 AND promotion_id=$2 AND year >= $4
+     AND events @> jsonb_build_array(jsonb_build_object('seriesId',$3::text))
+    ORDER BY year LIMIT 1`,
+    [input.worldId,input.promotionId,input.seriesId,owned.year]);
+   if(promised.length)throw new Error(
+    "This event is on a confirmed annual PPV plan; remove its future dates before archiving");
    const booked=await tx.query<{draft_id:string}>([
     "SELECT draft_id FROM ppw_booking_drafts",
     "WHERE world_id=$1 AND promotion_id=$2 AND show_series_id=$3",
