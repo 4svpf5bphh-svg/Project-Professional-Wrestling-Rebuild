@@ -44,8 +44,15 @@ export async function answerPremiumScrum(pool:TransactionPool,s:PremiumScrumScop
    JOIN ppw_memberships m ON m.world_id=c.world_id
     AND m.player_id=c.player_id AND m.status='ACTIVE'
    WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.player_id=$3
-    AND c.active LIMIT 1`,[s.worldId,s.promotionId,s.playerId]);
+    AND c.active LIMIT 1 FOR UPDATE OF c`,[s.worldId,s.promotionId,s.playerId]);
   if(owned.length!==1)throw new Error("Owner permission required");
+  // Serialise every answer/closure via this owner's existing control row.
+  const closed=await tx.query<{question_id:string}>(`
+   SELECT question_id FROM ppw_premium_media_scrum_answers
+   WHERE world_id=$1 AND show_id=$2 AND player_id=$3
+    AND question_id='DISMISSED' LIMIT 1`,
+   [s.worldId,s.showId,s.playerId]);
+  if(closed.length)throw new Error("This press conference has ended");
   const existing=await tx.query<{answer_index:number}>(`
    INSERT INTO ppw_premium_media_scrum_answers
     (world_id,promotion_id,show_id,player_id,question_id,answer_index)
@@ -70,6 +77,13 @@ export async function dismissPremiumScrum(pool:TransactionPool,s:PremiumScrumSco
  const show=await readCompletedShowView(pool,s);
  if(show.bookingClass!=="PREMIUM")throw new Error("Press scrums follow premium events only");
  return withWorldTransaction(pool,async tx=>{
+  const owned=await tx.query<{promotion_id:string}>(`
+   SELECT c.promotion_id FROM ppw_promotion_controls c
+   JOIN ppw_memberships m ON m.world_id=c.world_id
+    AND m.player_id=c.player_id AND m.status='ACTIVE'
+   WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.player_id=$3
+    AND c.active LIMIT 1 FOR UPDATE OF c`,[s.worldId,s.promotionId,s.playerId]);
+  if(owned.length!==1)throw new Error("Owner permission required");
   const rows=await tx.query<{question_id:string}>(`
    INSERT INTO ppw_premium_media_scrum_answers
     (world_id,promotion_id,show_id,player_id,question_id,answer_index)
@@ -101,7 +115,7 @@ export async function dismissPremiumScrum(pool:TransactionPool,s:PremiumScrumSco
   }
   const manager=publishedAnswers[0]?.display_name?.trim()||
    (show.promotionName??"Promotion")+" management";
-  const articles=publishablePressEditorial(show,manager,picked);
+  const articles=publishablePressEditorial(show,manager,picked,{sessionEnded:true});
   for(const article of articles){
    await tx.query(`
     INSERT INTO ppw_world_news_items(world_id,year,week,story_key,desk,certainty,

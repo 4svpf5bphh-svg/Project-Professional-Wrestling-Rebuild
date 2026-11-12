@@ -8,7 +8,10 @@ import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 import type {CompletedShowView} from "./show-results-view.js";
 
 export type RingsideMemory={
- priorMatches:{when:string;wrestlers:string[];winners:string[];finish:string}[];
+ priorMatches:{when:string;wrestlers:string[];winners:string[];finish:string;
+  /** Canonical opposing teams from the certified historical card. Absent on old
+   * memory fixtures; absence must never be interpreted as proof of opposition. */
+  sides?:string[][]}[];
  programmes:{wrestlers:string[];began:string;beats:number;latest:string|null}[];
 };
 export const EMPTY_RINGSIDE_MEMORY:RingsideMemory={priorMatches:[],programmes:[]};
@@ -49,7 +52,7 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
    ORDER BY old.year DESC,old.week DESC,match.position DESC LIMIT 36`,
    [scope.worldId,scope.promotionId,scope.playerId,scope.showId,weekIndex]);
   const shortlist:{year:number;week:number;finish:string;
-   winners:string[];people:string[]}[]=[];
+   winners:string[];people:string[];sides:string[][]}[]=[];
   const people=new Set<string>(ids);
   for(const row of rows){
    // Defence in depth: reject future or other-promotion receipts even if a
@@ -59,11 +62,13 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
    try{
     const match=readCanonicalMatchLayout(row.payload);
     const cast=match.participants.map(x=>x.personId);
-    if(!cast.some(id=>people.has(id)))continue;
+    const sides=match.sides.map(side=>side.participants.map(p=>p.personId));
+    if(sides.length<2||sides.some(side=>side.length===0)||
+     !cast.some(id=>people.has(id)))continue;
     const winning=match.sides.find(x=>x.sideId===row.actual_winner_side);
     if(!winning)continue;
     shortlist.push({year:row.year,week:row.week,finish:row.actual_finish,
-     winners:winning.participants.map(p=>p.personId),people:cast});
+     winners:winning.participants.map(p=>p.personId),people:cast,sides});
     if(shortlist.length>=8)break;
    }catch{/* Older incompatible lineups never become historical claims. */}
   }
@@ -76,8 +81,11 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
   const priorMatches=shortlist.flatMap(row=>{
    const wrestlers=row.people.map(id=>byName.get(id)).filter((s):s is string=>!!s);
    const winners=row.winners.map(id=>byName.get(id)).filter((s):s is string=>!!s);
-   if(winners.length!==row.winners.length||wrestlers.length!==row.people.length)return [];
-   return [{when:"Y"+row.year+" W"+row.week,wrestlers,winners,finish:row.finish}];
+   const sides=row.sides.map(side=>side.map(id=>byName.get(id)).filter(
+    (s):s is string=>!!s));
+   if(winners.length!==row.winners.length||wrestlers.length!==row.people.length||
+    sides.some((side,i)=>side.length!==row.sides[i]!.length))return [];
+   return [{when:"Y"+row.year+" W"+row.week,wrestlers,winners,finish:row.finish,sides}];
   }).slice(0,5);
   // Settled, promotion-owned programme chapters already arrive with each
   // completed show slot in readCompletedShowView. Re-querying every active

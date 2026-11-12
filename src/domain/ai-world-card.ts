@@ -9,6 +9,7 @@ import {chooseStaffFallbackSchedule,type ExistingShowBooking} from "./staff-show
 import type {StaffWrestlerCandidate} from "./staff-fallback-card.js";
 import type {EventType} from "./legacy-show-economics.js";
 import type {AiPromotionStrategy} from "./ai-promotion-strategy.js";
+import {rankEarnedContenders,type CertifiedContenderResult} from "./earned-contenders.js";
 export interface AiRosterCandidate extends StaffWrestlerCandidate{
  momentum:number;popularity:number;recognition:number;presentation:number;matchCraft:number;
 }
@@ -20,6 +21,7 @@ export interface AiCardInput{
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
  strategy?:AiPromotionStrategy;
  recentPairs?:readonly string[];
+ recentResults?:readonly CertifiedContenderResult[];
  establishedPartners?:readonly {aId:string;bId:string}[];
  establishedTeams?:readonly {teamId:string;aId:string;bId:string}[];
  tagTitles?:readonly {championshipId:string;holderTeamId:string|null;heat:number;bookingDivision?:"MEN"|"WOMEN"|null}[];
@@ -91,20 +93,46 @@ export function chooseAiTitleChallenger(input:{
  roster:readonly AiRosterCandidate[];holderId:string;championshipId:string;
  worldSeed:string;promotionId:string;year:number;week:number;
  recentPairs?:readonly string[];
+ recentResults?:readonly CertifiedContenderResult[];
 }):AiRosterCandidate|null{
  if(!input.holderId||!input.championshipId||!input.worldSeed||!input.promotionId||
   !Number.isSafeInteger(input.year)||input.year<1||
   !Number.isInteger(input.week)||input.week<1||input.week>52)
   throw new Error("Invalid AI championship challenger context");
- const champion=input.roster.find(p=>p.personId===input.holderId);
+ // Contract renewals may leave two legitimate active deal records for
+ // the same wrestler in one AI World batch. An identity is still one entrant.
+ const byPerson=new Map<string,AiRosterCandidate>();
+ for(const person of input.roster){
+  const previous=byPerson.get(person.personId);
+  if(!previous||person.contractId<previous.contractId)
+   byPerson.set(person.personId,person);
+ }
+ const unique=[...byPerson.values()];
+ const champion=byPerson.get(input.holderId);
  if(!champion)return null;
  const strength=(p:AiRosterCandidate)=>p.popularity+p.momentum+p.recognition;
- const candidates=input.roster.filter(p=>p.personId!==input.holderId&&
+ const candidates=unique.filter(p=>p.personId!==input.holderId&&
   p.bookingDivision===champion.bookingDivision)
   .sort((a,b)=>strength(b)-strength(a)||a.personId.localeCompare(b.personId,"en"));
  if(!candidates.length)return null;
+ // A confirmed recent winner earns a challenge ahead of an unproven star.
+ // New Worlds without certified form still use the original deterministic
+ // star-led fallback, never a fabricated 1–5 contender ranking.
+ const earned=rankEarnedContenders({
+  candidates:unique.map(p=>({id:p.personId,name:p.personId,
+   format:"SINGLES" as const,division:p.bookingDivision,
+   momentum:p.momentum,popularity:p.popularity})),
+  results:input.recentResults??[],
+  currentWeekIndex:(input.year-1)*52+input.week-1,
+  format:"SINGLES",division:champion.bookingDivision,
+  championId:input.holderId,limit:24
+ }).filter(x=>x.wins>0);
+ const byId=new Map(candidates.map(p=>[p.personId,p]));
+ const worthy=earned.slice(0,6).map(x=>byId.get(x.id))
+  .filter((x):x is AiRosterCandidate=>x!==undefined);
  const peak=strength(candidates[0]!);
- const shortlist=candidates.filter(p=>peak-strength(p)<=24).slice(0,4);
+ const shortlist=worthy.length?worthy:
+  candidates.filter(p=>peak-strength(p)<=24).slice(0,4);
  const offset=parseInt(hash(["ppw-ai-title-v1",input.worldSeed,input.promotionId,
   input.championshipId]).slice(0,8),16)%shortlist.length;
  const starting=(offset+Math.floor(((input.year-1)*52+input.week-1)/4))%shortlist.length;
@@ -124,6 +152,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   input.roster.length>256||input.activeVenues.length>256||
   input.bookedShows.length>128||(input.recentPairs?.length??0)>1024||
   (input.featuredPairs?.length??0)>256||
+  (input.recentResults?.length??0)>4096||
   (input.establishedPartners?.length??0)>512||
   (input.establishedTeams?.length??0)>512||
   (input.tagTitles?.length??0)>256)
@@ -160,6 +189,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   promotionId:input.promotionId,showId:input.showId,
   preferredDay:null,preferredVenueId:null,personIds:[],
   excludedDays:input.excludedDays,
+  preferredDays:input.eventType==="MAJOR"?[6,7]:undefined,
   availableVenueIds:input.activeVenues,bookedShows:input.bookedShows});
  if(!schedule)return {status:"UNFILLED",reason:"NO_VENUE_OR_DAY"};
  const available=eligible.filter(p=>!occupiedSameDay(schedule.day,p.personId));
@@ -241,9 +271,28 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
     }):undefined;
   const qualifiedTeams=eligibleTagTitle?.bookingDivision?
    tagCandidates.filter(t=>t.a!.bookingDivision===eligibleTagTitle.bookingDivision):tagCandidates;
+  const tagContenders=eligibleTagTitle?
+   (["MEN","WOMEN"] as const).flatMap(division=>rankEarnedContenders({
+    candidates:qualifiedTeams.map(t=>({id:t.teamId,name:t.teamId,
+     format:"TAG" as const,division:t.a!.bookingDivision,
+     momentum:(t.a!.momentum+t.b!.momentum)/2,
+     popularity:(t.a!.popularity+t.b!.popularity)/2})),
+    results:input.recentResults??[],
+    currentWeekIndex:(input.year-1)*52+input.week-1,
+    format:"TAG",division,
+    championId:eligibleTagTitle.holderTeamId,limit:24
+   })).filter(t=>t.wins>0):[];
+  const teamForm=new Map(tagContenders.map(t=>[t.id,t.score]));
+  // Named teams with verified winning form outrank an untested makeshift
+  // duo. A newly created World falls back to the original stable ordering.
+  const orderedTeams=[...qualifiedTeams].sort((a,b)=>{
+   const aScore=teamForm.get(a.teamId),bScore=teamForm.get(b.teamId);
+   return Number(bScore!==undefined)-Number(aScore!==undefined)||
+    (bScore??0)-(aScore??0);
+  });
   const firstTeam=eligibleTagTitle?.holderTeamId?
-   qualifiedTeams.find(t=>t.teamId===eligibleTagTitle.holderTeamId):qualifiedTeams[0];
-  const secondTeam=firstTeam?qualifiedTeams.find(t=>t.teamId!==firstTeam.teamId&&
+   orderedTeams.find(t=>t.teamId===eligibleTagTitle.holderTeamId):orderedTeams[0];
+  const secondTeam=firstTeam?orderedTeams.find(t=>t.teamId!==firstTeam.teamId&&
   t.a!.bookingDivision===firstTeam.a!.bookingDivision &&
   ![firstTeam.aId,firstTeam.bId].includes(t.aId)&&
   ![firstTeam.aId,firstTeam.bId].includes(t.bId)):undefined;

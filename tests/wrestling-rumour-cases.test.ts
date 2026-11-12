@@ -11,6 +11,12 @@ test("rumour continuity gives fiction, distortion and genuine fictional backstag
   assert.equal(early.promotionId,"p1");assert.notEqual(early.title,late.title);
   assert.ok(late.summary.length<=600);
   assert.ok(!JSON.stringify([early,late]).includes("private"));
+  assert.doesNotMatch(JSON.stringify([early,late]),
+   /fictional source|certified event|simulation|genuine backstage tension/i,
+   "Dirt Sheets must sound like wrestling journalists, never game operators");
+  assert.ok([early,late].every(s=>
+   s.summary.includes("rumour")||/allegation|claim|account|report|outlet|source|tip/i.test(s.summary)),
+   "A rumour follow-up must keep its attribution");
  }
  assert.equal(rumourCaseVeracity("case"),rumourCaseVeracity("case"));
  assert.match(rumourFollowup({...facts,chapter:1,veracity:"FABRICATED"},1,16).summary,/withdrawn/);

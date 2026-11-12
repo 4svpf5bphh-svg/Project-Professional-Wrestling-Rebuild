@@ -29,11 +29,16 @@ function currentOppositeSides(entry:ShowResultEntry):string[][]{
  const ctx=entry.segmentContext;
  return ctx?[ctx.actorNames.map(name),ctx.targetNames.map(name)]:[];
 }
-function sameOpposingPair(entry:ShowResultEntry,participants:readonly string[]){
- const sides=currentOppositeSides(entry);
- if(sides.length<2)return false;
- const hits=sides.map(side=>side.some(n=>participants.some(p=>same(n,p))));
- return hits.filter(Boolean).length>=2;
+/** A prior card mentioning both names is not enough: they may have been
+ * partners. A callback requires an opposing pair in BOTH certified layouts. */
+function sameOpposingPair(entry:ShowResultEntry,
+ historicalSides:readonly (readonly string[])[]):boolean{
+ const current=currentOppositeSides(entry);
+ if(current.length<2||historicalSides.length<2)return false;
+ return current.some((side,i)=>historicalSides.some((past,j)=>
+  side.some(name=>past.some(old=>same(name,old)))&&
+  current.some((other,k)=>k!==i&&historicalSides.some((otherPast,l)=>
+   l!==j&&other.some(name=>otherPast.some(old=>same(name,old)))))));
 }
 export function verifiedSlotStoryThreads(
  show:CompletedShowView,memory:RingsideMemory,
@@ -64,7 +69,7 @@ export function verifiedSlotStoryThreads(
   if(!chapter||chapter.precedingMatches===0){
    const previous=memory.priorMatches.find(x=>
     (historicalIndex(x.when)??Infinity)<showWeekIndex&&
-    sameOpposingPair(entry,x.wrestlers)&&
+    Array.isArray(x.sides)&&sameOpposingPair(entry,x.sides)&&
     x.wrestlers.length<=12&&x.winners.length<=6);
    if(previous){
     thread.previousSharedMatch={

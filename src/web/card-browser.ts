@@ -97,6 +97,28 @@ export function consumeProgrammeBookingFocus(worldId:string,promotionId:string){
  return pending&&pending.worldId===worldId&&pending.promotionId===promotionId?
   pending:null;
 }
+/** One-use, private contender-to-booking route. The selected show must still
+ * verify the actual contracted champion, challenger and legal title match.
+ */
+export type TitleChallengeFocus={worldId:string;promotionId:string;
+ championshipId:string;holderId:string;holderName:string;
+ challengerId:string;challengerName:string};
+let pendingTitleChallenge:TitleChallengeFocus|null=null;
+export function clearTitleChallengeFocus(){pendingTitleChallenge=null;}
+export function queueTitleChallengeFocus(focus:TitleChallengeFocus){
+ if(Object.values(focus).some(x=>typeof x!=="string"||
+  !x.trim()||x.length>200)||focus.holderId===focus.challengerId)return;
+ pendingTitleChallenge=focus;
+}
+export function consumeTitleChallengeFocus(worldId:string,promotionId:string):
+ Omit<TitleChallengeFocus,"worldId"|"promotionId">|null{
+ const focus=pendingTitleChallenge;pendingTitleChallenge=null;
+ return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?{
+  championshipId:focus.championshipId,holderId:focus.holderId,
+  holderName:focus.holderName,challengerId:focus.challengerId,
+  challengerName:focus.challengerName
+ }:null;
+}
 // Private, one-use route from a wrestler dossier to a genuine unfinished card.
 // No show ID is guessed and no booking permission is assumed from the dossier.
 export type FocusedBookingWrestler={personId:string;name:string};
@@ -180,6 +202,9 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   results:go("results",()=>{void mountResultsArchivePage(root,scope,
    ()=>mountWorldHomePage(root,scope));}),
   business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
+  ratingsWar:()=>{
+   if(typeof window!=="undefined")window.location.hash="#/business/ratings";
+  },
   staff:go("staff",()=>mountStaffDesk(root,staffPort(root,scope,call))),
   industry:go("promotions",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
   news:go("news",()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
@@ -194,7 +219,8 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
  onReturnToPlanner?:()=>void,onDraftChange?:(dirty:boolean)=>void,
  onNavigate?:(section:HostSection)=>void,
  focusProgrammeId?:string,focusProgrammeIdeaKind?:string,
- focusWrestler?:FocusedBookingWrestler){
+ focusWrestler?:FocusedBookingWrestler,
+ focusTitleChallenge?:Omit<TitleChallengeFocus,"worldId"|"promotionId">){
  const call=createCardClient(scope);
  const navigate=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -211,6 +237,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
   focusProgrammeId,
   focusProgrammeIdeaKind:focusProgrammeIdeaKind as CardEditorPort["focusProgrammeIdeaKind"],
   focusWrestler,
+  focusTitleChallenge,
   load:()=>call("load"),
   talent:(search,cursor)=>call("talent",{search,cursor}),
   stableChoices:()=>call("stableChoices"),
@@ -274,6 +301,11 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
    call("cancelTournament",{requestId,expectedRevision,tournamentId}),
   loadHistory:(titlePromotionId,championshipId,cursor)=>
    call("championshipHistory",{titlePromotionId,championshipId,cursor}),
+  planTitleChallenge:choice=>{
+   queueTitleChallengeFocus({worldId:scope.worldId,
+    promotionId:scope.promotionId,...choice});
+   window.location.hash=plannerCardHash;
+  },
   openWrestler:(id:string)=>{
    const back=()=>void mountChampionshipsPage(root,scope,onBack,initialScope);
    return mountWrestlerProfile(root,wrestlerProfilePort(call,root,scope,back),id,back);
@@ -883,6 +915,7 @@ export function mountCalendarPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
   load:()=>call("calendar"),
   save:input=>call("saveCalendar",input),
   archive:input=>call("archiveCalendar",input),
+  saveAnnual:input=>call("saveAnnualPremium",input),
   openCard:draftId=>onOpenBooking?onOpenBooking(draftId):
    mountBookingPage(root,{...scope,showId:draftId}),
   openPlanner:target=>mountPlannerPage(root,scope,

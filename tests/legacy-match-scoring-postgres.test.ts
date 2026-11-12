@@ -8,6 +8,8 @@ import {previewArchivedShowMatchScores} from "../src/db/legacy-match-scoring.js"
 import {scoreArchivedSinglesBeforeInjuries} from "../src/simulation/legacy/match-scoring.js";
 import {previewArchivedMatchConsequences}
   from "../src/simulation/legacy/match-consequences.js";
+import {settleCanonicalSinglesCareerConsequences}
+  from "../src/db/singles-career-settlement.js";
 import {DeterministicRng,deterministicSeedFromText}
   from "../src/simulation/legacy/rng.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -85,6 +87,11 @@ test("original match rating/crowd run from only current-week relational context"
     assert.equal(result.showProgrammePreview,null);
     assert.equal(result.showFinishPreview,null);
     assert.equal(result.projections[0]!.consequencesPreview,null);
+    // Old AI/legacy Worlds without imported reach/rate remain playable;
+    // don't fabricate momentum or block the premium-only World advance.
+    assert.deepEqual(await withWorldTransaction(db.pool,tx=>
+      settleCanonicalSinglesCareerConsequences(tx,result)),
+     {performers:0,matches:0});
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_worlds SET injury_rate_multiplier=10 WHERE world_id=$1",[worldId],
     ));

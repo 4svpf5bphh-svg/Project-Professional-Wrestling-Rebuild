@@ -24,6 +24,7 @@ import {settleCompletedShowEconomics} from "./show-economics.js";
 import {settleCanonicalSinglesTitleContests} from "./championship-settlement.js";
 import {settleCanonicalTagTitleContests} from "./tag-championship-settlement.js";
 import {settleCanonicalTagCareerConsequences} from "./tag-career-settlement.js";
+import {settleCanonicalSinglesCareerConsequences} from "./singles-career-settlement.js";
 import {settleWorkingPartnerships} from "./working-relationship-settlement.js";
 import {settleMultiIndividualCareerConsequences} from "./multi-individual-career-settlement.js";
 import {deriveCompletedMatchReportFacts} from "./record-match-report-facts.js";
@@ -87,6 +88,8 @@ export async function resolveCanonicalShow(
    if(projection.tagTitleBookings.length)
     await settleCanonicalTagTitleContests(tx,receipt,projection.tagTitleBookings);
    await settleCertifiedTournamentBouts(tx,receipt);
+   // The original singles match effects were previewed but not persisted.
+   await settleCanonicalSinglesCareerConsequences(tx,projection);
    await settleCanonicalTagCareerConsequences(tx,projection);
    await settleMultiIndividualCareerConsequences(tx,projection);
    await settleWorkingPartnerships(tx,{
@@ -100,9 +103,13 @@ export async function resolveCanonicalShow(
       sideB:sides[1]!.participants.map(x=>x.personId)}];
     })
    });
-   // Post-career-load severity floor and wear match original PPW,
-   // without changing the winner, finish or any scripted outcome.
-   await applyVerifiedMedicalLoadInTransaction(tx,input.worldId,certifiedInjuries);
+   // A match consequence already applies the injury floor and wear once.
+   // Mark the medical status without doubling that physical load.
+   const careerApplied=projection.projections.flatMap(p=>
+    p.tag?.result.members.map(m=>m.personId)??
+    p.multi?.result.members.map(m=>m.personId)??
+    p.consequencesPreview?.performers.map(m=>m.personId)??[]);
+   await applyVerifiedMedicalLoadInTransaction(tx,input.worldId,certifiedInjuries,careerApplied);
   }
   if(recorded==="RECORDED"&&world[0]!.show_economics_enabled)
    await settleCompletedShowEconomics(tx,{

@@ -3,7 +3,8 @@
  * human and AI contracts remain protected; player negotiations remain manual.
  * No database access or random calls: equal bids are resolved by stable ID.
  */
-import {commercialOffers,COMMERCIAL_COMPANIES,type CommercialEvidence,
+import {commercialOffers,COMMERCIAL_COMPANIES,
+ certifiedPremiumSponsorLift,certifiedCircuitSponsorLift,type CommercialEvidence,
  type CommercialKind,type CommercialOffer} from "./commercial-offers.js";
 
 export type AiCommercialCandidate=CommercialEvidence&{
@@ -30,14 +31,18 @@ function partnerFit(p:AiCommercialCandidate,code:string):number{
   typeof p.averageTvRating==="number"&&Number.isFinite(p.averageTvRating)?
    Math.max(0,Math.min(20,p.averageTvRating)):null;
  const style=COMMERCIAL_COMPANIES[code]?.style;
+ // Sponsors value genuine PPV transactions, not planned or streaming buys.
+ const premium=certifiedPremiumSponsorLift(p)/.12;
+ const circuit=certifiedCircuitSponsorLift(p)*150;
  if(code.startsWith("BROADCAST_"))
   return (rating===null?0:80+rating*20)+crowd*.2+shows*.2;
- if(style==="DIGITAL")return crowd*.6+(rating??0)*25+shows*.5;
+ if(style==="DIGITAL")return crowd*.6+(rating??0)*25+shows*.5+
+  premium*18+circuit;
  if(style==="PRESTIGE")return crowd+(tierRank[p.tier]??0)*8+
-  (rating??0)*2;
- if(style==="UTILITY")return crowd*.7+shows*1.6;
- if(style==="SPORT")return crowd+shows*.5+(rating??0)*3;
- return crowd+shows*.3;
+  (rating??0)*2+premium*30+circuit;
+ if(style==="UTILITY")return crowd*.7+shows*1.6+premium*8+circuit;
+ if(style==="SPORT")return crowd+shows*.5+(rating??0)*3+premium*12+circuit;
+ return crowd+shows*.3+premium*8+circuit;
 }
 export function awardAiCommercialPartners<T extends AiCommercialCandidate>(
  candidates:readonly T[],occupied:ReadonlySet<string>

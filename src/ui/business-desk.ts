@@ -1,6 +1,6 @@
 import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {readBusinessWorkspace} from "../db/business-workspace.js";
-import {commercialCompanyName,COMMERCIAL_COMPANIES,broadcasterRatingTarget,partnerResponse}
+import {commercialCompanyName,COMMERCIAL_COMPANIES,broadcasterRatingTarget,partnerResponse,formatTvRating}
  from "../domain/commercial-offers.js";
 import {commercialPartnerBrand} from "./commercial-partner-identity.js";
 import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
@@ -663,7 +663,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      el("b",tone(show.netResult),money(show.netResult)));
     if(show.audience?.format==="TV"&&show.audience.householdRating!==null){
      summary.append(el("span","ppw-business-audience-mini",
-      show.audience.householdRating.toFixed(1)+" TV rating"));
+      formatTvRating(show.audience.householdRating)+" TV rating"));
     }else if(show.audience?.format==="PPV"&&show.audience.ppvBuys!==null){
      summary.append(el("span","ppw-business-audience-mini",
       show.audience.ppvBuys.toLocaleString("en-GB")+" PPV buys"));
@@ -700,10 +700,66 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     el("p","ppw-business-muted",
      "Latest certified TV episode per promotion · past six weeks"));
    section.append(header);
+   // Small human promotions compete for genuine attendance, exposure and
+   // their circuit standing long before a network sells them a TV slot.
+   const circuit=view.competition;
+   const rivalry=el("section","ppw-ratings-circuit");
+   rivalry.setAttribute("aria-label","Your primary promotion rival");
+   rivalry.append(el("span","ppw-business-kicker","PRIMARY PROMOTION RIVAL"));
+   if(circuit){
+    rivalry.append(el("h3","",view.name+" vs "+circuit.name),
+     el("p","ppw-ratings-circuit-sub",
+      (circuit.humanManaged?"Human-managed":"AI-managed")+
+       " · "+circuit.tier+" · Reviewed Y"+
+       (Math.floor(circuit.reviewedWeekIndex/52)+1)+" W"+
+       (circuit.reviewedWeekIndex%52+1)));
+    const metrics=el("div","ppw-ratings-circuit-metrics");
+    const attendees=(n:number|null)=>n===null?"—":
+     Math.round(n).toLocaleString("en-GB");
+    const pair=(label:string,mine:string,theirs:string)=>{
+     const entry=el("div","ppw-ratings-circuit-row");
+     entry.append(el("span","",label),el("strong","",mine),
+      el("strong","",theirs));return entry;
+    };
+    const names=el("div","ppw-ratings-circuit-labels");
+    names.append(el("b","",view.name),el("b","",circuit.name));
+    metrics.append(
+     pair("Average attendance",attendees(circuit.ownAvgAttendance),
+      attendees(circuit.rivalAvgAttendance)),
+     pair("Certified shows",String(circuit.ownShowCount),
+      String(circuit.rivalShowCount)),
+     pair("Broadcast reach",
+      circuit.ownReach===null?"—":String(circuit.ownReach),
+      circuit.rivalReach===null?"—":String(circuit.rivalReach)));
+    rivalry.append(names,metrics);
+    if(circuit.ownAvgAttendance!==null&&circuit.rivalAvgAttendance!==null&&
+     circuit.ownShowCount>0&&circuit.rivalShowCount>0){
+     const difference=Math.round(
+      circuit.ownAvgAttendance-circuit.rivalAvgAttendance);
+     rivalry.append(el("p","ppw-ratings-circuit-status",
+      difference===0?"Recent attendance is level.":
+      difference>0?"You lead by "+difference.toLocaleString("en-GB")+
+       " average attendees.":circuit.name+" leads by "+
+       Math.abs(difference).toLocaleString("en-GB")+" average attendees."));
+    }else rivalry.append(el("p","ppw-ratings-circuit-status",
+     "Not enough certified attendance to compare yet."));
+    if(circuit.targetName&&circuit.targetName!==circuit.name)
+     rivalry.append(el("small","ppw-ratings-circuit-target",
+      "NEXT COMPANY TO CATCH · "+circuit.targetName));
+    rivalry.append(el("small","ppw-ratings-circuit-disclaimer",
+     "Rolling 13-week certified circuit results. Real TV viewers only move "+
+     "between programmes sharing an airtime."));
+   }else rivalry.append(el("h3","","The circuit is taking shape"),
+    el("p","ppw-ratings-circuit-status",
+     "The first completed World week will establish your nearest rival."));
+   // Preserve the original one-screen TV face-off on 320/390px when a
+   // World has not yet completed its first circuit-rivalry review.
+   if(circuit)section.append(rivalry);
    const ranking=view.competitorBroadcasts??[];
    const own=ranking.find(episode=>episode.isYours)??null;
    const others=ranking.filter(episode=>!episode.isYours);
    const opponent=others.find(episode=>episode.promotionId===selectedRatingsRivalId)??
+    others.find(episode=>episode.promotionId===circuit?.promotionId)??
     // Real same-slot competition is the default comparison over a human
     // promotion airing in a different window.
     others.find(episode=>own&&episode.year===own.year&&
@@ -721,7 +777,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     tile.dataset.side=kind;
     tile.append(el("span","",kind==="OWNER"?"YOUR PROMOTION":"CHALLENGER"),
      el("strong","ppw-ratings-war-promotion",name),
-     el("b","ppw-ratings-war-rating",rating===null?"—":rating.toFixed(1)),
+     el("b","ppw-ratings-war-rating",rating===null?"—":formatTvRating(rating)),
      el("small","",rating===null?"No recent certified TV result":"HOUSEHOLD RATING"));
     return tile;
    };
@@ -770,6 +826,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     section.append(position);
    }
    const episodes=view.shows.filter(show=>
+    (show.bookingClass===undefined||show.bookingClass==="REGULAR")&&
     show.audience?.format==="TV"&&typeof show.audience.householdRating==="number")
     .slice(0,6).reverse();
    const trend=el("section","ppw-ratings-war-trend");
@@ -786,8 +843,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      const bar=el("div","ppw-ratings-war-bar");
      bar.setAttribute("role","listitem");
      bar.setAttribute("aria-label","Year "+episode.year+" Week "+episode.week+
-      ", household rating "+rating.toFixed(1));
-     bar.append(el("strong","",rating.toFixed(1)));
+      ", household rating "+formatTvRating(rating));
+     bar.append(el("strong","",formatTvRating(rating)));
      const track=el("div","ppw-ratings-war-track");
      const fill=el("span","ppw-ratings-war-fill");
      fill.style.height=Math.max(5,Math.round(rating/highest*100))+"%";
@@ -799,7 +856,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     if(typeof view.averageTvRating==="number"&&view.recentTvEpisodes)
      trend.append(el("p","ppw-ratings-war-average",
       view.recentTvEpisodes+" recent broadcasts · "+
-      view.averageTvRating.toFixed(1)+" average TV rating"));
+      formatTvRating(view.averageTvRating)+" average TV rating"));
    }
    section.append(trend);
    const board=el("section","ppw-ratings-war-leaderboard");
@@ -873,11 +930,11 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     const latest=episodes[0];
     audience.append(el("small","","YOUR TV AUDIENCE"),
      el("strong","",latest?.audience?.householdRating!==null&&latest?
-      latest.audience!.householdRating!.toFixed(1)+" · "+latest.name:
+      formatTvRating(latest.audience!.householdRating!)+" · "+latest.name:
       "Awaiting a certified TV broadcast"));
     if(typeof view.averageTvRating==="number"&&view.recentTvEpisodes)
      audience.append(el("small","",
-      view.recentTvEpisodes+" recent episodes · "+view.averageTvRating.toFixed(1)+
+      view.recentTvEpisodes+" recent episodes · "+formatTvRating(view.averageTvRating)+
       " average household rating"));
     const ppv=view.shows.find(s=>s.audience?.format==="PPV"&&
      typeof s.audience.ppvBuys==="number");
@@ -908,7 +965,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      line.dataset.status=review.missedConsecutively>=3?"warning":review.status;
      line.append(el("strong","",status),
       el("small","",review.rating===null?"Last week · Rating not reported":
-       "Last week · "+review.rating.toFixed(1)+" TV / "+
+       "Last week · "+formatTvRating(review.rating)+" TV / "+
         review.target.toFixed(2)+" partner target"));
      if(review.missedConsecutively>=2)
       line.append(el("small","",

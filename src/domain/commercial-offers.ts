@@ -1,6 +1,7 @@
 /** Fictional commercial universe; terms come from certified shows, not client cash.
  * One live broadcaster and sponsor at a time. AI and players use this catalogue.
  */
+import {PPV_TIER_BASE_BUYS} from "./show-audience.js";
 export type CommercialKind="BROADCAST"|"SPONSOR";
 export type CommercialOffer={
  code:string;kind:CommercialKind;name:string;description:string;
@@ -11,6 +12,15 @@ export type CommercialEvidence={
  tier:string;mediaReach:number|null;weeklyMediaIncome:number|null;
  weeklySponsorIncome:number|null;completedShows:number;averageCrowd:number|null;
  recentTvEpisodes?:number;averageTvRating?:number|null;
+ // Only PPV-format, PREMIUM-class, completed shows count; not a calendar
+ // reservation, TV/streamer audience or a future booking draft.
+ recentPremiumShows?:number;averagePpvBuys?:number|null;
+ currentWeekIndex?:number;
+ competition?:{
+  ownShowCount:number;rivalShowCount:number;
+  ownAvgAttendance:number|null;rivalAvgAttendance:number|null;
+  reviewedWeekIndex:number;
+ }|null;
 };
 export const COMMERCIAL_COMPANIES:Readonly<Record<string,{
  name:string;tagline:string;preference:string;
@@ -46,14 +56,29 @@ export function commercialCompanyName(code:string):string{
 }
 const good=(n:number|null):n is number=>n!==null&&Number.isFinite(n)&&n>0;
 const term=(base:number,percent:number)=>Math.round(base*(1+percent));
-/** Ratings are household percentages; a regional 0.2 is not a national 2.0. */
+ /** Premium audiences only strengthen new sponsors; never change an
+ * existing contract, ticket income, PPV buys or TV household ratings.
+ */
+export function certifiedPremiumSponsorLift(e:CommercialEvidence):number{
+ const reference=PPV_TIER_BASE_BUYS[e.tier as keyof typeof PPV_TIER_BASE_BUYS];
+ const count=e.recentPremiumShows??0,buys=e.averagePpvBuys;
+ if(!reference||!Number.isSafeInteger(count)||count<1||
+  typeof buys!=="number"||!Number.isFinite(buys)||buys<=0)return 0;
+ return Math.max(0,Math.min(.12,(buys/reference-.55)*.14));
+}
+/** Small promotions earn fractional household audiences: network expectations
+ * must be reachable on sensible regional reach, while national and global\n * prestige requirements remain demanding and unchanged.
+ */
 export const COMMERCIAL_TIER_RATING_TARGET:Readonly<Record<string,number>>={
- LOCAL:.12,INDEPENDENT:.25,RISING:.52,NATIONAL:1.35,GLOBAL:3.1
+ LOCAL:.10,INDEPENDENT:.14,RISING:.38,NATIONAL:1.35,GLOBAL:3.1
 };
 export function broadcasterRatingTarget(code:string,tier:string):number{
  const base=COMMERCIAL_TIER_RATING_TARGET[tier]??.25;
  return Math.round(base*(COMMERCIAL_COMPANIES[code]?.ratingPressure??1)*100)/100;
 }
+/** Preserve useful scale below one Nielsen point. */
+export const formatTvRating=(rating:number):string=>rating<1?
+ rating.toFixed(2):rating.toFixed(1);
 export function partnerResponse(code:string,input:{
  tier:string;averageTvRating?:number|null;crowd?:number|null;
  current:boolean;heldBy?:string|null;
@@ -65,10 +90,10 @@ export function partnerResponse(code:string,input:{
  const rating=input.averageTvRating;
  if(code.startsWith("BROADCAST_")&&typeof rating==="number"&&Number.isFinite(rating)){
   const target=broadcasterRatingTarget(code,input.tier);
-  if(rating>=target*1.2)return "Your "+rating.toFixed(1)+" rating beats our "+
-   target.toFixed(1)+" target. Let's talk about a stronger deal.";
-  if(rating<target*.8)return "The "+rating.toFixed(1)+" rating is below "+
-   "our "+target.toFixed(1)+" target. We need to see improvement.";
+  if(rating>=target*1.2)return "Your "+formatTvRating(rating)+" rating beats our "+
+   formatTvRating(target)+" target. Let's talk about a stronger deal.";
+  if(rating<target*.8)return "The "+formatTvRating(rating)+" rating is below "+
+   "our "+formatTvRating(target)+" target. We need to see improvement.";
  }
  // Sponsors have different standards and respond only to completed-show
  // evidence. Public statements never disclose hidden acceptance odds.
@@ -91,6 +116,22 @@ export function partnerResponse(code:string,input:{
  * Expanded choices are optional; they never demand a weekly checklist.
  * Growth partners trade guarantee for reach; prestige demands reputation.
  */
+/** Certifiable local-circuit advantage; a small capped change in new sponsor
+ * terms, never an automatic recurring payment or made-up TV rating.
+ */
+export function certifiedCircuitSponsorLift(e:CommercialEvidence):number{
+ const c=e.competition;
+ if(!c||c.ownShowCount<2||c.rivalShowCount<2||
+  c.ownAvgAttendance===null||c.rivalAvgAttendance===null||
+  !Number.isFinite(c.ownAvgAttendance)||!Number.isFinite(c.rivalAvgAttendance)||
+  c.rivalAvgAttendance<=0)return 0;
+ if(typeof e.currentWeekIndex==="number"&&
+  (c.reviewedWeekIndex>e.currentWeekIndex||
+   e.currentWeekIndex-c.reviewedWeekIndex>10))return 0;
+ return Math.max(-.04,Math.min(.06,
+  (c.ownAvgAttendance-c.rivalAvgAttendance)/
+   Math.max(100,c.rivalAvgAttendance)*.13));
+}
 export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
  const count=e.completedShows,crowd=e.averageCrowd??0,reach=e.mediaReach;
  const sample=(e.recentTvEpisodes??0)>=2&&Number.isFinite(e.averageTvRating);
@@ -99,6 +140,8 @@ export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
  // The audience premium is additional guaranteed weekly income and remains
  // deliberately capped; it does not invent or post revenue before signing.
  const earnedPremium=sample?Math.max(-.06,Math.min(.24,(ratio-1)*.17)):0;
+ const verifiedPpvLift=certifiedPremiumSponsorLift(e);
+ const circuitLift=certifiedCircuitSponsorLift(e);
  if(count<3||crowd<48)return [];
  const offers:CommercialOffer[]=[];
  const add=(code:string,kind:CommercialKind,base:number,percent:number,
@@ -106,9 +149,16 @@ export function commercialOffers(e:CommercialEvidence):CommercialOffer[]{
   const company=COMMERCIAL_COMPANIES[code]!;
   // Identity copy lives in the already-shipped client catalogue; do not
   // transfer it repeatedly in every Business workspace RPC.
-  offers.push({code,kind,name:company.name,description,
+  offers.push({code,kind,name:company.name,
+   description:kind==="SPONSOR"?
+    description+(verifiedPpvLift>0?
+     " Certified PPV buyers strengthen these new sponsor terms.":"")+
+    (circuitLift>0?" Outdrawing your rival improves our offer.":
+     circuitLift<0?" Your rival's stronger gate limits the terms.":""):
+    description,
    weeklyIncome:Math.max(0,Math.round(term(base,percent)*(1+earnedPremium*
-    (kind==="BROADCAST"?1:.4)))),
+    (kind==="BROADCAST"?1:.4)+
+    (kind==="SPONSOR"?verifiedPpvLift+circuitLift:0)))),
    // Reach is a percentage-sized, 0–100 audience index. New TV terms
    // may improve distribution but never put the World above its valid cap.
    reachIncrease:Math.max(0,Math.min(100-Math.min(100,reach??0),

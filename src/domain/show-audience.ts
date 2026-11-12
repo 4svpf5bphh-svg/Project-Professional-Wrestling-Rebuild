@@ -14,6 +14,11 @@ export interface ShowAudienceReceipt{
  estimatedViewers:number|null;ppvBuys:number|null;
 }
 const cap=(n:number,low:number,high:number)=>Math.max(low,Math.min(high,n));
+// The certified PPV simulation and genuine sponsor negotiations must use
+// one baseline. Changing these tiers must not silently misprice sponsors.
+export const PPV_TIER_BASE_BUYS:Readonly<Record<ShowTier,number>>={
+ GLOBAL:740000,NATIONAL:210000,RISING:48000,INDEPENDENT:9000,LOCAL:900
+};
 export function projectShowAudience(x:ShowAudienceInput):ShowAudienceReceipt{
  const stats=[x.mediaReach,x.awareness,x.liveStrength,x.loyalty,x.wrestlingInterest];
  if(!stats.every(v=>Number.isFinite(v)&&v>=0&&v<=100)||
@@ -34,8 +39,7 @@ export function projectShowAudience(x:ShowAudienceInput):ShowAudienceReceipt{
   return {format:"TV",householdRating:Math.round(rating*10)/10,
    estimatedViewers:Math.round(125_000_000*rating/100*1.35/1000)*1000,ppvBuys:null};
  }
- const base:Record<ShowTier,number>={GLOBAL:740000,NATIONAL:210000,
-  RISING:48000,INDEPENDENT:9000,LOCAL:900};
+ const base=PPV_TIER_BASE_BUYS;
  const demand=cap(.6+Math.sqrt(x.expectedDemand/36000)*.15,.63,1.27);
  const buys=Math.round(base[x.tier]*(0.30+0.70*reach)*fan*
   interest*quality*demand/10)*10;

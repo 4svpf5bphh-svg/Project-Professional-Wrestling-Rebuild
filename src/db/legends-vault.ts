@@ -22,6 +22,37 @@ async function assertVaultMember(tx:SqlRows,s:LegendVaultScope){
  if(rows.length!==1)throw new Error("Legends Vault access denied");
  return rows[0]!;
 }
+/** One indexed existence check on authenticated session OPEN, never per-page
+ * or per-World-step polling. A World discovery remains unseen independently
+ * for each human booker until they explicitly finish its real reveal.
+ */
+export async function hasUnseenLegendReveal(
+ pool:TransactionPool,scope:LegendVaultScope,
+):Promise<boolean>{
+ if(!Object.values(scope).every(valid))throw new Error("Invalid Vault identity");
+ return withSqlClient(pool,async tx=>{
+  const rows=await tx.query<{unseen:boolean}>(`
+   SELECT EXISTS(
+    SELECT 1 FROM ppw_world_legend_unlocks u
+    WHERE u.world_id=c.world_id
+      AND NOT EXISTS(
+       SELECT 1 FROM ppw_legend_reveals_seen s
+       WHERE s.world_id=u.world_id AND s.legend_id=u.legend_id
+         AND s.player_id=$2
+      )
+   ) AS unseen
+   FROM ppw_promotion_controls c
+   JOIN ppw_memberships m ON m.world_id=c.world_id
+     AND m.player_id=c.player_id AND m.status='ACTIVE'
+   JOIN ppw_promotions p ON p.world_id=c.world_id
+     AND p.promotion_id=c.promotion_id AND p.lifecycle='ACTIVE'
+   WHERE c.world_id=$1 AND c.player_id=$2
+     AND c.promotion_id=$3 AND c.active
+   LIMIT 1`,[scope.worldId,scope.playerId,scope.promotionId]);
+  if(rows.length!==1)throw new Error("Legend reveal check access denied");
+  return rows[0]!.unseen;
+ });
+}
 export async function readLegendsVault(pool:TransactionPool,scope:LegendVaultScope){
  if(!Object.values(scope).every(valid))throw new Error("Invalid Vault identity");
  return withSqlClient(pool,async tx=>{

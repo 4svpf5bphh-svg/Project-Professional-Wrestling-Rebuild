@@ -315,3 +315,17 @@
  .ppw-home-dashboard>.ppw-home-tile{padding:9px 10px}
  .ppw-home-dashboard .ppw-home-tile-copy strong{font-size:12px}
 }
+
+/* Home's primary rivalry card is a circuit competition, not a fake TV war. */
+.ppw-home-competition{display:grid;gap:7px;min-width:0;
+ margin:15px 0;padding:16px;border:1px solid rgba(126,216,243,.43);
+ border-radius:17px;background:linear-gradient(135deg,#192f46,#0c2134)}
+.ppw-home-competition h3{font-size:21px;margin:0;overflow-wrap:anywhere}
+.ppw-home-competition-kind{font-weight:750;color:#a8e1f8;font-size:12px;margin:0}
+.ppw-home-competition-note{font-size:13px;color:#d3e3ed;line-height:1.4;margin:0}
+.ppw-home-competition-review{font-size:11px;color:#a4b9c9}
+.ppw-home-competition-action{font:inherit;font-size:14px;font-weight:800;
+ text-align:center;min-height:44px;margin-top:5px;padding:10px;
+ background:#214960;border:1px solid #7bd6f3;border-radius:11px;
+ color:#f4fbff;cursor:pointer}
+.ppw-home-competition-action:focus-visible{outline:3px solid #f6cf82;outline-offset:2px}

@@ -184,3 +184,72 @@
  .ppw-calendar-event[data-has-artwork=true]>.ppw-tv-frame,
  .ppw-calendar-event[data-has-artwork=true]>.ppw-event-poster{min-height:150px}
 }
+
+/* Phase 51A — one true, touch-sized 52-week premium-event year planner.
+   Stacked 13-week quarters stay within 320px iPhone width and safe areas. */
+.ppw-calendar-year-plan{margin-block:13px;background:linear-gradient(160deg,#152d46,#101d31);
+ border-color:#5c7995;padding:15px 12px}
+.ppw-calendar-year-plan h2{margin:5px 0 8px;font-size:clamp(22px,5vw,27px);
+ color:#f5f7fc;line-height:1.18}
+.ppw-calendar-year-subtitle{font-size:13px;color:#b9d4e6;line-height:1.5;
+ margin:5px 0 11px}
+.ppw-calendar-year-toggle{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.ppw-calendar-year-toggle .ppw-calendar-button{margin:0;min-width:0}
+.ppw-calendar-year-toggle [aria-pressed=true]{background:#dfedf8;color:#12304b;
+ border-color:#fff;font-weight:900}
+.ppw-calendar-year-count{font-weight:850;line-height:1.5;color:#ffdfa3;
+ margin:15px 0 8px}
+.ppw-calendar-year-notice{font-size:13px;line-height:1.55;color:#c6dce8;
+ background:#21394c;border-left:3px solid #dbb56c;padding:9px 11px;
+ border-radius:4px;margin:6px 0 12px}
+.ppw-calendar-quarters{display:grid;grid-template-columns:1fr;gap:11px}
+.ppw-calendar-quarter{background:#102638;border:1px solid #38546b;
+ border-radius:12px;padding:10px 8px;min-width:0}
+.ppw-calendar-quarter-heading{font-size:12px;letter-spacing:.09em;
+ color:#d6e9f4;margin:1px 4px 9px;text-transform:uppercase}
+.ppw-calendar-week-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:6px;min-width:0}
+.ppw-calendar-week-grid>.ppw-calendar-week-button{display:flex;flex-direction:column;
+ align-items:center;justify-content:center;min-width:0;min-height:54px;
+ box-sizing:border-box;margin:0;border-radius:8px;padding:7px 4px;
+ font-size:12px;font-weight:900;background:#22364a;color:#edf6fd;
+ border:1px solid #486981;line-height:1.3;overflow:hidden}
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-has-event=true]{
+ background:linear-gradient(155deg,#5a3c27,#342b36);border-color:#d7ac68;
+ color:#fff1ce}
+.ppw-calendar-week-grid>.ppw-calendar-week-button[aria-pressed=true]{
+ outline:3px solid #8bdaff;outline-offset:-3px}
+.ppw-calendar-week-button small{display:block;max-width:100%;font-size:9px;
+ font-weight:700;line-height:1.3;overflow-wrap:anywhere;text-align:center;
+ margin-top:3px;color:inherit}
+.ppw-calendar-year-picker{padding:12px 9px;margin:13px 0;border:1px solid #7b98aa;
+ border-radius:10px;background:#1c364d}
+.ppw-calendar-year-picker strong{display:block;font-size:14px;color:#e8f6ff}
+.ppw-calendar-year-picker p{font-size:12px;color:#b8d2e4;line-height:1.5}
+.ppw-calendar-year-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.ppw-calendar-year-choices>.ppw-calendar-button{margin:0;min-width:0;
+ white-space:normal;overflow-wrap:anywhere;font-size:12px}
+.ppw-calendar-year-choices>[aria-pressed=true]{border:2px solid #ffcb83;
+ background:#634528;color:#fff5e2}
+.ppw-calendar-year-plan>.ppw-calendar-button{margin:12px 6px 4px 0}
+.ppw-calendar-year-confirm{background:#e7c28a!important;color:#162d40!important;
+ font-weight:900!important;border-color:#fbe5bd!important}
+.ppw-calendar-year-footer{display:block;font-size:12px;line-height:1.6;
+ color:#aecbdb;margin:12px 3px 3px}
+@media(min-width:700px){.ppw-calendar-quarters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:350px){.ppw-calendar-year-plan{padding:11px 8px}
+ .ppw-calendar-quarter{padding:9px 6px}
+ .ppw-calendar-week-grid{gap:4px}
+ .ppw-calendar-week-grid>.ppw-calendar-week-button{padding:6px 2px;min-height:50px}}
+
+/* One named PPV edition per actual World year without a new recurring show. */
+.ppw-calendar-year-edition{display:grid;gap:7px;min-width:0;margin:14px 0 6px;
+ font-size:13px;font-weight:750;color:#dceef8}
+.ppw-calendar-year-edition input{display:block;width:100%;max-width:100%;
+ box-sizing:border-box;min-height:46px;padding:11px 12px;
+ border-radius:9px;border:1px solid #82a5b9;background:#10273c;
+ color:#f6fbff;font:inherit;font-size:16px;line-height:1.35;
+ -webkit-appearance:none;appearance:none}
+.ppw-calendar-year-edition input:focus-visible{outline:3px solid #f0c57e;
+ outline-offset:2px}
+.ppw-calendar-year-edition input:disabled{opacity:.75;cursor:not-allowed}

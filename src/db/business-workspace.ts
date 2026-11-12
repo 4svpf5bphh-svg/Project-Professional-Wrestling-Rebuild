@@ -7,6 +7,8 @@ import {withSqlClient} from "./postgres.js";
 import {commercialOffers} from "../domain/commercial-offers.js";
 import {earnedPromotionIdentity} from "../domain/earned-promotion-identity.js";
 import {assessBroadcastNetwork} from "../domain/broadcast-network-review.js";
+import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
+ from "./promotion-competition.js";
 import {recentFinanceSql,type FinanceLine,type FinanceEntry} from "./business-financial-activity.js";
 
 export async function readBusinessWorkspace(pool:TransactionPool,scope:{
@@ -28,6 +30,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    standing_prestige:number|null;standing_fan:number|null;
    standing_business:number|null;standing_talent:number|null;
    standing_year:number|null;
+   cp:PromotionCompetitionCard|null;
    finance_event_count:number;finance_categories:FinanceLine[];
    finance_recent:FinanceEntry[];
    commercial_deals:{dealId:string;kind:"BROADCAST"|"SPONSOR";offerCode:string;
@@ -75,6 +78,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      standing.business_reputation AS standing_business,
      standing.talent_reputation AS standing_talent,
      standing.last_evaluated_year AS standing_year,
+     ${promotionCompetitionProjectionSql("w.world_id","p.promotion_id")}
+      AS cp,
      financial.finance_event_count,financial.finance_categories,financial.finance_recent,
      CASE WHEN plan.world_id IS NULL THEN NULL ELSE jsonb_build_object(
       'weeklyWageLimit',plan.weekly_wage_limit::double precision,
@@ -241,6 +246,9 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     JOIN ppw_promotions p ON p.world_id=e.world_id
      AND p.promotion_id=e.promotion_id AND p.lifecycle='ACTIVE'
     JOIN ppw_booking_drafts d ON d.world_id=e.world_id AND d.draft_id=e.show_id
+     AND d.status='SUBMITTED' AND d.booking_class='REGULAR'
+    JOIN ppw_completed_shows certified ON certified.world_id=e.world_id
+     AND certified.show_id=e.show_id AND certified.promotion_id=e.promotion_id
     WHERE e.world_id=$1 AND e.audience_format='TV' AND e.tv_household_rating IS NOT NULL
      AND (e.year-1)*52+e.week-1 BETWEEN $2-5 AND $2
     ORDER BY e.promotion_id,e.year DESC,e.week DESC,e.show_id DESC LIMIT 36
@@ -267,22 +275,34 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   },{workrate:0,spectacle:0,stars:0,stories:0,
    knownMatches:0,completedShows:0});
   const creativeIdentity=earnedPromotionIdentity(creative);
-  const tvReceipts=certified.filter(show=>show.audience_format==="TV"&&
-   show.tv_household_rating!==null);
+  // A streamed PLE can have measured viewers without becoming a weekly
+  // Nielsen broadcast. Keep the Business preview identical to the signing
+  // and AI-bid rules: only certified REGULAR television affects TV terms.
+  const tvReceipts=certified.filter(show=>show.booking_class==="REGULAR"&&
+   show.audience_format==="TV"&&show.tv_household_rating!==null);
   const averageTvRating=tvReceipts.length?tvReceipts.reduce((n,show)=>
    n+Number(show.tv_household_rating),0)/tvReceipts.length:null;
+  const premiumReceipts=certified.filter(show=>
+   show.booking_class==="PREMIUM"&&show.audience_format==="PPV"&&
+   show.ppv_buys!==null);
+  const averagePpvBuys=premiumReceipts.length?
+   premiumReceipts.reduce((n,show)=>n+Number(show.ppv_buys),0)/
+    premiumReceipts.length:null;
   const allQualified=commercialOffers({
    tier:w.tier,mediaReach:w.media_reach,weeklyMediaIncome:weeklyMedia,
    weeklySponsorIncome:weeklySponsor,completedShows:certified.length,
    averageCrowd:certified.length?
     certified.reduce((n,show)=>n+Number(show.crowd_response),0)/certified.length:null,
-   recentTvEpisodes:tvReceipts.length,averageTvRating
+   recentTvEpisodes:tvReceipts.length,averageTvRating,
+   recentPremiumShows:premiumReceipts.length,averagePpvBuys,
+   competition:w.cp,currentWeekIndex:now
   });
   const earnedOffers=allQualified.filter(offer=>
    !w.commercial_deals.some(d=>d.kind===offer.kind)&&
    !w.world_partner_claims.some(held=>held.offerCode===offer.code));
   return {
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
+   competition:w.cp??null,
    kpBrandStyle:w.kp_style,creativeIdentity,
    worldRevision:Number(w.revision),
    homeMarketName:w.home_market_name,mediaReach:w.media_reach,
@@ -330,6 +350,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    }),commercialOffers:earnedOffers,
    partnerInventory:w.world_partner_claims,averageTvRating,
    recentTvEpisodes:tvReceipts.length,
+   recentPremiumShows:premiumReceipts.length,averagePpvBuys,
    recentAverageCrowd:certified.length?Math.round(
     certified.reduce((n,show)=>n+Number(show.crowd_response),0)/
      certified.length*10)/10:null,

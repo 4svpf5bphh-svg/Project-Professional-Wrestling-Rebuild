@@ -113,3 +113,46 @@ test("sponsors react in different voices to certified strong and weak crowd runs
  assert.match(disappointed,/Our board expects a stronger presentation/);
  assert.notEqual(wild,prestige);
 });
+
+test("only certified premium PPV buys improve new sponsor offers, never TV terms",()=>{
+ const ordinary={...settled,tier:"RISING",completedShows:8,averageCrowd:77};
+ const baseline=commercialOffers(ordinary);
+ assert.deepEqual(commercialOffers({...ordinary,recentPremiumShows:0,
+  averagePpvBuys:1_000_000}),baseline);
+ assert.deepEqual(commercialOffers({...ordinary,recentPremiumShows:2,
+  averagePpvBuys:null}),baseline);
+ const actual=commercialOffers({...ordinary,recentPremiumShows:1,
+  averagePpvBuys:48_000});
+ const code="SPONSOR_PARTNER";
+ assert.ok(actual.find(x=>x.code===code)!.weeklyIncome>
+  baseline.find(x=>x.code===code)!.weeklyIncome);
+ assert.match(actual.find(x=>x.code===code)!.description,/Certified PPV buyers/);
+ assert.deepEqual(actual.filter(x=>x.kind==="BROADCAST"),
+  baseline.filter(x=>x.kind==="BROADCAST"));
+ const enormous=commercialOffers({...ordinary,recentPremiumShows:1,
+  averagePpvBuys:1_000_000_000});
+ const capped=commercialOffers({...ordinary,recentPremiumShows:1,
+  averagePpvBuys:480_000});
+ assert.equal(enormous.find(x=>x.code===code)?.weeklyIncome,
+  capped.find(x=>x.code===code)?.weeklyIncome);
+});
+
+test("real two-manager circuit performance changes only NEW sponsor terms",()=>{
+ const base={...settled,completedShows:6,averageCrowd:75,currentWeekIndex:9};
+ const weaker={...base,competition:{ownShowCount:6,rivalShowCount:6,
+  ownAvgAttendance:820,rivalAvgAttendance:940,reviewedWeekIndex:8}};
+ const stronger={...base,competition:{ownShowCount:6,rivalShowCount:6,
+  ownAvgAttendance:940,rivalAvgAttendance:820,reviewedWeekIndex:8}};
+ const ordinary=commercialOffers(base);
+ const low=commercialOffers(weaker),high=commercialOffers(stronger);
+ const code="SPONSOR_LOCAL";
+ assert.ok(low.find(x=>x.code===code)!.weeklyIncome<
+  ordinary.find(x=>x.code===code)!.weeklyIncome);
+ assert.ok(high.find(x=>x.code===code)!.weeklyIncome>
+  ordinary.find(x=>x.code===code)!.weeklyIncome);
+ assert.deepEqual(high.filter(x=>x.kind==="BROADCAST"),
+  ordinary.filter(x=>x.kind==="BROADCAST"));
+ assert.deepEqual(commercialOffers({...stronger,currentWeekIndex:25}),ordinary);
+ assert.deepEqual(commercialOffers({...stronger,competition:{
+  ...stronger.competition,ownShowCount:1}}),ordinary);
+});

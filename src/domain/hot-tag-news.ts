@@ -258,16 +258,50 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
   "The real question after "+pairing+": who gets the next opportunity? 🍿",
   story.promotionName+" has something to follow up after "+pairing+". Book it with purpose. 💥"
  ]:[];
+ // A published manager answer deserves an opinion about what was ACTUALLY
+ // said, not an invented press quote or the same generic rumour under every
+ // event. These are fan reactions, never attributed to the manager.
+ const press=story.id.startsWith("press:");
+ const pressFollowup=story.id.startsWith("press:followup:");
+ const pressMode=/ends the press conference without taking questions|no answers from/i.test(story.title)?"SKIPPED":
+  /no comment|declined/i.test(story.title)?"DECLINED":
+  /details close|no concrete/i.test(story.title)?"EVASIVE":"DIRECT";
+ const pressSpecific=press?
+  pressFollowup?[
+   "That is an actual on-air follow-up after the press scrum. Now we're talking wrestling again. 🎤",
+   "Last week the microphones, this week the matches. At least we have a real broadcast to discuss. 📺",
+   "The press debate can continue, but the next show gave fans something concrete to watch. 👀"
+  ]:
+  pressMode==="SKIPPED"?[
+   "The manager ended the scrum without answering anything. No quote to dissect this time. 🎤",
+   "Three questions prepared, zero answers. That is a very short press conference. 😂",
+   "A skipped scrum is not a secret contract announcement. We have no statement to work with. 🧐"
+  ]:
+  pressMode==="DECLINED"?[
+   "The microphone went to the booker and the answer was NO COMMENT. The group chat has exploded. 🎤",
+   "A refusal is on the record. Any grand theory about the reason is still fan-fiction. 🧐",
+   "No comment? That's three words and approximately three thousand fantasy bookings. 😂"
+  ]:pressMode==="EVASIVE"?[
+   "That is an all-time promoter sidestep. A full answer without a single new detail. 😂",
+   "Journalist asks about the next move; booker keeps the cards face down. Classic. 👀",
+   "The answer is public. The follow-up card is not. I'm watching the next show. 🍿"
+  ]:[
+   "At least someone actually answered a question after the bell. More of this. 🎤",
+   "On-record words beat six anonymous locker-room theories. I respect that. 🧐",
+   "The manager has spoken; now we'll see whether the next show backs it up. 👀"
+  ]:[];
  const pool=story.year>1||story.week>=19?
-  [...specific,...reactions[kind],...expanded[kind]]:
-  [...specific,...reactions[kind]];
+  [...pressSpecific,...specific,...reactions[kind],...expanded[kind]]:
+  [...pressSpecific,...specific,...reactions[kind]];
  const used=new Set<number>();
  return [0,1,2].map(i=>{
   // Unique commenters and reactions per article, with different choices on
   // adjacent stories. React to the event, not the article headline.
   const identity=(seed+i*5+Math.floor(seed/67))%commentators.length;
   const voice=commentators[identity]!;
-  let index=(seed+i*3+Math.floor(seed/19))%pool.length;
+  let index=i===0&&pressSpecific.length?
+   seed%pressSpecific.length:
+   (seed+i*3+Math.floor(seed/19))%pool.length;
   while(used.has(index))index=(index+1)%pool.length;
   used.add(index);
   const message=pool[index]!;

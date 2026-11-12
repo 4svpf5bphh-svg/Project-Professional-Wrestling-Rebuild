@@ -39,8 +39,11 @@ jobs:
         run: npm run web:build
       - name: Verify deployable original Legends artwork and correct Taz photo
         run: node scripts/verify-legend-release-bundle.mjs
+      # Hosted runners already supply Chromium's system libraries. Avoid
+      # re-running apt against Ubuntu mirrors: temporary DNS outages there
+      # prevent any gameplay tests from running despite valid app code.
       - name: Install Chromium for iPhone host testing
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Run authenticated browser host smoke tests
         run: npm run test:browser
       - name: Save mobile presentation evidence
@@ -668,6 +671,18 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0140_shortform_voice_lab_diagnostics.sql
+      - name: Apply annual premium calendar commitments
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0141_annual_premium_plans.sql
+      - name: Preserve factual tag winners on protected championship finishes
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0142_unformed_tag_challenger_results.sql
+      - name: Install indexed living promotion rivals (disposable World only)
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0143_promotion_competition.sql
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test

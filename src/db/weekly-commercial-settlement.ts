@@ -100,8 +100,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
        c.tv_rating/(
         (CASE p.tier
          WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
-         WHEN 'RISING' THEN .52 WHEN 'INDEPENDENT' THEN .25
-         ELSE .12 END) *
+         WHEN 'RISING' THEN .38 WHEN 'INDEPENDENT' THEN .14
+         ELSE .10 END) *
         (CASE d.offer_code
          WHEN 'BROADCAST_GLOBAL' THEN 1.45
          WHEN 'BROADCAST_TV' THEN 1.25
@@ -113,8 +113,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
       d.offer_code IN ('SPONSOR_TECH','SPONSOR_LUXURY') AND
       c.tv_rating >= (CASE p.tier
        WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
-       WHEN 'RISING' THEN .52 WHEN 'INDEPENDENT' THEN .25
-       ELSE .12 END) THEN .025
+       WHEN 'RISING' THEN .38 WHEN 'INDEPENDENT' THEN .14
+       ELSE .10 END) THEN .025
      ELSE 0 END))::bigint AS amount
   FROM ppw_commercial_deals d
   JOIN certified c ON c.promotion_id=d.promotion_id
@@ -203,7 +203,11 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // human-controlled companies are never entered into automatic agreements.
  const owners=await tx.query<CommercialEvidence&{
   promotion_id:string;management_mode:string;active_kinds:string[];
-  recentShowDay:number|null;recentTvEpisodes:number;averageTvRating:number|null
+  recentShowDay:number|null;recentTvEpisodes:number;averageTvRating:number|null;
+  recentPremiumShows:number;averagePpvBuys:number|null;
+  competition:{ownShowCount:number;rivalShowCount:number;
+   ownAvgAttendance:number|null;rivalAvgAttendance:number|null;
+   reviewedWeekIndex:number}|null
  }>(`
  SELECT p.promotion_id,p.management_mode,p.tier,
   p.media_reach AS "mediaReach",
@@ -213,6 +217,15 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   recent.crowd::double precision AS "averageCrowd",
   recent.tv_count AS "recentTvEpisodes",
   recent.tv_rating::double precision AS "averageTvRating",
+  recent.ppv_count AS "recentPremiumShows",
+  recent.ppv_average::double precision AS "averagePpvBuys",
+  CASE WHEN rivalry.rival_promotion_id IS NULL THEN NULL ELSE
+   jsonb_build_object(
+    'ownShowCount',rivalry.own_show_count,
+    'rivalShowCount',rivalry.rival_show_count,
+    'ownAvgAttendance',rivalry.own_avg_attendance,
+    'rivalAvgAttendance',rivalry.rival_avg_attendance,
+    'reviewedWeekIndex',rivalry.reviewed_week_index) END AS competition,
   (SELECT draft.show_day FROM ppw_booking_drafts draft
    JOIN ppw_completed_shows c ON c.world_id=draft.world_id
     AND c.show_id=draft.draft_id AND c.promotion_id=draft.promotion_id
@@ -224,14 +237,19 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
    WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
     AND d.status='ACTIVE') AS active_kinds
  FROM ppw_promotions p
+ LEFT JOIN ppw_promotion_competition rivalry
+  ON rivalry.world_id=p.world_id AND rivalry.promotion_id=p.promotion_id
  LEFT JOIN LATERAL (
   SELECT count(*)::integer AS completed,avg(crowd_response) AS crowd,
    count(tv_household_rating)::integer AS tv_count,
-   avg(tv_household_rating) AS tv_rating
+   avg(tv_household_rating) AS tv_rating,
+   count(ppv_buys)::integer AS ppv_count,avg(ppv_buys) AS ppv_average
   FROM (
    SELECT show.year,show.week,show.crowd_response,
-    CASE WHEN econ.audience_format='TV'
-     THEN econ.tv_household_rating END AS tv_household_rating
+    CASE WHEN econ.audience_format='TV' AND draft.booking_class='REGULAR'
+     THEN econ.tv_household_rating END AS tv_household_rating,
+    CASE WHEN econ.audience_format='PPV' AND draft.booking_class='PREMIUM'
+     THEN econ.ppv_buys END AS ppv_buys
     FROM ppw_completed_shows show
    JOIN ppw_show_economics econ ON econ.world_id=show.world_id
     AND econ.show_id=show.show_id AND econ.promotion_id=show.promotion_id
@@ -263,7 +281,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   WHERE world_id=$1 AND status='ACTIVE'
  `,[worldId]);
  const taken=new Set(occupied.map(row=>row.offer_code));
- for(const {promotion:p,offer:choice} of awardAiCommercialPartners(owners,taken)){
+ for(const {promotion:p,offer:choice} of awardAiCommercialPartners(
+  owners.map(o=>({...o,currentWeekIndex:nextWeek})),taken)){
   const kind=choice.kind;
   const baseline=kind==="BROADCAST"?p.weeklyMediaIncome:p.weeklySponsorIncome;
   if(baseline===null)throw new Error("AI commercial offer lacks an income baseline");

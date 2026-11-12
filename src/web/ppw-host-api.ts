@@ -29,6 +29,7 @@ import {validateRingsideSettings} from "../domain/ringside-settings.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
 import {postShowVoiceEnabled,publishPostShowVoiceBatches} from "../db/postshow-voice-batches.js";
 import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-reveal-pilot.js";
+import {hasUnseenLegendReveal} from "../db/legends-vault.js";
 import {readPlaytestKp,grantPlaytestKp} from "../db/admin-kp-playtest.js";
 import {getOwnerDisplayName,saveOwnerDisplayName,renameOwnedPromotion}
  from "../db/owner-identities.js";
@@ -554,8 +555,14 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    if(!overview)return json(503,{error:"Configured World is unavailable"});
    const options=overview.membership==="ACTIVE"&&!overview.promotion?
     await availablePromotionsAsActor(actor,cfg.worldId,null,40):[];
+   // One indexed read at sign-in, never each screen or through a polling
+   // loop. The approved, existing Vault ceremony is the only reveal UI.
+   const unseenLegendReveal=overview.membership==="ACTIVE"&&overview.promotion?
+    await hasUnseenLegendReveal(pool,{worldId:cfg.worldId,
+     playerId:user.playerId,promotionId:overview.promotion.id}):false;
    return json(200,{worldId:cfg.worldId,playerId:user.playerId,
     ownerName,csrfToken:user.csrfToken,overview,availablePromotions:options,
+    unseenLegendReveal,
     canManualAdvance:manualPlaytestEnabled(process.env,cfg.worldId,user.playerId),
     canAiBenchmark:aiBenchmarkPreviewOperatorEnabled(process.env,
      cfg.worldId,user.playerId)});

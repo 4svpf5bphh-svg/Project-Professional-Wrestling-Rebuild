@@ -18,13 +18,16 @@ export function rumourFollowup(c:RumourCase,year:number,week:number):WorldNewsSt
   {SUBSTANTIATED:"A second backstage account supports an earlier rumour",
    DISTORTED:"A competing locker-room source challenges the sensational claims",
    FABRICATED:"Reporter challenged to identify the source behind backstage allegations"};
+ // Veracity labels are legacy editorial-arc states, not evidence that a
+ // private locker-room incident happened. Even a second anonymous tip is
+ // still gossip. Keep backstage allegations in the voice of an actual outlet.
  const summaries=final?
-  {SUBSTANTIATED:"More than one fictional source now alleges genuine backstage tension behind the report, but no official record establishes who said what. The original show results are unchanged.",
-   DISTORTED:"A routine exchange appears to have grown into a much bigger story than anything that happened. Claims of a dramatic walkout or physical fight were not substantiated. The wrestling internet may never agree.",
-   FABRICATED:"The publication has withdrawn the original backstage report after its supposed source failed to hold up to scrutiny. The alleged incident was invented, not a certified event. Fans have questions for the reporter."}:
-  {SUBSTANTIATED:"An additional uncredited source now alleges some tension behind the curtain, though their account contradicts key details of the original story. No official report confirms the allegation.",
-   DISTORTED:"One account called the incident a serious dispute. Another says an entirely routine conversation was turned into a headline. Nothing has been independently confirmed.",
-   FABRICATED:"Other reporters say they cannot corroborate the initial anonymous tip and question whether the source exists. For now the dramatic account remains completely unverified."};
+  {SUBSTANTIATED:"A second account has echoed the earlier allegation, but the descriptions still clash and nobody involved has gone on the record. The publication has not established what, if anything, happened backstage.",
+   DISTORTED:"The first headline was emphatic. The follow-ups have been much less so. The supposed walkout and physical confrontation remain unsupported, and the publication is now questioning how the story was framed.",
+   FABRICATED:"The outlet has withdrawn its original locker-room report after its tip could not be corroborated. Its editor has apologised for running the claim. The story now is how the paper got it so wrong."}:
+  {SUBSTANTIATED:"Another unnamed tipster has repeated part of the locker-room story, while disagreeing with key details. More whispers are not the same as evidence, and no participant has confirmed the account.",
+   DISTORTED:"One tip described an explosive argument. A competing account says the headline exaggerated a mundane exchange. Neither version has been established, but the rumour is drawing plenty of attention.",
+   FABRICATED:"Other wrestling reporters have challenged the alleged source behind the original scoop. The journalist has yet to offer anything that backs up the claim, and rival outlets are asking uncomfortable questions."};
  return {key:"followup:"+c.case_key+":"+year+":"+week,desk:"DIRT",
   certainty:"SPECULATION",promotionId:c.promotion_id,promotionName:c.promotion_name,
   showId:c.show_id,sourceKind:"EVENT",title:titles[truth],

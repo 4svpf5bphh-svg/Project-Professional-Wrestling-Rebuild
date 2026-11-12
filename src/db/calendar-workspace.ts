@@ -9,6 +9,12 @@ import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import {defaults,occurrences,seriesDue,dateAt,validateSchedule,validateSeries,weekIndex,
  type ShowSeries} from "../domain/show-calendar.js";
+import {premiumPolicy,projectYearEvents,scheduledSeriesOnWeek,
+ suggestedAnnualPremiumEvents,type AnnualPremiumEvent}
+ from "../domain/annual-premium-plan.js";
+import type {StandingTier} from "../domain/annual-promotion-standing.js";
+import {decodeAnnualPremiumSnapshot,plansMap}
+ from "./annual-premium-calendar.js";
 export interface CalendarScope {worldId:string;promotionId:string;playerId:string}
 export interface SeriesMutation extends CalendarScope {
  requestId:string;expectedRevision:number;series:ShowSeries;
@@ -25,8 +31,9 @@ export interface CalendarBooking {
  day:number|null;venueName:string|null;marketName:string|null;
  ready:boolean;
 }
-type Owner={name:string;year:number;week:number;revision:string|number;
- booking_open:boolean;cadence:number;major_interval:number|null;event_poster:string|null;broadcast_package:string|null};
+type Owner={name:string;tier:StandingTier;year:number;week:number;
+ premium_plan_start_year:number;revision:string|number;
+ booking_open:boolean;cadence:number;major_interval:number|null;annual_plans:unknown;event_poster:string|null;broadcast_package:string|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
  importance:number;active:boolean;poster_style:string|null;earned_prestige:number;
@@ -37,11 +44,17 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
  if(![scope.worldId,scope.promotionId,scope.playerId].every(validId))
   throw new Error("Invalid show calendar identity");
  const rows=await tx.query<Owner>([
- "SELECT p.name,w.year,w.week,w.revision,",
+ "SELECT p.name,p.tier,w.year,w.week,w.premium_plan_start_year,w.revision,",
  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
  "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
   "(SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,",
-   "(SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package",
+   "(SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,",
+  "(SELECT coalesce(jsonb_agg(jsonb_build_object('year',plan.year,",
+  "'events',plan.events,'tierAtCommit',plan.tier_at_commit,",
+  "'confirmedWeekIndex',plan.confirmed_week_index) ORDER BY plan.year),'[]'::jsonb)",
+  "FROM ppw_annual_premium_plans plan WHERE plan.world_id=w.world_id",
+  "AND plan.promotion_id=p.promotion_id AND plan.year BETWEEN w.year AND w.year+1)",
+  "AS annual_plans",
  "FROM ppw_worlds w JOIN ppw_promotions p ON p.world_id=w.world_id",
  "AND p.promotion_id=$2 JOIN ppw_promotion_controls c ON c.world_id=w.world_id",
  "AND c.promotion_id=p.promotion_id AND c.player_id=$3 AND c.active",
@@ -97,18 +110,31 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
  return withSqlClient(pool,async tx=>{
   const owned=await owner(tx,scope);
   const series=await load(tx,scope,owned);
+  const ownerAnnual=decodeAnnualPremiumSnapshot(owned.annual_plans);
+  const ownerPlans=new Map(plansMap(ownerAnnual));
+  // No row means legacy recurrence ONLY before a saved World's policy
+  // activation year. Once active, the player must explicitly confirm dates:
+  // the old fourth-week schedule cannot silently fill another season.
+  for(const year of [owned.year,owned.year+1])
+   if(year>=owned.premium_plan_start_year&&!ownerPlans.has(year))
+    ownerPlans.set(year,[]);
   // Public recurrence only. Never expose a rival promotion's private draft,
   // intended venue, ticket strategy or planned wrestler appearances.
   const rows=await tx.query<{
-   promotion_id:string;promotion_name:string;cadence:number;
+   promotion_id:string;promotion_name:string;tier:StandingTier;
+   management_mode:string;controlled:boolean;cadence:number;
    major_interval:number|null;series_id:string|null;name:string|null;
    role:ShowSeries["role"]|null;event_type:ShowSeries["eventType"]|null;
    cadence_weeks:number|null;anchor_week:number|null;
    importance:number|null;earned_prestige:number|null;
    celebrated_editions:number|null;last_celebrated_week_index:number|null;
-   poster_style:string|null;owned_bookings:unknown;
+   poster_style:string|null;owned_bookings:unknown;annual_plans:unknown;
   }>([
-   "SELECT p.promotion_id,p.name AS promotion_name,",
+   "SELECT p.promotion_id,p.name AS promotion_name,p.tier,p.management_mode,",
+   "EXISTS(SELECT 1 FROM ppw_promotion_controls active_control",
+   "WHERE active_control.world_id=p.world_id",
+   "AND active_control.promotion_id=p.promotion_id AND active_control.active)",
+   "AS controlled,",
    "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
    "s.series_id,s.name,s.role,s.event_type,s.cadence_weeks,s.anchor_week,s.importance,",
    "s.earned_prestige,s.celebrated_editions,s.last_celebrated_week_index,",
@@ -116,6 +142,12 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
     "AND sp.promotion_id=$2 AND s.promotion_id=$2 AND sp.player_id=$4",
     "AND sp.series_id=s.series_id)",
     "AS poster_style,",
+   "CASE WHEN row_number() OVER(PARTITION BY p.promotion_id ORDER BY s.series_id)=1",
+   "THEN (SELECT coalesce(jsonb_agg(jsonb_build_object('year',plan.year,",
+   "'events',plan.events) ORDER BY plan.year),'[]'::jsonb)",
+   "FROM ppw_annual_premium_plans plan WHERE plan.world_id=p.world_id",
+   "AND plan.promotion_id=p.promotion_id AND plan.year IN(w.year,w.year+1))",
+   "END AS annual_plans,",
    "CASE WHEN row_number() OVER(ORDER BY p.promotion_id,s.series_id)=1 THEN",
    "(SELECT coalesce(jsonb_agg(jsonb_build_object(",
    "'draftId',d.draft_id,'year',d.year,'week',d.week,",
@@ -164,11 +196,36 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
     showName:b.showName,status:b.status,day:b.day,venueName:b.venueName,
     marketName:b.marketName,ready:b.ready} as CalendarBooking;
   });
-  const promotions=new Map<string,{name:string;series:ShowSeries[]}>();
+  // Fold both years of *public* annual identities into the existing
+  // per-promotion World read. Zero additional SQL network round-trips.
+  const sharedPlans=new Map<string,Map<number,AnnualPremiumEvent[]>>();
+  for(const row of rows){
+   if(row.annual_plans===null)continue;
+   if(!Array.isArray(row.annual_plans)||row.annual_plans.length>2)
+    throw new Error("Invalid public annual plan snapshot");
+   const details=new Map<number,AnnualPremiumEvent[]>();
+   for(const raw of row.annual_plans){
+    if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+     !Number.isSafeInteger(raw.year)||!Array.isArray(raw.events)||
+     raw.events.length>52)throw new Error("Invalid public event dates");
+    const events=raw.events.map((item:unknown)=>{
+     if(!item||typeof item!=="object"||Array.isArray(item)||
+      typeof (item as {seriesId?:unknown}).seriesId!=="string"||
+      !Number.isSafeInteger((item as {week?:unknown}).week))
+      throw new Error("Invalid public annual event");
+     return item as AnnualPremiumEvent;
+    });
+    details.set(raw.year,events);
+   }
+   sharedPlans.set(row.promotion_id,details);
+  }
+  const promotions=new Map<string,{name:string;tier:StandingTier;
+   managementMode:string;controlled:boolean;series:ShowSeries[]}>();
   for(const row of rows){
    let promotion=promotions.get(row.promotion_id);
    if(!promotion){
-    promotion={name:row.promotion_name,series:[]};
+    promotion={name:row.promotion_name,tier:row.tier,
+     managementMode:row.management_mode,controlled:row.controlled,series:[]};
     promotions.set(row.promotion_id,promotion);
    }
    if(row.series_id&&row.name&&row.role&&row.event_type&&
@@ -183,11 +240,30 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    else if(!promotion.series.length)
     promotion.series=defaults(row.promotion_name,row.cadence,row.major_interval??4);
   }
+  const effectiveWorldPlans=new Map<string,Map<number,AnnualPremiumEvent[]>>();
+  for(const [id,promotion] of promotions){
+   const calendar=new Map(sharedPlans.get(id)??[]);
+   for(const year of [owned.year,owned.year+1]){
+    if(year<owned.premium_plan_start_year||calendar.has(year))continue;
+    // Human ownership always wins, even over a stale AI management flag.
+    // True autonomous promotions use the same tier-based annual policy.
+    // Preserve the original named WWE/AEW event announcements for an
+    // unclaimed fixture, but never fabricate PPVs for an UNASSIGNED generic
+    // company with no manager or authorised AI scheduling.
+    const original=["WWE","AEW"].includes(promotion.name.trim().toUpperCase());
+    const publicSchedule=!promotion.controlled&&
+     (promotion.managementMode==="AI"||original);
+    calendar.set(year,publicSchedule?
+     suggestedAnnualPremiumEvents(promotion.series,promotion.tier,year,promotion.name):[]);
+   }
+   effectiveWorldPlans.set(id,calendar);
+  }
   const start=weekIndex(owned.year,owned.week);
   const worldWeeks=Array.from({length:12},(_,offset)=>{
    const index=start+offset;
    const events=[...promotions].flatMap(([promotionId,promotion])=>
-    promotion.series.filter(s=>seriesDue(s,index)).map(s=>({
+    scheduledSeriesOnWeek(promotion.series,Math.floor(index/52)+1,
+     index%52+1,effectiveWorldPlans.get(promotionId)).map(s=>({
      promotionId,promotionName:promotion.name,seriesId:s.seriesId,name:s.name,
      role:s.role,eventType:s.eventType,importance:s.importance
     }))).sort((a,b)=>b.importance-a.importance||
@@ -196,11 +272,20 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   });
   if(worldWeeks.reduce((total,w)=>total+w.events.length,0)>512)
    throw new Error("World calendar occurrence budget exceeded");
-  return {worldWeeks,bookings,eventPosterStyle:owned.event_poster,
+  const annualYears=[owned.year,owned.year+1].map(year=>({
+   year,confirmed:ownerAnnual.some(plan=>plan.year===year),
+   events:projectYearEvents(series,year,ownerPlans),
+   suggested:suggestedAnnualPremiumEvents(series,owned.tier,year,owned.name)
+  }));
+  return {annual:{tier:owned.tier,policyStartYear:owned.premium_plan_start_year,
+   policy:premiumPolicy(owned.tier),
+    years:annualYears},worldWeeks,bookings,eventPosterStyle:owned.event_poster,
     broadcastPackage:owned.broadcast_package,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
    series:series.filter(s=>s.active),
-   weeks:occurrences(series,weekIndex(owned.year,owned.week),52)};
+   weeks:occurrences(series,weekIndex(owned.year,owned.week),52).map(w=>({
+    ...w,shows:scheduledSeriesOnWeek(series,w.year,w.week,ownerPlans)
+   }))};
  });
 }
 export async function upsertPromotionSeries(pool:TransactionPool,input:SeriesMutation){
@@ -230,6 +315,16 @@ export async function upsertPromotionSeries(pool:TransactionPool,input:SeriesMut
     throw new Error("Existing planned cards prevent changing this show recurrence or role");
    if(old?.role==="FLAGSHIP"&&record.role!=="FLAGSHIP")
     throw new Error("Flagship cannot be demoted");
+   if(old&&old.eventType!==record.eventType){
+    const promised=await tx.query<{year:number}>(`
+     SELECT year FROM ppw_annual_premium_plans
+     WHERE world_id=$1 AND promotion_id=$2 AND year >= $4
+      AND events @> jsonb_build_array(jsonb_build_object('seriesId',$3::text))
+     ORDER BY year LIMIT 1`,
+     [input.worldId,input.promotionId,seriesId,owned.year]);
+    if(promised.length)
+     throw new Error("A confirmed annual PPV plan uses this show identity; reschedule the year first");
+   }
    if(!old&&record.role==="FLAGSHIP")
     throw new Error("Flagship already exists; edit it instead");
    if(!old&&before.some(s=>s.seriesId===seriesId))
@@ -265,6 +360,14 @@ export async function archivePromotionSeries(pool:TransactionPool,input:ArchiveS
    const existing=before.find(s=>s.seriesId===input.seriesId&&s.active);
    if(!existing)throw new Error("Active show series not found");
    if(existing.role==="FLAGSHIP")throw new Error("Flagship cannot be archived");
+   const promised=await tx.query<{year:number}>(`
+    SELECT year FROM ppw_annual_premium_plans
+    WHERE world_id=$1 AND promotion_id=$2 AND year >= $4
+     AND events @> jsonb_build_array(jsonb_build_object('seriesId',$3::text))
+    ORDER BY year LIMIT 1`,
+    [input.worldId,input.promotionId,input.seriesId,owned.year]);
+   if(promised.length)throw new Error(
+    "This event is on a confirmed annual PPV plan; remove its future dates before archiving");
    const booked=await tx.query<{draft_id:string}>([
     "SELECT draft_id FROM ppw_booking_drafts",
     "WHERE world_id=$1 AND promotion_id=$2 AND show_series_id=$3",

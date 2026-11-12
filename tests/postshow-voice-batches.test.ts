@@ -269,6 +269,70 @@ test("one-call 20B prompt anchors wrestler and agent to the actual named feud",a
  assert.doesNotMatch(prompt[1]!.content,/GROQ_API_KEY|DATABASE_URL|private future booking/i);
  assert.ok(prompt[1]!.content.length<3800,"Keep the fixed fixture economical");
 });
+
+test("shortform news respects every certified special finish without spending another Groq call",()=>{
+ const base=fixture();
+ const cases=[
+  {outcome:"RETRIEVAL",format:"Ladder · SINGLES",word:"prize retrieval",
+   lawful:"Jett Mercer climbed to retrieve the suspended prize above Ronan Wolfe in their Ladder match, earning victory after a difficult fight that had both wrestlers repeatedly reaching for the ladder.",
+   false:"Jett Mercer pinned Ronan Wolfe for a three-count at the end of a hard-fought Ladder match, securing a straightforward victory after an intense exchange of strikes."},
+  {outcome:"TABLE_BREAK",format:"Tables Match · SINGLES",word:"through a table",
+   lawful:"Jett Mercer put Ronan Wolfe through a table in their Tables match, earning victory after a tense encounter in which both competitors fought to avoid the decisive impact.",
+   false:"Jett Mercer pinned Ronan Wolfe after a grueling Tables match, scoring a clear three-count and earning the decisive win in the middle of the ring."},
+  {outcome:"TEN_COUNT",format:"Last Man Standing · SINGLES",word:"unanswered ten-count",
+   lawful:"Jett Mercer defeated Ronan Wolfe after Wolfe could not answer the referee's ten-count in their Last Man Standing fight, ending a physical match with a clear official decision.",
+   false:"Jett Mercer pinned Ronan Wolfe for a three-count in the Last Man Standing match, finishing a long contest with a traditional wrestling victory."},
+  {outcome:"MOST_FALLS",format:"Iron Man Match · SINGLES",word:"most falls",
+   lawful:"Jett Mercer finished ahead on falls against Ronan Wolfe when the Iron Man clock expired, securing the victory after a long contest that tested both wrestlers' endurance.",
+   false:"Jett Mercer pinned Ronan Wolfe just once and won the Iron Man match immediately, with the clock still running after that decisive cover."},
+  {outcome:"SECOND_FALL",format:"Two out of Three Falls · SINGLES",word:"decisive second fall",
+   lawful:"Jett Mercer secured the decisive second fall against Ronan Wolfe in their Two out of Three Falls match, winning the contest after the opponents traded tactical adjustments.",
+   false:"Jett Mercer earned a first fall over Ronan Wolfe and the referee ended their Two out of Three Falls contest immediately, awarding him the victory without another fall."},
+  {outcome:"FIRST_BLOOD",format:"First Blood · SINGLES",word:"first to bleed",
+   lawful:"Jett Mercer defeated Ronan Wolfe when Wolfe was first to bleed in their First Blood match, ending the contest in accordance with the unusual rule and thrilling the audience.",
+   false:"Jett Mercer pinned Ronan Wolfe for a three-count after a bruising First Blood match, winning the contest by a clean cover with no blood drawn."},
+  {outcome:"CASKET_CLOSE",format:"Casket Match · SINGLES",word:"casket lid",
+   lawful:"Jett Mercer closed the casket lid on Ronan Wolfe to secure the victory in their Casket Match after a tense struggle at ringside that kept the crowd guessing.",
+   false:"Jett Mercer pinned Ronan Wolfe for a clean three-count and earned the win in their Casket Match, wrapping up the contest with an ordinary pinfall."}
+ ] as const;
+ for(const scenario of cases){
+  const entry={...base.entries[0]!,outcome:scenario.outcome,
+   matchContext:{...base.entries[0]!.matchContext!,format:scenario.format}};
+  const show={...base,entries:[entry]};
+  const evidence=postShowVoiceBrief(show);
+  assert.match(evidence.mainEvent?.finish??"",new RegExp(scenario.word,"i"),
+   "The shortform prompt must name the certified method: "+scenario.outcome);
+  const headline="Mercer secures a decisive victory against Wolfe";
+  const lawful=validatePostShowVoiceCopy(evidence,{news:{
+   headline,summary:scenario.lawful}});
+  assert.ok(lawful?.news,"Valid special finish was rejected: "+scenario.outcome);
+  const forged=validatePostShowVoiceCopy(evidence,{news:{
+   headline,summary:scenario.false}});
+  assert.equal(forged?.news??null,null,
+   "Never publish an impossible winning method: "+scenario.outcome);
+  const local=localPostShowVoiceCopy(show);
+  assert.ok(local?.news,"A zero-cost local news fallback must exist: "+scenario.outcome);
+  assert.doesNotMatch(local?.news?.summary??"",/recorded decision|certified result|unclassified finish/i);
+ }
+ const blood=cases.find(x=>x.outcome==="FIRST_BLOOD")!;
+ const bloodBrief=postShowVoiceBrief({...base,entries:[{
+  ...base.entries[0]!,outcome:"FIRST_BLOOD",
+  matchContext:{...base.entries[0]!.matchContext!,format:blood.format}}]});
+ assert.equal(validatePostShowVoiceCopy(bloodBrief,{news:{
+  headline:"Mercer wins the first blood battle",
+  summary:blood.lawful+" Doctors later diagnosed Wolfe with a severe concussion."
+ }})?.news??null,null,"Real blood does not prove a medical diagnosis");
+ const ladder=cases.find(x=>x.outcome==="RETRIEVAL")!;
+ const ladderBrief=postShowVoiceBrief({...base,entries:[{
+  ...base.entries[0]!,outcome:ladder.outcome,
+  matchContext:{...base.entries[0]!.matchContext!,format:ladder.format}}]});
+ assert.equal(validatePostShowVoiceCopy(ladderBrief,{news:{
+  headline:"Mercer won the ladder contest",
+  summary:ladder.lawful+" Officials then suspended Ronan Wolfe from the roster."
+ }})?.news??null,null,
+  "A suspended ladder prize does not authorise inventing wrestler discipline");
+});
+
 test("news avoids technical game copy yet respects an I Quit finish",()=>{
  const brief=source();
  assert.ok(brief.mainEvent);

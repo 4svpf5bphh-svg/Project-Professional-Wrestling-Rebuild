@@ -61,6 +61,93 @@ const btn=(label:string,fn:()=>void)=>{
  const x=el("button","ppw-industry-button",label) as HTMLButtonElement;
  x.type="button";x.onclick=fn;return x;
 };
+/** Actual certified publications, never real-world calendar days or
+ * uncompleted future booking weeks. Reuse the existing DOM and HOT TAG
+ * threads without additional queries, cards or content generation.
+ */
+function arrangeNewsEditions(
+ section:HTMLElement,news:IndustryNewsView|null,
+ view:IndustryHubView,official:boolean,
+){
+ if(!news)return;
+ const dated=[...news.awards,...news.stories,...(news.voices??[]),
+  ...(official?view.headlines:[])];
+ const latest=dated.reduce<{year:number;week:number}|null>((a,b)=>
+  !a||b.year>a.year||b.year===a.year&&b.week>a.week?
+   {year:b.year,week:b.week}:a,null);
+ const issue=news.latestEdition??latest??{year:view.year,week:view.week};
+ const key=(year:number,week:number)=>year*52+week;
+ const now=key(issue.year,issue.week);
+ const datedNodes=new Map<number,HTMLElement[]>();
+ const olderAwards:HTMLElement[]=[];
+ let emptyMessage:HTMLElement|null=null;
+ const add=(n:HTMLElement)=>{
+  const year=Number(n.dataset.newsYear),week=Number(n.dataset.newsWeek);
+  if(!Number.isSafeInteger(year)||year<1||
+    !Number.isSafeInteger(week)||week<1||week>52)return;
+  const k=key(year,week),items=datedNodes.get(k)??[];
+  items.push(n);datedNodes.set(k,items);
+ };
+ // The original newsroom explicitly identifies saved owner-verified
+ // post-show remarks. Keep that heading after dividing stories by week.
+ const appendIssue=(target:HTMLElement,items:readonly HTMLElement[])=>{
+  let dispatchLabelled=false;
+  for(const item of items){
+   if(item.classList.contains("ppw-news-voice")&&!dispatchLabelled){
+    target.append(el("span","ppw-news-voices-heading",
+     "THE PROMOTION / POST-SHOW DISPATCHES"));
+    dispatchLabelled=true;
+   }
+   target.append(item);
+  }
+ };
+ for(const n of [...section.children]){
+  if(!(n instanceof HTMLElement))continue;
+  if(n.classList.contains("ppw-news-voices")){
+   for(const article of [...n.querySelectorAll<HTMLElement>(":scope > .ppw-news-voice")])
+    add(article);
+   n.remove();
+  }else if(n.classList.contains("ppw-news-history")){
+   olderAwards.push(n);n.remove();
+  }else if(n.dataset.newsYear&&n.dataset.newsWeek){
+   add(n);
+  }else if(n.classList.contains("ppw-industry-empty")){
+   emptyMessage=n;n.remove();
+  }
+ }
+ const current=el("div","ppw-news-edition-current");
+ const banner=el("header","ppw-news-edition-banner");
+ banner.append(el("strong","ppw-news-edition-label","THIS WEEK"),
+  el("span","ppw-news-edition-clock",
+   "YEAR "+issue.year+" · WEEK "+issue.week),
+  el("small","ppw-news-edition-context","Latest published World edition"));
+ section.append(banner,current);
+ const currentItems=datedNodes.get(now)??[];
+ datedNodes.delete(now);
+ appendIssue(current,currentItems);
+ if(!currentItems.length){
+  current.append(emptyMessage??el("p","ppw-industry-empty",official?
+   "No confirmed stories filed in this edition. Earlier reports are below.":
+   "No fresh dirt-sheet stories this edition. Previous reports are below."));
+ }
+ if(datedNodes.size||olderAwards.length){
+  const archive=document.createElement("details");
+  archive.className="ppw-news-previous-weeks";archive.open=true;
+  archive.append(el("summary","ppw-news-previous-summary","PREVIOUS WEEKS"));
+  const weeks=[...datedNodes.keys()].sort((a,b)=>b-a);
+  for(const weekIndex of weeks){
+   const year=Math.floor((weekIndex-1)/52);
+   const week=weekIndex-year*52;
+   const group=el("section","ppw-news-previous-edition");
+   group.append(el("h3","ppw-news-previous-clock",
+    "YEAR "+year+" · WEEK "+week));
+   appendIssue(group,datedNodes.get(weekIndex)??[]);
+   archive.append(group);
+  }
+  for(const awards of olderAwards)archive.append(awards);
+  section.append(archive);
+ }
+}
 export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,initialLegends?:LegendsVaultView){
  const route=typeof window==="undefined"?"":window.location.hash;
  let view:IndustryHubView|null=null,loading=false,error="",
@@ -691,6 +778,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const latest=news.awards[0]!;
     const lead=news.awards.filter(a=>a.year===latest.year&&a.week===latest.week);
     const features=el("div","ppw-news-features");
+    features.dataset.newsYear=String(latest.year);
+    features.dataset.newsWeek=String(latest.week);
     for(const award of lead){
      const poster=el("article","ppw-news-poster");
      poster.dataset.kind=award.kind.toLowerCase();
@@ -715,6 +804,17 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       el("strong","ppw-news-poster-rating",
        award.ratingUnit==="STARS"?award.rating.toFixed(2)+" ★":
         Math.round(award.rating)+"/100 CROWD"));
+     // Awards lead to their real completed show, never a mock replay,
+     // fabricated award score or rival manager's future booking.
+     if(award.promotionId===view.ownPromotionId&&port.openOwnResults){
+      const watch=btn("Read completed show",()=>port.openOwnResults?.(award.showId));
+      watch.classList.add("ppw-news-poster-open");poster.append(watch);
+     }else if(view.broadcasts.some(b=>b.promotionId===award.promotionId&&
+      b.showId===award.showId&&b.humanManaged)&&port.publicResults){
+      const watch=btn("Read rival results",()=>void readRivalResult(
+       award.promotionId,award.showId));
+      watch.classList.add("ppw-news-poster-open");poster.append(watch);
+     }
      features.append(poster);
     }
     section.append(features);
@@ -723,6 +823,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     if(history.length){
      const archive=document.createElement("details");
      archive.className="ppw-news-history";
+     archive.dataset.newsAwardsHistory="true";
      archive.append(el("summary","","Previous weekly awards"));
      for(const award of history){
       const row=el("article","ppw-news-history-row");
@@ -741,6 +842,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     dispatch.append(el("span","ppw-news-eyebrow","THE PROMOTION / POST-SHOW DISPATCHES"));
     for(const voice of news.voices??[]){
      const article=el("article","ppw-news-story ppw-news-voice");
+     article.dataset.newsYear=String(voice.year);
+     article.dataset.newsWeek=String(voice.week);
      article.append(el("span","ppw-news-desk","EXCLUSIVE / VERIFIED AFTERMATH"),
       el("strong","ppw-news-story-title",voice.headline),
       el("p","",voice.summary),
@@ -759,6 +862,9 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      "No new rumours from the locker room this week. The next World Lock may give the wrestling press something to argue about."));
    for(const [index,story] of published.entries()){
     const item=el("article","ppw-news-story");
+    item.dataset.newsYear=String(story.year);
+    item.dataset.newsWeek=String(story.week);
+    if(story.id.startsWith("press:"))item.classList.add("ppw-news-press");
     if(index===0)item.classList.add("ppw-news-lead");
     const wild=!official&&story.id.startsWith("wild:");
     const byline=dirtSheetByline(story.id);
@@ -823,6 +929,11 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     }
     thread.append(content);
     item.append(thread);
+    if(official&&story.id.startsWith("press:")&&
+      story.promotionId===view.ownPromotionId&&port.openOwnResults){
+     const open=btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId));
+     open.classList.add("ppw-news-press-open");item.append(open);
+    }
     section.append(item);
    }
    if(official){
@@ -842,6 +953,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     for(const story of view.headlines){
      const moment=certifiedCareerMoment(story);
      const item=el("article","ppw-news-story"+(moment?" ppw-news-story-career":""));
+     item.dataset.newsYear=String(story.year);
+     item.dataset.newsWeek=String(story.week);
      item.append(el("span","ppw-news-desk",moment?
       "CERTIFIED CAREER CHAPTER":"CONFIRMED / INDUSTRY"),
       el("strong","ppw-news-story-title",moment?.title??
@@ -854,6 +967,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      section.append(item);
     }
    }
+   arrangeNewsEditions(section,news,view,official);
    root.append(section);
   }else{
    const section=el("section","ppw-industry-list");

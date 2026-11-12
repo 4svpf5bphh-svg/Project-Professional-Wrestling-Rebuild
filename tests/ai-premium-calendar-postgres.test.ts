@@ -36,12 +36,16 @@ test("AI WWE books Royal Rumble independently alongside Raw and preserves import
    worldId:world,requestId:"generate",expectedRevision:4});
   assert.equal(generated.status,"APPLIED");
   if(generated.status!=="APPLIED")throw Error("Missing generated cards");
-  assert.equal(generated.result.generated.length,9);
+  // RISING companies now earn genuine annual PPV dates instead of
+  // disguising every fourth regular broadcast as a major show.
+  assert.equal(generated.result.generated.length,11);
   assert.deepEqual(generated.result.unfilled,[]);
   const booked=await query<{draft_id:string;promotion_id:string;booking_class:string;
    show_name:string|null;event_importance:number;show_day:number}>(
    "SELECT draft_id,promotion_id,booking_class,show_name,event_importance,show_day FROM ppw_booking_drafts WHERE world_id=$1 ORDER BY promotion_id,booking_class",[world]);
-  assert.equal(booked.length,9);
+  assert.equal(booked.length,11);
+  assert.equal(booked.filter(show=>show.booking_class==="REGULAR").length,8);
+  assert.equal(booked.filter(show=>show.booking_class==="PREMIUM").length,3);
   const wwe=booked.filter(x=>x.promotion_id==="promotion-0");
   assert.deepEqual(wwe.map(x=>[x.booking_class,x.show_name,x.event_importance]),[
    ["PREMIUM","Royal Rumble",96],["REGULAR","Monday Night Raw",76]]);
@@ -49,17 +53,20 @@ test("AI WWE books Royal Rumble independently alongside Raw and preserves import
   const report=await withWorldTransaction(db.pool,tx=>inspectWeekConflicts(tx,world));
   assert.equal(report.provisionalClear,true);
   assert.equal(report.activePromotions,8);
-  assert.equal(report.submittedShows,9);
+  assert.equal(report.submittedShows,11);
   const prepared=await prepareGeneratedWorldShowCommerce(db.pool,{
    worldId:world,requestId:"commerce",expectedRevision:5});
   assert.equal(prepared.status,"APPLIED");
   if(prepared.status!=="APPLIED")throw Error("Missing commerce result");
-  assert.equal(prepared.result.preparedShows.length,9);
-  const after=await query<{show_name:string|null;event_importance:number;
-   booking_expected_demand:number}>(
-   "SELECT show_name,event_importance,booking_expected_demand FROM ppw_booking_drafts WHERE world_id=$1 AND booking_class='PREMIUM'",[world]);
-  assert.deepEqual(after.map(x=>[x.show_name,x.event_importance]),[["Royal Rumble",96]]);
-  assert.ok(after[0]!.booking_expected_demand>=100);
+  assert.equal(prepared.result.preparedShows.length,11);
+  const after=await query<{promotion_id:string;show_name:string|null;
+   event_importance:number;booking_expected_demand:number}>(
+   "SELECT promotion_id,show_name,event_importance,booking_expected_demand FROM ppw_booking_drafts WHERE world_id=$1 AND booking_class='PREMIUM' ORDER BY promotion_id",[world]);
+  assert.equal(after.length,3);
+  const actualWwe=after.find(x=>x.promotion_id==="promotion-0");
+  assert.deepEqual([actualWwe?.show_name,actualWwe?.event_importance],
+   ["Royal Rumble",96]);
+  assert.ok(actualWwe!.booking_expected_demand>=100);
   assert.equal((await generateWeekStaffFallbackCards(db.pool,{
    worldId:world,requestId:"generate",expectedRevision:4})).status,"REPLAYED");
  }finally{

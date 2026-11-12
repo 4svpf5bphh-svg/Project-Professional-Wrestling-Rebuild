@@ -19,6 +19,7 @@ export interface WorldHomePort{
  openBackstageThread?(personId:string,unread:boolean):void;
  contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;business():void;staff():void;
+ ratingsWar?():void;
  industry():void;calendar():void;championships():void;news?():void;
  dismissAttention?(attentionId:string):Promise<unknown>;
  dismissAttentionBatch?(attentionIds:string[]):Promise<unknown>;
@@ -254,6 +255,40 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "WORLD RANK · Standings",
     "See where your promotion stands by broadcast reach.",port.industry,"◆"));
    root.append(dashboard);
+   // A circuit rival exists even when neither small promotion has a TV deal.
+   // This is a saved World-level matchup, not a fictional same-slot TV fight.
+   const competition=promotion.competition;
+   const circuit=el("section","ppw-home-competition");
+   circuit.setAttribute("aria-label","Your current promotional competition");
+   circuit.append(el("span","ppw-home-brand","YOUR COMPETITION"));
+   if(competition){
+    const rival=el("h3","",competition.name);
+    const circuitKind=competition.humanManaged?"HUMAN MANAGER":"AI PROMOTION";
+    const tier=competition.tier.charAt(0)+competition.tier.slice(1).toLowerCase();
+    circuit.append(rival,el("p","ppw-home-competition-kind",
+     circuitKind+" · "+tier+" circuit"));
+    const note=competition.ownAvgAttendance!==null&&
+     competition.rivalAvgAttendance!==null?
+     "Recent average attendance: "+Math.round(competition.ownAvgAttendance).toLocaleString("en-GB")+
+      " vs "+Math.round(competition.rivalAvgAttendance).toLocaleString("en-GB"):
+     "Compare recent show results, reach and industry growth.";
+    circuit.append(el("p","ppw-home-competition-note",note));
+    circuit.append(el("small","ppw-home-competition-review",
+     "Last circuit review · Year "+(Math.floor(competition.reviewedWeekIndex/52)+1)+
+      ", Week "+(competition.reviewedWeekIndex%52+1)));
+    if(competition.targetName&&competition.targetName!==competition.name)
+     circuit.append(el("small","ppw-home-competition-review",
+      "Company to catch · "+competition.targetName));
+   }else{
+    circuit.append(el("h3","","The circuit is taking shape"),
+     el("p","ppw-home-competition-note",
+      "Your first certified World results will establish your nearest promotion rival."));
+   }
+   const rivalButton=el("button","ppw-home-competition-action",
+    "Open Ratings War") as HTMLButtonElement;
+   rivalButton.type="button";rivalButton.onclick=()=>(
+    port.ratingsWar??port.business)();
+   circuit.append(rivalButton);root.append(circuit);
    // News, weekly awards and the rumour mill already live under the persistent
    // News tab. Do not add two Home shortcuts pointing to that same screen.
   }

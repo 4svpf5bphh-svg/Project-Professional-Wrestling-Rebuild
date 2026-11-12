@@ -31,6 +31,7 @@ const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 
 function injuryProbability(input:InjuryResolutionInput,person:ScoredWrestler,
   allPeople:readonly ScoredWrestler[]):number {
+  if(input.injuryRateMultiplier===0)return 0;
   const avgSafety=allPeople.reduce((sum,p)=>sum+p.skills.safety,0)/allPeople.length;
   const intentRisk=input.intent==="HIGH_RISK"?0.006:input.intent==="EPIC"?0.0024:
     input.intent==="TECHNICAL"?0.0012:0.0007;
@@ -44,6 +45,7 @@ function injuryProbability(input:InjuryResolutionInput,person:ScoredWrestler,
 function styledInjuryProbability(input:InjuryResolutionInput,person:ScoredWrestler,
   allPeople:readonly ScoredWrestler[],styleEvaluation:MatchStyleExecutionEvaluation):number {
   const style=input.style!;
+  if(input.injuryRateMultiplier===0)return 0;
   const avgSafety=allPeople.reduce((sum,p)=>sum+p.skills.safety,0)/allPeople.length;
   const styleRisk=0.0005
     +Math.pow(style.risk/100,2)*0.005

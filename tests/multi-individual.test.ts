@@ -75,3 +75,17 @@ test("reject mixed side groups, mismatched author outcomes and unsupported 5-per
   scriptedWinnerSide:"E"});
  assert.throws(()=>requireSupportedScoringLayout(f),/awaits/);
 });
+
+test("disabled medical risk never injures wrestlers in repeated four-ways",()=>{
+ const layout=make(4,"d");
+ for(let i=0;i<5000;i++){
+  const match=simulateMultiIndividualMatch({layout,wrestlers:roster,
+   worldSeed:"4",matchId:"zero-medical:"+i,order:1,
+   eventImportance:72,intent:"HIGH_RISK",plannedFinish:"CLEAN_PIN",
+   plannedLengthMinutes:40,injuryRateMultiplier:0,mediaReach:80,
+   isMainEvent:true});
+  assert.deepEqual(match.injuries,[]);
+  assert.equal(match.injuryStoppage,false);
+  assert.equal(match.actualWinnerSide,layout.scriptedWinnerSide);
+ }
+});

@@ -134,3 +134,13 @@ test("trios, 4v4 and 5v5 preserve every booked performer, both sides and a scrip
    /disagree|evenly/);
  }
 });
+
+test("disabled medical risk never injures wrestlers in repeated tag matches",()=>{
+ for(let i=0;i<5000;i++){
+  const result=simulateBookedTagMatch({...args,
+   matchId:"zero-medical:"+i,injuryRateMultiplier:0});
+  assert.deepEqual(result.injury.injuries,[]);
+  assert.equal(result.injury.injuryStoppage,false);
+  assert.equal(result.actualWinnerSide,result.plannedWinnerSide);
+ }
+});
