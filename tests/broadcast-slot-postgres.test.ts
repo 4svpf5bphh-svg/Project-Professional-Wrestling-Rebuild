@@ -165,6 +165,7 @@ test("legacy active broadcaster gets a forward-only slot without changing comple
    " WHERE d.world_id=$1 AND d.kind='BROADCAST' AND d.status='ACTIVE'");
   assert.notEqual(scoped,migration);
   await withWorldTransaction(db.pool,tx=>tx.query(scoped,[world]));
+  await withWorldTransaction(db.pool,tx=>tx.query(scoped,[world]));
   const current=await readSixWeekPlanner(db.pool,scope);
   assert.equal(current.broadcastSlot?.day,5,
    "Preserve the manager's already booked Friday over the network's Saturday default");
@@ -177,7 +178,8 @@ test("legacy active broadcaster gets a forward-only slot without changing comple
    event_type:string;effective_week_index:number}>(`
     SELECT event_type,(payload->>'effectiveWeekIndex')::integer AS effective_week_index
     FROM ppw_ledger_events WHERE world_id=$1 AND event_type='BROADCAST_SLOT_RECOVERED'`,[world]));
-  assert.equal(evidence.length,1);
+  assert.equal(evidence.length,1,
+   "A second migration run cannot issue a duplicate recovery or shift the schedule");
   assert.equal(evidence[0]!.effective_week_index,0);
   const adjusted=await requestBroadcastDay(db.pool,{...scope,dealId,requestedDay:4,
    requestId:"first-real-renegotiation",expectedRevision:second.revision});

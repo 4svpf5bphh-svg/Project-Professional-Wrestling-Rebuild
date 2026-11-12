@@ -683,6 +683,14 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0143_promotion_competition.sql
+      - name: Recover legacy broadcast slots without rewriting completed shows
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0144_legacy_broadcast_slot_recovery.sql
+      - name: Check legacy broadcast slot recovery is retry-safe
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0144_legacy_broadcast_slot_recovery.sql
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test

@@ -860,7 +860,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    const published=(news?.stories??[]).filter(s=>s.desk===(official?"OFFICIAL":"DIRT"))
     .filter(story=>{
      const signature=[story.year,story.week,story.promotionId??story.promotionName,
-      story.title,story.summary].join("\\u001f");
+      story.showId??"",story.title,story.summary].join("\\u001f");
      if(seenStories.has(signature))return false;
      seenStories.add(signature);return true;
     });
