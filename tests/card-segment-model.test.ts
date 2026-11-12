@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {ANGLE_TYPES,newEditorSegment,addSegmentPerson,buildEditorSegment,restoreEditorSegment}
+import {ANGLE_TYPES,newEditorSegment,addSegmentPerson,buildEditorSegment,restoreEditorSegment,liveSegmentPersonIds}
  from "../src/ui/card-segment-model.js";
 test("author-owned confrontation survives editor roundtrip",()=>{
  let s=newEditorSegment("fight","CONFRONTATION");
@@ -227,4 +227,17 @@ test("every angle can save and reopen its Who What Where Why choices",async()=>{
   assert.deepEqual(saved.creativeBeat,segment.creativeBeat);
   assert.deepEqual(buildEditorSegment(restoreEditorSegment(segment.slotId,saved)),saved);
  }
+});
+
+test("promo targets can be referenced without being booked for a paid appearance",()=>{
+ let segment=newEditorSegment("joe-promo","PROMO");
+ segment=addSegmentPerson(segment,"actors",{personId:"joe",contractId:"joe-deal"});
+ segment=addSegmentPerson(segment,"targets",{personId:"mistico",contractId:"mistico-deal"});
+ assert.deepEqual(liveSegmentPersonIds(segment),["joe"]);
+ const saved=buildEditorSegment(segment);
+ assert.deepEqual(liveSegmentPersonIds(restoreEditorSegment("joe-promo",saved)),["joe"]);
+ segment.targetPresence="ON_SCREEN";
+ const appearing=buildEditorSegment(segment);
+ assert.equal(appearing.targetPresence,"ON_SCREEN");
+ assert.deepEqual(liveSegmentPersonIds(restoreEditorSegment("joe-promo",appearing)),["joe","mistico"]);
 });

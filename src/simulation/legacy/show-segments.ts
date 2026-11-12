@@ -12,6 +12,8 @@ export type SegmentOutcome="HAPPENS"|"REFUSED"|"INTERRUPTED";
 export interface AuthoredSegment {
  slotId:string;position:number;kind:SegmentKind;
  actorIds:readonly string[];targetIds:readonly string[];
+ /** Story reference versus a real on-screen role. */
+ targetPresence?:"MENTIONED"|"ON_SCREEN";
  outcome:SegmentOutcome;
  /** Booker-controlled airtime in minutes. Legacy angles default to five. */
  durationMinutes?:number;
@@ -50,6 +52,8 @@ export function validateAuthoredSegments(
    new Set(s.actorIds).size!==s.actorIds.length||
    new Set(s.targetIds).size!==s.targetIds.length||
    s.actorIds.some(id=>s.targetIds.includes(id))||
+   (s.targetPresence!==undefined&&(!["MENTIONED","ON_SCREEN"].includes(s.targetPresence)||
+    !["PROMO","INTERVIEW","CHALLENGE"].includes(s.kind)))||
    (s.creativeBeat!==undefined&&!isSegmentCreativeBeat(s.creativeBeat,s.kind))||
    (s.scene!==undefined&&!isAngleScene(s.scene,s.kind))||
    (s.specialMoment!==undefined&&!isSpecialMomentForScene(
