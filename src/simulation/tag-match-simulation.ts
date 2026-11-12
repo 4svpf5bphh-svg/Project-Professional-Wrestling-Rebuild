@@ -71,7 +71,7 @@ export function simulateBookedTagMatch(input:TagSimulationInput){
   const p=people[index]!,personId=ids[index]!;
   const intentRisk=input.intent==="HIGH_RISK"?.006:
    input.intent==="EPIC"?.0024:input.intent==="TECHNICAL"?.0012:.0007;
-  const probability=clamp((.0007+intentRisk+p.fatigue/18000+
+  const probability=input.injuryRateMultiplier===0?0:clamp((.0007+intentRisk+p.fatigue/18000+
    p.wear/22000+Math.max(0,70-avgSafety)/9000+
    Math.max(0,input.plannedLengthMinutes-15)/12000+
    (teamSize-2)*.00025)*
