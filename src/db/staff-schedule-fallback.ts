@@ -2,7 +2,7 @@ import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {chooseStaffFallbackSchedule} from "../domain/staff-show-schedule.js";
 import {validatePreparedDraft,type ReadyDraftEvidence} from "../domain/prepared-show.js";
-import {readCardParticipants} from "../domain/card-participants.js";
+import {appearancesFromSlots} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import {inspectWeekConflicts} from "./week-conflicts.js";
 
@@ -58,18 +58,20 @@ export async function applyStaffScheduleFallback(pool:TransactionPool,input:Staf
       const showId=owners[0]!.show_id!;
       const drafts=await tx.query<{
         show_day:number|null;venue_id:string|null;draft_id:string;promotion_id:string;
-        contracted_day:number|null;
+        contracted_day:number|null;booking_class:"REGULAR"|"PREMIUM";
       }>(
-        `SELECT b.draft_id,b.promotion_id,b.show_day,b.venue_id,
-          (SELECT d.airing_day FROM ppw_commercial_deals d
+        `SELECT b.draft_id,b.promotion_id,b.show_day,b.venue_id,b.booking_class,
+          CASE WHEN b.booking_class='REGULAR' THEN
+           (SELECT d.airing_day FROM ppw_commercial_deals d
             WHERE d.world_id=b.world_id AND d.promotion_id=b.promotion_id
               AND d.kind='BROADCAST' AND d.status='ACTIVE'
               AND d.start_week_index<=($4::integer-1)*52+$5::integer-1
               AND d.end_week_index>=($4::integer-1)*52+$5::integer-1
-            ORDER BY d.end_week_index DESC LIMIT 1) AS contracted_day
+            ORDER BY d.end_week_index DESC LIMIT 1)
+          ELSE NULL END AS contracted_day
           FROM ppw_booking_drafts b
           WHERE b.world_id=$1 AND b.draft_id=$2 AND b.promotion_id=$3
-            AND b.year=$4 AND b.week=$5 AND b.status='DRAFT' AND b.booking_class='REGULAR'`,
+            AND b.year=$4 AND b.week=$5 AND b.status='DRAFT'`,
         [input.worldId,showId,input.promotionId,year,week],
       );
       if(drafts.length!==1)throw new Error("Missing or previously submitted staff draft");
@@ -86,7 +88,7 @@ export async function applyStaffScheduleFallback(pool:TransactionPool,input:Staf
       if(!slots.length||slots.length>100||!slots.some(s=>s.kind==="MATCH"))
         throw new Error("Staff fallback needs a completed player-authored match card");
       let cast:ReturnType<typeof uniqueShowAppearances>;
-      try{cast=uniqueShowAppearances(slots.flatMap(s=>readCardParticipants(s.payload)));}
+      try{cast=uniqueShowAppearances(appearancesFromSlots(slots.map(s=>s.payload)));}
       catch{throw new Error("Staff fallback card participants invalid");}
       if(cast.length<2||cast.length>100)
         throw new Error("Staff fallback requires a complete booked wrestling roster");
@@ -115,14 +117,16 @@ export async function applyStaffScheduleFallback(pool:TransactionPool,input:Staf
         if(!booking){booking={showId:row.show_id,day:row.day,venueId:row.venue_id,personIds:[]};
           existing.set(row.show_id,booking);}
         if(row.slot_payload!==null){
-          try{booking.personIds.push(...readCardParticipants(row.slot_payload).map(x=>x.personId));}
+          try{booking.personIds.push(...appearancesFromSlots([row.slot_payload]).map(x=>x.personId));}
           catch{throw new Error("Existing World show has invalid participants");}
         }
       }
       const option=chooseStaffFallbackSchedule({
         worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
         promotionId:input.promotionId,showId,
-        preferredDay:draft.contracted_day??draft.show_day,
+        // PPV-only staff fallback must retain its independent live-event day.
+        preferredDay:draft.booking_class==="REGULAR"?
+         draft.contracted_day??draft.show_day:draft.show_day,
         preferredVenueId:draft.venue_id,
         personIds:cast.map(x=>x.personId),availableVenueIds:venueRows.map(x=>x.venue_id),
         bookedShows:[...existing.values()],

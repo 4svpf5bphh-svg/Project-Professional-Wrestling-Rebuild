@@ -390,10 +390,14 @@ test("AI cannot drift away from its contracted weekly broadcast night",()=>{
  const other=chooseAiWorldCard({...base,contractedDay:2});
  assert.equal(other.status,"READY");
  if(other.status==="READY")assert.equal(other.schedule.day,2);
- const premium=chooseAiWorldCard({...base,contractedDay:5,eventType:"MAJOR"});
+ const premium=chooseAiWorldCard({...base,eventType:"MAJOR"});
  assert.equal(premium.status,"READY");
  if(premium.status==="READY")assert.ok([6,7].includes(premium.schedule.day),
   "A PPV keeps its independent weekend booking options");
+ const grandfathered=chooseAiWorldCard({...base,contractedDay:5,eventType:"MAJOR"});
+ assert.equal(grandfathered.status,"READY");
+ if(grandfathered.status==="READY")assert.equal(grandfathered.schedule.day,5,
+  "A pre-modern legacy television special is still contracted weekly TV");
  const blocked=chooseAiWorldCard({...base,contractedDay:5,
   activeVenues:["a"],bookedShows:[{showId:"other",day:5,venueId:"a",personIds:[]}]});
  assert.deepEqual(blocked,{status:"UNFILLED",reason:"NO_VENUE_OR_DAY"},

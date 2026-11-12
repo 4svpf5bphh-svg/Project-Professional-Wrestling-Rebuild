@@ -17,7 +17,8 @@ export interface AiCardInput{
  worldId:string;worldSeed:string;year:number;week:number;promotionId:string;showId:string;
  roster:readonly AiRosterCandidate[];bookedShows:readonly ExistingShowBooking[];
  activeVenues:readonly string[];eventType:EventType;
- /** Signed programme night, supplied by the existing World booking batch. */
+ /** Signed weekly programme night (including grandfathered MAJOR-labelled TV).
+  * Actual PPVs omit this; the event rating alone never makes TV flexible. */
  contractedDay?:number|null;
  excludedDays?:readonly number[];
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
@@ -191,7 +192,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  const schedule=chooseStaffFallbackSchedule({
   worldId:input.worldId,worldSeed:input.worldSeed,year:input.year,week:input.week,
   promotionId:input.promotionId,showId:input.showId,
-  preferredDay:input.eventType==="REGULAR"?input.contractedDay??null:null,
+  preferredDay:input.contractedDay??null,
   preferredVenueId:null,personIds:[],
   excludedDays:input.excludedDays,
   preferredDays:input.eventType==="MAJOR"?[6,7]:undefined,
