@@ -103,3 +103,16 @@ test("unsafe, unbooked and fabricated medical inputs fail closed",()=>{
   assert.throws(()=>previewArchivedInjuryStoppage({...base,
     people:[{...injured,wear:NaN},safe]}),/Unknown or invalid/);
 });
+
+test("disabled medical risk never injures wrestlers in original or styled singles",()=>{
+ for(let i=0;i<5000;i++){
+  for(const style of [null,{competitiveness:75,technical:40,
+   story:55,intensity:96,risk:98,epic:78}]){
+   const result=previewArchivedInjuryStoppage({...base,style,
+    injuryRateMultiplier:0,matchId:"zero-medical:"+i});
+   assert.deepEqual(result.injuries,[]);
+   assert.equal(result.injuryStoppage,false);
+   assert.equal(result.actualWinnerId,result.plannedWinnerId);
+  }
+ }
+});

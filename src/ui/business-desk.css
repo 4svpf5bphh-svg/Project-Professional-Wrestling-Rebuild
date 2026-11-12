@@ -490,3 +490,28 @@
  font-weight:850;letter-spacing:.06em}
 .ppw-business-company-fact strong{display:block;font-size:clamp(14px,3.9vw,20px);
  color:#f2f7ff;overflow-wrap:anywhere;margin-top:6px}
+
+/* Circuit competition is separate from actual same-slot television transfer. */
+.ppw-ratings-circuit{display:grid;gap:10px;min-width:0;padding:15px;
+ margin:13px 0 20px;border:1px solid #68b8d7;border-radius:17px;
+ background:linear-gradient(137deg,#183d53,#102337)}
+.ppw-ratings-circuit h3{margin:0;font-size:clamp(18px,4.8vw,23px);
+ overflow-wrap:anywhere}
+.ppw-ratings-circuit-sub,.ppw-ratings-circuit-disclaimer{
+ font-size:12px;color:#b8d7e7;line-height:1.4;margin:0}
+.ppw-ratings-circuit-labels{display:grid;grid-template-columns:1fr 1fr;
+ column-gap:13px;font-size:12px;color:#d8edfa}
+.ppw-ratings-circuit-labels b{min-width:0;overflow-wrap:anywhere}
+.ppw-ratings-circuit-labels b:last-child{text-align:right}
+.ppw-ratings-circuit-metrics{display:grid;gap:5px}
+.ppw-ratings-circuit-row{display:grid;
+ grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);
+ gap:7px;align-items:center;padding:10px 0;border-bottom:1px solid #33576e;
+ font-size:11px;line-height:1.3}
+.ppw-ratings-circuit-row>span{color:#b1c6d8}
+.ppw-ratings-circuit-row>strong{font-variant-numeric:tabular-nums;
+ text-align:right;overflow-wrap:anywhere;font-size:clamp(12px,3.3vw,17px)}
+.ppw-ratings-circuit-status{margin:2px 0;color:#e5f6fc;
+ font-size:13px;line-height:1.4;font-weight:750}
+.ppw-ratings-circuit-target{color:#a7e8da;font-size:11px;
+ font-weight:800;letter-spacing:.025em}

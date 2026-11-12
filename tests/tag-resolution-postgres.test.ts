@@ -9,6 +9,7 @@ import {previewLegacyShowMatchStyles} from "../src/db/legacy-match-projection.js
 import {deriveArchivedMatchEvidence} from "../src/simulation/derive-archived-match-evidence.js";
 import {assembleArchivedShowResolution} from "../src/simulation/assemble-archived-show-resolution.js";
 import {resolveCanonicalShow} from "../src/db/resolve-canonical-show.js";
+import {settleCanonicalTagCareerConsequences} from "../src/db/tag-career-settlement.js";
 import {settleCanonicalTagTitleContests}
  from "../src/db/tag-championship-settlement.js";
 import {canonicalCompletedShowReceipt,type CompletedShowReceipt}
@@ -274,6 +275,73 @@ test("unformed challenger wins on a referee DQ but active tag champions retain t
    for(const table of ["ppw_championship_contests","ppw_championship_reigns",
     "ppw_championships","ppw_ledger_events","ppw_tag_team_members",
     "ppw_tag_teams","ppw_completed_show_matches","ppw_completed_shows",
+    "ppw_people","ppw_promotions"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});
+
+test("certified earlier same-week injury permits tag career settlement, not future-week replay",{
+ skip:!url?"No disposable PostgreSQL":false,
+},async()=>{
+ const db=postgresPool(url!,3),worldId="same-week-tag-"+randomUUID();
+ const promotionId="indie",people=["a","b","c","d"];
+ const before={fatigue:14,wear:11,momentum:73,recognition:70,popularity:65};
+ const after={fatigue:16.3,wear:11.5,momentum:74,recognition:70.02,popularity:65.01};
+ const projection=(week:number,showId:string,b=before,a=after)=>({
+  worldId,showId,year:1,week,projections:[{
+   slotId:"main",multi:null,tag:{
+    layout:{participants:people.map(personId=>({personId}))},
+    result:{actualWinnerSide:"B",
+     members:people.map((personId,i)=>({
+      personId,sideId:i<2?"A":"B",won:i>=2,injury:null,before:b,after:a
+     }))
+    }
+   }
+  }]
+ }) as unknown as Parameters<typeof settleCanonicalTagCareerConsequences>[1];
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Same-week medical settlement",
+    seed:913,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:promotionId,name:"Indie",tier:"LOCAL"});
+   for(const personId of people)
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,in_ring_quality,match_craft,presentation,stamina,safety,fatigue,wear,popularity,recognition,momentum) VALUES($1,$2,$2,'MEN',78,82,75,85,91,14,11,65,70,73)",[worldId,personId]);
+   for(const showId of ["prior","current"]){
+    const receipt=canonicalCompletedShowReceipt({
+     worldId,promotionId,showId,year:1,week:1,resolutionId:"same-week",
+     crowdResponse:70,matches:[{matchId:"main",position:0,
+      crowdResponse:70,actualFinish:"CLEAN_PIN",actualWinnerSide:"B"}],
+     segments:[]});
+    const digest=createHash("sha256").update(receipt).digest("hex");
+    await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,$2,$3,1,1,'same-week',70,$4::jsonb,$5)",[worldId,promotionId,showId,receipt,digest]);
+    await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side) VALUES($1,$2,'main',0,70,'CLEAN_PIN','B')",[worldId,showId]);
+   }
+   await tx.query("INSERT INTO ppw_medical_absences(world_id,person_id,show_id,match_id,injured_week_index,cleared_week_index,weeks_out,severity,status) VALUES($1,'a','prior','main',0,2,2,'MINOR','ACTIVE')",[worldId]);
+   await tx.query("UPDATE ppw_people SET status='INJURED' WHERE world_id=$1 AND person_id='a'",[worldId]);
+  });
+  assert.deepEqual(await withWorldTransaction(db.pool,tx=>
+   settleCanonicalTagCareerConsequences(tx,projection(1,"current"))),
+   {performers:4,matches:1,injuries:0});
+  const played=await withWorldTransaction(db.pool,tx=>tx.query<{
+   person_id:string;status:string;momentum:number
+  }>("SELECT person_id,status,momentum FROM ppw_people WHERE world_id=$1 ORDER BY person_id",[worldId]));
+  assert.equal(played.length,4);
+  assert.equal(played[0]!.status,"INJURED");
+  assert.ok(played.every(p=>p.momentum===after.momentum));
+  await assert.rejects(withWorldTransaction(db.pool,tx=>
+   settleCanonicalTagCareerConsequences(tx,projection(2,"future",after,{
+    ...after,momentum:76}))),/Scored tag wrestler baseline changed or missing/);
+  const unchanged=await withWorldTransaction(db.pool,tx=>tx.query<{
+   person_id:string;momentum:number
+  }>("SELECT person_id,momentum FROM ppw_people WHERE world_id=$1 ORDER BY person_id",[worldId]));
+  assert.ok(unchanged.every(p=>p.momentum===after.momentum),
+   "Rejected settlement rolls back other wrestlers' updates atomically");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_tag_match_career_effects","ppw_medical_absences",
+    "ppw_completed_show_matches","ppw_completed_shows",
     "ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);

@@ -700,10 +700,66 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     el("p","ppw-business-muted",
      "Latest certified TV episode per promotion · past six weeks"));
    section.append(header);
+   // Small human promotions compete for genuine attendance, exposure and
+   // their circuit standing long before a network sells them a TV slot.
+   const circuit=view.competition;
+   const rivalry=el("section","ppw-ratings-circuit");
+   rivalry.setAttribute("aria-label","Your primary promotion rival");
+   rivalry.append(el("span","ppw-business-kicker","PRIMARY PROMOTION RIVAL"));
+   if(circuit){
+    rivalry.append(el("h3","",view.name+" vs "+circuit.name),
+     el("p","ppw-ratings-circuit-sub",
+      (circuit.humanManaged?"Human-managed":"AI-managed")+
+       " · "+circuit.tier+" · Reviewed Y"+
+       (Math.floor(circuit.reviewedWeekIndex/52)+1)+" W"+
+       (circuit.reviewedWeekIndex%52+1)));
+    const metrics=el("div","ppw-ratings-circuit-metrics");
+    const attendees=(n:number|null)=>n===null?"—":
+     Math.round(n).toLocaleString("en-GB");
+    const pair=(label:string,mine:string,theirs:string)=>{
+     const entry=el("div","ppw-ratings-circuit-row");
+     entry.append(el("span","",label),el("strong","",mine),
+      el("strong","",theirs));return entry;
+    };
+    const names=el("div","ppw-ratings-circuit-labels");
+    names.append(el("b","",view.name),el("b","",circuit.name));
+    metrics.append(
+     pair("Average attendance",attendees(circuit.ownAvgAttendance),
+      attendees(circuit.rivalAvgAttendance)),
+     pair("Certified shows",String(circuit.ownShowCount),
+      String(circuit.rivalShowCount)),
+     pair("Broadcast reach",
+      circuit.ownReach===null?"—":String(circuit.ownReach),
+      circuit.rivalReach===null?"—":String(circuit.rivalReach)));
+    rivalry.append(names,metrics);
+    if(circuit.ownAvgAttendance!==null&&circuit.rivalAvgAttendance!==null&&
+     circuit.ownShowCount>0&&circuit.rivalShowCount>0){
+     const difference=Math.round(
+      circuit.ownAvgAttendance-circuit.rivalAvgAttendance);
+     rivalry.append(el("p","ppw-ratings-circuit-status",
+      difference===0?"Recent attendance is level.":
+      difference>0?"You lead by "+difference.toLocaleString("en-GB")+
+       " average attendees.":circuit.name+" leads by "+
+       Math.abs(difference).toLocaleString("en-GB")+" average attendees."));
+    }else rivalry.append(el("p","ppw-ratings-circuit-status",
+     "Not enough certified attendance to compare yet."));
+    if(circuit.targetName&&circuit.targetName!==circuit.name)
+     rivalry.append(el("small","ppw-ratings-circuit-target",
+      "NEXT COMPANY TO CATCH · "+circuit.targetName));
+    rivalry.append(el("small","ppw-ratings-circuit-disclaimer",
+     "Rolling 13-week certified circuit results. Real TV viewers only move "+
+     "between programmes sharing an airtime."));
+   }else rivalry.append(el("h3","","The circuit is taking shape"),
+    el("p","ppw-ratings-circuit-status",
+     "The first completed World week will establish your nearest rival."));
+   // Preserve the original one-screen TV face-off on 320/390px when a
+   // World has not yet completed its first circuit-rivalry review.
+   if(circuit)section.append(rivalry);
    const ranking=view.competitorBroadcasts??[];
    const own=ranking.find(episode=>episode.isYours)??null;
    const others=ranking.filter(episode=>!episode.isYours);
    const opponent=others.find(episode=>episode.promotionId===selectedRatingsRivalId)??
+    others.find(episode=>episode.promotionId===circuit?.promotionId)??
     // Real same-slot competition is the default comparison over a human
     // promotion airing in a different window.
     others.find(episode=>own&&episode.year===own.year&&
@@ -770,6 +826,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     section.append(position);
    }
    const episodes=view.shows.filter(show=>
+    (show.bookingClass===undefined||show.bookingClass==="REGULAR")&&
     show.audience?.format==="TV"&&typeof show.audience.householdRating==="number")
     .slice(0,6).reverse();
    const trend=el("section","ppw-ratings-war-trend");

@@ -49,11 +49,15 @@ export async function settleCanonicalTagCareerConsequences(
   before_momentum double precision,after_momentum double precision,
   before_recognition double precision,after_recognition double precision,
   before_popularity double precision,after_popularity double precision)
- WHERE p.world_id=$1 AND p.person_id=x.person_id AND p.status='ACTIVE'
+ WHERE p.world_id=$1 AND p.person_id=x.person_id
+   AND (p.status='ACTIVE' OR (p.status='INJURED' AND EXISTS (
+    SELECT 1 FROM ppw_medical_absences a
+    WHERE a.world_id=p.world_id AND a.person_id=p.person_id
+     AND a.status='ACTIVE' AND a.injured_week_index=$3)))
    AND p.fatigue=x.before_fatigue AND p.wear=x.before_wear
    AND p.momentum=x.before_momentum
    AND p.recognition=x.before_recognition AND p.popularity=x.before_popularity
- RETURNING p.person_id`,[projection.worldId,JSON.stringify(values)]);
+ RETURNING p.person_id`,[projection.worldId,JSON.stringify(values),(projection.year-1)*52+projection.week-1]);
  if(updated.length!==effects.length)
   throw new Error("Scored tag wrestler baseline changed or missing");
  const recorded=await tx.query<{person_id:string}>(`
