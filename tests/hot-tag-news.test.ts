@@ -18,7 +18,7 @@ test("HOT TAG is an actual wrestling-social brand, not a new account service",()
  // Fans react in their own words, never mechanically echoing the news title.
  assert.ok(a.every(p=>!p.text.includes("Confirmed: Joe walked out")));
  assert.ok(a.every(p=>!p.text.includes("“Joe walked out?”")));
- assert.equal(new Set(a.map(p=>p.text)).size,3,"Three genuine distinct fan reactions, not repeated comments");
+ assert.equal(new Set(a.map(p=>p.text)).size,3,"Distinct fan reactions, not repeated comments");
  assert.ok(a.some(p=>/source|version|story|work|claim|fiction|allegation|anonymous|rumour|report|journal|heat|timeline|fake|made up|wrestling|argu/i.test(p.text)));
  assert.deepEqual(dirtSheetByline(rumour.id),dirtSheetByline(rumour.id));
 });
@@ -111,7 +111,7 @@ test("Press-conference HOT TAG reacts to the actual type of saved answer",()=>{
   id:"press:official:ppv-one",title:"Josh Robinson says no comment after Armageddon",
   summary:'Josh declined the question, replying "No comment. You will have to wait for the next show."'};
  const noComment=projectHotTagNewsThread(article);
- assert.equal(noComment.length,3);
+ assert.ok(noComment.length>=3&&noComment.length<=6);
  assert.match(noComment[0]!.text,/no comment|refusal|reason|words/i);
  assert.ok(noComment.every(p=>!p.text.includes("Josh Robinson:")));
  assert.deepEqual(noComment,projectHotTagNewsThread(article));
@@ -127,7 +127,7 @@ test("Press-conference HOT TAG reacts to the actual type of saved answer",()=>{
   title:"Josh Robinson ends the press conference without taking questions after Armageddon",
   summary:"Josh Robinson ended the post-show press session without answering any of the three questions."};
  const skipped=projectHotTagNewsThread(skippedArticle);
- assert.equal(skipped.length,3);
+ assert.ok(skipped.length>=3&&skipped.length<=6);
  assert.match(skipped[0]!.text,/without answering|zero answers|skipped scrum/i);
  assert.doesNotMatch(skipped[0]!.text,/refused|no comment|declined/i);
  assert.notDeepEqual(skipped,noComment);
@@ -135,7 +135,7 @@ test("Press-conference HOT TAG reacts to the actual type of saved answer",()=>{
  const followed=projectHotTagNewsThread({...article,
   id:"press:followup:w2",title:"CWA returns to the ring after press scrutiny",
   summary:"The certified broadcast gave wrestling fans another headline."});
- assert.equal(followed.length,3);
+ assert.ok(followed.length>=3&&followed.length<=6);
  assert.match(followed[0]!.text,/on.air follow.up|microphones|next show/i);
  assert.deepEqual(followed,projectHotTagNewsThread({...article,
   id:"press:followup:w2",title:"CWA returns to the ring after press scrutiny",

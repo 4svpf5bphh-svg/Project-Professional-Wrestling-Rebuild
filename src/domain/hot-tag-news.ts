@@ -34,6 +34,8 @@ export interface HotTagNewsStory{
 export interface HotTagNewsPost{
  handle:string;displayName:string;avatar:string;text:string;
  likes:number;replies:number;reposts:number;
+ /** A fan can reply to another fan, never pretend to be a verified source. */
+ replyTo?:string;
 }
 const commentators=[
  {handle:"@WorkratePolice",displayName:"The Workrate Police",avatar:"🧐"},
@@ -43,7 +45,58 @@ const commentators=[
  {handle:"@FrontRowFran",displayName:"Fran | Ringside",avatar:"🔥"},
  {handle:"@FeudEnjoyer",displayName:"Feud Enjoyer",avatar:"🍿"},
  {handle:"@TheCheapSeats",displayName:"The Cheap Seats",avatar:"😂"},
- {handle:"@BellToBellBen",displayName:"Bell To Bell Ben",avatar:"💥"}
+ {handle:"@BellToBellBen",displayName:"Bell To Bell Ben",avatar:"💥"},
+ {handle:"@TurnbuckleTwat",displayName:"Turnbuckle Twat",avatar:"🪑"},
+ {handle:"@RatingsWarGoblin",displayName:"Ratings War Goblin",avatar:"📉"},
+ {handle:"@ChairshotBarry",displayName:"Barry From Row G",avatar:"🧢"},
+ {handle:"@KayfabeKaren",displayName:"Kayfabe Karen",avatar:"📢"},
+ {handle:"@SmarkyMcSmark",displayName:"Smarky McSmark",avatar:"🤓"},
+ {handle:"@PiledriverPigeon",displayName:"Piledriver Pigeon",avatar:"🐦"},
+ {handle:"@SuplexTax",displayName:"The Suplex Accountant",avatar:"🧾"},
+ {handle:"@MumsBasementBooker",displayName:"Basement Booker",avatar:"🛋️"},
+ {handle:"@HeelHeatHarry",displayName:"Heel Heat Harry",avatar:"😤"},
+ {handle:"@GorillaPosition",displayName:"Gorilla Gossip",avatar:"🦍"},
+ {handle:"@BotchSpotter",displayName:"Botch Spotter",avatar:"🔍"},
+ {handle:"@FourPointNineStars",displayName:"4.99 Stars",avatar:"⭐"},
+ {handle:"@TablesLaddersTea",displayName:"Tables, Ladders & Tea",avatar:"🫖"},
+ {handle:"@WrestlingNan",displayName:"Nan Watches Wrestling",avatar:"👵"},
+ {handle:"@TheRealestMark",displayName:"Mark Markson",avatar:"🥸"},
+ {handle:"@PromoGoblin",displayName:"Promo Goblin",avatar:"🎙️"},
+ {handle:"@BigFightBrian",displayName:"Big Fight Brian",avatar:"🥊"},
+ {handle:"@BackRowBec",displayName:"Back Row Bec",avatar:"🥤"},
+ {handle:"@WrestlingIsMyTherapy",displayName:"Monday Night Meltdown",avatar:"🛎️"},
+ {handle:"@BeltCollector",displayName:"Belt Collector",avatar:"🏆"},
+ {handle:"@HeadlockHooligan",displayName:"Headlock Hooligan",avatar:"💀"},
+ {handle:"@TuesdayNightTodd",displayName:"Tuesday Night Todd",avatar:"📅"},
+ {handle:"@TerritoryTruther",displayName:"Territory Truther",avatar:"🗺️"},
+ {handle:"@MeltzerMaths",displayName:"Star Maths",avatar:"📊"},
+ {handle:"@PopcornAndPain",displayName:"Popcorn & Pain",avatar:"🍿"},
+ {handle:"@CheapHeatMerchant",displayName:"Cheap Heat Merchant",avatar:"🔥"},
+ {handle:"@NoSellNelly",displayName:"No Sell Nelly",avatar:"🫠"},
+ {handle:"@BookingCommitteeOfOne",displayName:"Booking Committee Of One",avatar:"📝"},
+ {handle:"@SteelChairStan",displayName:"Steel Chair Stan",avatar:"🪑"},
+ {handle:"@SpotMonkey9000",displayName:"Spot Monkey 9000",avatar:"🐒"},
+ {handle:"@RefWasBlind",displayName:"Ref Was Blind",avatar:"🦓"},
+ {handle:"@JustHereForTheEntrance",displayName:"Entrance Theme Enjoyer",avatar:"🎶"},
+ {handle:"@OneMoreMatchJanet",displayName:"One More Match Janet",avatar:"🙋"},
+ {handle:"@PpvPirate",displayName:"PPV Pirate",avatar:"🏴‍☠️"},
+ {handle:"@DropkickDarren",displayName:"Dropkick Darren",avatar:"👟"},
+ {handle:"@ArmchairAgent",displayName:"Armchair Road Agent",avatar:"🪑"},
+ {handle:"@TowelThrower",displayName:"Towel Thrower",avatar:"🏳️"},
+ {handle:"@ScorpioInTheFrontRow",displayName:"Front Row Scorpio",avatar:"🦂"},
+ {handle:"@TheStipulationStation",displayName:"Stipulation Station",avatar:"🚉"},
+ {handle:"@RespectTheMidcard",displayName:"Midcard Appreciation Society",avatar:"🎖️"},
+ {handle:"@NobodyAskedDave",displayName:"Nobody Asked Dave",avatar:"🙄"},
+ {handle:"@SuplexAndChill",displayName:"Suplex & Chill",avatar:"📺"},
+ {handle:"@TheFinishWasWrong",displayName:"The Finish Was Wrong",avatar:"❌"},
+ {handle:"@ContractNegotiator69",displayName:"Contract Expert (Apparently)",avatar:"💸"},
+ {handle:"@HardcamHelen",displayName:"Hardcam Helen",avatar:"📷"},
+ {handle:"@CrowdNoiseCarl",displayName:"Crowd Noise Carl",avatar:"📣"},
+ {handle:"@VHSVintageVince",displayName:"VHS Enthusiast",avatar:"📼"},
+ {handle:"@BiscuitAndBrawls",displayName:"Biscuits & Brawls",avatar:"🍪"},
+ {handle:"@AbsolutelyNotAPlant",displayName:"Definitely Not A Plant",avatar:"🪴"},
+ {handle:"@NoContextSuplex",displayName:"No Context Suplex",avatar:"🤼"},
+ {handle:"@BookerTears",displayName:"Booker's Tears",avatar:"😭"}
 ] as const;
 export function stableHotTagHash(value:string){
  let n=2166136261;
@@ -241,6 +294,147 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "My timeline has opinions. None of them agree. 👀",
    "Professional wrestling remains the strangest thing I voluntarily watch. 💀"]
  };
+ // Chaotic fans are not verified witnesses. Punchlines and occasional mild
+ // swearing add texture without asserting anything the certified show didn't do.
+ const rowdy:Record<typeof kind,string[]>={
+  PRESS:[
+   "A press conference with this much ducking should come with a referee. 😂",
+   "Booker answered like I answer the boss when I haven't done the spreadsheet. 💀",
+   "We're all reading the same quote and somehow half the replies invented a different one.",
+   "Not every pause is a secret signing, you absolute goblins. 🎤",
+   "If evasive answers paid the bills, wrestling would never go bankrupt. 😭",
+   "Could you lot stop treating a microphone like it's a lie detector? Bloody hell.",
+   "Twelve-page conspiracy thread based on a six-word answer. Peak wrestling internet.",
+   "The post-show scrum has more plot twists than my entire love life. 🤡"
+  ],
+  BROADCAST:[
+   "Three weeks of shit ratings and now the network's discovered a backbone. 📺",
+   "My nan has more viewers watching pigeons in the garden. Sorry, that's brutal. 🐦",
+   "Imagine a TV executive powerbombing the ratings spreadsheet through a table. 😂",
+   "The ratings-war goblins have crawled out of the walls. Hide your calculators. 📉",
+   "The network paid for Friday. You can't just rock up on bloody Tuesday. 💀",
+   "SOMEONE CALL THE ADVERTISERS, THE NUMBERS ARE ON FIRE. 🔥",
+   "We used to argue about headlocks. Now we're beefing over decimal points. Christ.",
+   "Turn this network meeting into a steel cage match. I'd buy that PPV.",
+   "Imagine being buried by a graph. That's wrestling in 2026. 📊",
+   "They're arguing about 0.2 like it's the finish to WrestleMania. I love this nonsense.",
+   "The network wants a better show. Bold request from people who schedule cooking reruns.",
+   "Ratings discourse is just fantasy football for people who yell at referees."
+  ],
+  RUMOUR:[
+   "Source: trust me bro, I stood near a loading bay once. 🤡",
+   "This sounds like absolute bollocks. I'll read all 300 replies anyway. 🍿",
+   "My mate's cousin's barber said the opposite. Really makes you think. 💀",
+   "Zero receipts but the comments are already throwing chairs. Bloody hell.",
+   "The inside source is probably a bloke who once delivered pizza to the arena.",
+   "My conspiracy board is just string and receipts from Tesco at this point.",
+   "Anonymous report? My anonymous mate says you're full of shit. 🤷",
+   "Imagine getting this angry over a rumour nobody has actually confirmed.",
+   "I'm not saying it's true. I'm saying the memes are absolutely incredible.",
+   "How's the entire timeline got more backstage sources than actual wrestlers?"
+  ],
+  CHALLENGE:[
+   "STOP TALKING AND SIGN THE DAMN MATCH. 📋",
+   "Every fan in the replies just booked themselves as special guest referee.",
+   "That challenge has more confidence than my bank account. Bloody hell.",
+   "Promos are free. Actually accepting the match? Apparently a luxury.",
+   "My fantasy booking had nine run-ins and a flaming table. No regrets.",
+   "Someone book this before I write a 4,000-word thread about it.",
+   "The internet has already decided the finish. Nobody tell the actual wrestlers.",
+   "The microphone's undefeated. Shame it can't cash a cheque. 💀"
+  ],
+  TITLE:[
+   "New title discourse unlocked. Please send help. 🏆",
+   "The comments have changed champions three times in ten minutes. Amazing.",
+   "Someone just typed a 30-tweet explanation of why the belt is cursed. 😂",
+   "I swear half the fans care more about belt shapes than the matches.",
+   "If I hear 'transitional champion' one more time I'm putting my phone in the bin.",
+   "The title looks lovely. The replies look like an absolute car crash.",
+   "My championship rankings are written on the back of a takeaway menu.",
+   "A belt changed hands and the whole timeline started crying. Peak wrestling."
+  ],
+  TURN:[
+   "I trusted that alliance for twelve seconds. Never again. 💀",
+   "This heel turn has ruined six fantasy-booking spreadsheets. Magnificent.",
+   "Wrestling friendships last about as long as a cheap folding chair.",
+   "Somebody check on the one bloke still defending that handshake. 😂",
+   "Betrayal? In PRO WRESTLING? Somebody alert the bloody authorities.",
+   "The betrayal compilations are going to feed this app for months.",
+   "I knew the trust was doomed. I have absolutely no evidence.",
+   "My group chat is arguing whether the chair was symbolic. PLEASE."
+  ],
+  DEBUT:[
+   "One entrance and everybody's suddenly a contract lawyer. 🤡",
+   "Who's the new signing feuding with? Wrong answers only. 🍿",
+   "The debut's not even cold and someone's screaming 'buried' already.",
+   "My mate says they've never heard of them so obviously it's the worst signing ever. 😂",
+   "Announce a debut and the fantasy bookers start drawing 52-week calendars.",
+   "If this newcomer gets a decent rivalry I'll eat my replica championship. 🏆",
+   "New talent, new opinions, same absolute chaos on this timeline.",
+   "My whole personality this week is guessing the first feud."
+  ],
+  ATTACK:[
+   "Arena security couldn't stop a queue jumping at Tesco. 💀",
+   "That brawl had more chaos than a Friday night taxi rank.",
+   "The refs saw that and thought 'not in my job description'. 😂",
+   "Somebody tell these people there's a perfectly good match bell.",
+   "If I got jumped at work my manager would just ask about my shift targets.",
+   "The comments are angrier than the wrestlers. Brilliant.",
+   "This is what happens when you let grudges book the show, bloody hell.",
+   "I want the fallout, not 400 identical replays of the same scrap."
+  ],
+  MATCH:[
+   "That match made me forget my dinner was in the oven. Shit. 🔥",
+   "The star-rating police are already fighting in the car park.",
+   "A five-star match? The replies are still complaining about the collar-and-elbow.",
+   "I need a cigarette and I don't even smoke. 💀",
+   "Put this on a compilation and stop asking me to be normal about wrestling.",
+   "My fantasy league just died, but at least the match ruled.",
+   "Someone's written a twelve-paragraph essay about one near fall. I love us.",
+   "I rewound the finish so much my imaginary VHS ate the tape."
+  ],
+  OTHER:[
+   "The group chat is on fire and none of us know why. Lovely.",
+   "Professional wrestling: an endless source of silly little arguments. 💀",
+   "The replies are pure bollocks today. Five stars.",
+   "I'm giving this discourse thirty minutes before someone posts a spreadsheet.",
+   "My nan just asked why everyone's yelling about a fake sports press release. 🫠",
+   "I came here for wrestling and somehow got an economics lecture.",
+   "Can the timeline go one day without a civil war over a poster? 😂",
+   "This app should offer a free folding chair with every comment section."
+  ]
+ };
+ const lead:Record<typeof kind,string[]>={
+  PRESS:[],
+  BROADCAST:[
+   "The network has spoken and the ratings goblins are losing their minds. 📺",
+   "A TV warning is not a match result, but it certainly has consequences. 📉",
+   "If ratings are dropping, the next broadcast needs to earn those viewers back.",
+   "The schedule is in the contract. Fans shouldn't need a treasure map to find TV."],
+  RUMOUR:reactions.RUMOUR,
+  CHALLENGE:[
+   "That challenge sounds big. Who actually answers the call?",
+   "A match challenge and we're already fantasy booking six different finishes.",
+   "They issued the challenge. Let's see who shows up with a reply."],
+  TITLE:[
+   "The championship picture has changed. Now give the next challenger a story.",
+   "The title scene just started an argument in every group chat.",
+   "Championship stakes on screen, instant chaos in the replies."],
+  TURN:[
+   "That turn has completely changed the relationship map. 👀",
+   "A betrayal in the ring and now nobody trusts anybody.",
+   "One heel turn and the conspiracy theories are already multiplying."],
+  DEBUT:[
+   "New debut, new signing, immediate fantasy opponents. 😂",
+   "First appearance is done. Now make that roster debut matter.",
+   "The new arrival hasn't even finished waving and the timeline's arguing."],
+  ATTACK:[
+   "An attack like that demands an answer on the next show.",
+   "A wrestling assault got everybody arguing about the response.",
+   "The brawl might be over; the feud certainly has something to answer."],
+  MATCH:reactions.MATCH,
+  OTHER:reactions.OTHER
+ };
  // Certified match headlines contain genuine public names and, often, a
  // star rating. Make fan opinions about THAT bout instead of reusing three
  // generic comments beneath every four/five-star article.
@@ -290,24 +484,40 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "On-record words beat six anonymous locker-room theories. I respect that. 🧐",
    "The manager has spoken; now we'll see whether the next show backs it up. 👀"
   ]:[];
- const pool=story.year>1||story.week>=19?
-  [...pressSpecific,...specific,...reactions[kind],...expanded[kind]]:
-  [...pressSpecific,...specific,...reactions[kind]];
- const used=new Set<number>();
- return [0,1,2].map(i=>{
-  // Unique commenters and reactions per article, with different choices on
-  // adjacent stories. React to the event, not the article headline.
-  const identity=(seed+i*5+Math.floor(seed/67))%commentators.length;
-  const voice=commentators[identity]!;
-  let index=i===0&&pressSpecific.length?
-   seed%pressSpecific.length:
-   (seed+i*3+Math.floor(seed/19))%pool.length;
-  while(used.has(index))index=(index+1)%pool.length;
-  used.add(index);
-  const message=pool[index]!;
-  const postText=message;
-  const h=stableHotTagHash(story.id+":"+voice.handle+":"+i);
-  return {...voice,text:postText,likes:26+h%950,
-   replies:4+(h>>>7)%84,reposts:2+(h>>>12)%146};
- });
+ const pool=[...specific,...pressSpecific,...reactions[kind],...expanded[kind],...rowdy[kind]];
+ const used=new Set<string>(),handles=new Set<string>(),posts:HotTagNewsPost[]=[];
+ const count=3+seed%4; // Three to six actual comments, not an identical trio every time.
+ for(let i=0;i<count;i++){
+  const key=story.id+":"+story.year+":"+story.week+":"+i;
+  let person=stableHotTagHash(key+":persona")%commentators.length;
+  while(handles.has(commentators[person]!.handle))person=(person+1)%commentators.length;
+  const voice=commentators[person]!;handles.add(voice.handle);
+  // The first reaction anchors itself to real story context. The other fans
+  // can be sarcastic, insightful or utterly unhelpful without inventing facts.
+  const candidates=i===0&&pressSpecific.length?pressSpecific:
+   i===0&&specific.length?specific:
+   i===0?lead[kind]:i===1?rowdy[kind]:pool;
+  let choice=stableHotTagHash(key+":dialogue")%candidates.length;
+  let message=candidates[choice]!;
+  while(used.has(message)){
+   choice=(choice+1)%candidates.length;
+   message=candidates[choice]!;
+  }
+  const replies=count>=5&&i===count-1&&seed%3===0;
+  const response=[
+   "You read all that and THAT'S your take? Mate. 😂",
+   "I disagree with every word but I respect the chaos. 🤝",
+   "We both watched the same thing and somehow understood different planets.",
+   "Please log off before you book yourself as world champion. 💀",
+   "This is absolute bollocks and yet I've liked it. Help.",
+   "There are three genuine facts here and you've dodged all of them. 🤡",
+   "Stop shouting and watch next week's bloody show."];
+  if(replies){message=response[stableHotTagHash(key+":reply")%response.length]!;}
+  used.add(message);
+  const h=stableHotTagHash(key+":"+voice.handle);
+  posts.push({...voice,text:message,
+   ...(replies?{replyTo:posts[0]!.handle}:{}),
+   likes:13+h%1300,replies:2+(h>>>7)%130,reposts:1+(h>>>12)%170});
+ }
+ return posts;
 }
