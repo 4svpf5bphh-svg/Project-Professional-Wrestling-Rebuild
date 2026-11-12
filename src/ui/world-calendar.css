@@ -253,3 +253,14 @@
 .ppw-calendar-year-edition input:focus-visible{outline:3px solid #f0c57e;
  outline-offset:2px}
 .ppw-calendar-year-edition input:disabled{opacity:.75;cursor:not-allowed}
+
+/* Contracted TV nights retain readable labels on small iPhone screens. */
+.ppw-calendar-network-term{display:grid;gap:4px;padding:12px 13px;margin:9px 0 15px;
+ border:1px solid #78d6ec;border-radius:12px;background:#102f46;color:#d8f6ff}
+.ppw-calendar-network-term strong{font-size:12px;letter-spacing:.11em;color:#79dcea}
+.ppw-calendar-network-term span{font-size:15px;font-weight:850;overflow-wrap:anywhere}
+.ppw-calendar-network-term small{font-size:12px;color:#b6d7e8;line-height:1.45}
+.ppw-calendar-tv-slot{grid-column:2;justify-self:start;max-width:100%;font-size:12px;
+ font-weight:850;color:#b9f1fd;line-height:1.4;overflow-wrap:anywhere}
+.ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-tv-slot{align-self:flex-start}
+.ppw-calendar-ppv-week-tv{font-size:10px!important;color:#b8ebed!important;letter-spacing:0!important}

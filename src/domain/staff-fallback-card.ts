@@ -12,6 +12,8 @@ export interface StaffFallbackCardInput {
   roster:readonly StaffWrestlerCandidate[];
   bookedShows:readonly ExistingShowBooking[];
   activeVenues:readonly string[];
+ /** Optional signed TV day for a delegated staff show, not a PPV. */
+ contractedDay?:number|null;
 }
 export type StaffCardChoice=
   | {status:"READY";performers:[StaffWrestlerCandidate,StaffWrestlerCandidate];
@@ -27,7 +29,9 @@ const digest=(parts:readonly (string|number)[])=>createHash("sha256")
  */
 export function chooseEmergencyStaffCard(input:StaffFallbackCardInput):StaffCardChoice {
   if(!input.worldId||!input.worldSeed||!input.promotionId||!input.showId||
-    input.roster.length>256||input.bookedShows.length>128)
+    input.roster.length>256||input.bookedShows.length>128||
+    (input.contractedDay!==null&&input.contractedDay!==undefined&&
+     (!Number.isInteger(input.contractedDay)||input.contractedDay<1||input.contractedDay>7)))
     throw new Error("Invalid emergency staff card scope");
   const used=new Map<string,number>();
   for(const show of input.bookedShows){
@@ -64,7 +68,7 @@ export function chooseEmergencyStaffCard(input:StaffFallbackCardInput):StaffCard
       const schedule=chooseStaffFallbackSchedule({
         worldId:input.worldId,worldSeed:input.worldSeed,year:input.year,week:input.week,
         promotionId:input.promotionId,showId:input.showId,
-        preferredDay:null,preferredVenueId:null,
+        preferredDay:input.contractedDay??null,preferredVenueId:null,
         personIds:[a.personId,b.personId],
         availableVenueIds:input.activeVenues,bookedShows:input.bookedShows,
       });

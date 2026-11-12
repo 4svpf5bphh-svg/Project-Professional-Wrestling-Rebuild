@@ -1,4 +1,5 @@
 import test from "node:test";
+import {readFileSync} from "node:fs";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
@@ -113,6 +114,80 @@ test("Signed weekly TV day is enforced by Planner; a network-approved change mov
     "ppw_commercial_bonus_receipts","ppw_commercial_deals",
     "ppw_show_economics","ppw_completed_show_matches","ppw_completed_shows",
     "ppw_card_slots","ppw_booking_drafts","ppw_contract_offers",
+    "ppw_contract_renewal_proposals","ppw_contract_date_requests",
+    "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls",
+    "ppw_memberships","ppw_contracts","ppw_championships","ppw_people",
+    "ppw_venues","ppw_promotion_market_states","ppw_show_series",
+    "ppw_promotions","ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[owner]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
+
+test("legacy active broadcaster gets a forward-only slot without changing completed cards",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const world="tv-legacy-"+randomUUID(),owner="manager-"+randomUUID(),
+  dealId="old-broadcast-"+randomUUID(),promotion="promotion-0";
+ const db=postgresPool(url!,3),scope={worldId:world,promotionId:promotion,playerId:owner};
+ try{
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world));
+  assert.equal((await joinWorld(db.pool,{worldId:world,playerId:owner,
+   requestId:"legacy-join",expectedRevision:0})).status,"APPLIED");
+  const claimed=await submitPromotionClaim(db.pool,{worldId:world,playerId:owner,
+   promotionId:promotion,requestId:"legacy-claim",expectedRevision:1});
+  const planner=await readSixWeekPlanner(db.pool,scope);
+  const venue=planner.venues[0]!;
+  assert.ok(venue);
+  const make=(week:number,day:number,revision:number)=>planShowWeek(db.pool,{
+   ...scope,requestId:"legacy-plan-"+week,expectedRevision:revision,year:1,week,
+   eventType:"REGULAR",day,marketId:venue.marketId,venueId:venue.venueId,
+   ticketStrategy:"STANDARD"
+  });
+  const first=await make(1,5,claimed.revision);
+  assert.equal(first.status,"APPLIED");
+  const second=await make(2,4,first.revision);
+  assert.equal(second.status,"APPLIED");
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_commercial_deals
+   (world_id,deal_id,promotion_id,kind,offer_code,status,
+    baseline_income,agreed_income,baseline_reach,agreed_reach,
+    start_week_index,end_week_index,source,exclusive_rights,airing_day,airing_hour)
+   VALUES($1,$2,$3,'BROADCAST','BROADCAST_STABLE','ACTIVE',
+    20000,25000,70,75,0,25,'HUMAN',true,NULL,NULL)`,
+   [world,dealId,promotion]));
+  assert.equal((await readSixWeekPlanner(db.pool,scope)).broadcastSlot,null);
+  const migration=readFileSync(new URL("../db/migrations/0144_legacy_broadcast_slot_recovery.sql",import.meta.url),"utf8");
+  // Test the shipped SQL but scope the rehearsal to this disposable World.
+  const scoped=migration.replace(" WHERE d.kind='BROADCAST' AND d.status='ACTIVE'",
+   " WHERE d.world_id=$1 AND d.kind='BROADCAST' AND d.status='ACTIVE'");
+  assert.notEqual(scoped,migration);
+  await withWorldTransaction(db.pool,tx=>tx.query(scoped,[world]));
+  const current=await readSixWeekPlanner(db.pool,scope);
+  assert.equal(current.broadcastSlot?.day,5,
+   "Preserve the manager's already booked Friday over the network's Saturday default");
+  assert.equal(current.broadcastSlot?.hour,19);
+  assert.deepEqual(current.weeks.slice(0,2).map(w=>w.shows[0]?.day),[5,5],
+   "Only unsubmitted future dates are moved; no show cards are destroyed");
+  const calendar=await readPromotionCalendar(db.pool,scope);
+  assert.equal(calendar.broadcastSlot?.day,5);
+  const evidence=await withWorldTransaction(db.pool,tx=>tx.query<{
+   event_type:string;effective_week_index:number}>(`
+    SELECT event_type,(payload->>'effectiveWeekIndex')::integer AS effective_week_index
+    FROM ppw_ledger_events WHERE world_id=$1 AND event_type='BROADCAST_SLOT_RECOVERED'`,[world]));
+  assert.equal(evidence.length,1);
+  assert.equal(evidence[0]!.effective_week_index,0);
+  const adjusted=await requestBroadcastDay(db.pool,{...scope,dealId,requestedDay:4,
+   requestId:"first-real-renegotiation",expectedRevision:second.revision});
+  assert.equal(adjusted.status,"APPLIED",
+   "Restoring an omitted legacy schedule does not use the player's one negotiated change");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_annual_premium_plans","ppw_commercial_bonus_receipts",
+    "ppw_commercial_deals","ppw_show_economics","ppw_completed_show_matches",
+    "ppw_completed_shows","ppw_card_slots","ppw_booking_drafts","ppw_contract_offers",
     "ppw_contract_renewal_proposals","ppw_contract_date_requests",
     "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls",
     "ppw_memberships","ppw_contracts","ppw_championships","ppw_people",

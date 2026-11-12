@@ -58,10 +58,18 @@ export async function applyStaffScheduleFallback(pool:TransactionPool,input:Staf
       const showId=owners[0]!.show_id!;
       const drafts=await tx.query<{
         show_day:number|null;venue_id:string|null;draft_id:string;promotion_id:string;
+        contracted_day:number|null;
       }>(
-        `SELECT draft_id,promotion_id,show_day,venue_id FROM ppw_booking_drafts
-          WHERE world_id=$1 AND draft_id=$2 AND promotion_id=$3
-            AND year=$4 AND week=$5 AND status='DRAFT'`,
+        `SELECT b.draft_id,b.promotion_id,b.show_day,b.venue_id,
+          (SELECT d.airing_day FROM ppw_commercial_deals d
+            WHERE d.world_id=b.world_id AND d.promotion_id=b.promotion_id
+              AND d.kind='BROADCAST' AND d.status='ACTIVE'
+              AND d.start_week_index<=($4::integer-1)*52+$5::integer-1
+              AND d.end_week_index>=($4::integer-1)*52+$5::integer-1
+            ORDER BY d.end_week_index DESC LIMIT 1) AS contracted_day
+          FROM ppw_booking_drafts b
+          WHERE b.world_id=$1 AND b.draft_id=$2 AND b.promotion_id=$3
+            AND b.year=$4 AND b.week=$5 AND b.status='DRAFT' AND b.booking_class='REGULAR'`,
         [input.worldId,showId,input.promotionId,year,week],
       );
       if(drafts.length!==1)throw new Error("Missing or previously submitted staff draft");
@@ -114,7 +122,8 @@ export async function applyStaffScheduleFallback(pool:TransactionPool,input:Staf
       const option=chooseStaffFallbackSchedule({
         worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
         promotionId:input.promotionId,showId,
-        preferredDay:draft.show_day,preferredVenueId:draft.venue_id,
+        preferredDay:draft.contracted_day??draft.show_day,
+        preferredVenueId:draft.venue_id,
         personIds:cast.map(x=>x.personId),availableVenueIds:venueRows.map(x=>x.venue_id),
         bookedShows:[...existing.values()],
       });
