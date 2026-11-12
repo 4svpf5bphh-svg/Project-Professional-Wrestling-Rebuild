@@ -855,7 +855,15 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     }
     section.append(dispatch);
    }
-   const published=(news?.stories??[]).filter(s=>s.desk===(official?"OFFICIAL":"DIRT"));
+   // A duplicated editorial source must not print the same certified article twice.
+   const seenStories=new Set<string>();
+   const published=(news?.stories??[]).filter(s=>s.desk===(official?"OFFICIAL":"DIRT"))
+    .filter(story=>{
+     const signature=[story.year,story.week,story.promotionId??story.promotionName,
+      story.showId??"",story.title,story.summary].join("\\u001f");
+     if(seenStories.has(signature))return false;
+     seenStories.add(signature);return true;
+    });
    if(!newsBusy&&!published.length&&(!official||!view.headlines.length))
     section.append(el("p","ppw-industry-empty",official?
      "No major certified headlines yet. The next completed World week will publish its highlights.":
@@ -908,8 +916,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      const copy=el("div","ppw-hot-tag-news-copy");
      copy.append(el("strong","",post.displayName),
       el("small","",post.handle+
-       (wrestler?" · Wrestler":network?" · Verified network":" · Fan reaction")),
-      el("p","",post.text),
+       (wrestler?" · Wrestler":network?" · Verified network":" · Fan reaction")));
+     if("replyTo" in post&&typeof post.replyTo==="string")
+      copy.append(el("small","ppw-hot-tag-reply-to","↳ Replying to "+post.replyTo));
+     copy.append(el("p","",post.text),
       el("span","ppw-hot-tag-news-metrics",
        "❤️ "+post.likes.toLocaleString("en-GB")+
        "  ·  💬 "+post.replies+"  ·  🔁 "+post.reposts));

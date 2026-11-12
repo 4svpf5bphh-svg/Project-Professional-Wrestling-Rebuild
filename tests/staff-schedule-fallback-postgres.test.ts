@@ -129,3 +129,103 @@ test("opted-in staff completes only missing venue, while human scripts and contr
    }).finally(()=>db.close());
  }
 });
+
+/** A signed Friday TV contract never turns a genuine off-week PPV into
+ * Friday television. This was accidentally blocked by a REGULAR-only read. */
+test("delegated staff still finish a premium-only show on a free weekend or weekday",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const id=randomUUID(),worldId="staff-ppv-"+id,owner="manager-"+id,
+  home="home-"+id,ai="rival-"+id,ppv="special-"+id,aiShow="rival-tv-"+id;
+ const people=["a","b","c","d"].map(x=>x+"-"+id);
+ const db=postgresPool(url!,4);
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Staff Premium Week",seed:91,rulesetVersion:"test"});
+   await addPromotion(tx,worldId,{id:home,name:"Showcase",tier:"LOCAL"});
+   await addPromotion(tx,worldId,{id:ai,name:"Rival",tier:"LOCAL"});
+   await tx.query("UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]);
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[owner]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",
+    [worldId,owner]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,promotion_id,player_id) VALUES($1,$2,$3)",
+    [worldId,home,owner]);
+   await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,'only','Only Arena')",[worldId]);
+   await tx.query(`INSERT INTO ppw_show_series(world_id,promotion_id,series_id,name,
+    role,event_type,cadence_weeks,anchor_week,importance) VALUES
+    ($1,$2,'flagship','Showcase TV','FLAGSHIP','REGULAR',2,0,65),
+    ($1,$2,'premium','Showcase Special','PREMIUM','MAJOR',52,1,90)`,[worldId,home]);
+   await tx.query(`INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,
+    offer_code,status,baseline_income,agreed_income,baseline_reach,agreed_reach,
+    start_week_index,end_week_index,source,exclusive_rights,airing_day,airing_hour)
+    VALUES($1,$2,$3,'BROADCAST','BROADCAST_GROWTH','ACTIVE',
+     10000,15000,35,45,0,25,'HUMAN',true,5,20)`,[worldId,"network-"+id,home]);
+   for(let i=0;i<4;i++){
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES($1,$2,$3)",
+     [worldId,people[i]!,"Talent "+i]);
+    await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,
+     promotion_id,family,status,remaining_dates,expires_week_index)
+     VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',2,25)`,
+     [worldId,"deal-"+i+"-"+id,people[i],i<2?home:ai]);
+   }
+   await tx.query(`INSERT INTO ppw_booking_drafts
+    (world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,
+     event_importance,booking_class,event_type,show_name,show_series_id)
+    VALUES($1,$2,$3,1,2,'DRAFT',NULL,NULL,90,'PREMIUM','MAJOR',
+     'Showcase Special','premium')`,[worldId,ppv,home]);
+   await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,
+    year,week,status,show_day,venue_id,booking_class)
+    VALUES($1,$2,$3,1,2,'SUBMITTED',5,'only','REGULAR')`,
+    [worldId,aiShow,ai]);
+   for(const [show,start] of [[ppv,0],[aiShow,2]] as const){
+    const participants=[start,start+1].map(i=>({personId:people[i],contractId:"deal-"+i+"-"+id}));
+    await tx.query(`INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,
+     position,kind,payload) VALUES($1,$2,$3,0,'MATCH',$4::jsonb)`,
+     [worldId,show,"main-"+show,JSON.stringify({participants,
+      scriptedWinner:participants[0]!.personId})]);
+   }
+  });
+  const delegated=await setStaffContinuityAsActor({pool:db.pool,actor:{playerId:owner}},
+   {worldId,promotionId:home,allowUnfinishedFallback:true,
+    requestId:"delegate",expectedRevision:0});
+  assert.equal(delegated.status,"APPLIED");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[worldId]));
+  assert.equal((await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:1})).status,"APPLIED");
+  const assessed=await recordWeekContinuity(db.pool,
+   {worldId,requestId:"continuity",expectedRevision:2});
+  assert.equal(assessed.status,"APPLIED");
+  if(assessed.status==="APPLIED")
+   assert.equal(assessed.result.counts.STAFF_FALLBACK_ELIGIBLE,1);
+  assert.equal((await finalizePreparedWorldShows(db.pool,
+   {worldId,requestId:"prepared",expectedRevision:3})).status,"APPLIED");
+  assert.equal((await beginWorldResolution(db.pool,
+   {worldId,requestId:"begin",expectedRevision:4})).status,"APPLIED");
+  const finished=await applyStaffScheduleFallback(db.pool,
+   {worldId,promotionId:home,requestId:"staff-ppv",expectedRevision:5});
+  assert.equal(finished.status,"APPLIED");
+  if(finished.status==="APPLIED"){
+   assert.notEqual(finished.result.day,5,
+    "A venue already occupied on contracted Friday must not veto an independent PPV");
+   assert.equal(finished.result.authoredCardPreserved,true);
+  }
+  const saved=await withWorldTransaction(db.pool,tx=>tx.query<{
+   booking_class:string;show_day:number;status:string}>(
+   "SELECT booking_class,show_day,status FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id=$2",
+   [worldId,ppv]));
+  assert.equal(saved[0]!.booking_class,"PREMIUM");
+  assert.equal(saved[0]!.status,"SUBMITTED");
+  assert.notEqual(saved[0]!.show_day,5);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_ledger_events","ppw_week_prepared_finalizations",
+    "ppw_week_continuity_assessments","ppw_staff_continuity_settings",
+    "ppw_command_receipts","ppw_card_slots","ppw_booking_drafts",
+    "ppw_commercial_deals","ppw_show_series","ppw_contracts","ppw_people",
+    "ppw_venues","ppw_promotion_controls","ppw_memberships","ppw_promotions"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[owner]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
+  }).finally(()=>db.close());
+ }
+});

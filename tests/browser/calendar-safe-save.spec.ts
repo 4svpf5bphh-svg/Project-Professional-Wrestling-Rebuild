@@ -203,3 +203,32 @@ test("applied weekly TV graphics fill the calendar card instead of collapsing in
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+for(const width of [320,390]){
+ test("contracted television fills the mobile calendar at "+width+"px without scheduling 52 drafts",async({page})=>{
+  await page.setViewportSize({width,height:844});
+  const calls:string[]=[];
+  await page.route("**/api/session",route=>route.fulfill({json:session}));
+  await page.route("**/api/card",route=>{
+   const body=route.request().postDataJSON();
+   calls.push(body.method);
+   if(body.method!=="calendar")throw Error("Unexpected "+body.method);
+   return route.fulfill({json:{
+    ...calendar(4,80),
+    broadcastSlot:{offerCode:"BROADCAST_GROWTH",networkName:"VibeFlix",
+     day:5,hour:20,startWeekIndex:4,endWeekIndex:15},
+    weeks:[5,6,7].map((week,offset)=>({year:1,week,offset,shows:[flagship]})),
+    worldWeeks:[]
+   }});
+  });
+  await page.goto("/#/calendar");
+  await expect(page.locator(".ppw-calendar-network-term")).toContainText("VibeFlix");
+  await expect(page.locator(".ppw-calendar-network-term")).toContainText("Friday");
+  await expect(page.locator(".ppw-calendar-tv-slot")).toHaveCount(3);
+  await expect(page.locator(".ppw-calendar-tv-slot").first()).toContainText("Fri 20:00");
+  await expect(page.locator(".ppw-calendar-occurrence")).toHaveCount(3);
+  expect(calls,"Reading recurring TV weeks must not cause more RPC calls").toEqual(["calendar"]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
