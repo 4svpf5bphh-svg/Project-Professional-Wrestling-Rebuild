@@ -475,10 +475,12 @@ for(const width of [320,390]){
   const mediation=page.locator(".ppw-backstage-reply-choice").filter({hasText:"Mediate backstage"});
   await expect(mediation).toBeVisible();
   await mediation.click();
-  await expect(thread).toContainText("The trust still has to be earned in the ring.");
+  await expect(thread.locator(".ppw-persona-bubble.ppw-persona-out"))
+   .toContainText("The trust still has to be earned in the ring.");
+  await expect(page.locator(".ppw-backstage-reply-choice")).toHaveCount(0);
   expect(calls.filter(x=>x==="respondBackstageDisagreement")).toHaveLength(1);
   expect(calls.filter(x=>x==="backstageDecision")).toHaveLength(1);
-  expect(calls.filter(x=>x==="backstage"&&x)).toHaveLength(3);
+  await expect.poll(()=>calls.filter(x=>x==="backstage").length).toBe(3);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

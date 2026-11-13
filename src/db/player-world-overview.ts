@@ -359,7 +359,7 @@ export async function readPlayerWorldOverview(
       +(SELECT count(*)::integer FROM (
         SELECT issue.medical_id,issue.creative_id,issue.programme_id,
          issue.person_id,o.now
-        FROM (SELECT (w.year-1)*52+w.week-1 AS now) o
+        FROM LATERAL (SELECT (w.year-1)*52+w.week-1 AS now) o
         JOIN LATERAL (${STAFF_DISAGREEMENT_LATERAL_SQL.replace("med.promotion_id=$2","med.promotion_id=owned.promotion_id")}) issue ON true
        ) dispute WHERE NOT EXISTS (
         SELECT 1 FROM ppw_player_attention_dismissals receipt
