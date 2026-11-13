@@ -475,7 +475,7 @@ for(const width of [320,390]){
   const mediation=page.locator(".ppw-backstage-reply-choice").filter({hasText:"Mediate backstage"});
   await expect(mediation).toBeVisible();
   await mediation.click();
-  await expect(thread).toContainText("Mediate backstage");
+  await expect(thread).toContainText("The trust still has to be earned in the ring.");
   expect(calls.filter(x=>x==="respondBackstageDisagreement")).toHaveLength(1);
   expect(calls.filter(x=>x==="backstageDecision")).toHaveLength(1);
   expect(calls.filter(x=>x==="backstage"&&x)).toHaveLength(3);
