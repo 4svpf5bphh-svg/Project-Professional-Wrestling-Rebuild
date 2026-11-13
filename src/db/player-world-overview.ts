@@ -176,6 +176,44 @@ export async function readPlayerWorldOverview(
         WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
          AND r.player_id=$2
          AND r.attention_id='backstage-world:'||md5('network:'||n.story_key)))
+      /* Only completed regular television with a certified hardcore match
+       * earns a private network concern. Match the exact two-source inbox
+       * window and reuse the existing read receipt; never inspect drafts alone. */
+      +(SELECT count(*)::integer FROM (
+        SELECT d.deal_id,done.show_id
+        FROM ppw_commercial_deals d
+        JOIN ppw_completed_shows done ON done.world_id=d.world_id
+         AND done.promotion_id=d.promotion_id
+        JOIN ppw_booking_drafts draft ON draft.world_id=done.world_id
+         AND draft.draft_id=done.show_id AND draft.promotion_id=done.promotion_id
+         AND draft.status='SUBMITTED' AND draft.booking_class='REGULAR'
+        JOIN ppw_show_economics economics ON economics.world_id=done.world_id
+         AND economics.show_id=done.show_id
+         AND economics.promotion_id=done.promotion_id
+         AND economics.audience_format='TV'
+        WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
+         AND d.kind='BROADCAST' AND d.status='ACTIVE'
+         AND d.offer_code IN ('BROADCAST_STABLE','BROADCAST_TV',
+          'BROADCAST_ARCHIVE','BROADCAST_GLOBAL')
+         AND d.start_week_index<=(w.year-1)*52+w.week-1
+         AND d.end_week_index>=(w.year-1)*52+w.week-1
+         AND (done.year-1)*52+done.week-1
+          BETWEEN greatest(d.start_week_index,(w.year-1)*52+w.week-13)
+           AND least(d.end_week_index,(w.year-1)*52+w.week-1)
+         AND EXISTS(
+          SELECT 1 FROM ppw_completed_show_matches finished
+          JOIN ppw_card_slots slot ON slot.world_id=finished.world_id
+           AND slot.draft_id=finished.show_id AND slot.slot_id=finished.match_id
+           AND slot.kind='MATCH' AND slot.payload->>'stipulation'='HARDCORE'
+          WHERE finished.world_id=done.world_id AND finished.show_id=done.show_id)
+        ORDER BY done.year DESC,done.week DESC,done.show_id DESC LIMIT 2
+       ) concern WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'network-content:'||concern.deal_id||':'||concern.show_id)))
       /* Certified replies become unread network follow-ups after settlement.
        * Same private acknowledgement table and one existing overview query;
        * no materialised notification row or extra home round-trip. */

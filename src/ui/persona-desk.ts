@@ -14,9 +14,9 @@ export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
  markRead(personId:string):Promise<{readCount:number}>;
  markWorldRead?(mailId:string):Promise<{readCount:number}>;
- respondNetwork?(input:{mailId:string;decision:"COMMIT_RECOVERY"|"STAND_FIRM";
+ respondNetwork?(input:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
-  result?:{mailId:string;decision:"COMMIT_RECOVERY"|"STAND_FIRM";
+  result?:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
    status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
  openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
@@ -45,7 +45,7 @@ export function mountPersonaDesk(root:HTMLElement,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
  let selectedWorldMailId:string|null=null;
- let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"STAND_FIRM";
+ let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   requestId:string;expectedRevision:number}|null=null;
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
   "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"=initialInboxFilter;
@@ -194,7 +194,7 @@ export function mountPersonaDesk(root:HTMLElement,
     if(pane==="WORLD_THREAD"&&selectedWorldMailId===mailId)render();}
   }catch(e){error=e instanceof Error?e.message:"Could not mark message read";render();}
  }
- async function answerNetwork(mailId:string,decision:"COMMIT_RECOVERY"|"STAND_FIRM"){
+ async function answerNetwork(mailId:string,decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM"){
   if(!view||loading||!port.respondNetwork||view.worldRevision===null)return;
   const same=pendingNetwork?.mailId===mailId&&pendingNetwork.decision===decision;
   const request=same?pendingNetwork!:{mailId,decision,
@@ -289,6 +289,7 @@ export function mountPersonaDesk(root:HTMLElement,
    message.append(el("strong","",mail.subject),el("p","",mail.body));
    chat.append(message);
    chat.append(el("p","ppw-backstage-world-evidence",
+    mail.contentConcern?"From a completed television match with a verified hardcore stipulation.":
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
      mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
      mail.kind==="FREE_AGENT"?"No contract or appearance has been agreed.":
@@ -302,18 +303,30 @@ export function mountPersonaDesk(root:HTMLElement,
     chat.append(el("article","ppw-persona-bubble ppw-persona-out",
      answer.decision==="COMMIT_RECOVERY"?
       "We'll work to meet the agreed TV target. Judge our next broadcasts.":
+     answer.decision==="COMMIT_STANDARDS"?
+      "We hear you. We'll keep hardcore stipulations off our next TV broadcasts.":
       "We stand by our creative direction. We understand the signed terms."));
     chat.append(el("p","ppw-backstage-world-evidence",
      answer.status==="PENDING"?
       "Your promise will be measured against certified TV over the next three weeks.":
-     answer.status==="KEPT"?"Your next on-target TV broadcast kept the promise.":
-     answer.status==="BROKEN"?"The review window ended without an on-target broadcast. The promise was broken.":
+     answer.status==="KEPT"?
+      answer.decision==="COMMIT_STANDARDS"?
+       "Your next certified TV show honoured the agreed content standard.":
+       "Your next on-target TV broadcast kept the promise.":
+     answer.status==="BROKEN"?
+      answer.decision==="COMMIT_STANDARDS"?
+       "The review window ended without a compliant TV show. The promise was broken.":
+       "The review window ended without an on-target broadcast. The promise was broken.":
      answer.status==="EXCUSED"?"The signed term ended before the deadline; the promise was excused.":
      "Your reply is recorded. The agreed network terms remain in force."));
    }
    const actions=el("div","ppw-backstage-world-actions");
    if(mail.kind==="NETWORK"&&mail.canRespond&&!mail.networkResponse&&port.respondNetwork){
-    actions.append(button("Promise to improve ratings",()=>void answerNetwork(mail.id,"COMMIT_RECOVERY"),loading));
+    actions.append(mail.contentConcern?
+     button("Keep hardcore off our next TV show",
+      ()=>void answerNetwork(mail.id,"COMMIT_STANDARDS"),loading):
+     button("Promise to improve ratings",
+      ()=>void answerNetwork(mail.id,"COMMIT_RECOVERY"),loading));
     actions.append(button("Stand by our show",()=>void answerNetwork(mail.id,"STAND_FIRM"),loading));
    }
    if(mail.targetPersonId&&port.openWrestler)

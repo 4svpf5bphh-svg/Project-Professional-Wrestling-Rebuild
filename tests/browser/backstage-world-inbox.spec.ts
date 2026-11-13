@@ -107,3 +107,63 @@ for(const width of [320,390]){
   expect(calls.some(v=>/groq|generate|worldAdvance/i.test(v))).toBe(false);
  });
 }
+
+
+for(const width of [320,390]){
+ test("A verified hardcore TV complaint receives a manager promise at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:8,name:"Genesis",year:1,week:6,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:250000,debt:0,lastWeeklyNet:8000,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,backstageUnreadCount:1,
+     expiringTalent:false,pendingContractOffers:false}}};
+  const mailId="backstage-world:"+"f".repeat(32);
+  const messages=[{id:mailId,kind:"NETWORK",sender:"BBS Sports",
+   subject:"About the hardcore match on CWA Friday",
+   body:"Your completed programme CWA Friday included a hardcore-rules match.",
+   action:"COMMERCIALS",createdWeekIndex:4,read:false,
+   canRespond:true,contentConcern:true,
+   networkResponse:undefined as {decision:string;status:string;dueWeekIndex:number}|undefined}];
+  const seen:string[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:{worldId:"world",
+   playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string;decision?:string};
+   seen.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:6,worldRevision:8,canEdit:true,
+    roster:[],persona:null,history:[],recentRequests:[],conversations:[],
+    memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
+    worldMessages:messages}});
+   if(x.method==="markBackstageWorldRead"){messages[0]!.read=true;
+    return r.fulfill({json:{readCount:1}});}
+   if(x.method==="respondBackstageNetwork"){
+    expect(x.mailId).toBe(mailId);
+    expect(x.decision).toBe("COMMIT_STANDARDS");
+    messages[0]!.canRespond=false;
+    messages[0]!.networkResponse={decision:"COMMIT_STANDARDS",
+     status:"PENDING",dueWeekIndex:8};
+    return r.fulfill({json:{status:"APPLIED",revision:9,
+     result:{mailId,decision:"COMMIT_STANDARDS",status:"PENDING",dueWeekIndex:8}}});
+   }
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:/About the hardcore match on CWA Friday/}).click();
+  const thread=page.getByLabel("Message from BBS Sports");
+  await expect(thread).toContainText("hardcore-rules match");
+  await expect(thread).toContainText("completed television match");
+  await expect(page.getByRole("button",{name:"Promise to improve ratings"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Keep hardcore off our next TV show"}).click();
+  await expect(thread).toContainText("hardcore stipulations off our next TV broadcasts");
+  await expect(thread).toContainText("next three weeks");
+  await expect(page.getByRole("button",{name:"Keep hardcore off our next TV show"})).toHaveCount(0);
+  expect(seen.filter(x=>x==="respondBackstageNetwork")).toHaveLength(1);
+  expect(seen.filter(x=>x==="backstage")).toHaveLength(1);
+  expect(seen.some(x=>/generate|groq|advance/i.test(x))).toBe(false);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

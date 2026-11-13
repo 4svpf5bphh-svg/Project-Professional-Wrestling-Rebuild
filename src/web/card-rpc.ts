@@ -115,7 +115,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="markBackstageWorldRead")return markBackstageWorldMailReadAsActor(context,
   worldId,promotionId,id("mailId"));
  if(method==="respondBackstageNetwork"){
-  if(p.decision!=="COMMIT_RECOVERY"&&p.decision!=="STAND_FIRM")
+  if(p.decision!=="COMMIT_RECOVERY"&&p.decision!=="COMMIT_STANDARDS"&&
+    p.decision!=="STAND_FIRM")
    throw new Error("Invalid broadcaster reply");
   if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
    throw new Error("Invalid World revision");

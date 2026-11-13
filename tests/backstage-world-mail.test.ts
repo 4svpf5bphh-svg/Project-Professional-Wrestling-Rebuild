@@ -20,7 +20,9 @@ test("World mail projection contains only genuine controlled certified sources",
  assert.match(WORLD_MAIL_SQL,/ppw_completed_shows completed JOIN ppw_world_news_weeks news/);
  assert.match(WORLD_MAIL_SQL,/p.popularity BETWEEN 25 AND 70/);
  assert.match(WORLD_MAIL_SQL,/ORDER BY c.created_week_index DESC,c.id DESC LIMIT 20/);
- assert.doesNotMatch(WORLD_MAIL_SQL,/ppw_booking_drafts|groq|random\(\)/i);
+ assert.match(WORLD_MAIL_SQL,/JOIN ppw_completed_shows done/);
+ assert.match(WORLD_MAIL_SQL,/draft.status='SUBMITTED' AND draft.booking_class='REGULAR'/);
+ assert.doesNotMatch(WORLD_MAIL_SQL,/groq|random\(\)/i);
  const staff=worldStaff("123");
  const doctor=staff.find(s=>s.role==="MEDICAL")!;
  const messages=[

@@ -5,7 +5,7 @@ CREATE TABLE ppw_backstage_network_replies (
  mail_id text NOT NULL CHECK(mail_id ~ '^backstage-world:[a-f0-9]{32}$'),
  deal_id text NOT NULL,
  player_id text NOT NULL,
- decision text NOT NULL CHECK(decision IN ('COMMIT_RECOVERY','STAND_FIRM')),
+ decision text NOT NULL CHECK(decision IN ('COMMIT_RECOVERY','COMMIT_STANDARDS','STAND_FIRM')),
  status text NOT NULL CHECK(status IN ('PENDING','ACKNOWLEDGED','KEPT','BROKEN','EXCUSED')),
  responded_week_index integer NOT NULL CHECK(responded_week_index>=0),
  due_week_index integer NOT NULL CHECK(due_week_index>=responded_week_index),

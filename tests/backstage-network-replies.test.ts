@@ -6,6 +6,11 @@ import type {SqlRows} from "../src/db/world-operations.js";
 test("network reply projection is certified and reuses the bounded inbox read",()=>{
  assert.match(WORLD_MAIL_SQL,/ppw_backstage_network_replies reply/);
  assert.match(WORLD_MAIL_SQL,/network_followup AS/);
+ assert.match(WORLD_MAIL_SQL,/content_notice AS/);
+ assert.match(WORLD_MAIL_SQL,/slot\.payload->>'stipulation'='HARDCORE'/);
+ assert.match(WORLD_MAIL_SQL,/finished\.world_id=done\.world_id/);
+ assert.match(WORLD_MAIL_SQL,/draft\.booking_class='REGULAR'/);
+ assert.match(WORLD_MAIL_SQL,/economics\.audience_format='TV'/);
  assert.match(WORLD_MAIL_SQL,/r.status IN \('KEPT','BROKEN','EXCUSED'\)/);
  assert.match(WORLD_MAIL_SQL,/network-followup:/);
  assert.match(WORLD_MAIL_SQL,/n.certainty='CONFIRMED'/);
@@ -18,6 +23,10 @@ test("turnaround settlement uses the same certified audited broadcast facts",asy
  const tx={query:async(sql:string,args:readonly unknown[])=>{
   assert.match(sql,/ppw_backstage_network_replies r/);
   assert.match(sql,/ON_TARGET/);
+  assert.match(sql,/standards AS/);
+  assert.match(sql,/COMMIT_STANDARDS/);
+  assert.match(sql,/slot\.payload->>'stipulation'='HARDCORE'/);
+  assert.match(sql,/draft\.booking_class='REGULAR'/);
   assert.match(sql,/EXCUSED/);
   assert.equal(args[0],"world");
   assert.deepEqual(JSON.parse(String(args[2])),[{deal_id:"d1",week_index:12,status:"ON_TARGET"}]);

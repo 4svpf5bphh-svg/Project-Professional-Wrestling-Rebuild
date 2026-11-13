@@ -12,7 +12,8 @@ export type WorldMailAction="COMMERCIALS"|"CONTRACTS"|"PROGRAMMES"|"STAFF"|"MARK
 export interface WorldMail{
  id:string;kind:WorldMailKind;sender:string;subject:string;body:string;
  action:WorldMailAction;createdWeekIndex:number;read:boolean;
- canRespond?:boolean;networkResponse?:{decision:"COMMIT_RECOVERY"|"STAND_FIRM";
+ canRespond?:boolean;contentConcern?:boolean;
+ networkResponse?:{decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  /** Verified market contact; the dossier and actual offer rules remain authoritative. */
  targetPersonId?:string;
@@ -21,7 +22,8 @@ interface MailRow extends Record<string,unknown>{
  id:string;kind:WorldMailKind;sender_key:string;subject:string;
  body:string;action:WorldMailAction;created_week_index:number;
  read:boolean;seed:string;target_person_id:string|null;sender_name:string|null;
- can_reply:boolean;reply_decision:string|null;reply_status:string|null;reply_due_week_index:number|null;
+ can_reply:boolean;content_concern:boolean;
+ reply_decision:string|null;reply_status:string|null;reply_due_week_index:number|null;
 }
 /** Shared source selection is also used for validating read receipts.
  * Each CTE is limited to the owner's promotion and a rolling evidence window.
@@ -52,6 +54,44 @@ WITH owner AS MATERIALIZED (
   AND n.story_key LIKE 'broadcast:network:%'
   AND (n.year-1)*52+n.week-1 BETWEEN greatest(0,o.now-12) AND o.now
  ORDER BY n.year DESC,n.week DESC,n.story_key DESC LIMIT 8
+), content_notice AS (
+ /* A broadcaster may object to an actually certified hardcore match on
+  * its contracted TV programme. A submitted draft alone is not evidence;
+  * neither an unplayed match nor a premium PPV can trigger this message. */
+ SELECT 'NETWORK'::text AS kind,
+  'network-content:'||d.deal_id||':'||done.show_id AS evidence,
+  d.offer_code AS sender_key,
+  'About the hardcore match on '||draft.show_name AS subject,
+  'Your completed programme '||draft.show_name||
+   ' included a hardcore-rules match. That is outside the tone we expect '||
+   'from our regular television slot. Can we keep hardcore stipulations '||
+   'off the next broadcasts?' AS body,
+  'COMMERCIALS'::text AS action,
+  (done.year-1)*52+done.week-1 AS created_week_index,
+  NULL::text AS target_person_id,NULL::text AS sender_name
+ FROM owner o
+ JOIN ppw_commercial_deals d ON d.world_id=$1 AND d.promotion_id=$2
+  AND d.kind='BROADCAST' AND d.status='ACTIVE'
+  AND d.start_week_index<=o.now AND d.end_week_index>=o.now
+  AND d.offer_code IN ('BROADCAST_STABLE','BROADCAST_TV',
+   'BROADCAST_ARCHIVE','BROADCAST_GLOBAL')
+ JOIN ppw_completed_shows done ON done.world_id=d.world_id
+  AND done.promotion_id=d.promotion_id
+ JOIN ppw_booking_drafts draft ON draft.world_id=done.world_id
+  AND draft.draft_id=done.show_id AND draft.promotion_id=done.promotion_id
+  AND draft.status='SUBMITTED' AND draft.booking_class='REGULAR'
+ JOIN ppw_show_economics economics ON economics.world_id=done.world_id
+  AND economics.show_id=done.show_id
+  AND economics.promotion_id=done.promotion_id AND economics.audience_format='TV'
+ WHERE (done.year-1)*52+done.week-1
+  BETWEEN greatest(d.start_week_index,o.now-12) AND least(d.end_week_index,o.now)
+  AND EXISTS(
+   SELECT 1 FROM ppw_completed_show_matches finished
+   JOIN ppw_card_slots slot ON slot.world_id=finished.world_id
+    AND slot.draft_id=finished.show_id AND slot.slot_id=finished.match_id
+    AND slot.kind='MATCH' AND slot.payload->>'stipulation'='HARDCORE'
+   WHERE finished.world_id=done.world_id AND finished.show_id=done.show_id)
+ ORDER BY done.year DESC,done.week DESC,done.show_id DESC LIMIT 2
 ), network_followup AS (
  /* A new inbound response to an actual manager promise. No per-message
   * row or model request: verified settlement plus existing signed deal.
@@ -59,13 +99,21 @@ WITH owner AS MATERIALIZED (
  SELECT 'NETWORK'::text AS kind,
   'network-followup:'||r.mail_id||':'||r.status AS evidence,
   d.offer_code AS sender_key,
-  CASE r.status WHEN 'KEPT' THEN 'Your television turnaround delivered'
-   WHEN 'BROKEN' THEN 'The review window has ended'
+  CASE WHEN r.decision='COMMIT_STANDARDS' AND r.status='KEPT'
+    THEN 'Our broadcast standards are back on track'
+   WHEN r.decision='COMMIT_STANDARDS' AND r.status='BROKEN'
+    THEN 'Our content standards review has ended'
+   WHEN r.status='KEPT' THEN 'Your television turnaround delivered'
+   WHEN r.status='BROKEN' THEN 'The review window has ended'
    ELSE 'Our previous agreement has ended' END AS subject,
-  CASE r.status WHEN 'KEPT' THEN
-    'Your latest certified television met our audience target after your commitment. That is the response we wanted to see.'
-   WHEN 'BROKEN' THEN
-    'The three-week review period ended without a certified on-target television broadcast. We still expect better delivery under the agreement.'
+  CASE WHEN r.decision='COMMIT_STANDARDS' AND r.status='KEPT'
+    THEN 'Your next completed television programme kept hardcore stipulations off our broadcast. We appreciate you respecting the signed tone.'
+   WHEN r.decision='COMMIT_STANDARDS' AND r.status='BROKEN'
+    THEN 'The three-week review ended without a certified television programme meeting the agreed content standard. We still expect a more restrained weekly broadcast.'
+   WHEN r.status='KEPT'
+    THEN 'Your latest certified television met our audience target after your commitment. That is the response we wanted to see.'
+   WHEN r.status='BROKEN'
+    THEN 'The three-week review period ended without a certified on-target television broadcast. We still expect better delivery under the agreement.'
    ELSE
     'The signed network agreement ended before your commitment could be assessed. No further promise is owed under those terms.'
   END AS body,
@@ -178,8 +226,8 @@ WITH owner AS MATERIALIZED (
   ORDER BY p.popularity DESC,p.person_id LIMIT 1
  ) available ON true
 ), message AS (
- SELECT * FROM network UNION ALL SELECT * FROM network_followup
- UNION ALL SELECT * FROM staff
+ SELECT * FROM network UNION ALL SELECT * FROM content_notice
+ UNION ALL SELECT * FROM network_followup UNION ALL SELECT * FROM staff
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
 ), candidate AS (
  SELECT 'backstage-world:'||md5(message.evidence) AS id,
@@ -193,7 +241,9 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  (receipt.attention_id IS NOT NULL) AS read,
  reply.decision AS reply_decision,reply.status AS reply_status,
  reply.due_week_index AS reply_due_week_index,
- (c.kind='NETWORK' AND reply.mail_id IS NULL AND EXISTS(
+ (c.evidence LIKE 'network-content:%') AS content_concern,
+ (c.kind='NETWORK' AND reply.mail_id IS NULL AND
+ (c.evidence LIKE 'network-content:%' OR EXISTS(
   SELECT 1 FROM ppw_world_news_items n
   JOIN owner o ON true
   JOIN ppw_commercial_deals d ON d.world_id=n.world_id
@@ -206,7 +256,7 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
    AND (n.story_key LIKE 'broadcast:network:%:warning:%'
     OR n.story_key LIKE 'broadcast:network:%:final-warning:%')
    AND c.id='backstage-world:'||md5('network:'||n.story_key)
- )) AS can_reply
+ ))) AS can_reply
 FROM candidate c
 LEFT JOIN ppw_backstage_network_replies reply ON reply.world_id=$1
  AND reply.promotion_id=$2 AND reply.mail_id=c.id
@@ -231,7 +281,7 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    r.sender_key!==r.target_person_id))
    throw new Error("Free-agent outreach requires a verifiable wrestler identity");
   const network=r.kind==="NETWORK"?COMMERCIAL_COMPANIES[r.sender_key]?.name:null;
-  if(r.reply_decision!=null&&(!["COMMIT_RECOVERY","STAND_FIRM"].includes(r.reply_decision)||
+  if(r.reply_decision!=null&&(!["COMMIT_RECOVERY","COMMIT_STANDARDS","STAND_FIRM"].includes(r.reply_decision)||
    !["PENDING","ACKNOWLEDGED","KEPT","BROKEN","EXCUSED"].includes(r.reply_status??"")||
    !Number.isSafeInteger(r.reply_due_week_index)||r.kind!=="NETWORK"))
    throw new Error("Invalid broadcaster reply receipt");
@@ -241,8 +291,9 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    subject:r.subject,body:r.body,action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
    ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
+   ...(r.content_concern===true?{contentConcern:true}:{}),
    ...(r.reply_decision!=null?{networkResponse:{
-    decision:r.reply_decision as "COMMIT_RECOVERY"|"STAND_FIRM",
+    decision:r.reply_decision as "COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM",
     status:r.reply_status as "PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED",
     dueWeekIndex:r.reply_due_week_index!}}:{}),
    ...(r.target_person_id?{targetPersonId:r.target_person_id}:{})};
