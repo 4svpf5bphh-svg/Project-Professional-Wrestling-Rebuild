@@ -5,6 +5,9 @@ import {settleNetworkReplies} from "../src/db/backstage-network-replies.js";
 import type {SqlRows} from "../src/db/world-operations.js";
 test("network reply projection is certified and reuses the bounded inbox read",()=>{
  assert.match(WORLD_MAIL_SQL,/ppw_backstage_network_replies reply/);
+ assert.match(WORLD_MAIL_SQL,/network_followup AS/);
+ assert.match(WORLD_MAIL_SQL,/r.status IN \('KEPT','BROKEN','EXCUSED'\)/);
+ assert.match(WORLD_MAIL_SQL,/network-followup:/);
  assert.match(WORLD_MAIL_SQL,/n.certainty='CONFIRMED'/);
  assert.match(WORLD_MAIL_SQL,/n.story_key LIKE 'broadcast:network:%:warning:%'/);
  assert.match(WORLD_MAIL_SQL,/d.kind='BROADCAST'/);

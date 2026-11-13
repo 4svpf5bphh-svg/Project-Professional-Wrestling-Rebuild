@@ -51,7 +51,8 @@ for(const width of [320,390]){
     expect((x as {decision?:string}).decision).toBe("COMMIT_RECOVERY");
     sources[0]!.canRespond=false;
     sources[0]!.networkResponse={decision:"COMMIT_RECOVERY",status:"PENDING",dueWeekIndex:7};
-    return r.fulfill({json:{status:"APPLIED",revision:5}});
+    return r.fulfill({json:{status:"APPLIED",revision:5,
+     result:{mailId:id("a"),decision:"COMMIT_RECOVERY",status:"PENDING",dueWeekIndex:7}}});
    }
    if(x.method==="markBackstageWorldRead"){
     expect(x.mailId).toMatch(/^backstage-world:[a-f0-9]{32}$/);
@@ -75,6 +76,8 @@ for(const width of [320,390]){
   await expect(network).toContainText("certified audience shortfalls");
   await expect(network).toContainText("Review broadcaster");
   await page.getByRole("button",{name:"Promise to improve ratings"}).click();
+  await expect.poll(()=>calls.filter(v=>v==="respondBackstageNetwork").length).toBe(1);
+  await expect(page.locator(".ppw-alert.ppw-error")).toHaveCount(0);
   await expect(network).toContainText("next three weeks");
   await expect(network).toContainText("Judge our next broadcasts");
   await expect(page.getByRole("button",{name:"Promise to improve ratings"})).toHaveCount(0);
@@ -98,7 +101,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
-  expect(calls.filter(v=>v==="backstage")).toHaveLength(2);
+  expect(calls.filter(v=>v==="backstage")).toHaveLength(1);
   expect(calls.filter(v=>v==="respondBackstageNetwork")).toHaveLength(1);
   expect(calls.filter(v=>v==="markBackstageWorldRead")).toHaveLength(2);
   expect(calls.some(v=>/groq|generate|worldAdvance/i.test(v))).toBe(false);

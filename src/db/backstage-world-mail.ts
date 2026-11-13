@@ -52,6 +52,33 @@ WITH owner AS MATERIALIZED (
   AND n.story_key LIKE 'broadcast:network:%'
   AND (n.year-1)*52+n.week-1 BETWEEN greatest(0,o.now-12) AND o.now
  ORDER BY n.year DESC,n.week DESC,n.story_key DESC LIMIT 8
+), network_followup AS (
+ /* A new inbound response to an actual manager promise. No per-message
+  * row or model request: verified settlement plus existing signed deal.
+  * Keep source history even if the broadcast agreement has since expired. */
+ SELECT 'NETWORK'::text AS kind,
+  'network-followup:'||r.mail_id||':'||r.status AS evidence,
+  d.offer_code AS sender_key,
+  CASE r.status WHEN 'KEPT' THEN 'Your television turnaround delivered'
+   WHEN 'BROKEN' THEN 'The review window has ended'
+   ELSE 'Our previous agreement has ended' END AS subject,
+  CASE r.status WHEN 'KEPT' THEN
+    'Your latest certified television met our audience target after your commitment. That is the response we wanted to see.'
+   WHEN 'BROKEN' THEN
+    'The three-week review period ended without a certified on-target television broadcast. We still expect better delivery under the agreement.'
+   ELSE
+    'The signed network agreement ended before your commitment could be assessed. No further promise is owed under those terms.'
+  END AS body,
+  'COMMERCIALS'::text AS action,
+  r.settled_week_index AS created_week_index,
+  NULL::text AS target_person_id,NULL::text AS sender_name
+ FROM ppw_backstage_network_replies r
+ JOIN ppw_commercial_deals d ON d.world_id=r.world_id AND d.deal_id=r.deal_id
+ JOIN owner o ON true
+ WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
+  AND r.status IN ('KEPT','BROKEN','EXCUSED')
+  AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
+ ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
 ), pressure AS (
  SELECT o.now,o.seed,
   (SELECT count(*)::integer FROM ppw_contracts c
@@ -151,7 +178,8 @@ WITH owner AS MATERIALIZED (
   ORDER BY p.popularity DESC,p.person_id LIMIT 1
  ) available ON true
 ), message AS (
- SELECT * FROM network UNION ALL SELECT * FROM staff
+ SELECT * FROM network UNION ALL SELECT * FROM network_followup
+ UNION ALL SELECT * FROM staff
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
 ), candidate AS (
  SELECT 'backstage-world:'||md5(message.evidence) AS id,

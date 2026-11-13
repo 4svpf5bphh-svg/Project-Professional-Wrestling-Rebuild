@@ -15,7 +15,9 @@ export interface PersonaDeskPort{
  markRead(personId:string):Promise<{readCount:number}>;
  markWorldRead?(mailId:string):Promise<{readCount:number}>;
  respondNetwork?(input:{mailId:string;decision:"COMMIT_RECOVERY"|"STAND_FIRM";
-  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number}>;
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;decision:"COMMIT_RECOVERY"|"STAND_FIRM";
+   status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
  openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
  decide(input:{conversationId:string;decision:BackstageDecision;
@@ -202,7 +204,21 @@ export function mountPersonaDesk(root:HTMLElement,
    const result=await port.respondNetwork(request);
    if(result.status!=="APPLIED"&&result.status!=="REPLAYED")
     throw new Error("The World has changed. Refresh before replying.");
-   view=withInboxWorldMessages(await port.load());
+   const receipt=result.result;
+   if(!receipt||receipt.mailId!==request.mailId||
+    receipt.decision!==request.decision||
+    !["PENDING","ACKNOWLEDGED"].includes(receipt.status)||
+    !Number.isSafeInteger(receipt.dueWeekIndex))
+    throw new Error("Broadcaster response could not be verified. Retry your reply.");
+   // Use the authenticated command receipt, not a new five-read company
+   // inbox fetch. The same exact response survives a retried request.
+   const update=(messages:WorldMail[]|undefined)=>(messages??[]).map(mail=>
+    mail.id===receipt.mailId?{...mail,canRespond:false,
+     networkResponse:{decision:receipt.decision,status:receipt.status,
+      dueWeekIndex:receipt.dueWeekIndex}}:mail);
+   view={...view,worldRevision:result.revision,worldMessages:update(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=update(inboxWorldMessages);
+   inboxWorldRevision=result.revision;
    pendingNetwork=null;error="";
   }catch(e){error=e instanceof Error?e.message:"Broadcaster reply not saved";}
   finally{loading=false;render();}

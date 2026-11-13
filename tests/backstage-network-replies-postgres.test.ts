@@ -6,7 +6,8 @@ import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
-import {readWorldMail} from "../src/db/backstage-world-mail.js";
+import {readWorldMail,markWorldMailRead} from "../src/db/backstage-world-mail.js";
+import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 import {replyToBroadcaster,settleNetworkReplies} from "../src/db/backstage-network-replies.js";
 import type {NetworkAudit} from "../src/db/broadcast-network-audit.js";
 
@@ -106,8 +107,28 @@ test("owner-only certified network conversations create durable, idempotent and 
   assert.deepEqual(await withWorldTransaction(db.pool,tx=>
    settleNetworkReplies(tx,worldId,1,[audit(1,"ON_TARGET")])),{settled:1},
    "An on-target broadcast fulfils exactly one pending turnaround promise");
-  assert.equal((await withWorldTransaction(db.pool,tx=>readWorldMail(tx,scope)))
-   .find(x=>x.id===first)?.networkResponse?.status,"KEPT");
+  // Mirror the real certified rollover: the newly published response is
+  // visible as a fresh message when the next World week opens.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]));
+  const followed=await withWorldTransaction(db.pool,tx=>readWorldMail(tx,scope));
+  assert.equal(followed.find(x=>x.id===first)?.networkResponse?.status,"KEPT");
+  const outcome=followed.find(x=>x.subject==="Your television turnaround delivered");
+  assert.equal(outcome?.kind,"NETWORK");
+  assert.equal(outcome?.sender,"VibeFlix");
+  assert.equal(outcome?.read,false);
+  assert.match(outcome?.body??"",/certified television met our audience target/);
+  const home=await readPlayerWorldOverview(db.pool,worldId,playerId);
+  assert.equal(home?.promotion?.attention.backstageUnreadCount,
+   followed.filter(x=>!x.read).length,
+   "A settled commitment adds exactly one new Home notification");
+  assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:outcome!.id}),
+   {readCount:1});
+  assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:outcome!.id}),
+   {readCount:0},"A network follow-up can only be acknowledged once");
+  assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
+   ?.promotion?.attention.backstageUnreadCount,
+   followed.filter(x=>!x.read).length-1);
   // A later warning can create an independent promise. No prior on-target
   // broadcast is borrowed to forgive a future three-week failure.
   await withWorldTransaction(db.pool,tx=>tx.query(
@@ -123,8 +144,12 @@ test("owner-only certified network conversations create durable, idempotent and 
    settleNetworkReplies(tx,worldId,3,[audit(3,"BELOW_TARGET")])),{settled:0});
   assert.deepEqual(await withWorldTransaction(db.pool,tx=>
    settleNetworkReplies(tx,worldId,4,[audit(4,"BELOW_TARGET")])),{settled:1});
-  assert.equal((await withWorldTransaction(db.pool,tx=>readWorldMail(tx,scope)))
-   .find(x=>x.id===third)?.networkResponse?.status,"BROKEN");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=5 WHERE world_id=$1",[worldId]));
+  const missed=await withWorldTransaction(db.pool,tx=>readWorldMail(tx,scope));
+  assert.equal(missed.find(x=>x.id===third)?.networkResponse?.status,"BROKEN");
+  assert.ok(missed.some(x=>x.subject==="The review window has ended"&&
+   x.body.includes("without a certified on-target television")));
   assert.deepEqual(await withWorldTransaction(db.pool,tx=>
    settleNetworkReplies(tx,worldId,5,[audit(5,"ON_TARGET")])),{settled:0},
    "A settled commitment is immutable on later weeks");
