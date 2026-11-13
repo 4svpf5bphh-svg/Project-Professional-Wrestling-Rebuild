@@ -191,10 +191,12 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
    mailId:fourth.id,decision:"REFRESH_PROGRAMME",requestId:"kept-together-"+tag,
    expectedRevision:thirdReply.revision});
   assert.equal(fourthReply.status,"APPLIED");
+  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,10)),{settled:0},
+   "Before the deadline, neither unresolved programme earns a premature result");
+  // Creative really refreshes the second programme just before the deadline;
+  // the other remains stale. The two outcomes now settle in the SAME batch.
   await run(tx=>tx.query("UPDATE ppw_programmes SET repetition=1 WHERE world_id=$1 AND programme_id=$2",
    [worldId,fourthProgramme]));
-  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,10)),{settled:0},
-   "Two weeks after the original commitment is not its three-week deadline");
   assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,11)),{settled:2},
    "Both decisions reach their exact three-week deadline together");
   assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,12)),{settled:0},
