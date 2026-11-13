@@ -59,7 +59,8 @@ export function mountPersonaDesk(root:HTMLElement,
  }
  const returnToMessages=()=>{
   pane="INBOX";
-  if(inboxWorldMessages===null){void load();return;}
+  // Direct wrestler deep links return without fetching the whole company.
+  // Network/staff/scout channels can be opened explicitly below.
   render();
   requestAnimationFrame(()=>{
    const inbox=root.querySelector<HTMLElement>(".ppw-backstage-contacts");
@@ -281,11 +282,19 @@ export function mountPersonaDesk(root:HTMLElement,
     ["ACTIVE","Requests"],["WRESTLERS","Wrestlers"],["STAFF","Staff"],
     ["NETWORK","Networks"],["SCOUT","Scouting"],
     ["HISTORY","History"],["ARCHIVED","Archived"]] as const){
-    const b=button(label,()=>{inboxFilter=filter;render();});
+    const b=button(label,()=>{
+     inboxFilter=filter;
+     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT"].includes(filter)){
+      void load();return;
+     }
+     render();
+    });
     if(filter===inboxFilter)b.classList.add("ppw-persona-selected");
     controls.append(b);
    }
    inbox.append(controls);
+   if(inboxWorldMessages===null)inbox.append(button("Load company messages",
+    ()=>void load()));
    // Local filtering keeps the iPhone keyboard and focus in place.
    const searchInput=document.createElement("input");
    searchInput.type="search";searchInput.value=inboxSearch;
