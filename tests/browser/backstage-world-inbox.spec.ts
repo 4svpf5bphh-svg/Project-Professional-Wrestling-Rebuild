@@ -378,3 +378,108 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("Real staff disagreement and strained tag partners use distinct authoritative Backstage decisions at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:4,name:"Genesis",year:1,week:5,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:500000,debt:0,lastWeeklyNet:10000,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:true,backstageUnreadCount:2,
+     plannedShows:1,expiringTalent:false,pendingContractOffers:false}}};
+  const mailId="backstage-world:"+"e".repeat(32);
+  const messages=[{id:mailId,kind:"STAFF",sender:"Dr Lena Winters",
+   subject:"Medical and Creative see Toby differently",
+   body:"Toby has fatigue at 84 while their active programme has repeated 5 times. Medical wants a lighter workload. Creative needs the programme to move forward.",
+   action:"STAFF",targetPersonId:"toby",createdWeekIndex:4,read:false,
+   canDisagree:true,
+   disagreementResponse:undefined as {decision:string;status:string;dueWeekIndex:number}|undefined}];
+  const roster=[
+   {personId:"wrestler",name:"Lance Archer",isCurrent:true,morale:60,
+    momentum:50,lastMessage:null,latestIncoming:{
+     request_id:"strain-1",kind:"PARTNERSHIP",status:"PENDING",
+     created_week_index:4,read_week_index:null,archived:false}},
+   {personId:"other",name:"Samoa Joe",isCurrent:true,morale:70,
+    momentum:66,lastMessage:null,latestIncoming:{
+     request_id:"other-1",kind:"CONTRACT",status:"PENDING",
+     created_week_index:4,read_week_index:null,archived:false}}
+  ];
+  const calls:string[]=[];
+  let revision=4,mediated=false;
+  const relationship=()=>({
+   conversationId:"strain-1",kind:"PARTNERSHIP",createdWeekIndex:4,
+   respondedWeekIndex:mediated?4:null,relatedPersonId:"other",
+   relatedPersonName:"Samoa Joe",status:mediated?"ANSWERED":"PENDING",
+   decision:mediated?"MEDIATE":null,dueWeekIndex:null,
+   promisedRole:null,observedMatchShows:null,observedFeaturedShows:null,
+   assessmentReason:null,trustDelta:0,workingVerifiedShows:3,
+   workingTrustDelta:-0.6,averageCrowd:null,verifiedSinglesShows:null,
+   professionalTrust:38,verifiedTagShows:3,averageExecution:34,
+   followThroughWeekIndex:null,followThroughKind:null});
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;personId?:string;
+    mailId?:string;decision?:string;expectedRevision?:number};
+   calls.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:x.personId??null,personName:x.personId==="wrestler"?"Lance Archer":"",
+    worldYear:1,worldWeek:5,worldRevision:revision,canEdit:true,
+    roster,persona:null,history:[],recentRequests:[],conversations:
+     x.personId==="wrestler"?[relationship()]:[],
+    memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
+    worldMessages:x.personId?[]:messages}});
+   if(x.method==="markBackstageWorldRead"){messages[0]!.read=true;
+    return r.fulfill({json:{readCount:1}});}
+   if(x.method==="markBackstageRead")return r.fulfill({json:{readCount:1}});
+   if(x.method==="respondBackstageDisagreement"){
+    expect(x.mailId).toBe(mailId);expect(x.decision).toBe("PRIORITISE_HEALTH");
+    expect(x.expectedRevision).toBe(4);
+    messages[0]!.canDisagree=false;
+    messages[0]!.disagreementResponse={decision:"PRIORITISE_HEALTH",
+     status:"PENDING",dueWeekIndex:7};
+    revision=5;
+    return r.fulfill({json:{status:"APPLIED",revision,
+     result:{mailId,decision:"PRIORITISE_HEALTH",
+      status:"PENDING",dueWeekIndex:7}}});
+   }
+   if(x.method==="backstageDecision"){
+    expect(x.decision).toBe("MEDIATE");
+    expect(x.expectedRevision).toBe(5);
+    mediated=true;revision=6;
+    return r.fulfill({json:{status:"APPLIED",revision,
+     result:{status:"ANSWERED",decision:"MEDIATE"}}});
+   }
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:"Staff disagreements"}).click();
+  await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(1);
+  await page.getByRole("button",{name:/Medical and Creative see Toby differently/}).click();
+  const conflict=page.getByLabel("Message from Dr Lena Winters");
+  await expect(conflict).toContainText("programme has repeated 5 times");
+  await page.getByRole("button",{name:"Prioritise medical recovery"}).click();
+  await expect(conflict).toContainText("real fatigue or programme changes");
+  await expect(page.getByRole("button",{name:"Prioritise medical recovery"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  await page.getByRole("button",{name:"Locker room"}).click();
+  const locker=page.locator(".ppw-backstage-contacts .ppw-backstage-contact");
+  await expect(locker).toHaveCount(1);
+  await expect(locker).toContainText("Lance Archer");
+  await locker.click();
+  const thread=page.getByLabel("Conversation with Lance Archer");
+  await expect(thread).toBeVisible();
+  await expect(thread).toContainText("Samoa Joe");
+  const mediation=page.locator(".ppw-backstage-reply-choice").filter({hasText:"Mediate backstage"});
+  await expect(mediation).toBeVisible();
+  await mediation.click();
+  await expect(thread).toContainText("Mediate backstage");
+  expect(calls.filter(x=>x==="respondBackstageDisagreement")).toHaveLength(1);
+  expect(calls.filter(x=>x==="backstageDecision")).toHaveLength(1);
+  expect(calls.filter(x=>x==="backstage"&&x)).toHaveLength(3);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

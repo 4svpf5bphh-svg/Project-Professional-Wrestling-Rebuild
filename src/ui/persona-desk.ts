@@ -22,6 +22,10 @@ export interface PersonaDeskPort{
   requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
   result?:{mailId:string;decision:"COMMIT"|"DEFER";
    status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
+ respondDisagreement?(input:{mailId:string;decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
+   status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
  respondFreeAgent?(input:{mailId:string;decision:"INVITE"|"PASS";
   requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
   result?:{mailId:string;personId:string;decision:"INVITE"|"PASS";
@@ -56,12 +60,14 @@ export function mountPersonaDesk(root:HTMLElement,
  let selectedWorldMailId:string|null=null;
  let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   requestId:string;expectedRevision:number}|null=null;
+ let pendingDisagreement:{mailId:string;decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
+  requestId:string;expectedRevision:number}|null=null;
  let pendingRecruitment:{mailId:string;decision:"INVITE"|"PASS";
   requestId:string;expectedRevision:number}|null=null;
  let pendingStaff:{mailId:string;decision:"COMMIT"|"DEFER";
   requestId:string;expectedRevision:number}|null=null;
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
-  "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"=initialInboxFilter;
+  "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"|"DISAGREEMENTS"|"LOCKER_ROOM"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
  let scrollToLatest=false;
@@ -263,6 +269,32 @@ export function mountPersonaDesk(root:HTMLElement,
   }catch(e){error=e instanceof Error?e.message:"Staff reply not confirmed";}
   finally{loading=false;render();}
  }
+ async function answerDisagreement(mailId:string,
+  decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER"){
+  if(!view||loading||!port.respondDisagreement||view.worldRevision===null)return;
+  const same=pendingDisagreement?.mailId===mailId&&pendingDisagreement.decision===decision;
+  const request=same?pendingDisagreement!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingDisagreement=request;loading=true;render();
+  try{
+   const applied=await port.respondDisagreement(request);
+   if(applied.status!=="APPLIED"&&applied.status!=="REPLAYED")
+    throw Error("The World changed. Refresh before answering the department heads.");
+   const receipt=applied.result;
+   if(!receipt||receipt.mailId!==mailId||receipt.decision!==decision||
+    !["PENDING","ACKNOWLEDGED"].includes(receipt.status)||
+    !Number.isSafeInteger(receipt.dueWeekIndex))
+    throw Error("Staff disagreement response not confirmed. Retrying uses your original choice.");
+   const update=(messages:WorldMail[]|undefined)=>(messages??[]).map(m=>
+    m.id===mailId?{...m,canDisagree:false,
+     disagreementResponse:{decision:receipt.decision,status:receipt.status,
+      dueWeekIndex:receipt.dueWeekIndex}}:m);
+   view={...view,worldRevision:applied.revision,worldMessages:update(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=update(inboxWorldMessages);
+   inboxWorldRevision=applied.revision;pendingDisagreement=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Staff disagreement reply not confirmed";}
+  finally{loading=false;render();}
+ }
  async function answerFreeAgent(mailId:string,decision:"INVITE"|"PASS"){
   if(!view||loading||!port.respondFreeAgent||view.worldRevision===null)return;
   const same=pendingRecruitment?.mailId===mailId&&pendingRecruitment.decision===decision;
@@ -410,6 +442,25 @@ export function mountPersonaDesk(root:HTMLElement,
      reply.status==="EXCUSED"?"The staff appointment ended before the review deadline.":
      "Your reply was received. No new workload or storyline change was made."));
    }
+   if(mail.kind==="STAFF"&&mail.disagreementResponse){
+    const reply=mail.disagreementResponse;
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     reply.decision==="PRIORITISE_HEALTH"?
+      "Protect their recovery. Reduce the workload until they are below the fatigue warning level.":
+     reply.decision==="REFRESH_PROGRAMME"?
+      "Give Creative a new chapter. I want that programme genuinely refreshed or concluded.":
+      "I hear both departments. I'm not making a commitment yet."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     reply.status==="PENDING"?
+      "The decision will be checked against real fatigue or programme changes over the next three weeks.":
+     reply.status==="KEPT"?
+      "The promised outcome actually occurred. The supported staff member's morale improved.":
+     reply.status==="BROKEN"?
+      "The three-week deadline passed without the promised change. The supported staff member's morale fell.":
+     reply.status==="EXCUSED"?
+      "The relevant appointment or wrestler contract ended before the review.":
+      "Your answer was recorded. No match, programme or workload was changed."));
+   }
    if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse){
     const reply=mail.freeAgentResponse;
     chat.append(el("article","ppw-persona-bubble ppw-persona-out",
@@ -426,6 +477,13 @@ export function mountPersonaDesk(root:HTMLElement,
      "No contract offer was submitted."));
    }
    const actions=el("div","ppw-backstage-world-actions");
+   if(mail.kind==="STAFF"&&mail.canDisagree&&!mail.disagreementResponse&&port.respondDisagreement){
+    actions.append(button("Prioritise medical recovery",
+     ()=>void answerDisagreement(mail.id,"PRIORITISE_HEALTH"),loading));
+    actions.append(button("Refresh the creative programme",
+     ()=>void answerDisagreement(mail.id,"REFRESH_PROGRAMME"),loading));
+    actions.append(button("Hear both sides",()=>void answerDisagreement(mail.id,"DEFER"),loading));
+   }
    if(mail.kind==="FREE_AGENT"&&mail.canFreeAgentRespond&&
     !mail.freeAgentResponse&&port.respondFreeAgent){
     actions.append(button("Let's discuss a contract",
@@ -478,10 +536,11 @@ export function mountPersonaDesk(root:HTMLElement,
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
     ["ACTIVE","Requests"],["WRESTLERS","Wrestlers"],["STAFF","Staff"],
     ["NETWORK","Networks"],["SCOUT","Scouting"],
-    ["FREE_AGENT","Free agents"],["HISTORY","History"],["ARCHIVED","Archived"]] as const){
+    ["FREE_AGENT","Free agents"],["DISAGREEMENTS","Staff disagreements"],
+    ["LOCKER_ROOM","Locker room"],["HISTORY","History"],["ARCHIVED","Archived"]] as const){
     const b=button(label,()=>{
      inboxFilter=filter;
-     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT","FREE_AGENT"].includes(filter)){
+     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS"].includes(filter)){
       void load();return;
      }
      render();
@@ -506,6 +565,12 @@ export function mountPersonaDesk(root:HTMLElement,
    let count=0;
    for(const mail of [...(view.worldMessages??[])].filter(item=>
     inboxFilter==="ALL"||inboxFilter===item.kind||
+    (inboxFilter==="DISAGREEMENTS"&&
+     (item.canDisagree||!!item.disagreementResponse||
+      item.subject.startsWith("Our staff review")||
+      item.subject.startsWith("The workload concern")||
+      item.subject.startsWith("Creative found a new direction")||
+      item.subject.startsWith("The staff disagreement")))||
     (inboxFilter==="UNREAD"&&!item.read)||
     (inboxFilter==="ACTIVE"&&!item.read))){
     const item=button("",()=>void openWorldMail(mail.id));
@@ -524,7 +589,10 @@ export function mountPersonaDesk(root:HTMLElement,
     entries.append(item);count++;
    }
    for(const wrestler of [...view.roster].filter(w=>{
-    if(["STAFF","NETWORK","SCOUT","FREE_AGENT"].includes(inboxFilter))return false;
+    if(["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS"].includes(inboxFilter))
+     return false;
+    if(inboxFilter==="LOCKER_ROOM")return w.latestIncoming?.kind==="PARTNERSHIP"&&
+     !w.latestIncoming.archived;
     const latest=w.latestIncoming;
     if(inboxFilter==="ARCHIVED")return latest?.archived===true;
     if(latest?.archived)return false;

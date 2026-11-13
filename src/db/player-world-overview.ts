@@ -1,5 +1,6 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
+import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
 import {derivePromoterAchievements,EMPTY_PROMOTER_COUNTERS,type AchievementMetric} from "../domain/promoter-achievements.js";
 import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
 import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
@@ -353,6 +354,59 @@ export async function readPlayerWorldOverview(
          AND receipt.player_id=$2 AND receipt.promotion_id=owned.promotion_id
          AND receipt.attention_id='backstage-world:'||md5(
           'free-agent-result:'||response.mail_id||':'||response.offer_id||':'||response.status)))
+      /* One genuine Medical/Creative conflict. Same capped ranked source as
+       * Backstage read, no additional Home query or payroll-wide materialisation. */
+      +(SELECT count(*)::integer FROM (
+        SELECT issue.medical_id,issue.creative_id,issue.programme_id,
+         issue.person_id,o.now
+        FROM (SELECT (w.year-1)*52+w.week-1 AS now) o
+        JOIN LATERAL (${STAFF_DISAGREEMENT_LATERAL_SQL.replace("med.promotion_id=$2","med.promotion_id=owned.promotion_id")}) issue ON true
+       ) dispute WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-dispute:'||dispute.medical_id||':'||dispute.creative_id||':'||
+          dispute.programme_id||':'||dispute.person_id||':'||
+          floor(dispute.now/4)::integer)))
+      /* Keep original unread state for answered but still pending Medical
+       * /Creative disputes. Inbox retains the same deterministic ID. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.medical_employment_id,r.creative_employment_id,
+         r.programme_id,r.person_id,r.responded_week_index
+        FROM ppw_backstage_staff_disagreements r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2 AND r.status IN ('PENDING','ACKNOWLEDGED')
+         AND r.responded_week_index BETWEEN
+          greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+        ORDER BY r.responded_week_index DESC,r.mail_id DESC LIMIT 2
+       ) answered WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-dispute:'||answered.medical_employment_id||':'||
+          answered.creative_employment_id||':'||
+          answered.programme_id||':'||answered.person_id||':'||
+          floor(answered.responded_week_index/4)::integer)))
+      /* An answered staff dilemma receives a new message only after the
+       * genuine fatigue/programme outcome is settled in the World rollover. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.mail_id,r.status
+        FROM ppw_backstage_staff_disagreements r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2 AND r.status IN ('KEPT','BROKEN','EXCUSED')
+         AND r.settled_week_index
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+       ) response WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-dispute-followup:'||response.mail_id||':'||response.status)))
      )::integer AS backstage_unread_count,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'personId',request.person_id,'name',request.name,'kind',request.kind)

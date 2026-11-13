@@ -6,6 +6,7 @@ import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {worldStaff} from "../domain/world-staff.js";
+import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
 import {COMMERCIAL_COMPANIES} from "../domain/commercial-offers.js";
 export type WorldMailKind="NETWORK"|"STAFF"|"SCOUT"|"FREE_AGENT";
 export type WorldMailAction="COMMERCIALS"|"CONTRACTS"|"PROGRAMMES"|"STAFF"|"MARKET";
@@ -16,6 +17,9 @@ export interface WorldMail{
  canStaffRespond?:boolean;staffResponse?:{decision:"COMMIT"|"DEFER";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  networkResponse?:{decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
+  status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
+ canDisagree?:boolean;
+ disagreementResponse?:{decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  canFreeAgentRespond?:boolean;
  freeAgentResponse?:{decision:"INVITE"|"PASS";status:"INVITED"|"DECLINED"|"PENDING"|"ACCEPTED"|"REJECTED"|"WITHDRAWN"};
@@ -32,6 +36,8 @@ interface MailRow extends Record<string,unknown>{
  reply_decision:string|null;reply_status:string|null;reply_due_week_index:number|null;
  free_agent_decision:string|null;free_agent_offer_status:string|null;
  can_free_agent_reply:boolean;
+ can_disagree:boolean;disagreement_decision:string|null;
+ disagreement_status:string|null;disagreement_due_week_index:number|null;
 }
 /** Shared source selection is also used for validating read receipts.
  * Each CTE is limited to the owner's promotion and a rolling evidence window.
@@ -221,6 +227,77 @@ WITH owner AS MATERIALIZED (
   AND r.status IN ('KEPT','BROKEN','EXCUSED')
   AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
  ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+), staff_disagreement AS (
+ SELECT 'STAFF'::text AS kind,
+  'staff-dispute:'||issue.medical_id||':'||issue.creative_id||':'||
+   issue.programme_id||':'||issue.person_id||':'||floor(o.now/4)::integer AS evidence,
+  issue.medical_staff_id AS sender_key,
+  'Medical and Creative see '||issue.name||' differently' AS subject,
+  issue.name||' has fatigue at '||round(issue.fatigue)::integer||
+   ' while their active programme has repeated '||issue.repetition||
+   ' times. Medical wants a lighter workload. Creative needs the programme '||
+   'to move forward. Which should we prioritise?' AS body,
+  'STAFF'::text AS action,
+  greatest(0,(o.now/4)*4)::integer AS created_week_index,
+  issue.person_id AS target_person_id,NULL::text AS sender_name
+ FROM owner o JOIN LATERAL (${STAFF_DISAGREEMENT_LATERAL_SQL}) issue ON true
+), staff_disagreement_answered AS (
+ /* A commitment must remain readable even when the qualifying condition
+  * disappears. Reconstruct the original deterministic message identity
+  * from its certified reply, never materialise another inbox message row. */
+ SELECT 'STAFF'::text AS kind,
+  'staff-dispute:'||r.medical_employment_id||':'||
+   r.creative_employment_id||':'||r.programme_id||':'||r.person_id||':'||
+   floor(r.responded_week_index/4)::integer AS evidence,
+  medical.staff_id AS sender_key,
+  'Medical and Creative see '||person.name||' differently' AS subject,
+  'You answered our disagreement about '||person.name||
+   '. The real roster workload and programme progress determine the outcome.' AS body,
+  'STAFF'::text AS action,
+  greatest(0,(r.responded_week_index/4)*4)::integer AS created_week_index,
+  r.person_id AS target_person_id,NULL::text AS sender_name
+ FROM ppw_backstage_staff_disagreements r JOIN owner o ON true
+ JOIN ppw_staff_employments medical ON medical.world_id=r.world_id
+  AND medical.employment_id=r.medical_employment_id
+ JOIN ppw_people person ON person.world_id=r.world_id
+  AND person.person_id=r.person_id
+ WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
+  AND r.status IN ('PENDING','ACKNOWLEDGED')
+  AND r.responded_week_index BETWEEN greatest(0,o.now-12) AND o.now
+ ORDER BY r.responded_week_index DESC,r.mail_id DESC LIMIT 2
+), staff_dispute_followup AS (
+ SELECT 'STAFF'::text AS kind,
+  'staff-dispute-followup:'||r.mail_id||':'||r.status AS evidence,
+  CASE WHEN r.decision='PRIORITISE_HEALTH' THEN medical.staff_id
+   ELSE creative.staff_id END AS sender_key,
+  CASE WHEN r.status='EXCUSED' THEN 'Our staff review closed'
+   WHEN r.decision='PRIORITISE_HEALTH' AND r.status='KEPT'
+    THEN 'The workload concern has eased'
+   WHEN r.decision='REFRESH_PROGRAMME' AND r.status='KEPT'
+    THEN 'Creative found a new direction'
+   ELSE 'The staff disagreement remains unresolved' END AS subject,
+  CASE WHEN r.status='EXCUSED'
+    THEN 'The staff appointments or the wrestler contract ended before this could be assessed.'
+   WHEN r.decision='PRIORITISE_HEALTH' AND r.status='KEPT'
+    THEN 'The wrestler''s actual fatigue dropped below our medical warning level. The commitment was met.'
+   WHEN r.decision='REFRESH_PROGRAMME' AND r.status='KEPT'
+    THEN 'The active programme was actually refreshed or concluded. The creative commitment was met.'
+   WHEN r.decision='PRIORITISE_HEALTH'
+    THEN 'The three-week review ended with the wrestler still at high fatigue.'
+   ELSE 'The three-week review ended without a genuine programme refresh or conclusion.' END AS body,
+  CASE WHEN r.decision='PRIORITISE_HEALTH' THEN 'STAFF'::text
+   ELSE 'PROGRAMMES'::text END AS action,
+  r.settled_week_index AS created_week_index,
+  r.person_id AS target_person_id,NULL::text AS sender_name
+ FROM ppw_backstage_staff_disagreements r JOIN owner o ON true
+ JOIN ppw_staff_employments medical ON medical.world_id=r.world_id
+  AND medical.employment_id=r.medical_employment_id
+ JOIN ppw_staff_employments creative ON creative.world_id=r.world_id
+  AND creative.employment_id=r.creative_employment_id
+ WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
+  AND r.status IN ('KEPT','BROKEN','EXCUSED')
+  AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
+ ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
 ), scouting AS (
  SELECT 'SCOUT'::text AS kind,
   'scout:'||e.employment_id||':'||talent.person_id||':'||
@@ -317,6 +394,8 @@ WITH owner AS MATERIALIZED (
  SELECT * FROM network UNION ALL SELECT * FROM content_notice
  UNION ALL SELECT * FROM network_followup UNION ALL SELECT * FROM staff
  UNION ALL SELECT * FROM staff_followup
+ UNION ALL SELECT * FROM staff_disagreement UNION ALL SELECT * FROM staff_disagreement_answered
+ UNION ALL SELECT * FROM staff_dispute_followup
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
  UNION ALL SELECT * FROM recruitment_result
 ), candidate AS (
@@ -336,6 +415,10 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  staff_reply.due_week_index AS staff_reply_due_week_index,
  agent_reply.decision AS free_agent_decision,
  agent_offer.status AS free_agent_offer_status,
+ (c.evidence LIKE 'staff-dispute:%' AND debate.mail_id IS NULL) AS can_disagree,
+ debate.decision AS disagreement_decision,
+ debate.status AS disagreement_status,
+ debate.due_week_index AS disagreement_due_week_index,
  (c.kind='FREE_AGENT' AND c.evidence LIKE 'free-agent:%'
   AND agent_reply.mail_id IS NULL) AS can_free_agent_reply,
  (c.kind='STAFF' AND c.action IN ('STAFF','PROGRAMMES','CONTRACTS')
@@ -381,6 +464,8 @@ LEFT JOIN ppw_backstage_network_replies reply ON reply.world_id=$1
  AND reply.promotion_id=$2 AND reply.mail_id=c.id
 LEFT JOIN ppw_backstage_staff_replies staff_reply ON staff_reply.world_id=$1
  AND staff_reply.promotion_id=$2 AND staff_reply.mail_id=c.id
+LEFT JOIN ppw_backstage_staff_disagreements debate
+ ON debate.world_id=$1 AND debate.promotion_id=$2 AND debate.mail_id=c.id
 LEFT JOIN ppw_backstage_free_agent_replies agent_reply
  ON agent_reply.world_id=$1 AND agent_reply.promotion_id=$2 AND agent_reply.mail_id=c.id
 LEFT JOIN LATERAL (
@@ -415,6 +500,12 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
     (r.free_agent_offer_status!=null&&
      !["PENDING","ACCEPTED","REJECTED","WITHDRAWN"].includes(r.free_agent_offer_status))))
     throw new Error("Invalid free-agent reply receipt");
+  if(r.disagreement_decision!=null&&(
+    r.kind!=="STAFF"||
+    !["PRIORITISE_HEALTH","REFRESH_PROGRAMME","DEFER"].includes(r.disagreement_decision)||
+    !["PENDING","ACKNOWLEDGED","KEPT","BROKEN","EXCUSED"].includes(r.disagreement_status??"")||
+    !Number.isSafeInteger(r.disagreement_due_week_index)))
+    throw new Error("Invalid staff disagreement response");
   if(r.kind==="FREE_AGENT"&&(!r.target_person_id||!r.sender_name||
    r.sender_key!==r.target_person_id))
    throw new Error("Free-agent outreach requires a verifiable wrestler identity");
@@ -439,6 +530,11 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
     status:r.free_agent_decision==="PASS"?"DECLINED":
      (r.free_agent_offer_status??"INVITED") as "INVITED"|"PENDING"|"ACCEPTED"|"REJECTED"|"WITHDRAWN"}}:{}),
    ...(r.kind==="STAFF"&&r.can_staff_reply===true?{canStaffRespond:true}:{}),
+   ...(r.kind==="STAFF"&&r.can_disagree===true?{canDisagree:true}:{}),
+   ...(r.disagreement_decision!=null?{disagreementResponse:{
+    decision:r.disagreement_decision as "PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER",
+    status:r.disagreement_status as "PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED",
+    dueWeekIndex:r.disagreement_due_week_index!}}:{}),
    ...(r.staff_reply_decision!=null?{staffResponse:{
     decision:r.staff_reply_decision as "COMMIT"|"DEFER",
     status:r.staff_reply_status as "PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED",

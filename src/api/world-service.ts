@@ -23,6 +23,7 @@ import {markBackstageThreadRead} from "../db/backstage-conversations.js";
 import {markWorldMailRead} from "../db/backstage-world-mail.js";
 import {replyToBroadcaster,type NetworkReplyInput} from "../db/backstage-network-replies.js";
 import {respondToStaffMail,type StaffReplyInput} from "../db/backstage-staff-replies.js";
+import {respondToStaffDisagreement,type DisagreementInput} from "../db/backstage-staff-disagreements.js";
 import {respondToFreeAgent,type RecruitmentResponseInput} from "../db/backstage-free-agent-replies.js";
 import {setBackstageThreadArchive} from "../db/backstage-thread-archive.js";
 import {decideBackstageRequest,type BackstageDecisionInput} from "../db/backstage-conversations.js";
@@ -803,6 +804,15 @@ export async function respondBackstageStaffAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.mailId,"message");
  return respondToStaffMail(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Owner-only decision in a verifiable Medical/Creative workload disagreement. */
+export async function respondStaffDisagreementAsActor(context:WorldApiContext,
+ input:Omit<DisagreementInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return respondToStaffDisagreement(context.pool,{...input,
+  playerId:context.actor.playerId});
 }
 
 /** Direct answer to genuine free-agent outreach. Not a contract or offer. */

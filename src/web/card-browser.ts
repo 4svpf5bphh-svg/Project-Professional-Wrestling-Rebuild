@@ -887,6 +887,7 @@ function personaPort(call:ReturnType<typeof createCardClient>,
   markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),
   respondNetwork:input=>call("respondBackstageNetwork",input),
   respondStaff:input=>call("respondBackstageStaff",input),
+  respondDisagreement:input=>call("respondBackstageDisagreement",input),
   respondFreeAgent:input=>call("respondBackstageFreeAgent",input),
   openRecruitment:(personId,name)=>{
    queueBackstageRecruitmentFocus({worldId:scope.worldId,
