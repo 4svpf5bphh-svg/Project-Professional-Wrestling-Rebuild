@@ -61,8 +61,8 @@ WITH owner AS MATERIALIZED (
  SELECT 'NETWORK'::text AS kind,
   'network-content:'||d.deal_id||':'||done.show_id AS evidence,
   d.offer_code AS sender_key,
-  'About the hardcore match on '||draft.show_name AS subject,
-  'Your completed programme '||draft.show_name||
+  'About the hardcore match on '||coalesce(draft.show_name,'weekly television') AS subject,
+  'Your completed programme '||coalesce(draft.show_name,'weekly television')||
    ' included a hardcore-rules match. That is outside the tone we expect '||
    'from our regular television slot. Can we keep hardcore stipulations '||
    'off the next broadcasts?' AS body,
@@ -231,7 +231,7 @@ WITH owner AS MATERIALIZED (
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
 ), candidate AS (
  SELECT 'backstage-world:'||md5(message.evidence) AS id,
-  message.kind,message.sender_key,message.subject,message.body,
+  message.evidence,message.kind,message.sender_key,message.subject,message.body,
   message.action,message.created_week_index,o.seed,
   message.target_person_id,message.sender_name
  FROM message JOIN owner o ON true
