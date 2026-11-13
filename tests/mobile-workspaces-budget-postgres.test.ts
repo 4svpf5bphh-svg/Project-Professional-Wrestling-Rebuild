@@ -49,7 +49,9 @@ test("643-wrestler iPhone session: Home, roster, market, Business, Staff and Ind
   const roster=await readWrestlerDirectory(measured,scope,{view:"ROSTER",limit:25});
   assert.equal(roster.view,"ROSTER");
   assert.ok(roster.people.length>0);
-  assert.equal(meter.assertBudget({maxQueries:3,maxResultBytes:20000}).queryCount,3);
+  // The Home message badge is one additional integer in the SAME SQL row:
+   // +25 measured bytes across the 643-person session, with zero extra queries.
+   assert.equal(meter.assertBudget({maxQueries:3,maxResultBytes:20048}).queryCount,3);
   const talent=await readWrestlerDirectory(measured,scope,{view:"MARKET",
    sort:"POPULARITY",limit:25,minRecognition:55});
   assert.ok(talent.people.length>0);

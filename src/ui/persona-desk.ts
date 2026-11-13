@@ -9,7 +9,7 @@ import {livingWrestlerMotivation} from "../domain/living-character-motivation.js
 import {describeBookingCommitment} from "../domain/backstage-booking-commitment.js";
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
-import type {WorldMailAction} from "../db/backstage-world-mail.js";
+import type {WorldMail,WorldMailAction} from "../db/backstage-world-mail.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
  markRead(personId:string):Promise<{readCount:number}>;
@@ -34,6 +34,9 @@ export function mountPersonaDesk(root:HTMLElement,
  port:PersonaDeskPort,onBack?:()=>void,
  onOpenProgrammes?:(personId:string,opponentId:string)=>void,
  initialInboxFilter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
+ // Keep the company inbox in memory while the manager opens a wrestler thread.
+ let inboxWorldMessages:WorldMail[]|null=null;
+ let inboxWorldRevision:number|null=null;
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
@@ -55,18 +58,32 @@ export function mountPersonaDesk(root:HTMLElement,
    {...w,latestIncoming:transform(w.latestIncoming)}:w)};
  }
  const returnToMessages=()=>{
-  pane="INBOX";render();
+  pane="INBOX";
+  if(inboxWorldMessages===null){void load();return;}
+  render();
   requestAnimationFrame(()=>{
    const inbox=root.querySelector<HTMLElement>(".ppw-backstage-contacts");
    if(inbox)inbox.scrollTop=lastInboxScroll;
   });
  };
+ function withInboxWorldMessages(next:View,id?:string):View{
+  if(!id){
+   inboxWorldMessages=next.worldMessages??[];
+   inboxWorldRevision=next.worldRevision;
+   return next;
+  }
+  if(inboxWorldRevision!==next.worldRevision){
+   inboxWorldMessages=null;inboxWorldRevision=null;return next;
+  }
+  return inboxWorldMessages!==null?
+   {...next,worldMessages:inboxWorldMessages}:next;
+ }
  async function load(id?:string){
   personId=id;loading=true;render();
   if(pendingDecision&&id!==view?.personId)pendingDecision=null;
   if(pendingPitch&&id!==view?.personId)pendingPitch=null;
   try{
-   view=await port.load(id);
+   view=withInboxWorldMessages(await port.load(id),id);
    // An inaccessible or retired target resolves to the normal inbox.
    if(id&&pane==="THREAD"&&view.personId!==id)pane="INBOX";
    if(pane==="THREAD"&&view.personId&&
@@ -116,7 +133,7 @@ export function mountPersonaDesk(root:HTMLElement,
    }
    if(response?.status!=="APPLIED"&&response?.status!=="REPLAYED")
     throw Error("Reply not confirmed. Retrying will reuse your original message.");
-   view=await port.load(selected);
+   view=withInboxWorldMessages(await port.load(selected),selected);
    pendingDecision=null;scrollToLatest=true;answer=null;
   }catch(e){
    const reason=e instanceof Error?e.message:"Unable to send reply";
@@ -141,7 +158,7 @@ export function mountPersonaDesk(root:HTMLElement,
    if((outcome?.status!=="APPLIED"&&outcome?.status!=="REPLAYED")||!outcome.result)
     throw Error("Pitch not confirmed. Retry without changing your choice.");
    const result=outcome.result;
-   view=await port.load(name);chosen=null;pendingPitch=null;scrollToLatest=true;
+   view=withInboxWorldMessages(await port.load(name),name);chosen=null;pendingPitch=null;scrollToLatest=true;
    answer=result.accepted?
     "Agreed. This is my character now — you'll see it wherever I work.":
     result.reason==="ICONIC_PERSONA_PROTECTED"?
@@ -163,6 +180,8 @@ export function mountPersonaDesk(root:HTMLElement,
   if(item.read||!port.markWorldRead)return;
   try{
    await port.markWorldRead(mailId);
+   if(inboxWorldMessages)inboxWorldMessages=inboxWorldMessages.map(x=>
+    x.id===mailId?{...x,read:true}:x);
    if(view){view={...view,worldMessages:(view.worldMessages??[]).map(x=>
     x.id===mailId?{...x,read:true}:x)};
     if(pane==="WORLD_THREAD"&&selectedWorldMailId===mailId)render();}

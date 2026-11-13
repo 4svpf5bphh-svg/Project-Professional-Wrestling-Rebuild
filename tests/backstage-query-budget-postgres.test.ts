@@ -66,7 +66,8 @@ test("Backstage iPhone inbox includes bounded World mail in five SQL reads for 6
    worldId,promotionId,playerId,personId:"worker-1"});
   assert.equal(thread.personId,"worker-1");
   assert.ok(thread.persona);
-  assert.equal(meter.assertBudget({maxQueries:15,maxResultBytes:105_000}).queryCount-beforeFull,10);
+  assert.equal(meter.assertBudget({maxQueries:14,maxResultBytes:105_000}).queryCount-beforeFull,9,
+    "A wrestler thread reuses cached company mail; it never repeats the inbox query");
   await assert.rejects(readPortablePersonaWorkspace(measured,{
    worldId,promotionId:otherId,playerId}),/access denied/);
  }finally{
