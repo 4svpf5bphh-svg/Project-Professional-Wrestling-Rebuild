@@ -107,8 +107,13 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  await page.goto("/#/roster");
  await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
  await page.getByRole("button",{name:"Open Promotion menu"}).click();
-  await page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:/Backstage/}).click();
+ await expect(page.getByRole("navigation",{name:"Promotion navigation"})
+  .getByRole("button",{name:/Backstage/})).toHaveCount(0,
+  // Backstage is now prominently accessed from Home, not buried in Promotion.
+ );
+ // Wrestler profiles and other surfaces still support the direct Backstage
+ // route and must remember the previous desk when leaving on mobile.
+ await page.evaluate(()=>{window.location.hash="#/backstage";});
  await expect(page).toHaveURL(/#\/backstage$/);
  const menu=page.getByRole("button",{name:"Open Promotion menu"});
  await expect(menu).toBeHidden();
@@ -118,7 +123,10 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  await expect(menu).toBeHidden();
  await page.getByRole("button",{name:"Chats",exact:true}).click();
  const overflow=await page.locator(".ppw-backstage-filters").evaluate(n=>n.scrollWidth-n.clientWidth);
- expect(overflow,"Every Backstage inbox filter must be visible without horizontal clipping").toBeLessThanOrEqual(1);
+ expect(overflow,"Additional Backstage channels scroll inside their own filter strip").toBeGreaterThan(0);
+ await page.getByRole("button",{name:"Scouting",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Scouting",exact:true})).toHaveClass(/ppw-persona-selected/);
+ await page.getByRole("button",{name:"Unread",exact:true}).click();
  await expect(page.getByRole("button",{name:"Unread",exact:true})).toHaveClass(/ppw-persona-selected/);
  await page.getByRole("button",{name:"All",exact:true}).click();
  const replyStatus=page.locator(".ppw-messenger-inbox .ppw-messenger-awaiting").first();
