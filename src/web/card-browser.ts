@@ -867,6 +867,7 @@ function personaPort(call:ReturnType<typeof createCardClient>,
   markRead:personId=>call("markBackstageRead",{personId}),
   markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),
   respondNetwork:input=>call("respondBackstageNetwork",input),
+  respondStaff:input=>call("respondBackstageStaff",input),
   openDepartment:destination=>{window.location.hash=hostSectionHash(({
    COMMERCIALS:"commercials",CONTRACTS:"contracts",PROGRAMMES:"programmes",
    STAFF:"staff",MARKET:"market"} as const)[destination]);},

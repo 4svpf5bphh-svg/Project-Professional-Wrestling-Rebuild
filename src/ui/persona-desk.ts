@@ -18,6 +18,10 @@ export interface PersonaDeskPort{
   requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
   result?:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
    status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
+ respondStaff?(input:{mailId:string;decision:"COMMIT"|"DEFER";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;decision:"COMMIT"|"DEFER";
+   status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
  openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
  decide(input:{conversationId:string;decision:BackstageDecision;
@@ -46,6 +50,8 @@ export function mountPersonaDesk(root:HTMLElement,
  let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
  let selectedWorldMailId:string|null=null;
  let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
+  requestId:string;expectedRevision:number}|null=null;
+ let pendingStaff:{mailId:string;decision:"COMMIT"|"DEFER";
   requestId:string;expectedRevision:number}|null=null;
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
   "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"=initialInboxFilter;
@@ -223,6 +229,33 @@ export function mountPersonaDesk(root:HTMLElement,
   }catch(e){error=e instanceof Error?e.message:"Broadcaster reply not saved";}
   finally{loading=false;render();}
  }
+ async function answerStaff(mailId:string,decision:"COMMIT"|"DEFER"){
+  if(!view||loading||!port.respondStaff||view.worldRevision===null)return;
+  const same=pendingStaff?.mailId===mailId&&pendingStaff.decision===decision;
+  const request=same?pendingStaff!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingStaff=request;loading=true;render();
+  try{
+   const applied=await port.respondStaff(request);
+   if(applied.status!=="APPLIED"&&applied.status!=="REPLAYED")
+    throw new Error("The World has changed. Refresh the conversation before replying.");
+   const receipt=applied.result;
+   if(!receipt||receipt.mailId!==mailId||receipt.decision!==decision||
+    !["PENDING","ACKNOWLEDGED"].includes(receipt.status)||
+    !Number.isSafeInteger(receipt.dueWeekIndex))
+    throw Error("Staff reply not confirmed. Retrying uses your original answer.");
+   const updated=(messages:WorldMail[]|undefined)=>(messages??[]).map(m=>
+    m.id===receipt.mailId?{...m,canStaffRespond:false,
+     staffResponse:{decision:receipt.decision,status:receipt.status,
+      dueWeekIndex:receipt.dueWeekIndex}}:m);
+   view={...view,worldRevision:applied.revision,
+    worldMessages:updated(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=updated(inboxWorldMessages);
+   inboxWorldRevision=applied.revision;
+   pendingStaff=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Staff reply not confirmed";}
+  finally{loading=false;render();}
+ }
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
  function render(){
   const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
@@ -320,7 +353,28 @@ export function mountPersonaDesk(root:HTMLElement,
      answer.status==="EXCUSED"?"The signed term ended before the deadline; the promise was excused.":
      "Your reply is recorded. The agreed network terms remain in force."));
    }
+   if(mail.kind==="STAFF"&&mail.staffResponse){
+    const reply=mail.staffResponse;
+    const isMedical=mail.action==="STAFF";
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     reply.decision==="DEFER"?
+      "Thanks for raising this. I'm not committing to a change just yet.":
+     isMedical?"I'll manage the workload and reduce the fatigue concerns.":
+      "I'll freshen up these rivalries. Check our creative progress."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     reply.status==="PENDING"?"We'll review the actual roster or storyline situation over the next three weeks.":
+     reply.status==="KEPT"?"The genuine staff concern was resolved. Staff morale improved.":
+     reply.status==="BROKEN"?"The review window ended with the problem unresolved. Staff morale fell.":
+     reply.status==="EXCUSED"?"The staff appointment ended before the review deadline.":
+     "Your reply was received. No new workload or storyline change was made."));
+   }
    const actions=el("div","ppw-backstage-world-actions");
+   if(mail.kind==="STAFF"&&mail.canStaffRespond&&!mail.staffResponse&&port.respondStaff){
+    actions.append(button(mail.action==="STAFF"?
+     "I'll rest the tired roster":"I'll refresh the rivalries",
+     ()=>void answerStaff(mail.id,"COMMIT"),loading));
+    actions.append(button("Not now",()=>void answerStaff(mail.id,"DEFER"),loading));
+   }
    if(mail.kind==="NETWORK"&&mail.canRespond&&!mail.networkResponse&&port.respondNetwork){
     actions.append(mail.contentConcern?
      button("Keep hardcore off our next TV show",

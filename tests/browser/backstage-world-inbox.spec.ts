@@ -167,3 +167,79 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("Medical and Creative staff can answer a real workload warning at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:4,name:"Genesis",year:1,week:5,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",cash:200000,
+    debt:0,lastWeeklyNet:8000,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,backstageUnreadCount:2,
+     plannedShows:1,expiringTalent:false,pendingContractOffers:false}}};
+  const mailId="backstage-world:"+"e".repeat(32),creativeId="backstage-world:"+"f".repeat(32);
+  const messages=[
+   {id:mailId,kind:"STAFF",sender:"Dr Lena Winters",
+    subject:"The roster needs a breather",
+    body:"Two contracted wrestlers have fatigue at 70 or above.",
+    action:"STAFF",createdWeekIndex:4,read:false,canStaffRespond:true,
+    staffResponse:undefined as {decision:string;status:string;dueWeekIndex:number}|undefined},
+   {id:creativeId,kind:"STAFF",sender:"Creative Director",
+    subject:"Our rivalries are running in circles",
+    body:"Three active programmes have repeated without moving forward.",
+    action:"PROGRAMMES",createdWeekIndex:4,read:false,canStaffRespond:true,
+    staffResponse:undefined as {decision:string;status:string;dueWeekIndex:number}|undefined}
+  ];
+  let revision=4;const calls:string[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:{worldId:"world",
+   playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string;decision?:string;
+    expectedRevision?:number};
+   calls.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:5,worldRevision:revision,canEdit:true,
+    roster:[],persona:null,history:[],recentRequests:[],conversations:[],
+    memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
+    worldMessages:messages}});
+   if(x.method==="markBackstageWorldRead"){
+    const m=messages.find(m=>m.id===x.mailId);if(m)m.read=true;
+    return r.fulfill({json:{readCount:1}});
+   }
+   if(x.method==="respondBackstageStaff"){
+    const m=messages.find(m=>m.id===x.mailId)!;
+    expect(m).toBeDefined();
+    expect(x.decision).toBe("COMMIT");
+    expect(x.expectedRevision).toBe(revision);
+    revision++;
+    m.canStaffRespond=false;
+    m.staffResponse={decision:"COMMIT",status:"PENDING",dueWeekIndex:8};
+    return r.fulfill({json:{status:"APPLIED",revision,
+     result:{mailId:x.mailId,decision:"COMMIT",status:"PENDING",dueWeekIndex:8}}});
+   }
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:"Staff",exact:true}).click();
+  await page.getByRole("button",{name:/The roster needs a breather/}).click();
+  const medical=page.getByLabel("Message from Dr Lena Winters");
+  await expect(medical).toContainText("fatigue at 70");
+  await page.getByRole("button",{name:"I'll rest the tired roster"}).click();
+  await expect(medical).toContainText("I'll manage the workload");
+  await expect(medical).toContainText("next three weeks");
+  await expect(page.getByRole("button",{name:"I'll rest the tired roster"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  await page.getByRole("button",{name:/Our rivalries are running in circles/}).click();
+  const creative=page.getByLabel("Message from Creative Director");
+  await expect(creative).toContainText("Three active programmes");
+  await page.getByRole("button",{name:"I'll refresh the rivalries"}).click();
+  await expect(creative).toContainText("I'll freshen up these rivalries");
+  expect(calls.filter(x=>x==="respondBackstageStaff")).toHaveLength(2);
+  expect(calls.filter(x=>x==="backstage")).toHaveLength(1);
+  expect(calls.some(x=>/groq|generate|worldAdvance/i.test(x))).toBe(false);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

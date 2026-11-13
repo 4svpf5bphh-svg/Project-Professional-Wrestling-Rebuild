@@ -695,6 +695,10 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0145_backstage_network_replies.sql
+      - name: Apply private Backstage staff commitments to disposable PostgreSQL
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0146_backstage_staff_replies.sql
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test

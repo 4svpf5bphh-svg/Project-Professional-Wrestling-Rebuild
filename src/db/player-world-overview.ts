@@ -233,6 +233,23 @@ export async function readPlayerWorldOverview(
          AND receipt.player_id=$2
          AND receipt.attention_id='backstage-world:'||md5(
           'network-followup:'||outcome.mail_id||':'||outcome.status)))
+      /* A settled personnel commitment sends one private staff follow-up;
+       * count the same two-message window as the iPhone inbox query. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.mail_id,r.status FROM ppw_backstage_staff_replies r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2 AND r.status IN ('KEPT','BROKEN','EXCUSED')
+         AND r.settled_week_index
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+       ) followup WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-followup:'||followup.mail_id||':'||followup.status)))
       +(SELECT count(*)::integer FROM ppw_staff_employments e
        WHERE e.world_id=w.world_id AND e.promotion_id=owned.promotion_id
         AND e.status='ACTIVE' AND (

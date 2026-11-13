@@ -22,6 +22,7 @@ import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js"
 import {markBackstageThreadRead} from "../db/backstage-conversations.js";
 import {markWorldMailRead} from "../db/backstage-world-mail.js";
 import {replyToBroadcaster,type NetworkReplyInput} from "../db/backstage-network-replies.js";
+import {respondToStaffMail,type StaffReplyInput} from "../db/backstage-staff-replies.js";
 import {setBackstageThreadArchive} from "../db/backstage-thread-archive.js";
 import {decideBackstageRequest,type BackstageDecisionInput} from "../db/backstage-conversations.js";
 import {requestPortablePersonaChange,type PersonaChangeInput}
@@ -793,6 +794,14 @@ export async function replyToBroadcasterAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.mailId,"message");
  return replyToBroadcaster(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Authenticated staff promise on a genuine current personnel concern. */
+export async function respondBackstageStaffAsActor(context:WorldApiContext,
+ input:Omit<StaffReplyInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return respondToStaffMail(context.pool,{...input,playerId:context.actor.playerId});
 }
 
 /** Archive/restore is private presentation state, never a booking decision. */

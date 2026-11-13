@@ -13,6 +13,8 @@ export interface WorldMail{
  id:string;kind:WorldMailKind;sender:string;subject:string;body:string;
  action:WorldMailAction;createdWeekIndex:number;read:boolean;
  canRespond?:boolean;contentConcern?:boolean;
+ canStaffRespond?:boolean;staffResponse?:{decision:"COMMIT"|"DEFER";
+  status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  networkResponse?:{decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  /** Verified market contact; the dossier and actual offer rules remain authoritative. */
@@ -22,7 +24,9 @@ interface MailRow extends Record<string,unknown>{
  id:string;kind:WorldMailKind;sender_key:string;subject:string;
  body:string;action:WorldMailAction;created_week_index:number;
  read:boolean;seed:string;target_person_id:string|null;sender_name:string|null;
- can_reply:boolean;content_concern:boolean;
+ can_reply:boolean;content_concern:boolean;can_staff_reply:boolean;
+ staff_reply_decision:string|null;staff_reply_status:string|null;
+ staff_reply_due_week_index:number|null;
  reply_decision:string|null;reply_status:string|null;reply_due_week_index:number|null;
 }
 /** Shared source selection is also used for validating read receipts.
@@ -167,6 +171,43 @@ WITH owner AS MATERIALIZED (
    OR (e.role='MEDICAL' AND p.tired>0)
    OR (e.role='CREATIVE' AND p.stale>0))
  ORDER BY e.role,e.employment_id LIMIT 8
+), staff_followup AS (
+ /* A new inbound staff check-in after a genuine manager commitment.
+  * The original staff alert can disappear after the issue is solved,
+  * but this follow-up stays visible for the bounded 13-week inbox window. */
+ SELECT 'STAFF'::text AS kind,
+  'staff-followup:'||r.mail_id||':'||r.status AS evidence,
+  r.staff_id AS sender_key,
+  CASE WHEN r.role='MEDICAL' AND r.status='KEPT'
+     THEN 'The workload changes helped'
+   WHEN r.role='MEDICAL' AND r.status='BROKEN'
+     THEN 'Fatigue is still a concern'
+   WHEN r.role='CREATIVE' AND r.status='KEPT'
+     THEN 'The storylines have moved forward'
+   WHEN r.role='CREATIVE' AND r.status='BROKEN'
+     THEN 'We still need a creative change'
+   ELSE 'Staffing circumstances have changed' END AS subject,
+  CASE WHEN r.status='EXCUSED'
+    THEN 'My appointment ended before the commitment could be assessed. No unmet promise has been recorded.'
+   WHEN r.role='MEDICAL' AND r.status='KEPT'
+    THEN 'The current contracted roster has nobody at the high-fatigue warning threshold. That is a better workload to manage.'
+   WHEN r.role='MEDICAL'
+    THEN 'The review period ended and some of the current contracted roster are still over the high-fatigue threshold. We should rethink their bookings.'
+   WHEN r.status='KEPT'
+    THEN 'The repetitive active programmes have been refreshed or concluded. Creative has something new to work with.'
+   ELSE
+    'The review period is up and some active rivalries are still repeating without progress. We need a new creative direction.'
+  END AS body,
+  CASE WHEN r.role='MEDICAL' THEN 'STAFF'::text
+   ELSE 'PROGRAMMES'::text END AS action,
+  r.settled_week_index AS created_week_index,
+  NULL::text AS target_person_id,NULL::text AS sender_name
+ FROM ppw_backstage_staff_replies r
+ JOIN owner o ON true
+ WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
+  AND r.status IN ('KEPT','BROKEN','EXCUSED')
+  AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
+ ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
 ), scouting AS (
  SELECT 'SCOUT'::text AS kind,
   'scout:'||e.employment_id||':'||talent.person_id||':'||
@@ -228,6 +269,7 @@ WITH owner AS MATERIALIZED (
 ), message AS (
  SELECT * FROM network UNION ALL SELECT * FROM content_notice
  UNION ALL SELECT * FROM network_followup UNION ALL SELECT * FROM staff
+ UNION ALL SELECT * FROM staff_followup
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
 ), candidate AS (
  SELECT 'backstage-world:'||md5(message.evidence) AS id,
@@ -241,6 +283,18 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  (receipt.attention_id IS NOT NULL) AS read,
  reply.decision AS reply_decision,reply.status AS reply_status,
  reply.due_week_index AS reply_due_week_index,
+ staff_reply.decision AS staff_reply_decision,
+ staff_reply.status AS staff_reply_status,
+ staff_reply.due_week_index AS staff_reply_due_week_index,
+ (c.kind='STAFF' AND c.action IN ('STAFF','PROGRAMMES')
+  AND c.evidence LIKE 'staff:%'
+  AND staff_reply.mail_id IS NULL AND NOT EXISTS (
+   SELECT 1 FROM ppw_backstage_staff_replies pending
+   WHERE pending.world_id=$1 AND pending.promotion_id=$2
+    AND pending.status='PENDING'
+    AND c.evidence='staff:'||pending.employment_id||':'||pending.role||':'||
+     floor((SELECT (year-1)*52+week-1 FROM ppw_worlds WHERE world_id=$1)/4)::integer
+  )) AS can_staff_reply,
  (c.evidence LIKE 'network-content:%') AS content_concern,
  (c.kind='NETWORK' AND reply.mail_id IS NULL AND
  (c.evidence LIKE 'network-content:%' OR EXISTS(
@@ -260,6 +314,8 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
 FROM candidate c
 LEFT JOIN ppw_backstage_network_replies reply ON reply.world_id=$1
  AND reply.promotion_id=$2 AND reply.mail_id=c.id
+LEFT JOIN ppw_backstage_staff_replies staff_reply ON staff_reply.world_id=$1
+ AND staff_reply.promotion_id=$2 AND staff_reply.mail_id=c.id
 LEFT JOIN ppw_player_attention_dismissals receipt ON receipt.world_id=$1
  AND receipt.promotion_id=$2 AND receipt.player_id=$3
  AND receipt.attention_id=c.id
@@ -281,6 +337,10 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    r.sender_key!==r.target_person_id))
    throw new Error("Free-agent outreach requires a verifiable wrestler identity");
   const network=r.kind==="NETWORK"?COMMERCIAL_COMPANIES[r.sender_key]?.name:null;
+  if(r.staff_reply_decision!=null&&(!["COMMIT","DEFER"].includes(r.staff_reply_decision)||
+   !["PENDING","ACKNOWLEDGED","KEPT","BROKEN","EXCUSED"].includes(r.staff_reply_status??"")||
+   !Number.isSafeInteger(r.staff_reply_due_week_index)||r.kind!=="STAFF"))
+   throw new Error("Invalid staff reply receipt");
   if(r.reply_decision!=null&&(!["COMMIT_RECOVERY","COMMIT_STANDARDS","STAND_FIRM"].includes(r.reply_decision)||
    !["PENDING","ACKNOWLEDGED","KEPT","BROKEN","EXCUSED"].includes(r.reply_status??"")||
    !Number.isSafeInteger(r.reply_due_week_index)||r.kind!=="NETWORK"))
@@ -291,6 +351,11 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    subject:r.subject,body:r.body,action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
    ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
+   ...(r.kind==="STAFF"&&r.can_staff_reply===true?{canStaffRespond:true}:{}),
+   ...(r.staff_reply_decision!=null?{staffResponse:{
+    decision:r.staff_reply_decision as "COMMIT"|"DEFER",
+    status:r.staff_reply_status as "PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED",
+    dueWeekIndex:r.staff_reply_due_week_index!}}:{}),
    ...(r.content_concern===true?{contentConcern:true}:{}),
    ...(r.reply_decision!=null?{networkResponse:{
     decision:r.reply_decision as "COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM",
