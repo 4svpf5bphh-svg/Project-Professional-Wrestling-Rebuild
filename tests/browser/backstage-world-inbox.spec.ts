@@ -406,6 +406,11 @@ for(const width of [320,390]){
      request_id:"other-1",kind:"CONTRACT",status:"PENDING",
      created_week_index:4,read_week_index:null,archived:false}}
   ];
+  const partnerMail={id:"backstage-world:"+"f".repeat(32),kind:"LOCKER_ROOM",
+   sender:"Samoa Joe",subject:"About working with Lance Archer",
+   body:"Lance asked you to mediate our tag partnership. I'll hear you out.",
+   action:"PROGRAMMES",targetPersonId:"other",createdWeekIndex:4,
+   read:false,canPartnerRespond:true};
   const calls:string[]=[];
   let revision=4,mediated=false;
   const relationship=()=>({
@@ -430,7 +435,7 @@ for(const width of [320,390]){
     roster,persona:null,history:[],recentRequests:[],conversations:
      x.personId==="wrestler"?[relationship()]:[],
     memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
-    worldMessages:x.personId?[]:messages}});
+    worldMessages:x.personId?[]:(mediated?[...messages,partnerMail]:messages)}});
    if(x.method==="markBackstageWorldRead"){messages[0]!.read=true;
     return r.fulfill({json:{readCount:1}});}
    if(x.method==="markBackstageRead")return r.fulfill({json:{readCount:1}});
@@ -481,6 +486,10 @@ for(const width of [320,390]){
   expect(calls.filter(x=>x==="respondBackstageDisagreement")).toHaveLength(1);
   expect(calls.filter(x=>x==="backstageDecision")).toHaveLength(1);
   await expect.poll(()=>calls.filter(x=>x==="backstage").length).toBe(3);
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  const partnerCard=page.getByRole("button",{name:/Samoa Joe.*About working with Lance Archer/});
+  await expect(partnerCard).toBeVisible();
+  await expect.poll(()=>calls.filter(x=>x==="backstage").length).toBe(4);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
@@ -551,7 +560,7 @@ for(const width of [320,390]){
   await expect(thread).toContainText("recent tag work damaged trust");
   await expect(thread).toContainText("From actual teammate match history");
   await page.getByRole("button",{name:"Ask them to work together"}).click();
-  await expect(page.locator(".ppw-alert.ppw-error")).toContainText(/Lost network reply/);
+  await expect(page.locator(".ppw-alert.ppw-error")).toContainText(/temporarily unavailable/);
   await page.getByRole("button",{name:"Ask them to work together"}).click();
   await expect(thread.locator(".ppw-persona-bubble.ppw-persona-in").last())
    .toContainText("trust or the workload isn't there right now");

@@ -18,7 +18,8 @@ export const PARTNER_MEDIATION_CANDIDATES_SQL=String.raw`
  SELECT r.request_id,r.person_id,r.related_person_id AS partner_id,
   r.responded_week_index,r.follow_through_week_index,
   initiator.name AS initiating_name,other.name AS partner_name,
-  other.fatigue AS partner_fatigue,relation.professional_trust
+  other.fatigue AS partner_fatigue,other.status AS partner_status,
+  relation.professional_trust
  FROM ppw_backstage_requests r
  JOIN ppw_people initiator ON initiator.world_id=r.world_id
   AND initiator.person_id=r.person_id AND initiator.status IN ('ACTIVE','INJURED')
@@ -44,12 +45,12 @@ export const PARTNER_MEDIATION_CANDIDATES_SQL=String.raw`
  ORDER BY r.responded_week_index DESC,r.request_id DESC LIMIT 2`;
 
 export function partnerMediationOutcome(decision:PartnerReplyChoice,
- trust:number,fatigue:number):PartnerReplyOutcome{
+ trust:number,fatigue:number,status:"ACTIVE"|"INJURED"="ACTIVE"):PartnerReplyOutcome{
  if(decision==="LEAVE")return "DECLINED";
  if(!Number.isFinite(trust)||trust< -100||trust>100||
   !Number.isFinite(fatigue)||fatigue<0||fatigue>100)
   throw Error("Invalid verified partner condition");
- return trust>=45&&fatigue<75?"READY":"CAUTIOUS";
+ return trust>=45&&fatigue<75&&status==="ACTIVE"?"READY":"CAUTIOUS";
 }
 export async function respondToPartnerMediation(pool:TransactionPool,i:PartnerReplyInput){
  if(![i.worldId,i.promotionId,i.playerId,i.requestId].every(
@@ -64,6 +65,7 @@ export async function respondToPartnerMediation(pool:TransactionPool,i:PartnerRe
    const rows=await tx.query<{
     request_id:string;person_id:string;partner_id:string;
     professional_trust:number;partner_fatigue:number;
+    partner_status:"ACTIVE"|"INJURED";
     follow_through_week_index:number|null;
     mail_id:string;now:number;
    }>(String.raw`
@@ -78,7 +80,7 @@ export async function respondToPartnerMediation(pool:TransactionPool,i:PartnerRe
      WHERE w.world_id=$1
     )
     SELECT p.request_id,p.person_id,p.partner_id,p.professional_trust,
-     p.partner_fatigue,p.follow_through_week_index,o.now,
+     p.partner_fatigue,p.partner_status,p.follow_through_week_index,o.now,
      'backstage-world:'||md5('partner-mediation:'||p.request_id) AS mail_id
     FROM owner o JOIN LATERAL (${PARTNER_MEDIATION_CANDIDATES_SQL}) p ON true LIMIT 2`,
     [i.worldId,i.promotionId,i.playerId]);
@@ -93,7 +95,7 @@ export async function respondToPartnerMediation(pool:TransactionPool,i:PartnerRe
    ].join(" "),[i.worldId,i.promotionId,i.mailId,verified.request_id]);
    if(prior.length)throw Error("This partner has already received an answer");
    const outcome=partnerMediationOutcome(i.decision,
-    verified.professional_trust,verified.partner_fatigue);
+    verified.professional_trust,verified.partner_fatigue,verified.partner_status);
    await tx.query([
     "INSERT INTO ppw_backstage_partner_replies(world_id,promotion_id,mail_id,",
     "source_request_id,initiating_person_id,partner_person_id,",

@@ -58,6 +58,7 @@ export function mountPersonaDesk(root:HTMLElement,
  // Keep the company inbox in memory while the manager opens a wrestler thread.
  let inboxWorldMessages:WorldMail[]|null=null;
  let inboxWorldRevision:number|null=null;
+ let companyInboxPreviouslyLoaded=false;
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
@@ -90,8 +91,10 @@ export function mountPersonaDesk(root:HTMLElement,
  }
  const returnToMessages=()=>{
   pane="INBOX";
-  // Direct wrestler deep links return without fetching the whole company.
-  // Network/staff/scout channels can be opened explicitly below.
+  // A world-changing answer to a wrestler can create a new certified
+  // company message (such as their partner speaking up). Reload only when
+  // the existing revision cache has been invalidated, never on routine reads.
+  if(inboxWorldMessages===null&&companyInboxPreviouslyLoaded){void load();return;}
   render();
   requestAnimationFrame(()=>{
    const inbox=root.querySelector<HTMLElement>(".ppw-backstage-contacts");
@@ -100,6 +103,7 @@ export function mountPersonaDesk(root:HTMLElement,
  };
  function withInboxWorldMessages(next:View,id?:string):View{
   if(!id){
+   companyInboxPreviouslyLoaded=true;
    inboxWorldMessages=next.worldMessages??[];
    inboxWorldRevision=next.worldRevision;
    return next;
