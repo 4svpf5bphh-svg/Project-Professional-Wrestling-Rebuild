@@ -19,6 +19,7 @@ export interface PlayerWorldOverview {
   lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null;
   attention:{
    unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
+   backstageUnreadCount?:number;
    pendingContractOffers:boolean;plannedShows:number;
    backstageRequests?:{personId:string;name:string;kind:string}[];
    offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];
@@ -68,7 +69,8 @@ export async function readPlayerWorldOverview(
    last_weekly_net:string|number|null;runway_weeks:number|null;
    financial_distress:string|null;
    planned_shows:number|null;unprepared_show:boolean|null;
-   pending_backstage:boolean|null;expiring_talent:boolean|null;
+   pending_backstage:boolean|null;backstage_unread_count:number|null;
+   expiring_talent:boolean|null;
    pending_contract_offers:boolean|null;offer_results:unknown;date_decisions:unknown;
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
@@ -87,7 +89,8 @@ export async function readPlayerWorldOverview(
     owned.cash,owned.debt,owned.last_weekly_net,
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
-    notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
+    notices.pending_backstage,notices.backstage_unread_count,
+    notices.expiring_talent,notices.pending_contract_offers,
     notices.offer_results,notices.date_decisions,
     notices.backstage_requests,notices.backstage_results,
     notices.business_updates,notices.contract_alerts,notices.title_news,
@@ -130,6 +133,75 @@ export async function readPlayerWorldOverview(
      EXISTS (SELECT 1 FROM ppw_backstage_requests b
        WHERE b.world_id=w.world_id AND b.promotion_id=owned.promotion_id
         AND b.status='PENDING' LIMIT 1) AS pending_backstage,
+
+     /* One overview query; each unread source is genuine and private. */
+     least(99,
+      (SELECT count(*)::integer FROM ppw_backstage_requests r
+       LEFT JOIN ppw_backstage_thread_archives a
+        ON a.world_id=r.world_id AND a.promotion_id=r.promotion_id
+        AND a.person_id=r.person_id AND a.player_id=$2
+       WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+        AND r.status='PENDING' AND r.read_week_index IS NULL
+        AND r.created_week_index>coalesce(a.archived_through_week_index,-1))
+      +(SELECT count(*)::integer FROM (
+        SELECT n.story_key FROM ppw_world_news_items n
+        WHERE n.world_id=w.world_id AND n.promotion_id=owned.promotion_id
+         AND n.desk='OFFICIAL' AND n.certainty='CONFIRMED'
+         AND n.source_kind='EVENT' AND n.story_key LIKE 'broadcast:network:%'
+         AND (n.year-1)*52+n.week-1
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY n.year DESC,n.week DESC,n.story_key DESC LIMIT 8
+       ) n WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2
+         AND r.attention_id='backstage-world:'||md5('network:'||n.story_key)))
+      +(SELECT count(*)::integer FROM ppw_staff_employments e
+       WHERE e.world_id=w.world_id AND e.promotion_id=owned.promotion_id
+        AND e.status='ACTIVE' AND (
+         (e.role='TALENT_MANAGER' AND EXISTS(
+          SELECT 1 FROM ppw_contracts c
+          WHERE c.world_id=e.world_id AND c.promotion_id=e.promotion_id
+           AND c.status='SIGNED'
+           AND c.start_week_index<=(w.year-1)*52+w.week-1
+           AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
+             AND (w.year-1)*52+w.week+3))
+         OR (e.role='MEDICAL' AND EXISTS(
+          SELECT 1 FROM ppw_contracts c JOIN ppw_people p
+           ON p.world_id=c.world_id AND p.person_id=c.person_id
+          WHERE c.world_id=e.world_id AND c.promotion_id=e.promotion_id
+           AND c.status='SIGNED'
+           AND c.start_week_index<=(w.year-1)*52+w.week-1
+           AND c.expires_week_index>=(w.year-1)*52+w.week-1
+           AND p.status IN ('ACTIVE','INJURED') AND p.fatigue>=70))
+         OR (e.role='CREATIVE' AND EXISTS(
+          SELECT 1 FROM ppw_programmes p
+          WHERE p.world_id=e.world_id AND p.promotion_id=e.promotion_id
+           AND p.status='ACTIVE' AND p.repetition>=3)))
+        AND NOT EXISTS(
+         SELECT 1 FROM ppw_player_attention_dismissals r
+         WHERE r.world_id=e.world_id AND r.promotion_id=e.promotion_id
+          AND r.player_id=$2 AND r.attention_id='backstage-world:'||md5(
+           'staff:'||e.employment_id||':'||e.role||':'||
+           floor(((w.year-1)*52+w.week-1)/4)::integer)))
+      +(SELECT count(*)::integer FROM ppw_staff_employments e
+       JOIN LATERAL(SELECT p.person_id FROM ppw_people p
+        WHERE p.world_id=e.world_id AND p.status='ACTIVE'
+         AND NOT EXISTS(SELECT 1 FROM ppw_contracts c
+          WHERE c.world_id=p.world_id AND c.person_id=p.person_id
+           AND c.status='SIGNED'
+           AND c.start_week_index<=(w.year-1)*52+w.week-1
+           AND c.expires_week_index>=(w.year-1)*52+w.week-1)
+        ORDER BY p.popularity DESC,p.person_id LIMIT 1) candidate ON true
+       WHERE e.world_id=w.world_id AND e.promotion_id=owned.promotion_id
+        AND e.status='ACTIVE' AND e.role='SCOUT'
+        AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals r
+          WHERE r.world_id=e.world_id AND r.promotion_id=e.promotion_id
+           AND r.player_id=$2 AND r.attention_id='backstage-world:'||md5(
+            'scout:'||e.employment_id||':'||candidate.person_id||':'||
+            floor(((w.year-1)*52+w.week-1)/8)::integer)))
+     )::integer AS backstage_unread_count,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'personId',request.person_id,'name',request.name,'kind',request.kind)
        ORDER BY request.created_week_index DESC,request.request_id DESC),'[]'::jsonb)
@@ -610,6 +682,7 @@ export async function readPlayerWorldOverview(
      unseenLegends:Number(x.unseen_legends??0),
      unpreparedShow:x.unprepared_show===true,
      pendingBackstage:x.pending_backstage===true,
+     backstageUnreadCount:Math.max(0,Number(x.backstage_unread_count??0)),
      expiringTalent:x.expiring_talent===true,
      pendingContractOffers:x.pending_contract_offers===true,
      plannedShows:x.planned_shows??0,

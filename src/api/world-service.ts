@@ -20,6 +20,7 @@ import {readCompletedShowArchive,type ShowArchiveCursor} from "../db/completed-s
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
 import {markBackstageThreadRead} from "../db/backstage-conversations.js";
+import {markWorldMailRead} from "../db/backstage-world-mail.js";
 import {setBackstageThreadArchive} from "../db/backstage-thread-archive.js";
 import {decideBackstageRequest,type BackstageDecisionInput} from "../db/backstage-conversations.js";
 import {requestPortablePersonaChange,type PersonaChangeInput}
@@ -773,6 +774,16 @@ export async function markBackstageReadAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");validate(personId,"wrestler");
  return markBackstageThreadRead(context.pool,{worldId,promotionId,personId,
   playerId:context.actor.playerId});
+}
+
+/** A certified broadcaster/staff/scout message can be acknowledged only by
+ * its controlling manager; no World simulation write or new AI output. */
+export async function markBackstageWorldMailReadAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,mailId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return markWorldMailRead(context.pool,{worldId,promotionId,playerId:context.actor.playerId,
+  mailId});
 }
 
 /** Archive/restore is private presentation state, never a booking decision. */

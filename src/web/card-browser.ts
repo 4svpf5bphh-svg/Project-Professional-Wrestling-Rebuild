@@ -865,6 +865,10 @@ function personaPort(call:ReturnType<typeof createCardClient>,
  return {
   load:personId=>call("backstage",personId?{personId}:{inboxOnly:true}),
   markRead:personId=>call("markBackstageRead",{personId}),
+  markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),
+  openDepartment:destination=>{window.location.hash=hostSectionHash(({
+   COMMERCIALS:"commercials",CONTRACTS:"contracts",PROGRAMMES:"programmes",
+   STAFF:"staff",MARKET:"market"} as const)[destination]);},
   archiveThread:(personId,archived)=>call("backstageArchive",{personId,archived}),
   decide:({conversationId,decision,requestId,expectedRevision})=>
    call("backstageDecision",{conversationId,decision,requestId,expectedRevision}),

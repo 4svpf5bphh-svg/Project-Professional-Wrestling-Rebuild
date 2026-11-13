@@ -3,6 +3,7 @@
  * wrestler's negotiated PPW career history.
  */
 import {withSqlClient} from "./postgres.js";
+import {readWorldMail} from "./backstage-world-mail.js";
 import type {TransactionPool} from "./transaction.js";
 import {originalPersonaBaseline,validatePortablePersona,wrestlerIdentityReference}
  from "../domain/portable-persona.js";
@@ -24,6 +25,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   ].join(" "),[s.worldId,s.promotionId,s.playerId]);
   if(owns.length!==1)throw new Error("Portable identity access denied");
   const now=(owns[0]!.year-1)*52+owns[0]!.week-1;
+  const worldMessages=await readWorldMail(tx,s);
   // One bounded roster read: currently signed wrestlers and a private,
   // read-only history for the latest 50 departed conversation contacts.
   const roster=await tx.query<{person_id:string;name:string;
@@ -104,7 +106,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    isCurrent:x.is_current,morale:x.morale,momentum:x.momentum,
    careerStage:x.career_stage,status:x.status,fatigue:x.fatigue,
    lastMessage:latestByPerson.get(x.person_id)??null}));
-  if(!selected)return {roster:listed,personId:null,
+  if(!selected)return {roster:listed,worldMessages,personId:null,
    persona:null,history:[],recentRequests:[],conversations:[],memories:[],archetypes:[],
    documentedAlternates:[],worldYear:owns[0]!.year,
    worldWeek:owns[0]!.week,worldRevision:Number(owns[0]!.revision),
@@ -243,7 +245,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    ") recent ORDER BY occurred_week_index DESC,source_id DESC LIMIT 13"
   ].join(" "),[s.worldId,s.promotionId,selected,now]);
   const reference=wrestlerIdentityReference(wrestler.name);
-  return {roster:listed,personId:selected,personName:wrestler.name,
+  return {roster:listed,worldMessages,personId:selected,personName:wrestler.name,
    persona,revision:current[0]?.revision??0,
    memories:memories.map(m=>({kind:m.kind,sourceId:m.source_id,
     weekIndex:m.occurred_week_index,importance:m.importance,

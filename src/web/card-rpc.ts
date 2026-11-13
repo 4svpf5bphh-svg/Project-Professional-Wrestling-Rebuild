@@ -11,7 +11,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,achievementsWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
- portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
+ portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
@@ -112,6 +112,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="markBackstageRead")return markBackstageReadAsActor(context,
   worldId,promotionId,id("personId"));
+ if(method==="markBackstageWorldRead")return markBackstageWorldMailReadAsActor(context,
+  worldId,promotionId,id("mailId"));
  if(method==="backstageArchive"){
   if(typeof p.archived!=="boolean")throw new Error("Invalid archive choice");
   return backstageArchiveAsActor(context,{worldId,promotionId,

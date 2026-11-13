@@ -244,6 +244,20 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    nextAction.classList.add("ppw-home-next-action");
    if(next?.ready)nextAction.dataset.ready="true";
    dashboard.append(nextAction);
+   // PPW's living inbox is a primary management destination, not a drawer link.
+   // This uses the existing single scoped Home overview request.
+   const newMail=promotion.attention?.backstageUnreadCount??0;
+   const backstageAction=control(newMail>0?"BACKSTAGE · "+newMail+" NEW":"BACKSTAGE",
+    newMail>0?"Wrestlers, staff and network partners are waiting for you.":
+     "Messages, staff advice, network feedback and talent opportunities.",
+    newMail>0?port.openUnreadBackstage??port.backstage:port.backstage,"✉");
+   backstageAction.classList.add("ppw-home-backstage-action");
+   backstageAction.setAttribute("aria-label",newMail>0?
+    "Open Backstage, "+newMail+" unread message"+(newMail===1?"":"s"):
+    "Open Backstage messages");
+   if(newMail>0)backstageAction.append(el("span","ppw-home-backstage-badge",
+    String(newMail>99?"99+":newMail)));
+   dashboard.append(backstageAction);
    const last=promotion.latestShow;
    const resultsAction=control(last?"LATEST RESULT · "+last.showName:"RESULTS ARCHIVE",
     last?"Year "+last.year+" · Week "+last.week+" · Read the broadcast recap":
@@ -356,7 +370,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "Review and confirm your current card.",
     action:port.openUnfinishedCard??port.planner,icon:"▤",level:"priority"});
   if(attention?.pendingBackstage){
-   const pending=(attention.backstageRequests??[]).slice(0,3);
+   const pending=(attention.backstageRequests??[]).slice(0,1);
    const subjects:Record<string,string>={
     CONTRACT:"wants to talk about their contract",
     MORALE:"has something on their mind backstage",

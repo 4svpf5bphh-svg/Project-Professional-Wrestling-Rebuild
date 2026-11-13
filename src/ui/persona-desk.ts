@@ -9,9 +9,12 @@ import {livingWrestlerMotivation} from "../domain/living-character-motivation.js
 import {describeBookingCommitment} from "../domain/backstage-booking-commitment.js";
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
+import type {WorldMailAction} from "../db/backstage-world-mail.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
  markRead(personId:string):Promise<{readCount:number}>;
+ markWorldRead?(mailId:string):Promise<{readCount:number}>;
+ openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
  decide(input:{conversationId:string;decision:BackstageDecision;
   requestId:string;expectedRevision:number}):Promise<unknown>;
@@ -33,8 +36,10 @@ export function mountPersonaDesk(root:HTMLElement,
  initialInboxFilter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
- let pane:"INBOX"|"THREAD"|"PROFILE"=initialPersonId?"THREAD":"INBOX";
- let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"=initialInboxFilter;
+ let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
+ let selectedWorldMailId:string|null=null;
+ let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
+  "STAFF"|"NETWORK"|"SCOUT"|"WRESTLERS"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
  let scrollToLatest=false;
@@ -150,6 +155,19 @@ export function mountPersonaDesk(root:HTMLElement,
   }
   finally{loading=false;render();}
  }
+ async function openWorldMail(mailId:string){
+  if(!view)return;
+  const item=view.worldMessages?.find(x=>x.id===mailId);
+  if(!item)return;
+  selectedWorldMailId=mailId;pane="WORLD_THREAD";error="";render();
+  if(item.read||!port.markWorldRead)return;
+  try{
+   await port.markWorldRead(mailId);
+   if(view){view={...view,worldMessages:(view.worldMessages??[]).map(x=>
+    x.id===mailId?{...x,read:true}:x)};
+    if(pane==="WORLD_THREAD"&&selectedWorldMailId===mailId)render();}
+  }catch(e){error=e instanceof Error?e.message:"Could not mark message read";render();}
+ }
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
  function render(){
   const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
@@ -158,7 +176,7 @@ export function mountPersonaDesk(root:HTMLElement,
    preservedThreadPerson=previous.dataset.personId??null;}
   root.classList.add("ppw-editor","ppw-persona-desk","ppw-messenger");
   root.classList.remove("ppw-messenger-inbox","ppw-messenger-thread",
-   "ppw-messenger-profile");
+   "ppw-messenger-profile","ppw-messenger-world_thread");
   root.classList.add("ppw-messenger-"+pane.toLowerCase());
   root.replaceChildren();
   const head=el("header","ppw-persona-header");
@@ -173,7 +191,7 @@ export function mountPersonaDesk(root:HTMLElement,
   else head.append(el("span","ppw-eyebrow","CONTACTS"),
    el("h1","","Contact details"),
    el("p","ppw-muted","Private career conversations and character history."));
-  if(pane!=="THREAD")root.append(head);
+  if(pane!=="THREAD"&&pane!=="WORLD_THREAD")root.append(head);
   else if(onBack){
    // From a dossier, leave the conversation without relying on a hidden
    // header or the thread's Chats button.
@@ -191,12 +209,49 @@ export function mountPersonaDesk(root:HTMLElement,
    if(pane===id)tab.classList.add("ppw-persona-selected");
    tabs.append(tab);
   }
-  if(pane!=="THREAD")root.append(tabs);
+  if(pane!=="THREAD"&&pane!=="WORLD_THREAD")root.append(tabs);
+  if(pane==="WORLD_THREAD"){
+   const mail=view.worldMessages?.find(x=>x.id===selectedWorldMailId);
+   if(!mail){pane="INBOX";render();return;}
+   const chat=el("section","ppw-persona-chat ppw-backstage-world-thread");
+   chat.setAttribute("aria-label","Message from "+mail.sender);
+   const header=el("header","ppw-backstage-phone-header");
+   const back=button("← Messages",returnToMessages);
+   back.classList.add("ppw-backstage-phone-back");
+   const avatar=el("span","ppw-backstage-phone-avatar",
+    mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":"ST");
+   const identity=el("span","ppw-backstage-phone-identity");
+   identity.append(el("strong","",mail.sender),
+    el("small","",mail.kind==="NETWORK"?"Broadcast partner":
+     mail.kind==="SCOUT"?"Talent scouting":"Staff Office"));
+   header.append(back,avatar,identity);chat.append(header);
+   chat.append(el("small","ppw-backstage-date","YEAR "+
+    (Math.floor(mail.createdWeekIndex/52)+1)+" · WEEK "+
+    (mail.createdWeekIndex%52+1)));
+   const message=el("article","ppw-persona-bubble ppw-persona-in ppw-backstage-world-body");
+   message.append(el("strong","",mail.subject),el("p","",mail.body));
+   chat.append(message);
+   chat.append(el("p","ppw-backstage-world-evidence",
+    mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
+     mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
+     "Based on your actual roster, contracts or active programmes."));
+   const actionNames:Record<WorldMailAction,string>={
+    COMMERCIALS:"Review broadcaster →",CONTRACTS:"Review contracts →",
+    PROGRAMMES:"Plan a creative response →",STAFF:"Open Staff Office →",
+    MARKET:"View talent market →"};
+   const actions=el("div","ppw-backstage-world-actions");
+   actions.append(button(actionNames[mail.action],()=>port.openDepartment?.(mail.action),
+    loading||!port.openDepartment));
+   actions.append(button("Back to messages",returnToMessages));
+   chat.append(actions);root.append(chat);return;
+  }
   if(pane==="INBOX"){
    const inbox=el("section","ppw-backstage-inbox");
-   const threadCount=view.roster.filter(w=>!!w.latestIncoming||!!w.lastMessage).length;
+   const threadCount=view.roster.filter(w=>!!w.latestIncoming||!!w.lastMessage).length+
+    (view.worldMessages?.length??0);
    const unreadCount=view.roster.filter(w=>w.isCurrent&&w.latestIncoming&&
-    w.latestIncoming.read_week_index===null&&!w.latestIncoming.archived).length;
+    w.latestIncoming.read_week_index===null&&!w.latestIncoming.archived).length+
+    (view.worldMessages??[]).filter(x=>!x.read).length;
    const topline=el("div","ppw-messenger-inbox-topline");
    topline.append(el("span","ppw-messenger-inbox-label","MY CONVERSATIONS"),
     el("span","ppw-messenger-inbox-count",
@@ -204,8 +259,9 @@ export function mountPersonaDesk(root:HTMLElement,
    inbox.append(topline);
    const controls=el("div","ppw-backstage-filters");
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
-    ["ACTIVE","Requests"],["HISTORY","History"],
-    ["ARCHIVED","Archived"]] as const){
+    ["ACTIVE","Requests"],["WRESTLERS","Wrestlers"],["STAFF","Staff"],
+    ["NETWORK","Networks"],["SCOUT","Scouting"],
+    ["HISTORY","History"],["ARCHIVED","Archived"]] as const){
     const b=button(label,()=>{inboxFilter=filter;render();});
     if(filter===inboxFilter)b.classList.add("ppw-persona-selected");
     controls.append(b);
@@ -223,7 +279,26 @@ export function mountPersonaDesk(root:HTMLElement,
    entries.onscroll=()=>{lastInboxScroll=entries.scrollTop;};
    inbox.append(searchInput);
    let count=0;
+   for(const mail of [...(view.worldMessages??[])].filter(item=>
+    inboxFilter==="ALL"||inboxFilter===item.kind||
+    (inboxFilter==="UNREAD"&&!item.read)||
+    (inboxFilter==="ACTIVE"&&!item.read))){
+    const item=button("",()=>void openWorldMail(mail.id));
+    item.classList.add("ppw-backstage-contact","ppw-backstage-world-contact");
+    if(!mail.read)item.classList.add("ppw-backstage-unread");
+    const avatar=el("span","ppw-backstage-avatar",
+     mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":"ST");
+    const copy=el("span","ppw-backstage-contact-copy");
+    const top=el("span","ppw-backstage-contact-top");
+    top.append(el("strong","",mail.sender),el("small","ppw-backstage-contact-stamp",
+     "W"+(mail.createdWeekIndex%52+1)));
+    copy.append(top,el("span","ppw-backstage-contact-preview",mail.subject));
+    item.append(avatar,copy);
+    if(!mail.read)item.append(el("span","ppw-backstage-unread-dot",""));
+    entries.append(item);count++;
+   }
    for(const wrestler of [...view.roster].filter(w=>{
+    if(["STAFF","NETWORK","SCOUT"].includes(inboxFilter))return false;
     const latest=w.latestIncoming;
     if(inboxFilter==="ARCHIVED")return latest?.archived===true;
     if(latest?.archived)return false;
