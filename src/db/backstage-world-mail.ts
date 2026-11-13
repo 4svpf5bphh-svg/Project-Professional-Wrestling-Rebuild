@@ -73,8 +73,8 @@ WITH owner AS MATERIALIZED (
   END AS subject,
   CASE e.role
    WHEN 'TALENT_MANAGER' THEN p.due||' signed contract(s) expire in the next four weeks. We should review the terms before anyone is left off the card.'
-   WHEN 'MEDICAL' THEN p.tired||' contracted wrestler(s) have fatigue at 70 or above. I'd check the upcoming workload before they work another long match.'
-   ELSE p.stale||' active programme(s) have repeated without moving the story forward. Let's book a proper next chapter.'
+   WHEN 'MEDICAL' THEN p.tired||' contracted wrestler(s) have fatigue at 70 or above. I''d check the upcoming workload before they work another long match.'
+   ELSE p.stale||' active programme(s) have repeated without moving the story forward. Let''s book a proper next chapter.'
   END AS body,
   CASE e.role WHEN 'TALENT_MANAGER' THEN 'CONTRACTS'
    WHEN 'MEDICAL' THEN 'STAFF' ELSE 'PROGRAMMES' END AS action,

@@ -682,7 +682,11 @@ export async function readPlayerWorldOverview(
      unseenLegends:Number(x.unseen_legends??0),
      unpreparedShow:x.unprepared_show===true,
      pendingBackstage:x.pending_backstage===true,
-     backstageUnreadCount:Math.max(0,Number(x.backstage_unread_count??0)),
+     // The compact Home snapshot did not contain a Backstage count before
+     // this feature. Omit zero rather than allocating an extra field on
+     // every ordinary overview response or breaking existing consumers.
+     ...(Number(x.backstage_unread_count??0)>0?{
+      backstageUnreadCount:Math.min(99,Number(x.backstage_unread_count))}:{}),
      expiringTalent:x.expiring_talent===true,
      pendingContractOffers:x.pending_contract_offers===true,
      plannedShows:x.planned_shows??0,
