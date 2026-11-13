@@ -122,10 +122,13 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  await page.getByRole("button",{name:"People",exact:true}).click();
  await expect(menu).toBeHidden();
  await page.getByRole("button",{name:"Chats",exact:true}).click();
- const overflow=await page.locator(".ppw-backstage-filters").evaluate(n=>n.scrollWidth-n.clientWidth);
- expect(overflow,"Additional Backstage channels scroll inside their own filter strip").toBeGreaterThan(0);
- await page.getByRole("button",{name:"Scouting",exact:true}).click();
+ const channels=page.locator(".ppw-backstage-filters");
+ await expect(channels).toBeVisible();
+ await expect(channels.getByRole("button")).toHaveCount(9);
+ await channels.getByRole("button",{name:"Scouting",exact:true}).click();
  await expect(page.getByRole("button",{name:"Scouting",exact:true})).toHaveClass(/ppw-persona-selected/);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
  await page.getByRole("button",{name:"Unread",exact:true}).click();
  await expect(page.getByRole("button",{name:"Unread",exact:true})).toHaveClass(/ppw-persona-selected/);
  await page.getByRole("button",{name:"All",exact:true}).click();

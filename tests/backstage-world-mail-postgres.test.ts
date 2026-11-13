@@ -8,6 +8,7 @@ import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readWorldMail,markWorldMailRead} from "../src/db/backstage-world-mail.js";
 import {readPortablePersonaWorkspace} from "../src/db/portable-persona-workspace.js";
+import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("certified broadcaster, hired staff and real free-agent scout messages have private idempotent receipts",
@@ -59,6 +60,10 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
   assert.ok(inbox.some(m=>m.kind==="STAFF"&&m.action==="STAFF"));
   assert.ok(inbox.some(m=>m.kind==="SCOUT"&&m.action==="MARKET"));
   assert.ok(inbox.every(m=>!m.read));
+  const initialHome=await readPlayerWorldOverview(db.pool,worldId,owner);
+  assert.equal(initialHome?.promotion?.attention.backstageUnreadCount,
+   inbox.filter(x=>!x.read).length,
+   "Dashboard badge must exactly match actual private Wrestler/Network/Staff/Scout unread items");
   const exposed=await readPortablePersonaWorkspace(db.pool,{...scope,inboxOnly:true});
   assert.equal(exposed.worldMessages.length,inbox.length);
   const letter=inbox.find(m=>m.kind==="NETWORK")!;
@@ -68,6 +73,10 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
    {readCount:0},"Opening it again is not another write");
   assert.equal((await withWorldTransaction(db.pool,tx=>readWorldMail(tx,scope)))
    .find(m=>m.id===letter.id)?.read,true);
+  const afterHome=await readPlayerWorldOverview(db.pool,worldId,owner);
+  assert.equal(afterHome?.promotion?.attention.backstageUnreadCount,
+   inbox.filter(x=>!x.read).length-1,
+   "Acknowledging real network mail immediately clears one badge without changing World state");
   assert.deepEqual(await withWorldTransaction(db.pool,tx=>tx.query<{revision:string}>(
    "SELECT revision::text FROM ppw_worlds WHERE world_id=$1",[worldId])),before,
    "Reading a message may not modify game state or World revision");
