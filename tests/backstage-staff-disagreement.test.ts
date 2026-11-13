@@ -27,7 +27,10 @@ test("one certified staff disagreement settlement checks actual world data and a
   assert.match(sql,/person.fatigue<70/);
   assert.match(sql,/programme.repetition<3/);
   assert.match(sql,/r.responded_week_index<\$2/);
-  assert.match(sql,/WHEN outcomes.status='BROKEN'/);
+  assert.match(sql,/WHEN status='BROKEN' THEN -2/);
+  assert.match(sql,/FROM outcomes GROUP BY 1/);
+  assert.match(sql,/staff.morale\+impacts.delta/);
+  assert.match(sql,/impacts.delta<>0/);
   assert.deepEqual(params,["world",5]);
   return [{settled:2}];
  }} as unknown as SqlRows;

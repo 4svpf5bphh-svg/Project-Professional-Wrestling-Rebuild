@@ -141,20 +141,20 @@ export async function settleStaffDisagreements(tx:SqlRows,worldId:string,weekInd
     OR (r.decision='REFRESH_PROGRAMME'
      AND (programme.status<>'ACTIVE' OR programme.repetition<3)))
   RETURNING r.medical_employment_id,r.creative_employment_id,r.decision,r.status
+ ), impacts AS(
+  /* Multiple genuine disputes can resolve in the same World week.
+   * PostgreSQL UPDATE ... FROM against duplicate employee rows picks ONE
+   * arbitrary result, so aggregate every verified gain/loss first. */
+  SELECT CASE WHEN decision='PRIORITISE_HEALTH'
+   THEN medical_employment_id ELSE creative_employment_id END AS employment_id,
+   sum(CASE WHEN status='KEPT' THEN 2
+    WHEN status='BROKEN' THEN -2 ELSE 0 END)::integer AS delta
+  FROM outcomes GROUP BY 1
  ), morale AS(
   UPDATE ppw_staff_employments staff SET
-   morale=greatest(0,least(100,staff.morale+
-    CASE WHEN outcomes.status='EXCUSED' THEN 0
-     WHEN outcomes.status='KEPT' AND
-      ((outcomes.decision='PRIORITISE_HEALTH' AND staff.role='MEDICAL')
-       OR (outcomes.decision='REFRESH_PROGRAMME' AND staff.role='CREATIVE')) THEN 2
-     WHEN outcomes.status='BROKEN' AND
-      ((outcomes.decision='PRIORITISE_HEALTH' AND staff.role='MEDICAL')
-       OR (outcomes.decision='REFRESH_PROGRAMME' AND staff.role='CREATIVE')) THEN -2
-     ELSE 0 END))
-  FROM outcomes WHERE staff.world_id=$1 AND staff.status='ACTIVE'
-   AND (staff.employment_id=outcomes.medical_employment_id
-    OR staff.employment_id=outcomes.creative_employment_id)
+   morale=greatest(0,least(100,staff.morale+impacts.delta))
+  FROM impacts WHERE staff.world_id=$1 AND staff.status='ACTIVE'
+   AND staff.employment_id=impacts.employment_id AND impacts.delta<>0
   RETURNING staff.employment_id
  )
  SELECT count(*)::integer AS settled FROM outcomes`,[worldId,weekIndex]);

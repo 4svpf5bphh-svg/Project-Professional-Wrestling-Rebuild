@@ -165,15 +165,49 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
    mailId:third.id,decision:"REFRESH_PROGRAMME",requestId:"broken-"+tag,
    expectedRevision:creativeReply.revision});
   assert.equal(thirdReply.status,"APPLIED");
-  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,11)),{settled:0});
-  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,12)),{settled:1});
-  const broken=await run(tx=>tx.query<{status:string}>(
-   "SELECT status FROM ppw_backstage_staff_disagreements WHERE world_id=$1 AND mail_id=$2",
-   [worldId,third.id]));
-  assert.equal(broken[0]?.status,"BROKEN");
+
+  // Both staff choices can be made before the same deadline. One successful
+  // and one broken Creative commitment must NET to zero, not whichever row
+  // PostgreSQL happens to select in an UPDATE ... FROM with duplicate staff.
+  const fourthPerson="fourth-"+tag,fourthProgramme="fourth-story-"+tag;
+  await run(async tx=>{
+   await tx.query("INSERT INTO ppw_people(world_id,person_id,name,status,fatigue) VALUES($1,$2,'Fourth Worker','ACTIVE',95)",
+    [worldId,fourthPerson]);
+   await tx.query([
+    "INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,",
+    "family,status,remaining_dates,start_week_index,expires_week_index)",
+    "VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',10,0,25)"
+   ].join(" "),[worldId,"deal4-"+tag,fourthPerson,promotionId]);
+   await tx.query("INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,repetition) VALUES($1,$2,$3,'ACTIVE',8)",
+    [worldId,promotionId,fourthProgramme]);
+   await tx.query([
+    "INSERT INTO ppw_programme_side_refs(world_id,promotion_id,programme_id,",
+    "side,position,ref_kind,ref_id) VALUES($1,$2,$3,'A',0,'PERSON',$4)"
+   ].join(" "),[worldId,promotionId,fourthProgramme,fourthPerson]);
+  });
+  const fourth=(await run(tx=>readWorldMail(tx,scope))).find(x=>x.canDisagree)!;
+  assert.ok(fourth&&fourth.targetPersonId===fourthPerson);
+  const fourthReply=await respondToStaffDisagreement(db.pool,{...scope,
+   mailId:fourth.id,decision:"REFRESH_PROGRAMME",requestId:"kept-together-"+tag,
+   expectedRevision:thirdReply.revision});
+  assert.equal(fourthReply.status,"APPLIED");
+  await run(tx=>tx.query("UPDATE ppw_programmes SET repetition=1 WHERE world_id=$1 AND programme_id=$2",
+   [worldId,fourthProgramme]));
+  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,10)),{settled:0},
+   "Two weeks after the original commitment is not its three-week deadline");
+  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,11)),{settled:2},
+   "Both decisions reach their exact three-week deadline together");
+  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,12)),{settled:0},
+   "Settled commitments can never be counted again");
+  const outcomes=await run(tx=>tx.query<{mail_id:string;status:string}>(
+   "SELECT mail_id,status FROM ppw_backstage_staff_disagreements WHERE world_id=$1 AND mail_id=ANY($2::text[])",
+   [worldId,[third.id,fourth.id]]));
+  assert.equal(outcomes.find(x=>x.mail_id===third.id)?.status,"BROKEN");
+  assert.equal(outcomes.find(x=>x.mail_id===fourth.id)?.status,"KEPT");
   const lastMorale=await run(tx=>tx.query<{morale:number}>(
    "SELECT morale FROM ppw_staff_employments WHERE world_id=$1 AND role='CREATIVE'",[worldId]));
-  assert.equal(lastMorale[0]?.morale,70,"Missed genuine commitment affects only supported staff morale");
+  assert.equal(lastMorale[0]?.morale,72,
+   "One broken and one kept verified Creative commitment must cancel precisely");
  }finally{
   await run(async tx=>{
    for(const table of ["ppw_player_attention_dismissals",
