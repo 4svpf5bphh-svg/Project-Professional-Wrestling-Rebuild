@@ -136,13 +136,32 @@ export async function readPlayerWorldOverview(
 
      /* One overview query; each unread source is genuine and private. */
      least(99,
-      (SELECT count(*)::integer FROM ppw_backstage_requests r
-       LEFT JOIN ppw_backstage_thread_archives a
-        ON a.world_id=r.world_id AND a.promotion_id=r.promotion_id
-        AND a.person_id=r.person_id AND a.player_id=$2
-       WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
-        AND r.status='PENDING' AND r.read_week_index IS NULL
-        AND r.created_week_index>coalesce(a.archived_through_week_index,-1))
+      (SELECT count(*)::integer FROM (
+        /* The SMS inbox displays only the latest thread for a current
+         * wrestler. Old unread requests cannot inflate the Home badge. */
+        SELECT DISTINCT ON (r.person_id)
+         r.read_week_index,r.created_week_index,
+         coalesce(a.archived_through_week_index,-1) AS archived_through_week_index
+        FROM ppw_backstage_requests r
+        JOIN ppw_people person ON person.world_id=r.world_id
+         AND person.person_id=r.person_id
+        LEFT JOIN ppw_backstage_thread_archives a
+         ON a.world_id=r.world_id AND a.promotion_id=r.promotion_id
+         AND a.person_id=r.person_id AND a.player_id=$2
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND person.status IN ('ACTIVE','INJURED')
+         AND EXISTS (
+          SELECT 1 FROM ppw_contracts active
+          WHERE active.world_id=r.world_id
+           AND active.promotion_id=r.promotion_id
+           AND active.person_id=r.person_id
+           AND active.status='SIGNED'
+           AND active.start_week_index<=(w.year-1)*52+w.week-1
+           AND active.expires_week_index>=(w.year-1)*52+w.week-1)
+        ORDER BY r.person_id,r.created_week_index DESC,r.request_id DESC
+       ) latest
+       WHERE latest.read_week_index IS NULL
+        AND latest.created_week_index>latest.archived_through_week_index)
       +(SELECT count(*)::integer FROM (
         SELECT n.story_key FROM ppw_world_news_items n
         WHERE n.world_id=w.world_id AND n.promotion_id=owned.promotion_id

@@ -60,10 +60,23 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
   assert.ok(inbox.some(m=>m.kind==="STAFF"&&m.action==="STAFF"));
   assert.ok(inbox.some(m=>m.kind==="SCOUT"&&m.action==="MARKET"));
   assert.ok(inbox.every(m=>!m.read));
+  // A previous unread response and a newer pending request from one signed
+  // wrestler are only one conversation badge, exactly like the mobile inbox.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_backstage_requests(
+    world_id,request_id,promotion_id,person_id,kind,created_week_index,
+    status,decision,responded_week_index)
+    VALUES($1,$2,$3,$4,'CONTRACT',0,'ANSWERED','TALK',0)`,
+    [worldId,"a-historic-"+id,promotionId,wrestler]);
+   await tx.query(`INSERT INTO ppw_backstage_requests(
+    world_id,request_id,promotion_id,person_id,kind,created_week_index)
+    VALUES($1,$2,$3,$4,'CONTRACT',0)`,
+    [worldId,"z-current-"+id,promotionId,wrestler]);
+  });
   const initialHome=await readPlayerWorldOverview(db.pool,worldId,owner);
   assert.equal(initialHome?.promotion?.attention.backstageUnreadCount,
-   inbox.filter(x=>!x.read).length,
-   "Dashboard badge must exactly match actual private Wrestler/Network/Staff/Scout unread items");
+   inbox.filter(x=>!x.read).length+1,
+   "One current unread wrestler thread plus all certified World messages");
   const exposed=await readPortablePersonaWorkspace(db.pool,{...scope,inboxOnly:true});
   assert.equal(exposed.worldMessages.length,inbox.length);
   const letter=inbox.find(m=>m.kind==="NETWORK")!;
@@ -75,8 +88,8 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
    .find(m=>m.id===letter.id)?.read,true);
   const afterHome=await readPlayerWorldOverview(db.pool,worldId,owner);
   assert.equal(afterHome?.promotion?.attention.backstageUnreadCount,
-   inbox.filter(x=>!x.read).length-1,
-   "Acknowledging real network mail immediately clears one badge without changing World state");
+   inbox.filter(x=>!x.read).length,
+   "Acknowledging real network mail clears exactly one badge, preserving the wrestler thread");
   assert.deepEqual(await withWorldTransaction(db.pool,tx=>tx.query<{revision:string}>(
    "SELECT revision::text FROM ppw_worlds WHERE world_id=$1",[worldId])),before,
    "Reading a message may not modify game state or World revision");
@@ -90,7 +103,7 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_player_attention_dismissals","ppw_world_news_items",
     "ppw_world_news_weeks","ppw_completed_shows","ppw_staff_employments",
-    "ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
+    "ppw_backstage_requests","ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
     "ppw_contracts","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[owner]);
