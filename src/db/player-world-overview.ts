@@ -1,6 +1,7 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
+import {PARTNER_MEDIATION_CANDIDATES_SQL} from "./backstage-partner-replies.js";
 import {derivePromoterAchievements,EMPTY_PROMOTER_COUNTERS,type AchievementMetric} from "../domain/promoter-achievements.js";
 import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
 import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
@@ -407,6 +408,38 @@ export async function readPlayerWorldOverview(
          AND receipt.promotion_id=owned.promotion_id AND receipt.player_id=$2
          AND receipt.attention_id='backstage-world:'||md5(
           'staff-dispute-followup:'||response.mail_id||':'||response.status)))
+      /* The counterpart's message requires a real MEDIATE decision on a
+       * verified working-strain request. Same ranked source as Backstage. */
+      +(SELECT count(*)::integer FROM (
+        SELECT partner.request_id FROM
+         LATERAL (SELECT (w.year-1)*52+w.week-1 AS now) o
+         JOIN LATERAL (${PARTNER_MEDIATION_CANDIDATES_SQL.replace("r.promotion_id=$2","r.promotion_id=owned.promotion_id")}) partner ON true
+       ) conversation WHERE NOT EXISTS(
+         SELECT 1 FROM ppw_player_attention_dismissals read
+         WHERE read.world_id=w.world_id
+          AND read.promotion_id=owned.promotion_id AND read.player_id=$2
+          AND read.attention_id='backstage-world:'||md5(
+           'partner-mediation:'||conversation.request_id)))
+      /* A partner's good-news response has to follow the original
+       * certified 68+-execution tag evidence, not manager invitation. */
+      +(SELECT count(*)::integer FROM (
+        SELECT request.request_id,request.follow_through_week_index
+        FROM ppw_backstage_requests request
+        WHERE request.world_id=w.world_id
+         AND request.promotion_id=owned.promotion_id
+         AND request.kind='PARTNERSHIP' AND request.decision='MEDIATE'
+         AND request.follow_through_kind='MEDIATION_MATCH_COMPLETED'
+         AND request.follow_through_week_index BETWEEN
+          greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+        ORDER BY request.follow_through_week_index DESC,
+         request.request_id DESC LIMIT 2
+       ) repaired WHERE NOT EXISTS(
+         SELECT 1 FROM ppw_player_attention_dismissals read
+         WHERE read.world_id=w.world_id
+          AND read.promotion_id=owned.promotion_id AND read.player_id=$2
+          AND read.attention_id='backstage-world:'||md5(
+           'partner-mediation-result:'||repaired.request_id||':'||
+           repaired.follow_through_week_index)))
      )::integer AS backstage_unread_count,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'personId',request.person_id,'name',request.name,'kind',request.kind)

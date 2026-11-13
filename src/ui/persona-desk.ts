@@ -26,6 +26,10 @@ export interface PersonaDeskPort{
   requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
   result?:{mailId:string;decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
    status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
+ respondPartner?(input:{mailId:string;decision:"INVITE"|"LEAVE";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;decision:"INVITE"|"LEAVE";
+   outcome:"READY"|"CAUTIOUS"|"DECLINED";partnerPersonId:string}}>;
  respondFreeAgent?(input:{mailId:string;decision:"INVITE"|"PASS";
   requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
   result?:{mailId:string;personId:string;decision:"INVITE"|"PASS";
@@ -61,6 +65,8 @@ export function mountPersonaDesk(root:HTMLElement,
  let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   requestId:string;expectedRevision:number}|null=null;
  let pendingDisagreement:{mailId:string;decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
+  requestId:string;expectedRevision:number}|null=null;
+ let pendingPartner:{mailId:string;decision:"INVITE"|"LEAVE";
   requestId:string;expectedRevision:number}|null=null;
  let pendingRecruitment:{mailId:string;decision:"INVITE"|"PASS";
   requestId:string;expectedRevision:number}|null=null;
@@ -295,6 +301,33 @@ export function mountPersonaDesk(root:HTMLElement,
   }catch(e){error=e instanceof Error?e.message:"Staff disagreement reply not confirmed";}
   finally{loading=false;render();}
  }
+ async function answerPartner(mailId:string,decision:"INVITE"|"LEAVE"){
+  if(!view||loading||!port.respondPartner||view.worldRevision===null)return;
+  const same=pendingPartner?.mailId===mailId&&pendingPartner.decision===decision;
+  const request=same?pendingPartner!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingPartner=request;loading=true;render();
+  try{
+   const applied=await port.respondPartner(request);
+   if(applied.status!=="APPLIED"&&applied.status!=="REPLAYED")
+    throw Error("The World changed. Refresh before speaking to this partner.");
+   const receipt=applied.result;
+   const original=view.worldMessages?.find(x=>x.id===mailId);
+   if(!receipt||receipt.mailId!==mailId||receipt.decision!==decision||
+    !original?.targetPersonId||
+    receipt.partnerPersonId!==original.targetPersonId||
+    !["READY","CAUTIOUS","DECLINED"].includes(receipt.outcome)||
+    (decision==="LEAVE")!==(receipt.outcome==="DECLINED"))
+    throw Error("Partner reply was not confirmed. Retrying uses your original answer.");
+   const updated=(messages:WorldMail[]|undefined)=>(messages??[]).map(m=>
+    m.id===mailId?{...m,canPartnerRespond:false,
+     partnerResponse:{decision:receipt.decision,outcome:receipt.outcome}}:m);
+   view={...view,worldRevision:applied.revision,worldMessages:updated(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=updated(inboxWorldMessages);
+   inboxWorldRevision=applied.revision;pendingPartner=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Could not confirm partner conversation";}
+  finally{loading=false;render();}
+ }
  async function answerFreeAgent(mailId:string,decision:"INVITE"|"PASS"){
   if(!view||loading||!port.respondFreeAgent||view.worldRevision===null)return;
   const same=pendingRecruitment?.mailId===mailId&&pendingRecruitment.decision===decision;
@@ -375,12 +408,13 @@ export function mountPersonaDesk(root:HTMLElement,
    back.classList.add("ppw-backstage-phone-back");
    const avatar=el("span","ppw-backstage-phone-avatar",
     mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
-    mail.kind==="FREE_AGENT"?"FA":"ST");
+    mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
    const identity=el("span","ppw-backstage-phone-identity");
    identity.append(el("strong","",mail.sender),
     el("small","",mail.kind==="NETWORK"?"Broadcast partner":
      mail.kind==="SCOUT"?"Talent scouting":
-     mail.kind==="FREE_AGENT"?"Free agent":"Staff Office"));
+     mail.kind==="FREE_AGENT"?"Free agent":
+     mail.kind==="LOCKER_ROOM"?"Locker room":"Staff Office"));
    header.append(back,avatar,identity);chat.append(header);
    chat.append(el("small","ppw-backstage-date","YEAR "+
     (Math.floor(mail.createdWeekIndex/52)+1)+" · WEEK "+
@@ -393,6 +427,7 @@ export function mountPersonaDesk(root:HTMLElement,
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
      mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
      mail.kind==="FREE_AGENT"?"No contract or appearance has been agreed.":
+     mail.kind==="LOCKER_ROOM"?"From actual teammate match history and an answered mediation request.":
      "Based on your actual roster, contracts or active programmes."));
    const actionNames:Record<WorldMailAction,string>={
     COMMERCIALS:"Review broadcaster →",CONTRACTS:"Review contracts →",
@@ -461,6 +496,21 @@ export function mountPersonaDesk(root:HTMLElement,
       "The relevant appointment or wrestler contract ended before the review.":
       "Your answer was recorded. No match, programme or workload was changed."));
    }
+   if(mail.kind==="LOCKER_ROOM"&&mail.partnerResponse){
+    const reply=mail.partnerResponse;
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     reply.decision==="INVITE"?
+      "I'd like you two to try working together again. Will you give it another shot?":
+      "I hear you. I won't ask for another shared match right now."));
+    chat.append(el("article","ppw-persona-bubble ppw-persona-in",
+     reply.outcome==="READY"?
+      "I'm willing. Book us together and we'll show what we can do. It'll have to happen in the ring.":
+     reply.outcome==="CAUTIOUS"?
+      "I'm not convinced yet. The trust or the workload isn't there right now. If you pair us, don't expect instant chemistry.":
+      "Fair enough. I'll focus on my own work for now."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     "The original working relationship only changes from certified matches. This conversation made no booking or attribute change."));
+   }
    if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse){
     const reply=mail.freeAgentResponse;
     chat.append(el("article","ppw-persona-bubble ppw-persona-out",
@@ -477,6 +527,12 @@ export function mountPersonaDesk(root:HTMLElement,
      "No contract offer was submitted."));
    }
    const actions=el("div","ppw-backstage-world-actions");
+   if(mail.kind==="LOCKER_ROOM"&&mail.canPartnerRespond&&!mail.partnerResponse&&port.respondPartner){
+    actions.append(button("Ask them to work together",
+     ()=>void answerPartner(mail.id,"INVITE"),loading));
+    actions.append(button("Leave it for now",
+     ()=>void answerPartner(mail.id,"LEAVE"),loading));
+   }
    if(mail.kind==="STAFF"&&mail.canDisagree&&!mail.disagreementResponse&&port.respondDisagreement){
     actions.append(button("Prioritise medical recovery",
      ()=>void answerDisagreement(mail.id,"PRIORITISE_HEALTH"),loading));
@@ -578,7 +634,7 @@ export function mountPersonaDesk(root:HTMLElement,
     if(!mail.read)item.classList.add("ppw-backstage-unread");
     const avatar=el("span","ppw-backstage-avatar",
      mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
-     mail.kind==="FREE_AGENT"?"FA":"ST");
+     mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
     const copy=el("span","ppw-backstage-contact-copy");
     const top=el("span","ppw-backstage-contact-top");
     top.append(el("strong","",mail.sender),el("small","ppw-backstage-contact-stamp",

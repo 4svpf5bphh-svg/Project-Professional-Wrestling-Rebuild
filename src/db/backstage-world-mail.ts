@@ -7,8 +7,9 @@ import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {worldStaff} from "../domain/world-staff.js";
 import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
+import {PARTNER_MEDIATION_CANDIDATES_SQL} from "./backstage-partner-replies.js";
 import {COMMERCIAL_COMPANIES} from "../domain/commercial-offers.js";
-export type WorldMailKind="NETWORK"|"STAFF"|"SCOUT"|"FREE_AGENT";
+export type WorldMailKind="NETWORK"|"STAFF"|"SCOUT"|"FREE_AGENT"|"LOCKER_ROOM";
 export type WorldMailAction="COMMERCIALS"|"CONTRACTS"|"PROGRAMMES"|"STAFF"|"MARKET";
 export interface WorldMail{
  id:string;kind:WorldMailKind;sender:string;subject:string;body:string;
@@ -21,6 +22,8 @@ export interface WorldMail{
  canDisagree?:boolean;
  disagreementResponse?:{decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
+ canPartnerRespond?:boolean;
+ partnerResponse?:{decision:"INVITE"|"LEAVE";outcome:"READY"|"CAUTIOUS"|"DECLINED"};
  canFreeAgentRespond?:boolean;
  freeAgentResponse?:{decision:"INVITE"|"PASS";status:"INVITED"|"DECLINED"|"PENDING"|"ACCEPTED"|"REJECTED"|"WITHDRAWN"};
  /** Verified market contact; the dossier and actual offer rules remain authoritative. */
@@ -35,7 +38,8 @@ interface MailRow extends Record<string,unknown>{
  staff_reply_due_week_index:number|null;
  reply_decision:string|null;reply_status:string|null;reply_due_week_index:number|null;
  free_agent_decision:string|null;free_agent_offer_status:string|null;
- can_free_agent_reply:boolean;
+ can_free_agent_reply:boolean;can_partner_reply:boolean;
+ partner_reply_decision:string|null;partner_reply_outcome:string|null;
  can_disagree:boolean;disagreement_decision:string|null;
  disagreement_status:string|null;disagreement_due_week_index:number|null;
 }
@@ -356,6 +360,43 @@ WITH owner AS MATERIALIZED (
      AND c.expires_week_index>=o.now)
   ORDER BY p.popularity DESC,p.person_id LIMIT 1
  ) available ON true
+), partner_mediation AS (
+ /* The actual contracted teammate responds only after the manager answered
+  * verified PARTNERSHIP strain by explicitly agreeing to MEDIATE. */
+ SELECT 'LOCKER_ROOM'::text AS kind,
+  'partner-mediation:'||p.request_id AS evidence,
+  p.partner_id AS sender_key,
+  'About working with '||p.initiating_name AS subject,
+  'I heard '||p.initiating_name||
+   ' asked you to help us work together. Our recent tag work damaged trust.'||
+   ' If you want to give us another chance, let me know. It will have to happen in the ring.' AS body,
+  'PROGRAMMES'::text AS action,
+  p.responded_week_index AS created_week_index,
+  p.partner_id AS target_person_id,p.partner_name AS sender_name
+ FROM owner o JOIN LATERAL (${PARTNER_MEDIATION_CANDIDATES_SQL}) p ON true
+), partner_mediation_followup AS (
+ /* Certified good teamwork in a later match is the only reconciliation
+  * evidence; the established working-relationship settlement stays authoritative. */
+ SELECT 'LOCKER_ROOM'::text AS kind,
+  'partner-mediation-result:'||r.request_id||':'||
+    r.follow_through_week_index AS evidence,
+  r.related_person_id AS sender_key,
+  'Our tag work finally came together' AS subject,
+  'That last completed tag match with '||initiator.name||
+   ' was the kind of work we needed. We are starting to understand each other out there.' AS body,
+  'PROGRAMMES'::text AS action,
+  r.follow_through_week_index AS created_week_index,
+  r.related_person_id AS target_person_id,partner.name AS sender_name
+ FROM ppw_backstage_requests r JOIN owner o ON true
+ JOIN ppw_people partner ON partner.world_id=r.world_id
+  AND partner.person_id=r.related_person_id
+ JOIN ppw_people initiator ON initiator.world_id=r.world_id
+  AND initiator.person_id=r.person_id
+ WHERE r.world_id=$1 AND r.promotion_id=$2
+  AND r.kind='PARTNERSHIP' AND r.decision='MEDIATE'
+  AND r.follow_through_kind='MEDIATION_MATCH_COMPLETED'
+  AND r.follow_through_week_index BETWEEN greatest(0,o.now-12) AND o.now
+ ORDER BY r.follow_through_week_index DESC,r.request_id DESC LIMIT 2
 ), recruitment_result AS (
  /* The conversation only earns a result when the canonical wrestler offer
   * actually resolves. An invitation cannot fabricate a contract. */
@@ -397,6 +438,7 @@ WITH owner AS MATERIALIZED (
  UNION ALL SELECT * FROM staff_disagreement UNION ALL SELECT * FROM staff_disagreement_answered
  UNION ALL SELECT * FROM staff_dispute_followup
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
+ UNION ALL SELECT * FROM partner_mediation UNION ALL SELECT * FROM partner_mediation_followup
  UNION ALL SELECT * FROM recruitment_result
 ), candidate AS (
  SELECT 'backstage-world:'||md5(message.evidence) AS id,
@@ -413,6 +455,14 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  staff_reply.decision AS staff_reply_decision,
  staff_reply.status AS staff_reply_status,
  staff_reply.due_week_index AS staff_reply_due_week_index,
+ partner_reply.decision AS partner_reply_decision,
+ partner_reply.outcome AS partner_reply_outcome,
+ (c.kind='LOCKER_ROOM' AND c.evidence LIKE 'partner-mediation:%'
+  AND partner_reply.mail_id IS NULL
+  AND EXISTS(SELECT 1 FROM ppw_backstage_requests request
+   WHERE request.world_id=$1 AND request.promotion_id=$2
+    AND 'partner-mediation:'||request.request_id=c.evidence
+    AND request.follow_through_week_index IS NULL)) AS can_partner_reply,
  agent_reply.decision AS free_agent_decision,
  agent_offer.status AS free_agent_offer_status,
  (c.evidence LIKE 'staff-dispute:%' AND debate.mail_id IS NULL) AS can_disagree,
@@ -464,6 +514,9 @@ LEFT JOIN ppw_backstage_network_replies reply ON reply.world_id=$1
  AND reply.promotion_id=$2 AND reply.mail_id=c.id
 LEFT JOIN ppw_backstage_staff_replies staff_reply ON staff_reply.world_id=$1
  AND staff_reply.promotion_id=$2 AND staff_reply.mail_id=c.id
+LEFT JOIN ppw_backstage_partner_replies partner_reply
+ ON partner_reply.world_id=$1 AND partner_reply.promotion_id=$2
+ AND partner_reply.mail_id=c.id
 LEFT JOIN ppw_backstage_staff_disagreements debate
  ON debate.world_id=$1 AND debate.promotion_id=$2 AND debate.mail_id=c.id
 LEFT JOIN ppw_backstage_free_agent_replies agent_reply
@@ -490,10 +543,19 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
  }
  return rows.map(r=>{
   if(!/^backstage-world:[a-f0-9]{32}$/.test(r.id)||
-   !["NETWORK","STAFF","SCOUT","FREE_AGENT"].includes(r.kind)||
+   !["NETWORK","STAFF","SCOUT","FREE_AGENT","LOCKER_ROOM"].includes(r.kind)||
    !["COMMERCIALS","CONTRACTS","PROGRAMMES","STAFF","MARKET"].includes(r.action)||
    !Number.isSafeInteger(r.created_week_index)||r.created_week_index<0)
    throw new Error("Invalid certified Backstage World correspondence");
+  if(r.partner_reply_decision!=null&&(
+    r.kind!=="LOCKER_ROOM"||
+    !["INVITE","LEAVE"].includes(r.partner_reply_decision)||
+    !["READY","CAUTIOUS","DECLINED"].includes(r.partner_reply_outcome??"")||
+    (r.partner_reply_decision==="LEAVE")!==(r.partner_reply_outcome==="DECLINED")))
+    throw new Error("Invalid authentic partner decision");
+  if(r.kind==="LOCKER_ROOM"&&(!r.target_person_id||!r.sender_name||
+    r.sender_key!==r.target_person_id))
+    throw new Error("Locker room correspondence requires an actual partner");
   if(r.free_agent_decision!=null&&(
     !["INVITE","PASS"].includes(r.free_agent_decision)||
     r.kind!=="FREE_AGENT"||
@@ -519,11 +581,15 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    !Number.isSafeInteger(r.reply_due_week_index)||r.kind!=="NETWORK"))
    throw new Error("Invalid broadcaster reply receipt");
   return {id:r.id,kind:r.kind,
-   sender:r.kind==="FREE_AGENT"?r.sender_name!:
+   sender:r.kind==="FREE_AGENT"||r.kind==="LOCKER_ROOM"?r.sender_name!:
     network??catalogue.get(r.sender_key)??(r.kind==="NETWORK"?"Your broadcaster":"Staff Office"),
    subject:r.subject,body:r.body,action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
    ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
+   ...(r.kind==="LOCKER_ROOM"&&r.can_partner_reply===true?{canPartnerRespond:true}:{}),
+   ...(r.partner_reply_decision!=null?{partnerResponse:{
+    decision:r.partner_reply_decision as "INVITE"|"LEAVE",
+    outcome:r.partner_reply_outcome as "READY"|"CAUTIOUS"|"DECLINED"}}:{}),
    ...(r.kind==="FREE_AGENT"&&r.can_free_agent_reply===true?{canFreeAgentRespond:true}:{}),
    ...(r.free_agent_decision!=null?{freeAgentResponse:{
     decision:r.free_agent_decision as "INVITE"|"PASS",

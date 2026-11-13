@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {partnerMediationOutcome,PARTNER_MEDIATION_CANDIDATES_SQL}
+ from "../src/db/backstage-partner-replies.js";
+import {WORLD_MAIL_SQL} from "../src/db/backstage-world-mail.js";
+test("Second wrestler's willingness is grounded in trust and fatigue, without click-to-repair chemistry",()=>{
+ assert.equal(partnerMediationOutcome("INVITE",65,10),"READY");
+ assert.equal(partnerMediationOutcome("INVITE",45,74),"READY");
+ assert.equal(partnerMediationOutcome("INVITE",44,20),"CAUTIOUS");
+ assert.equal(partnerMediationOutcome("INVITE",60,75),"CAUTIOUS");
+ assert.equal(partnerMediationOutcome("LEAVE",85,0),"DECLINED");
+ assert.throws(()=>partnerMediationOutcome("INVITE",Infinity,0),/Invalid verified/);
+ assert.throws(()=>partnerMediationOutcome("INVITE",50,-10),/Invalid verified/);
+ assert.match(PARTNER_MEDIATION_CANDIDATES_SQL,/r.kind='PARTNERSHIP' AND r.decision='MEDIATE'/);
+ assert.match(PARTNER_MEDIATION_CANDIDATES_SQL,/relation.professional_trust/);
+ assert.match(PARTNER_MEDIATION_CANDIDATES_SQL,/signed.status='SIGNED'/);
+ assert.match(WORLD_MAIL_SQL,/partner_mediation AS/);
+ assert.match(WORLD_MAIL_SQL,/partner_mediation_followup AS/);
+ assert.match(WORLD_MAIL_SQL,/r.follow_through_kind='MEDIATION_MATCH_COMPLETED'/);
+ assert.match(WORLD_MAIL_SQL,/partner_reply.outcome AS partner_reply_outcome/);
+ assert.match(WORLD_MAIL_SQL,/LIMIT 20/);
+ assert.doesNotMatch(WORLD_MAIL_SQL,/random\(\)|groq/i);
+});

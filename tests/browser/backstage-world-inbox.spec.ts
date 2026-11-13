@@ -485,3 +485,83 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("Backstage partner answers a certified mediation request without instant chemistry at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:5,name:"Genesis",year:1,week:8,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:100000,debt:0,lastWeeklyNet:0,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,
+     backstageUnreadCount:1,plannedShows:0,expiringTalent:false,
+     pendingContractOffers:false}}};
+  const mailId="backstage-world:"+"a".repeat(32);
+  let revision=5,reads=0,requests:string[]=[],attempts=0;
+  const letters=[{id:mailId,kind:"LOCKER_ROOM",sender:"Joe",
+   subject:"About working with Lance",
+   body:"I heard Lance asked you to help us work together. Our recent tag work damaged trust.",
+   action:"PROGRAMMES",targetPersonId:"joe",createdWeekIndex:7,
+   read:false,canPartnerRespond:true,
+   partnerResponse:undefined as {decision:string;outcome:string}|undefined}];
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,
+   availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string;
+    decision?:string;expectedRevision?:number;requestId?:string};
+   if(x.method==="overview")return r.fulfill({json:overview});
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:8,worldRevision:revision,
+    canEdit:true,roster:[],persona:null,history:[],recentRequests:[],
+    conversations:[],memories:[],archetypes:[],documentedAlternates:[],
+    nextPitchWeek:0,worldMessages:letters
+   }});
+   if(x.method==="markBackstageWorldRead"){
+    expect(x.mailId).toBe(mailId);reads++;letters[0]!.read=true;
+    return r.fulfill({json:{readCount:1}});
+   }
+   if(x.method==="respondPartnerMediation"){
+    expect(x.mailId).toBe(mailId);
+    expect(x.decision).toBe("INVITE");
+    expect(x.expectedRevision).toBe(5);
+    requests.push(x.requestId!);attempts++;
+    if(attempts===1){
+     revision=6;letters[0]!.canPartnerRespond=false;
+     letters[0]!.partnerResponse={decision:"INVITE",outcome:"CAUTIOUS"};
+     return r.fulfill({status:503,contentType:"application/json",
+      body:JSON.stringify({error:"Lost network reply"})});
+    }
+    return r.fulfill({json:{status:"REPLAYED",revision:6,
+     result:{mailId,decision:"INVITE",outcome:"CAUTIOUS",partnerPersonId:"joe"}}});
+   }
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/home");
+  const home=page.getByRole("button",{name:"Open Backstage, 1 unread message"});
+  await expect(home).toBeVisible();
+  await home.click();
+  await page.getByRole("button",{name:"Locker room"}).click();
+  const card=page.getByRole("button",{name:/Joe.*About working with Lance/});
+  await expect(card).toBeVisible();
+  await card.click();
+  const thread=page.getByLabel("Message from Joe");
+  await expect(thread).toBeVisible();
+  await expect(thread).toContainText("recent tag work damaged trust");
+  await expect(thread).toContainText("From actual teammate match history");
+  await page.getByRole("button",{name:"Ask them to work together"}).click();
+  await expect(page.locator(".ppw-alert.ppw-error")).toContainText(/Lost network reply/);
+  await page.getByRole("button",{name:"Ask them to work together"}).click();
+  await expect(thread.locator(".ppw-persona-bubble.ppw-persona-in").last())
+   .toContainText("trust or the workload isn't there right now");
+  await expect(thread).toContainText("made no booking or attribute change");
+  await expect(page.getByRole("button",{name:"Ask them to work together"})).toHaveCount(0);
+  expect(attempts).toBe(2);
+  expect(requests[0]).toBe(requests[1],"Retry must send the original immutable command");
+  expect(reads).toBe(1);
+  await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

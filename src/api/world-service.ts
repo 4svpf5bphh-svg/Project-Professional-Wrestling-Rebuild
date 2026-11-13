@@ -25,6 +25,7 @@ import {replyToBroadcaster,type NetworkReplyInput} from "../db/backstage-network
 import {respondToStaffMail,type StaffReplyInput} from "../db/backstage-staff-replies.js";
 import {respondToStaffDisagreement,type DisagreementInput} from "../db/backstage-staff-disagreements.js";
 import {respondToFreeAgent,type RecruitmentResponseInput} from "../db/backstage-free-agent-replies.js";
+import {respondToPartnerMediation,type PartnerReplyInput} from "../db/backstage-partner-replies.js";
 import {setBackstageThreadArchive} from "../db/backstage-thread-archive.js";
 import {decideBackstageRequest,type BackstageDecisionInput} from "../db/backstage-conversations.js";
 import {requestPortablePersonaChange,type PersonaChangeInput}
@@ -821,6 +822,15 @@ export async function respondBackstageFreeAgentAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.mailId,"message");
  return respondToFreeAgent(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Partner-owned voice following an original authenticated working-team mediation.
+ * Consent is a conversation, not a chemistry or match-result change. */
+export async function respondPartnerMediationAsActor(context:WorldApiContext,
+ input:Omit<PartnerReplyInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return respondToPartnerMediation(context.pool,{...input,playerId:context.actor.playerId});
 }
 
 /** Archive/restore is private presentation state, never a booking decision. */

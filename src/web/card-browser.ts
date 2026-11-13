@@ -888,6 +888,7 @@ function personaPort(call:ReturnType<typeof createCardClient>,
   respondNetwork:input=>call("respondBackstageNetwork",input),
   respondStaff:input=>call("respondBackstageStaff",input),
   respondDisagreement:input=>call("respondBackstageDisagreement",input),
+  respondPartner:input=>call("respondPartnerMediation",input),
   respondFreeAgent:input=>call("respondBackstageFreeAgent",input),
   openRecruitment:(personId,name)=>{
    queueBackstageRecruitmentFocus({worldId:scope.worldId,
