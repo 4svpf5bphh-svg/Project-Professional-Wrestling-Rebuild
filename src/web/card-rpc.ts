@@ -136,7 +136,7 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="respondBackstageFreeAgent"){
   if(p.decision!=="INVITE"&&p.decision!=="PASS")
    throw new Error("Invalid free-agent reply");
-  if(!Number.isSafeInteger(p.expectedRevision)||p.expectedRevision<0)
+  if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
    throw new Error("Invalid World revision");
   return respondBackstageFreeAgentAsActor(context,{worldId,promotionId,
    mailId:id("mailId"),requestId:id("requestId"),
