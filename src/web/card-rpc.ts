@@ -11,7 +11,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,achievementsWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
- portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,backstageArchiveAsActor,
+ portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,respondBackstageFreeAgentAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
@@ -130,6 +130,15 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
    throw new Error("Invalid World revision");
   return respondBackstageStaffAsActor(context,{worldId,promotionId,
+   mailId:id("mailId"),requestId:id("requestId"),
+   expectedRevision:p.expectedRevision as number,decision:p.decision});
+ }
+ if(method==="respondBackstageFreeAgent"){
+  if(p.decision!=="INVITE"&&p.decision!=="PASS")
+   throw new Error("Invalid free-agent reply");
+  if(!Number.isSafeInteger(p.expectedRevision)||p.expectedRevision<0)
+   throw new Error("Invalid World revision");
+  return respondBackstageFreeAgentAsActor(context,{worldId,promotionId,
    mailId:id("mailId"),requestId:id("requestId"),
    expectedRevision:p.expectedRevision as number,decision:p.decision});
  }

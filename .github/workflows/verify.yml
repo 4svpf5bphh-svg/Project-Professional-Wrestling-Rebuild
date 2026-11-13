@@ -699,6 +699,10 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0146_backstage_staff_replies.sql
+      - name: Apply owner-only free-agent recruitment conversations
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0147_backstage_free_agent_replies.sql
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test

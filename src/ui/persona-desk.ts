@@ -22,6 +22,11 @@ export interface PersonaDeskPort{
   requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
   result?:{mailId:string;decision:"COMMIT"|"DEFER";
    status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
+ respondFreeAgent?(input:{mailId:string;decision:"INVITE"|"PASS";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;personId:string;decision:"INVITE"|"PASS";
+   status:"INVITED"|"DECLINED"}}>;
+ openRecruitment?(personId:string,name:string):void;
  openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
  decide(input:{conversationId:string;decision:BackstageDecision;
@@ -50,6 +55,8 @@ export function mountPersonaDesk(root:HTMLElement,
  let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
  let selectedWorldMailId:string|null=null;
  let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
+  requestId:string;expectedRevision:number}|null=null;
+ let pendingRecruitment:{mailId:string;decision:"INVITE"|"PASS";
   requestId:string;expectedRevision:number}|null=null;
  let pendingStaff:{mailId:string;decision:"COMMIT"|"DEFER";
   requestId:string;expectedRevision:number}|null=null;
@@ -256,6 +263,34 @@ export function mountPersonaDesk(root:HTMLElement,
   }catch(e){error=e instanceof Error?e.message:"Staff reply not confirmed";}
   finally{loading=false;render();}
  }
+ async function answerFreeAgent(mailId:string,decision:"INVITE"|"PASS"){
+  if(!view||loading||!port.respondFreeAgent||view.worldRevision===null)return;
+  const same=pendingRecruitment?.mailId===mailId&&pendingRecruitment.decision===decision;
+  const request=same?pendingRecruitment!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingRecruitment=request;loading=true;render();
+  try{
+   const applied=await port.respondFreeAgent(request);
+   if(applied.status!=="APPLIED"&&applied.status!=="REPLAYED")
+    throw Error("The World changed. Refresh before answering this wrestler.");
+   const receipt=applied.result;
+   const current=view.worldMessages?.find(m=>m.id===mailId);
+   if(!receipt||!current?.targetPersonId||
+    receipt.personId!==current.targetPersonId||
+    receipt.mailId!==mailId||receipt.decision!==decision||
+    receipt.status!==(decision==="INVITE"?"INVITED":"DECLINED"))
+    throw Error("Recruitment response not confirmed. Retrying uses the same reply.");
+   const updated=(messages:WorldMail[]|undefined)=>(messages??[]).map(m=>
+    m.id===mailId?{...m,canFreeAgentRespond:false,
+     freeAgentResponse:{decision,status:receipt.status}}:m);
+   view={...view,worldRevision:applied.revision,
+    worldMessages:updated(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=updated(inboxWorldMessages);
+   inboxWorldRevision=applied.revision;
+   pendingRecruitment=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Recruitment reply not confirmed";}
+  finally{loading=false;render();}
+ }
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
  function render(){
   const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
@@ -368,7 +403,36 @@ export function mountPersonaDesk(root:HTMLElement,
      reply.status==="EXCUSED"?"The staff appointment ended before the review deadline.":
      "Your reply was received. No new workload or storyline change was made."));
    }
+   if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse){
+    const reply=mail.freeAgentResponse;
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     reply.decision==="INVITE"?
+      "I'm interested. Let's discuss a contract and see if we can agree terms.":
+      "Thanks for getting in touch. We won't pursue a deal right now."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     reply.status==="INVITED"?
+      "No offer has been made. Prepare the terms in Talent Market; the wrestler still decides.":
+     reply.status==="PENDING"?"Your actual contract offer is awaiting a wrestler response.":
+     reply.status==="ACCEPTED"?"The actual terms were accepted. Review the signed deal in Contracts.":
+     reply.status==="REJECTED"?"The wrestler declined the submitted terms. Review the decision in Contracts.":
+     reply.status==="WITHDRAWN"?"Your previously submitted offer was withdrawn.":
+     "No contract offer was submitted."));
+   }
    const actions=el("div","ppw-backstage-world-actions");
+   if(mail.kind==="FREE_AGENT"&&mail.canFreeAgentRespond&&
+    !mail.freeAgentResponse&&port.respondFreeAgent){
+    actions.append(button("Let's discuss a contract",
+     ()=>void answerFreeAgent(mail.id,"INVITE"),loading));
+    actions.append(button("Not right now",
+     ()=>void answerFreeAgent(mail.id,"PASS"),loading));
+   }
+   if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse?.decision==="INVITE"&&
+    mail.freeAgentResponse.status==="INVITED"&&mail.targetPersonId&&port.openRecruitment)
+    actions.append(button("Prepare real contract offer",()=>
+     port.openRecruitment!(mail.targetPersonId!,mail.sender),loading));
+   if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse?.status==="PENDING")
+    actions.append(button("Review pending offer",()=>port.openDepartment?.("CONTRACTS"),
+     loading||!port.openDepartment));
    if(mail.kind==="STAFF"&&mail.canStaffRespond&&!mail.staffResponse&&port.respondStaff){
     actions.append(button(mail.action==="STAFF"?
      "I'll rest the tired roster":"I'll refresh the rivalries",

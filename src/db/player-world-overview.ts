@@ -324,6 +324,35 @@ export async function readPlayerWorldOverview(
           AND receipt.attention_id='backstage-world:'||md5(
            'free-agent:'||prospect.person_id||':'||
            floor(((w.year-1)*52+w.week-1)/8)::integer)))
+      /* Canonical wrestler replies: new unread response only after a real,
+       * resolved contract offer following the manager's invitation. */
+      +(SELECT count(*)::integer FROM (
+        SELECT reply.mail_id,bid.offer_id,bid.status
+        FROM ppw_backstage_free_agent_replies reply
+        JOIN LATERAL (
+         SELECT o.offer_id,o.status,o.submitted_week_index
+         FROM ppw_contract_offers o
+         WHERE o.world_id=reply.world_id
+          AND o.promotion_id=reply.promotion_id
+          AND o.person_id=reply.person_id
+          AND o.source_contract_id IS NULL
+          AND o.submitted_week_index>=reply.responded_week_index
+          AND o.status IN ('ACCEPTED','REJECTED')
+         ORDER BY o.submitted_week_index DESC,o.offer_id DESC LIMIT 1
+        ) bid ON true
+        WHERE reply.world_id=w.world_id
+         AND reply.promotion_id=owned.promotion_id AND reply.player_id=$2
+         AND reply.decision='INVITE'
+         AND greatest(reply.responded_week_index+1,bid.submitted_week_index+1)
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY bid.submitted_week_index DESC,bid.offer_id DESC LIMIT 2
+       ) response WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.player_id=$2 AND receipt.promotion_id=owned.promotion_id
+         AND receipt.attention_id='backstage-world:'||md5(
+          'free-agent-result:'||response.mail_id||':'||response.offer_id||':'||response.status)))
      )::integer AS backstage_unread_count,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'personId',request.person_id,'name',request.name,'kind',request.kind)

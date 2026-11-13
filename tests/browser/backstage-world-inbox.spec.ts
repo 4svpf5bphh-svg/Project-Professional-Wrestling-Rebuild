@@ -243,3 +243,78 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("Verified free agent replies open the original focused contract offer on "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:4,name:"Genesis",year:1,week:5,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:5_000_000,debt:0,lastWeeklyNet:8000,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,backstageUnreadCount:1,
+     plannedShows:1,expiringTalent:false,pendingContractOffers:false}}};
+  const personId="verified-prospect",name="Available Prospect";
+  const mailId="backstage-world:"+"a".repeat(32);
+  const messages=[{id:mailId,kind:"FREE_AGENT",sender:name,
+   subject:"Could we talk about a booking?",body:"I caught your certified show and wondered if there might be a spot.",
+   action:"MARKET",targetPersonId:personId,createdWeekIndex:1,read:false,
+   canFreeAgentRespond:true,
+   freeAgentResponse:undefined as {decision:string;status:string}|undefined}];
+  const market={year:1,week:5,currentWeekIndex:4,worldRevision:5,canEdit:true,
+   view:"MARKET",offset:0,hasMore:false,offerBudget:{hasTalentManager:false,
+    talentManager:null,cash:5_000_000,weeklyIncome:90_000,
+    weeklyOverhead:25_000,weeklyGuarantees:30_000,
+    weeklyStaffPayroll:5_000,weeklyWageLimit:55_000,cashReserve:300_000,
+    signedRosterExposure:1_000_000},
+   people:[{personId,name,division:"MEN",availability:"FREE_AGENT",
+    interest:"INTERESTED",pendingOffer:false,estimatedWeeklyValue:10_000,
+    recognition:60,popularity:55,momentum:50,inRingQuality:78,
+    matchCraft:76,presentation:82,morale:75}]};
+  const calls:string[]=[];const filters:Record<string,unknown>[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string;
+    decision?:string;filter?:Record<string,unknown>};
+   calls.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:5,worldRevision:4,canEdit:true,
+    roster:[],persona:null,history:[],recentRequests:[],conversations:[],
+    memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
+    worldMessages:messages}});
+   if(x.method==="markBackstageWorldRead"){messages[0]!.read=true;
+    return r.fulfill({json:{readCount:1}});}
+   if(x.method==="respondBackstageFreeAgent"){
+    expect(x.mailId).toBe(mailId);expect(x.decision).toBe("INVITE");
+    messages[0]!.canFreeAgentRespond=false;
+    messages[0]!.freeAgentResponse={decision:"INVITE",status:"INVITED"};
+    return r.fulfill({json:{status:"APPLIED",revision:5,
+     result:{mailId,personId,decision:"INVITE",status:"INVITED"}}});
+   }
+   if(x.method==="wrestlerDirectory"){filters.push(x.filter??{});
+    return r.fulfill({json:market});}
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:/Could we talk about a booking/}).click();
+  const thread=page.getByLabel("Message from Available Prospect");
+  await expect(thread).toContainText("No contract or appearance has been agreed");
+  await page.getByRole("button",{name:"Let's discuss a contract"}).click();
+  await expect(thread).toContainText("No offer has been made");
+  await expect(page.getByRole("button",{name:"Let's discuss a contract"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Prepare real contract offer"}).click();
+  await expect(page).toHaveURL(/#\/market$/);
+  await expect(page.getByRole("heading",{name:"Talent Market"})).toBeVisible();
+  await expect(page.locator(".ppw-directory-offer")).toBeVisible();
+  await expect(page.locator(".ppw-directory-card").first()).toContainText(name);
+  expect(filters).toHaveLength(1);
+  expect(filters[0]?.search).toBe(name);
+  expect(calls.filter(x=>x==="respondBackstageFreeAgent")).toHaveLength(1);
+  expect(calls.filter(x=>x==="backstage")).toHaveLength(1);
+  expect(calls.filter(x=>x==="submitContractOffer")).toHaveLength(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

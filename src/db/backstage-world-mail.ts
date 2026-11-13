@@ -17,6 +17,8 @@ export interface WorldMail{
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  networkResponse?:{decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
+ canFreeAgentRespond?:boolean;
+ freeAgentResponse?:{decision:"INVITE"|"PASS";status:"INVITED"|"DECLINED"|"PENDING"|"ACCEPTED"|"REJECTED"|"WITHDRAWN"};
  /** Verified market contact; the dossier and actual offer rules remain authoritative. */
  targetPersonId?:string;
 }
@@ -28,6 +30,8 @@ interface MailRow extends Record<string,unknown>{
  staff_reply_decision:string|null;staff_reply_status:string|null;
  staff_reply_due_week_index:number|null;
  reply_decision:string|null;reply_status:string|null;reply_due_week_index:number|null;
+ free_agent_decision:string|null;free_agent_offer_status:string|null;
+ can_free_agent_reply:boolean;
 }
 /** Shared source selection is also used for validating read receipts.
  * Each CTE is limited to the owner's promotion and a rolling evidence window.
@@ -266,11 +270,46 @@ WITH owner AS MATERIALIZED (
      AND c.expires_week_index>=o.now)
   ORDER BY p.popularity DESC,p.person_id LIMIT 1
  ) available ON true
+), recruitment_result AS (
+ /* The conversation only earns a result when the canonical wrestler offer
+  * actually resolves. An invitation cannot fabricate a contract. */
+ SELECT 'FREE_AGENT'::text AS kind,
+  'free-agent-result:'||r.mail_id||':'||bid.offer_id||':'||bid.status AS evidence,
+  person.person_id AS sender_key,
+  CASE bid.status WHEN 'ACCEPTED' THEN 'I accepted your offer'
+   ELSE 'About your contract offer' END AS subject,
+  CASE bid.status WHEN 'ACCEPTED'
+   THEN 'I have accepted the terms your promotion submitted. The signed contract and dates are in the Contract Desk.'
+   ELSE 'I have decided against the contract terms you offered. You can review the decision in your Contract Desk.'
+  END AS body,
+  'CONTRACTS'::text AS action,
+  greatest(r.responded_week_index+1,bid.submitted_week_index+1)
+   AS created_week_index,
+  person.person_id AS target_person_id,person.name AS sender_name
+ FROM ppw_backstage_free_agent_replies r
+ JOIN owner o ON true
+ JOIN ppw_people person ON person.world_id=r.world_id
+  AND person.person_id=r.person_id
+ JOIN LATERAL (
+  SELECT offer_id,status,submitted_week_index FROM ppw_contract_offers bid
+  WHERE bid.world_id=r.world_id AND bid.promotion_id=r.promotion_id
+   AND bid.person_id=r.person_id
+   AND bid.source_contract_id IS NULL
+   AND bid.submitted_week_index>=r.responded_week_index
+   AND bid.status IN ('ACCEPTED','REJECTED')
+  ORDER BY bid.submitted_week_index DESC,bid.offer_id DESC LIMIT 1
+ ) bid ON true
+ WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
+  AND r.decision='INVITE'
+  AND greatest(r.responded_week_index+1,bid.submitted_week_index+1)
+   BETWEEN greatest(0,o.now-12) AND o.now
+ ORDER BY bid.submitted_week_index DESC,bid.offer_id DESC LIMIT 2
 ), message AS (
  SELECT * FROM network UNION ALL SELECT * FROM content_notice
  UNION ALL SELECT * FROM network_followup UNION ALL SELECT * FROM staff
  UNION ALL SELECT * FROM staff_followup
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
+ UNION ALL SELECT * FROM recruitment_result
 ), candidate AS (
  SELECT 'backstage-world:'||md5(message.evidence) AS id,
   message.evidence,message.kind,message.sender_key,message.subject,message.body,
@@ -286,6 +325,10 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  staff_reply.decision AS staff_reply_decision,
  staff_reply.status AS staff_reply_status,
  staff_reply.due_week_index AS staff_reply_due_week_index,
+ agent_reply.decision AS free_agent_decision,
+ agent_offer.status AS free_agent_offer_status,
+ (c.kind='FREE_AGENT' AND c.evidence LIKE 'free-agent:%'
+  AND agent_reply.mail_id IS NULL) AS can_free_agent_reply,
  (c.kind='STAFF' AND c.action IN ('STAFF','PROGRAMMES')
   AND c.evidence LIKE 'staff:%'
   AND staff_reply.mail_id IS NULL AND NOT EXISTS (
@@ -316,6 +359,17 @@ LEFT JOIN ppw_backstage_network_replies reply ON reply.world_id=$1
  AND reply.promotion_id=$2 AND reply.mail_id=c.id
 LEFT JOIN ppw_backstage_staff_replies staff_reply ON staff_reply.world_id=$1
  AND staff_reply.promotion_id=$2 AND staff_reply.mail_id=c.id
+LEFT JOIN ppw_backstage_free_agent_replies agent_reply
+ ON agent_reply.world_id=$1 AND agent_reply.promotion_id=$2 AND agent_reply.mail_id=c.id
+LEFT JOIN LATERAL (
+ SELECT bid.status FROM ppw_contract_offers bid
+ WHERE agent_reply.decision='INVITE'
+  AND bid.world_id=$1 AND bid.promotion_id=$2
+  AND bid.person_id=agent_reply.person_id
+  AND bid.source_contract_id IS NULL
+  AND bid.submitted_week_index>=agent_reply.responded_week_index
+ ORDER BY bid.submitted_week_index DESC,bid.offer_id DESC LIMIT 1
+) agent_offer ON true
 LEFT JOIN ppw_player_attention_dismissals receipt ON receipt.world_id=$1
  AND receipt.promotion_id=$2 AND receipt.player_id=$3
  AND receipt.attention_id=c.id
@@ -333,6 +387,12 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    !["COMMERCIALS","CONTRACTS","PROGRAMMES","STAFF","MARKET"].includes(r.action)||
    !Number.isSafeInteger(r.created_week_index)||r.created_week_index<0)
    throw new Error("Invalid certified Backstage World correspondence");
+  if(r.free_agent_decision!==null&&(
+    !["INVITE","PASS"].includes(r.free_agent_decision)||
+    r.kind!=="FREE_AGENT"||
+    (r.free_agent_offer_status!==null&&
+     !["PENDING","ACCEPTED","REJECTED","WITHDRAWN"].includes(r.free_agent_offer_status))))
+    throw new Error("Invalid free-agent reply receipt");
   if(r.kind==="FREE_AGENT"&&(!r.target_person_id||!r.sender_name||
    r.sender_key!==r.target_person_id))
    throw new Error("Free-agent outreach requires a verifiable wrestler identity");
@@ -351,6 +411,11 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    subject:r.subject,body:r.body,action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
    ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
+   ...(r.kind==="FREE_AGENT"&&r.can_free_agent_reply===true?{canFreeAgentRespond:true}:{}),
+   ...(r.free_agent_decision!==null?{freeAgentResponse:{
+    decision:r.free_agent_decision as "INVITE"|"PASS",
+    status:r.free_agent_decision==="PASS"?"DECLINED":
+     (r.free_agent_offer_status??"INVITED") as "INVITED"|"PENDING"|"ACCEPTED"|"REJECTED"|"WITHDRAWN"}}:{}),
    ...(r.kind==="STAFF"&&r.can_staff_reply===true?{canStaffRespond:true}:{}),
    ...(r.staff_reply_decision!=null?{staffResponse:{
     decision:r.staff_reply_decision as "COMMIT"|"DEFER",

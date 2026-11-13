@@ -43,11 +43,17 @@ const offerDefaults=():TermsDraft=>({
  weeks:52,dates:40,weekly:0,appearance:9000,bonus:0
 });
 export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
- initialView:DirectoryView="ROSTER"){
- let filter:DirectoryFilter={view:initialView,search:"",division:"ALL",
+ initialView:DirectoryView="ROSTER",
+ recruitmentFocus?:{personId:string;name:string}){
+ // Coming from a genuine wrestler message? Load that name using the same
+ // indexed talent directory and open the authoritative terms editor.
+ // Do not add a separate, under-validated backstage contract composer.
+ const focus=recruitmentFocus&&recruitmentFocus.personId.length<=200?
+  recruitmentFocus:undefined;
+ let filter:DirectoryFilter={view:initialView,search:focus?.name.slice(0,70)??"",division:"ALL",
   availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:initialView==="MARKET"?"INTEREST":"NAME",minPopularity:undefined,limit:25,offset:0};
  let view:WrestlerDirectoryData|null=null,error="",success="",loading=false,
-  sending=false,pendingKey="",activeOffer:string|null=null;
+  sending=false,pendingKey="",activeOffer:string|null=focus?.personId??null;
  let choices=new Map<string,TermsDraft>();
  const openAdvancedTerms=new Set<string>();
  // The player chooses when detailed scouting filters are visible. Persist
