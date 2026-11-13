@@ -439,3 +439,15 @@ html[data-ppw-screen="backstage"] #game .ppw-messenger-thread{
   min-height:calc(100dvh - 180px);height:auto;max-height:none;
   overflow:visible;border-radius:14px}
 }
+
+/* The channel strip scrolls within the phone, never stretches the messenger
+   or document beyond 320/390px. Flex min-size otherwise lets nine tabs
+   expand the containing column rather than overflow locally. */
+.ppw-messenger-inbox .ppw-backstage-inbox{
+ min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+.ppw-messenger-inbox .ppw-backstage-filters{
+ display:flex!important;flex-wrap:nowrap!important;min-width:0!important;
+ width:100%!important;max-width:100%!important;box-sizing:border-box!important;
+ overflow-x:auto!important;overflow-y:hidden!important}
+.ppw-messenger-inbox .ppw-backstage-filters>button{
+ flex:0 0 auto!important;white-space:nowrap!important}

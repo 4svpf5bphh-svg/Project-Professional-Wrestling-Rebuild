@@ -57,6 +57,7 @@ let drawerRoot:HostDrawerRoot="world";
 // Private one-shot navigation target; no wrestler IDs in URLs or storage.
 let pendingBackstagePersonId:string|null=null;
 let backstageReturnSection:HostSection="home";
+let lastRenderedSection:HostSection|null=null;
 let bookingDirty=false;
 let activeBooking:{worldId:string;promotionId:string;showId:string}|null=null;
 function confirmLeavingBooking(next:HostSection){
@@ -275,6 +276,11 @@ function renderSection(){
  if(!session?.overview?.promotion)return;
  document.documentElement.dataset.ppwPromotion=promotionBrand(session.overview.promotion.name).key;
  const section=readHostSection(location.hash);
+ // Deep links can originate from another desk without going through the
+ // drawer. Preserve that origin just as openSection does for a direct action.
+ if(section==="backstage"&&lastRenderedSection&&lastRenderedSection!=="backstage")
+  backstageReturnSection=lastRenderedSection;
+ lastRenderedSection=section;
  if(section==="admin"&&!session.canManualAdvance&&!session.canAiBenchmark){location.hash=hostSectionHash("home");return;}
  if(section!=="card"){bookingDirty=false;activeBooking=null;}
  if(section!=="card"&&section!=="planner"){
@@ -442,6 +448,7 @@ window.addEventListener("ppw:open-backstage",event=>{
 async function loadSession(){
  const sequence=++sessionReadSequence;
  pendingBackstagePersonId=null;pendingLegends=null;
+ lastRenderedSection=null;backstageReturnSection="home";
  clearBookingFocus();clearTitleChallengeFocus();clearLegendRevealPortal();
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
  document.body.classList.remove("ppw-drawer-active");
