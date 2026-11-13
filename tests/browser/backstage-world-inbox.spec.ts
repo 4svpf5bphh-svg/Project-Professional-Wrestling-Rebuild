@@ -75,8 +75,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
-  expect(calls.filter(v=>v==="backstage")).toHaveLength(1,
-   "Backstage filters do not issue one request per conversation");
+  expect(calls.filter(v=>v==="backstage")).toHaveLength(1);
   expect(calls.filter(v=>v==="markBackstageWorldRead")).toHaveLength(2);
   expect(calls.some(v=>/groq|generate|worldAdvance/i.test(v))).toBe(false);
  });

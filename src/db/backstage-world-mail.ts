@@ -124,7 +124,7 @@ LEFT JOIN ppw_player_attention_dismissals receipt ON receipt.world_id=$1
  AND receipt.attention_id=c.id
 ORDER BY c.created_week_index DESC,c.id DESC LIMIT 20
 `;
-function decode(rows:MailRow[]):WorldMail[]{
+function decode(rows:readonly MailRow[]):WorldMail[]{
  if(rows.length>20)throw new Error("Backstage World inbox source exceeded bound");
  const catalogue=new Map<string,string>();
  if(rows.length){
