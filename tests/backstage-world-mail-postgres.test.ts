@@ -78,7 +78,7 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
    inbox.filter(x=>!x.read).length+1,
    "One current unread wrestler thread plus all certified World messages");
   const exposed=await readPortablePersonaWorkspace(db.pool,{...scope,inboxOnly:true});
-  assert.equal(exposed.worldMessages.length,inbox.length);
+  assert.equal(exposed.worldMessages?.length??0,inbox.length);
   const letter=inbox.find(m=>m.kind==="NETWORK")!;
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:letter.id}),
    {readCount:1});
