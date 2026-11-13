@@ -131,6 +131,47 @@ test("Talent Manager direct Backstage authorisation prepares genuine proposals, 
    {readCount:1});
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
    ?.promotion?.attention.backstageUnreadCount,1);
+
+  // Regression for a genuine multi-manager control handover. A former
+  // controller's TV/show fallback permission is NEVER silently inherited
+  // merely because this new owner grants Talent Manager renewal delegation.
+  const former="former-controller-"+id;
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[former]);
+   await tx.query([
+    "INSERT INTO ppw_memberships(world_id,player_id,status)",
+    "VALUES($1,$2,'ACTIVE')"
+   ].join(" "),[worldId,former]);
+   await tx.query([
+    "UPDATE ppw_staff_continuity_settings SET owner_player_id=$3,",
+    "auto_renew_same_terms=false,allow_unfinished_fallback=true,",
+    "allow_logistics_fallback=true,permitted_days=ARRAY[5]::smallint[],",
+    "permitted_venue_ids=ARRAY['old-booker-venue']::text[]",
+    "WHERE world_id=$1 AND promotion_id=$2"
+   ].join(" "),[worldId,promotionId,former]);
+   await tx.query("UPDATE ppw_worlds SET week=13 WHERE world_id=$1",[worldId]);
+  });
+  const newLetter=(await withWorldTransaction(db.pool,tx=>readWorldMail(tx,scope)))
+   .find(x=>x.kind==="STAFF"&&x.action==="CONTRACTS"&&x.canStaffRespond);
+  assert.ok(newLetter,"New owner's genuine expiring deal warrants fresh consent");
+  assert.notEqual(newLetter.id,alert.id);
+  const transferred=await respondToStaffMail(db.pool,{...scope,
+   mailId:newLetter.id,decision:"COMMIT",requestId:"new-owner-"+id,
+   expectedRevision:delegated.revision});
+  assert.equal(transferred.status,"APPLIED");
+  const safe=await withWorldTransaction(db.pool,tx=>tx.query<{
+   owner_player_id:string;auto_renew_same_terms:boolean;
+   allow_unfinished_fallback:boolean;allow_logistics_fallback:boolean;
+   permitted_days:number[];permitted_venue_ids:string[]
+  }>([
+   "SELECT owner_player_id,auto_renew_same_terms,allow_unfinished_fallback,",
+   "allow_logistics_fallback,permitted_days,permitted_venue_ids",
+   "FROM ppw_staff_continuity_settings WHERE world_id=$1 AND promotion_id=$2"
+  ].join(" "),[worldId,promotionId]));
+  assert.deepEqual(safe,[{owner_player_id:playerId,auto_renew_same_terms:true,
+   allow_unfinished_fallback:false,allow_logistics_fallback:false,
+   permitted_days:[],permitted_venue_ids:[]}],
+   "Only renewal delegation is newly consented; old owner's creative/logistics delegation is erased");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_player_attention_dismissals",
@@ -139,7 +180,8 @@ test("Talent Manager direct Backstage authorisation prepares genuine proposals, 
     "ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
     "ppw_contracts","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
-   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",
+    [[playerId,"former-controller-"+id]]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   }).finally(()=>db.close());
  }

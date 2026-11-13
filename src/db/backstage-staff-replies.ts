@@ -92,7 +92,21 @@ export async function respondToStaffMail(pool:TransactionPool,i:StaffReplyInput)
      "(world_id,promotion_id,owner_player_id,allow_unfinished_fallback,auto_renew_same_terms)",
      "VALUES($1,$2,$3,false,true)",
      "ON CONFLICT(world_id,promotion_id) DO UPDATE",
-     "SET owner_player_id=EXCLUDED.owner_player_id,auto_renew_same_terms=true"
+     // A transfer of control may NEVER inherit the former booker's show or
+     // venue delegation. Preserve flags only for the SAME existing owner.
+     "SET allow_unfinished_fallback=CASE",
+     "WHEN ppw_staff_continuity_settings.owner_player_id<>EXCLUDED.owner_player_id",
+     "THEN false ELSE ppw_staff_continuity_settings.allow_unfinished_fallback END,",
+     "allow_logistics_fallback=CASE",
+     "WHEN ppw_staff_continuity_settings.owner_player_id<>EXCLUDED.owner_player_id",
+     "THEN false ELSE ppw_staff_continuity_settings.allow_logistics_fallback END,",
+     "permitted_days=CASE",
+     "WHEN ppw_staff_continuity_settings.owner_player_id<>EXCLUDED.owner_player_id",
+     "THEN ARRAY[]::smallint[] ELSE ppw_staff_continuity_settings.permitted_days END,",
+     "permitted_venue_ids=CASE",
+     "WHEN ppw_staff_continuity_settings.owner_player_id<>EXCLUDED.owner_player_id",
+     "THEN ARRAY[]::text[] ELSE ppw_staff_continuity_settings.permitted_venue_ids END,",
+     "owner_player_id=EXCLUDED.owner_player_id,auto_renew_same_terms=true"
     ].join(" "),[i.worldId,i.promotionId,i.playerId]);
    }
    return {mailId:i.mailId,decision:i.decision,status,dueWeekIndex:staff.now+3};
