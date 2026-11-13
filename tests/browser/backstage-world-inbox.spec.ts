@@ -558,7 +558,7 @@ for(const width of [320,390]){
   await expect(thread).toContainText("made no booking or attribute change");
   await expect(page.getByRole("button",{name:"Ask them to work together"})).toHaveCount(0);
   expect(attempts).toBe(2);
-  expect(requests[0]).toBe(requests[1],"Retry must send the original immutable command");
+  expect(requests[0]).toBe(requests[1]);
   expect(reads).toBe(1);
   await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
