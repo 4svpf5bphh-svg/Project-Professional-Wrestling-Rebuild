@@ -387,10 +387,10 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    !["COMMERCIALS","CONTRACTS","PROGRAMMES","STAFF","MARKET"].includes(r.action)||
    !Number.isSafeInteger(r.created_week_index)||r.created_week_index<0)
    throw new Error("Invalid certified Backstage World correspondence");
-  if(r.free_agent_decision!==null&&(
+  if(r.free_agent_decision!=null&&(
     !["INVITE","PASS"].includes(r.free_agent_decision)||
     r.kind!=="FREE_AGENT"||
-    (r.free_agent_offer_status!==null&&
+    (r.free_agent_offer_status!=null&&
      !["PENDING","ACCEPTED","REJECTED","WITHDRAWN"].includes(r.free_agent_offer_status))))
     throw new Error("Invalid free-agent reply receipt");
   if(r.kind==="FREE_AGENT"&&(!r.target_person_id||!r.sender_name||
@@ -412,7 +412,7 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    createdWeekIndex:r.created_week_index,read:r.read===true,
    ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
    ...(r.kind==="FREE_AGENT"&&r.can_free_agent_reply===true?{canFreeAgentRespond:true}:{}),
-   ...(r.free_agent_decision!==null?{freeAgentResponse:{
+   ...(r.free_agent_decision!=null?{freeAgentResponse:{
     decision:r.free_agent_decision as "INVITE"|"PASS",
     status:r.free_agent_decision==="PASS"?"DECLINED":
      (r.free_agent_offer_status??"INVITED") as "INVITED"|"PENDING"|"ACCEPTED"|"REJECTED"|"WITHDRAWN"}}:{}),
