@@ -563,7 +563,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-alert.ppw-error")).toContainText(/temporarily unavailable/);
   await page.getByRole("button",{name:"Ask them to work together"}).click();
   await expect(thread.locator(".ppw-persona-bubble.ppw-persona-in").last())
-   .toContainText("trust or the workload isn't there right now");
+   .toContainText("Trust and condition still matter");
   await expect(thread).toContainText("made no booking or attribute change");
   await expect(page.getByRole("button",{name:"Ask them to work together"})).toHaveCount(0);
   expect(attempts).toBe(2);

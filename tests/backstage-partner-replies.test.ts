@@ -9,6 +9,7 @@ test("Second wrestler's willingness is grounded in trust and fatigue, without cl
  assert.equal(partnerMediationOutcome("INVITE",44,20),"CAUTIOUS");
  assert.equal(partnerMediationOutcome("INVITE",60,75),"CAUTIOUS");
  assert.equal(partnerMediationOutcome("INVITE",85,0,"INJURED"),"CAUTIOUS");
+ assert.equal(partnerMediationOutcome("INVITE",85,null),"CAUTIOUS");
  assert.equal(partnerMediationOutcome("LEAVE",85,0),"DECLINED");
  assert.throws(()=>partnerMediationOutcome("INVITE",Infinity,0),/Invalid verified/);
  assert.throws(()=>partnerMediationOutcome("INVITE",50,-10),/Invalid verified/);

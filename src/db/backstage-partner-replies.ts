@@ -45,12 +45,12 @@ export const PARTNER_MEDIATION_CANDIDATES_SQL=String.raw`
  ORDER BY r.responded_week_index DESC,r.request_id DESC LIMIT 2`;
 
 export function partnerMediationOutcome(decision:PartnerReplyChoice,
- trust:number,fatigue:number,status:"ACTIVE"|"INJURED"="ACTIVE"):PartnerReplyOutcome{
+ trust:number,fatigue:number|null,status:"ACTIVE"|"INJURED"="ACTIVE"):PartnerReplyOutcome{
  if(decision==="LEAVE")return "DECLINED";
  if(!Number.isFinite(trust)||trust< -100||trust>100||
-  !Number.isFinite(fatigue)||fatigue<0||fatigue>100)
+  (fatigue!==null&&(!Number.isFinite(fatigue)||fatigue<0||fatigue>100)))
   throw Error("Invalid verified partner condition");
- return trust>=45&&fatigue<75&&status==="ACTIVE"?"READY":"CAUTIOUS";
+ return trust>=45&&fatigue!==null&&fatigue<75&&status==="ACTIVE"?"READY":"CAUTIOUS";
 }
 export async function respondToPartnerMediation(pool:TransactionPool,i:PartnerReplyInput){
  if(![i.worldId,i.promotionId,i.playerId,i.requestId].every(
@@ -64,7 +64,7 @@ export async function respondToPartnerMediation(pool:TransactionPool,i:PartnerRe
   execute:async tx=>{
    const rows=await tx.query<{
     request_id:string;person_id:string;partner_id:string;
-    professional_trust:number;partner_fatigue:number;
+    professional_trust:number;partner_fatigue:number|null;
     partner_status:"ACTIVE"|"INJURED";
     follow_through_week_index:number|null;
     mail_id:string;now:number;

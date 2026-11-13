@@ -510,7 +510,7 @@ export function mountPersonaDesk(root:HTMLElement,
      reply.outcome==="READY"?
       "I'm willing. Book us together and we'll show what we can do. It'll have to happen in the ring.":
      reply.outcome==="CAUTIOUS"?
-      "I'm not convinced yet. The trust or the workload isn't there right now. If you pair us, don't expect instant chemistry.":
+      "I'm not ready to promise anything. Trust and condition still matter. If you pair us, keep it simple and let the match do the talking.":
       "Fair enough. I'll focus on my own work for now."));
     chat.append(el("p","ppw-backstage-world-evidence",
      "The original working relationship only changes from certified matches. This conversation made no booking or attribute change."));

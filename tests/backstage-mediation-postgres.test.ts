@@ -61,6 +61,11 @@ test("Backstage: both wrestlers speak, partner reply is private, and only certif
   assert.equal(partner.targetPersonId,b);
   assert.match(partner.body,/Person A/);
   assert.match(partner.body,/happen in the ring/);
+  const partnerCondition=await read<{fatigue:number|null}>(
+   "SELECT fatigue FROM ppw_people WHERE world_id=$1 AND person_id=$2",
+   [worldId,b]);
+  assert.equal(partnerCondition[0]?.fatigue,null,
+   "PPW's original wrestler fixtures allow unknown condition; the answer must stay cautious");
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
    ?.promotion?.attention.backstageUnreadCount,2,
    "Both the original unread wrestler and the partner's message count");
