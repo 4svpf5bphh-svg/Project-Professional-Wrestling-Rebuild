@@ -12,6 +12,8 @@ export type WorldMailAction="COMMERCIALS"|"CONTRACTS"|"PROGRAMMES"|"STAFF"|"MARK
 export interface WorldMail{
  id:string;kind:WorldMailKind;sender:string;subject:string;body:string;
  action:WorldMailAction;createdWeekIndex:number;read:boolean;
+ canRespond?:boolean;networkResponse?:{decision:"COMMIT_RECOVERY"|"STAND_FIRM";
+  status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  /** Verified market contact; the dossier and actual offer rules remain authoritative. */
  targetPersonId?:string;
 }
@@ -19,6 +21,7 @@ interface MailRow extends Record<string,unknown>{
  id:string;kind:WorldMailKind;sender_key:string;subject:string;
  body:string;action:WorldMailAction;created_week_index:number;
  read:boolean;seed:string;target_person_id:string|null;sender_name:string|null;
+ can_reply:boolean;reply_decision:string|null;reply_status:string|null;reply_due_week_index:number|null;
 }
 /** Shared source selection is also used for validating read receipts.
  * Each CTE is limited to the owner's promotion and a rolling evidence window.
@@ -159,8 +162,26 @@ WITH owner AS MATERIALIZED (
 )
 SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  c.created_week_index,c.seed,c.target_person_id,c.sender_name,
- (receipt.attention_id IS NOT NULL) AS read
+ (receipt.attention_id IS NOT NULL) AS read,
+ reply.decision AS reply_decision,reply.status AS reply_status,
+ reply.due_week_index AS reply_due_week_index,
+ (c.kind='NETWORK' AND reply.mail_id IS NULL AND EXISTS(
+  SELECT 1 FROM ppw_world_news_items n
+  JOIN owner o ON true
+  JOIN ppw_commercial_deals d ON d.world_id=n.world_id
+   AND d.promotion_id=n.promotion_id AND d.kind='BROADCAST'
+   AND d.offer_code=split_part(n.story_key,':',3) AND d.status='ACTIVE'
+   AND d.start_week_index<=o.now AND d.end_week_index>=o.now
+  WHERE n.world_id=$1 AND n.promotion_id=$2
+   AND n.desk='OFFICIAL' AND n.certainty='CONFIRMED'
+   AND n.source_kind='EVENT'
+   AND (n.story_key LIKE 'broadcast:network:%:warning:%'
+    OR n.story_key LIKE 'broadcast:network:%:final-warning:%')
+   AND c.id='backstage-world:'||md5('network:'||n.story_key)
+ )) AS can_reply
 FROM candidate c
+LEFT JOIN ppw_backstage_network_replies reply ON reply.world_id=$1
+ AND reply.promotion_id=$2 AND reply.mail_id=c.id
 LEFT JOIN ppw_player_attention_dismissals receipt ON receipt.world_id=$1
  AND receipt.promotion_id=$2 AND receipt.player_id=$3
  AND receipt.attention_id=c.id
@@ -182,11 +203,20 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    r.sender_key!==r.target_person_id))
    throw new Error("Free-agent outreach requires a verifiable wrestler identity");
   const network=r.kind==="NETWORK"?COMMERCIAL_COMPANIES[r.sender_key]?.name:null;
+  if(r.reply_decision!=null&&(!["COMMIT_RECOVERY","STAND_FIRM"].includes(r.reply_decision)||
+   !["PENDING","ACKNOWLEDGED","KEPT","BROKEN","EXCUSED"].includes(r.reply_status??"")||
+   !Number.isSafeInteger(r.reply_due_week_index)||r.kind!=="NETWORK"))
+   throw new Error("Invalid broadcaster reply receipt");
   return {id:r.id,kind:r.kind,
    sender:r.kind==="FREE_AGENT"?r.sender_name!:
     network??catalogue.get(r.sender_key)??(r.kind==="NETWORK"?"Your broadcaster":"Staff Office"),
    subject:r.subject,body:r.body,action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
+   ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
+   ...(r.reply_decision!=null?{networkResponse:{
+    decision:r.reply_decision as "COMMIT_RECOVERY"|"STAND_FIRM",
+    status:r.reply_status as "PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED",
+    dueWeekIndex:r.reply_due_week_index!}}:{}),
    ...(r.target_person_id?{targetPersonId:r.target_person_id}:{})};
  });
 }

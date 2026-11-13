@@ -14,6 +14,8 @@ export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
  markRead(personId:string):Promise<{readCount:number}>;
  markWorldRead?(mailId:string):Promise<{readCount:number}>;
+ respondNetwork?(input:{mailId:string;decision:"COMMIT_RECOVERY"|"STAND_FIRM";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number}>;
  openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
  decide(input:{conversationId:string;decision:BackstageDecision;
@@ -41,6 +43,8 @@ export function mountPersonaDesk(root:HTMLElement,
  search="",answer:string|null=null,personId:string|undefined;
  let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
  let selectedWorldMailId:string|null=null;
+ let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"STAND_FIRM";
+  requestId:string;expectedRevision:number}|null=null;
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
   "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"=initialInboxFilter;
  let inboxSearch="";
@@ -188,6 +192,21 @@ export function mountPersonaDesk(root:HTMLElement,
     if(pane==="WORLD_THREAD"&&selectedWorldMailId===mailId)render();}
   }catch(e){error=e instanceof Error?e.message:"Could not mark message read";render();}
  }
+ async function answerNetwork(mailId:string,decision:"COMMIT_RECOVERY"|"STAND_FIRM"){
+  if(!view||loading||!port.respondNetwork||view.worldRevision===null)return;
+  const same=pendingNetwork?.mailId===mailId&&pendingNetwork.decision===decision;
+  const request=same?pendingNetwork!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingNetwork=request;loading=true;render();
+  try{
+   const result=await port.respondNetwork(request);
+   if(result.status!=="APPLIED"&&result.status!=="REPLAYED")
+    throw new Error("The World has changed. Refresh before replying.");
+   view=withInboxWorldMessages(await port.load());
+   pendingNetwork=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Broadcaster reply not saved";}
+  finally{loading=false;render();}
+ }
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
  function render(){
   const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
@@ -262,7 +281,25 @@ export function mountPersonaDesk(root:HTMLElement,
     COMMERCIALS:"Review broadcaster →",CONTRACTS:"Review contracts →",
     PROGRAMMES:"Plan a creative response →",STAFF:"Open Staff Office →",
     MARKET:"View talent market →"};
+   if(mail.kind==="NETWORK"&&mail.networkResponse){
+    const answer=mail.networkResponse;
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     answer.decision==="COMMIT_RECOVERY"?
+      "We'll work to meet the agreed TV target. Judge our next broadcasts.":
+      "We stand by our creative direction. We understand the signed terms."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     answer.status==="PENDING"?
+      "Your promise will be measured against certified TV over the next three weeks.":
+     answer.status==="KEPT"?"Your next on-target TV broadcast kept the promise.":
+     answer.status==="BROKEN"?"The review window ended without an on-target broadcast. The promise was broken.":
+     answer.status==="EXCUSED"?"The signed term ended before the deadline; the promise was excused.":
+     "Your reply is recorded. The agreed network terms remain in force."));
+   }
    const actions=el("div","ppw-backstage-world-actions");
+   if(mail.kind==="NETWORK"&&mail.canRespond&&!mail.networkResponse&&port.respondNetwork){
+    actions.append(button("Promise to improve ratings",()=>void answerNetwork(mail.id,"COMMIT_RECOVERY"),loading));
+    actions.append(button("Stand by our show",()=>void answerNetwork(mail.id,"STAND_FIRM"),loading));
+   }
    if(mail.targetPersonId&&port.openWrestler)
     actions.append(button("View wrestler dossier",()=>port.openWrestler!(mail.targetPersonId!),loading));
    actions.append(button(actionNames[mail.action],()=>port.openDepartment?.(mail.action),

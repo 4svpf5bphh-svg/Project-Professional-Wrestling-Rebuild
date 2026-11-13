@@ -9,6 +9,7 @@ import {COMMERCIAL_COMPANIES,type CommercialEvidence}
 import {awardAiCommercialPartners} from "../domain/commercial-ai-market.js";
 import {settleRatingsWarWorldWeek} from "./ratings-war-week.js";
 import {reviewWorldBroadcasters} from "./broadcast-network-audit.js";
+import {settleNetworkReplies} from "./backstage-network-replies.js";
 import {composeBroadcastWorldNews} from "../domain/broadcast-world-news.js";
 
 export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
@@ -19,6 +20,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // battles before this week's partner performance bonuses or new AI bids.
  const ratingsWar=await settleRatingsWarWorldWeek(tx,worldId,year,week);
  const networks=await reviewWorldBroadcasters(tx,worldId,year,week);
+ // Only the existing certified broadcaster audit may settle a promise.
+ await settleNetworkReplies(tx,worldId,weekIndex,networks);
  const withheld=networks.filter(n=>!n.review.bonusEligible).map(n=>n.dealId);
  // A successful broadcast carries recognition to previously visited
  // away markets, but never fabricates an international audience in an unknown
