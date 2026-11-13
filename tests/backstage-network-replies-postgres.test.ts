@@ -160,7 +160,8 @@ test("owner-only certified network conversations create durable, idempotent and 
    "Inbox choices do not invent new TV rights or change contractual pay");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_backstage_network_replies","ppw_command_receipts",
+   for(const table of ["ppw_player_attention_dismissals",
+    "ppw_backstage_network_replies","ppw_command_receipts",
     "ppw_world_news_items","ppw_world_news_weeks","ppw_completed_shows",
     "ppw_commercial_deals","ppw_promotion_controls","ppw_memberships","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
