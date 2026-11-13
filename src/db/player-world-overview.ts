@@ -220,6 +220,36 @@ export async function readPlayerWorldOverview(
            AND r.player_id=$2 AND r.attention_id='backstage-world:'||md5(
             'scout:'||e.employment_id||':'||candidate.person_id||':'||
             floor(((w.year-1)*52+w.week-1)/8)::integer)))
+      /* Recent certified company TV brings a genuinely available free agent
+       * to our door. This is one candidate, never a per-person inbox scan or
+       * a synthetic contract. It matches the Backstage projection's ID. */
+      +(SELECT count(*)::integer FROM (
+        SELECT p.person_id FROM ppw_people p
+        WHERE p.world_id=w.world_id AND p.status='ACTIVE'
+         AND p.popularity BETWEEN 25 AND 70
+         AND EXISTS(
+          SELECT 1 FROM ppw_completed_shows completed
+          JOIN ppw_world_news_weeks news ON news.world_id=completed.world_id
+           AND news.year=completed.year AND news.week=completed.week
+          WHERE completed.world_id=w.world_id AND completed.promotion_id=owned.promotion_id
+           AND (completed.year-1)*52+completed.week-1
+            BETWEEN (floor(((w.year-1)*52+w.week-1)/8)*8)::integer
+            AND (w.year-1)*52+w.week-1)
+         AND NOT EXISTS(
+          SELECT 1 FROM ppw_contracts c
+          WHERE c.world_id=p.world_id AND c.person_id=p.person_id
+           AND c.status='SIGNED'
+           AND c.start_week_index<=(w.year-1)*52+w.week-1
+           AND c.expires_week_index>=(w.year-1)*52+w.week-1)
+        ORDER BY p.popularity DESC,p.person_id LIMIT 1
+       ) prospect WHERE NOT EXISTS(
+         SELECT 1 FROM ppw_player_attention_dismissals receipt
+         WHERE receipt.world_id=w.world_id
+          AND receipt.player_id=$2
+          AND receipt.promotion_id=owned.promotion_id
+          AND receipt.attention_id='backstage-world:'||md5(
+           'free-agent:'||prospect.person_id||':'||
+           floor(((w.year-1)*52+w.week-1)/8)::integer)))
      )::integer AS backstage_unread_count,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'personId',request.person_id,'name',request.name,'kind',request.kind)

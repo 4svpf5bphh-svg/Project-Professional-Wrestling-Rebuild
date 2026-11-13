@@ -124,7 +124,7 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  await page.getByRole("button",{name:"Chats",exact:true}).click();
  const channels=page.locator(".ppw-backstage-filters");
  await expect(channels).toBeVisible();
- await expect(channels.getByRole("button")).toHaveCount(9);
+ await expect(channels.getByRole("button")).toHaveCount(10);
  await channels.getByRole("button",{name:"Scouting",exact:true}).click();
  await expect(page.getByRole("button",{name:"Scouting",exact:true})).toHaveClass(/ppw-persona-selected/);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

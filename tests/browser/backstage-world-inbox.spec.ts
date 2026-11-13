@@ -26,7 +26,11 @@ for(const width of [320,390]){
    {id:id("c"),kind:"SCOUT",sender:"Anika Maddox",
     subject:"A potential free agent is worth a look",
     body:"One talent is available to discuss terms, but no contract has been agreed.",
-    action:"MARKET",createdWeekIndex:2,read:true}
+    targetPersonId:"available-1",action:"MARKET",createdWeekIndex:2,read:true},
+   {id:id("d"),kind:"FREE_AGENT",sender:"Available Prospect",
+    subject:"Could we talk about a booking?",
+    body:"I caught one of your completed shows. I'm between contracts.",
+    targetPersonId:"available-1",action:"MARKET",createdWeekIndex:1,read:true}
   ];
   const calls:string[]=[];
   const read:string[]=[];
@@ -71,6 +75,13 @@ for(const width of [320,390]){
    .toContainText("contracted wrestlers are fatigued");
   await expect.poll(()=>read.length).toBe(2);
   await expect(page.locator(".ppw-backstage-world-thread")).toBeVisible();
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  await page.getByRole("button",{name:"Free agents",exact:true}).click();
+  await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(1);
+  await page.getByRole("button",{name:/Available Prospect/}).click();
+  await expect(page.getByLabel("Message from Available Prospect"))
+   .toContainText("between contracts");
+  await expect(page.getByRole("button",{name:"View wrestler dossier"})).toBeVisible();
   await expect(page.locator("#account")).toBeHidden();
   await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

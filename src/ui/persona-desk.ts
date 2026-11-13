@@ -42,7 +42,7 @@ export function mountPersonaDesk(root:HTMLElement,
  let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
  let selectedWorldMailId:string|null=null;
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
-  "STAFF"|"NETWORK"|"SCOUT"|"WRESTLERS"=initialInboxFilter;
+  "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
  let scrollToLatest=false;
@@ -239,11 +239,13 @@ export function mountPersonaDesk(root:HTMLElement,
    const back=button("← Messages",returnToMessages);
    back.classList.add("ppw-backstage-phone-back");
    const avatar=el("span","ppw-backstage-phone-avatar",
-    mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":"ST");
+    mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
+    mail.kind==="FREE_AGENT"?"FA":"ST");
    const identity=el("span","ppw-backstage-phone-identity");
    identity.append(el("strong","",mail.sender),
     el("small","",mail.kind==="NETWORK"?"Broadcast partner":
-     mail.kind==="SCOUT"?"Talent scouting":"Staff Office"));
+     mail.kind==="SCOUT"?"Talent scouting":
+     mail.kind==="FREE_AGENT"?"Free agent":"Staff Office"));
    header.append(back,avatar,identity);chat.append(header);
    chat.append(el("small","ppw-backstage-date","YEAR "+
     (Math.floor(mail.createdWeekIndex/52)+1)+" · WEEK "+
@@ -254,12 +256,15 @@ export function mountPersonaDesk(root:HTMLElement,
    chat.append(el("p","ppw-backstage-world-evidence",
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
      mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
+     mail.kind==="FREE_AGENT"?"No contract or appearance has been agreed.":
      "Based on your actual roster, contracts or active programmes."));
    const actionNames:Record<WorldMailAction,string>={
     COMMERCIALS:"Review broadcaster →",CONTRACTS:"Review contracts →",
     PROGRAMMES:"Plan a creative response →",STAFF:"Open Staff Office →",
     MARKET:"View talent market →"};
    const actions=el("div","ppw-backstage-world-actions");
+   if(mail.targetPersonId&&port.openWrestler)
+    actions.append(button("View wrestler dossier",()=>port.openWrestler!(mail.targetPersonId!),loading));
    actions.append(button(actionNames[mail.action],()=>port.openDepartment?.(mail.action),
     loading||!port.openDepartment));
    actions.append(button("Back to messages",returnToMessages));
@@ -281,10 +286,10 @@ export function mountPersonaDesk(root:HTMLElement,
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
     ["ACTIVE","Requests"],["WRESTLERS","Wrestlers"],["STAFF","Staff"],
     ["NETWORK","Networks"],["SCOUT","Scouting"],
-    ["HISTORY","History"],["ARCHIVED","Archived"]] as const){
+    ["FREE_AGENT","Free agents"],["HISTORY","History"],["ARCHIVED","Archived"]] as const){
     const b=button(label,()=>{
      inboxFilter=filter;
-     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT"].includes(filter)){
+     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT","FREE_AGENT"].includes(filter)){
       void load();return;
      }
      render();
@@ -315,7 +320,8 @@ export function mountPersonaDesk(root:HTMLElement,
     item.classList.add("ppw-backstage-contact","ppw-backstage-world-contact");
     if(!mail.read)item.classList.add("ppw-backstage-unread");
     const avatar=el("span","ppw-backstage-avatar",
-     mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":"ST");
+     mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
+     mail.kind==="FREE_AGENT"?"FA":"ST");
     const copy=el("span","ppw-backstage-contact-copy");
     const top=el("span","ppw-backstage-contact-top");
     top.append(el("strong","",mail.sender),el("small","ppw-backstage-contact-stamp",
@@ -326,7 +332,7 @@ export function mountPersonaDesk(root:HTMLElement,
     entries.append(item);count++;
    }
    for(const wrestler of [...view.roster].filter(w=>{
-    if(["STAFF","NETWORK","SCOUT"].includes(inboxFilter))return false;
+    if(["STAFF","NETWORK","SCOUT","FREE_AGENT"].includes(inboxFilter))return false;
     const latest=w.latestIncoming;
     if(inboxFilter==="ARCHIVED")return latest?.archived===true;
     if(latest?.archived)return false;

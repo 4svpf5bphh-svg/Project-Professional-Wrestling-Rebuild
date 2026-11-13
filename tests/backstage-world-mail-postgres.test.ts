@@ -11,7 +11,7 @@ import {readPortablePersonaWorkspace} from "../src/db/portable-persona-workspace
 import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
-test("certified broadcaster, hired staff and real free-agent scout messages have private idempotent receipts",
+test("certified broadcaster, hired staff and real free-agent scouts and direct outreach have private idempotent receipts",
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
  const id=randomUUID(),worldId="backstage-mail-"+id,
   promotionId="mine-"+id,rivalId="rival-"+id,owner="owner-"+id,
@@ -23,7 +23,7 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
    await createWorld(tx,{id:worldId,name:"Backstage mail test",seed:123,rulesetVersion:"test"});
    await addPromotion(tx,worldId,{id:promotionId,name:"CWA",tier:"LOCAL"});
    await addPromotion(tx,worldId,{id:rivalId,name:"Rival",tier:"LOCAL"});
-   await tx.query("INSERT INTO ppw_people(world_id,person_id,name,fatigue) VALUES($1,$2,'Tired Wrestler',76),($1,$3,'Available Prospect',5)",[worldId,wrestler,freeAgent]);
+   await tx.query("INSERT INTO ppw_people(world_id,person_id,name,fatigue,popularity) VALUES($1,$2,'Tired Wrestler',76,50),($1,$3,'Available Prospect',5,55)",[worldId,wrestler,freeAgent]);
    await tx.query(`INSERT INTO ppw_contracts
     (world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
     VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',4,2)`,
@@ -58,7 +58,11 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
   assert.ok(inbox.some(m=>m.kind==="NETWORK"&&m.sender==="VibeFlix"));
   assert.ok(inbox.some(m=>m.kind==="STAFF"&&m.action==="CONTRACTS"));
   assert.ok(inbox.some(m=>m.kind==="STAFF"&&m.action==="STAFF"));
-  assert.ok(inbox.some(m=>m.kind==="SCOUT"&&m.action==="MARKET"));
+  assert.ok(inbox.some(m=>m.kind==="SCOUT"&&m.action==="MARKET"&&
+   m.targetPersonId===freeAgent),"The scout lead opens a genuine available wrestler");
+  assert.ok(inbox.some(m=>m.kind==="FREE_AGENT"&&m.sender==="Available Prospect"&&
+   m.targetPersonId===freeAgent&&m.action==="MARKET"),
+   "After a completed published show a verified free agent asks for an opportunity");
   assert.ok(inbox.every(m=>!m.read));
   // A previous unread response and a newer pending request from one signed
   // wrestler are only one conversation badge, exactly like the mobile inbox.
@@ -99,6 +103,17 @@ test("certified broadcaster, hired staff and real free-agent scout messages have
    mailId:"backstage-world:"+"f".repeat(32)}),/not available/);
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{...scope,
    promotionId:rivalId,inboxOnly:true}),/access denied/);
+  // An agent cannot keep claiming to be a free agent once genuinely signed.
+  await withWorldTransaction(db.pool,tx=>tx.query(`INSERT INTO ppw_contracts
+   (world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index)
+   VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',8,12)`,
+   [worldId,"outreach-signed-"+id,freeAgent,rivalId]));
+  const afterSigning=await withWorldTransaction(db.pool,tx=>readWorldMail(tx,scope));
+  assert.equal(afterSigning.filter(m=>m.kind==="FREE_AGENT").length,0,
+   "Signed talent can no longer send an out-of-contract approach");
+  assert.equal((await readPlayerWorldOverview(db.pool,worldId,owner))?.promotion?.attention.backstageUnreadCount,
+   afterSigning.filter(m=>!m.read).length+1,
+   "Home badge tracks both scout and direct contact expiring when the talent signs elsewhere");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_player_attention_dismissals","ppw_world_news_items",

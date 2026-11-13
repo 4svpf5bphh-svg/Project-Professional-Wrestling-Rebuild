@@ -17,6 +17,8 @@ test("World mail projection contains only genuine controlled certified sources",
  assert.match(WORLD_MAIL_SQL,/e.status='ACTIVE'/);
  assert.match(WORLD_MAIL_SQL,/NOT EXISTS\(/);
  assert.match(WORLD_MAIL_SQL,/ppw_player_attention_dismissals/);
+ assert.match(WORLD_MAIL_SQL,/ppw_completed_shows show JOIN ppw_world_news_weeks news/);
+ assert.match(WORLD_MAIL_SQL,/p.popularity BETWEEN 25 AND 70/);
  assert.match(WORLD_MAIL_SQL,/ORDER BY c.created_week_index DESC,c.id DESC LIMIT 20/);
  assert.doesNotMatch(WORLD_MAIL_SQL,/ppw_booking_drafts|groq|random\(\)/i);
  const staff=worldStaff("123");
@@ -27,7 +29,10 @@ test("World mail projection contains only genuine controlled certified sources",
    created_week_index:20,read:false,seed:"123"},
   {id:id("b"),kind:"STAFF",sender_key:doctor.staffId,
    subject:"Condition is a concern",body:"Two wrestlers are fatigued",
-   action:"STAFF",created_week_index:18,read:true,seed:"123"}
+   action:"STAFF",created_week_index:18,read:true,seed:"123"},
+  {id:id("c"),kind:"FREE_AGENT",sender_key:"p-1",sender_name:"Available Prospect",
+   target_person_id:"p-1",subject:"Could we talk?",body:"I saw your show",
+   action:"MARKET",created_week_index:18,read:false,seed:"123"}
  ];
  let queries=0;
  const tx={query:async(sql:string,params:readonly unknown[])=>{
@@ -43,6 +48,8 @@ test("World mail projection contains only genuine controlled certified sources",
  assert.equal(inbox[0]?.read,false);
  assert.equal(inbox[1]?.read,true);
  assert.equal(inbox[1]?.action,"STAFF");
+ assert.equal(inbox[2]?.sender,"Available Prospect");
+ assert.equal(inbox[2]?.targetPersonId,"p-1");
 });
 test("World mail rejects invalid source IDs and oversized results",async()=>{
  const query=async()=>[{id:"fake",kind:"NETWORK",sender_key:"BROADCAST_GROWTH",
