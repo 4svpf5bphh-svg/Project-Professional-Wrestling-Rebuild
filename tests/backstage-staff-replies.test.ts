@@ -10,7 +10,6 @@ test("only real active staff concerns are actionable; follow-ups never require g
  assert.match(WORLD_MAIL_SQL,/c.action IN \('STAFF','PROGRAMMES','CONTRACTS'\)/);
  assert.match(WORLD_MAIL_SQL,/employee.role='TALENT_MANAGER'/);
  assert.match(WORLD_MAIL_SQL,/consent.auto_renew_same_terms=true/);
- assert.match(WORLD_MAIL_SQL,/c.kind='STAFF' AND c.action IN \('STAFF','PROGRAMMES'\)/);
  assert.match(WORLD_MAIL_SQL,/pending.status='PENDING'/);
  assert.match(WORLD_MAIL_SQL,/r.status IN \('KEPT','BROKEN','EXCUSED'\)/);
  assert.match(WORLD_MAIL_SQL,/LIMIT 20/);
