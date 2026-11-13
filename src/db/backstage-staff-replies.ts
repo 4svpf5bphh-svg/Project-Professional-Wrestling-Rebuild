@@ -22,7 +22,7 @@ export async function respondToStaffMail(pool:TransactionPool,i:StaffReplyInput)
   commandType:"BACKSTAGE_STAFF_REPLY",requiresOpenWeek:true,
   execute:async tx=>{
    const sources=await tx.query<{
-     employment_id:string;staff_id:string;role:"MEDICAL"|"CREATIVE";now:number
+     employment_id:string;staff_id:string;role:"TALENT_MANAGER"|"MEDICAL"|"CREATIVE";now:number
    }>([
     "SELECT e.employment_id,e.staff_id,e.role,",
     "(w.year-1)*52+w.week-1 AS now",
@@ -35,7 +35,7 @@ export async function respondToStaffMail(pool:TransactionPool,i:StaffReplyInput)
     "AND p.promotion_id=c.promotion_id AND p.lifecycle='ACTIVE'",
     "JOIN ppw_staff_employments e ON e.world_id=w.world_id",
     "AND e.promotion_id=c.promotion_id AND e.status='ACTIVE'",
-    "AND e.role IN ('MEDICAL','CREATIVE')",
+    "AND e.role IN ('TALENT_MANAGER','MEDICAL','CREATIVE')",
     "AND e.start_week_index<=(w.year-1)*52+w.week-1",
     "AND e.expires_week_index>=(w.year-1)*52+w.week-1",
     "WHERE w.world_id=$1",
@@ -54,7 +54,17 @@ export async function respondToStaffMail(pool:TransactionPool,i:StaffReplyInput)
     " SELECT 1 FROM ppw_programmes programme",
     " WHERE programme.world_id=w.world_id",
     " AND programme.promotion_id=c.promotion_id",
-    " AND programme.status='ACTIVE' AND programme.repetition>=3)))",
+    " AND programme.status='ACTIVE' AND programme.repetition>=3))",
+    "OR (e.role='TALENT_MANAGER' AND EXISTS(",
+    " SELECT 1 FROM ppw_contracts contract",
+    " WHERE contract.world_id=w.world_id AND contract.promotion_id=c.promotion_id",
+    " AND contract.status='SIGNED' AND contract.family<>'ONE_OFF'",
+    " AND contract.start_week_index<=(w.year-1)*52+w.week-1",
+    " AND contract.expires_week_index BETWEEN",
+    " (w.year-1)*52+w.week-1 AND (w.year-1)*52+w.week+3)",
+    " AND NOT EXISTS(SELECT 1 FROM ppw_staff_continuity_settings setting",
+    " WHERE setting.world_id=w.world_id AND setting.promotion_id=c.promotion_id",
+    " AND setting.owner_player_id=$3 AND setting.auto_renew_same_terms=true)))",
     "LIMIT 2"
    ].join(" "),[i.worldId,i.promotionId,i.playerId,i.mailId]);
    if(sources.length!==1)throw Error("This staff concern is no longer actionable");
@@ -73,6 +83,18 @@ export async function respondToStaffMail(pool:TransactionPool,i:StaffReplyInput)
    ].join(" "),[i.worldId,i.promotionId,i.mailId,staff.employment_id,
     staff.staff_id,staff.role,i.playerId,i.decision,status,staff.now,
     staff.now+3,status==="ACKNOWLEDGED"?staff.now:null]);
+   if(staff.role==="TALENT_MANAGER"&&i.decision==="COMMIT"){
+    // Reuse the existing signed-by-owner continuity setting. This explicit
+    // opt-in only changes auto-renewal consent; show/venue fallback and days
+    // retain their previous authorisation (or default to false).
+    await tx.query([
+     "INSERT INTO ppw_staff_continuity_settings",
+     "(world_id,promotion_id,owner_player_id,allow_unfinished_fallback,auto_renew_same_terms)",
+     "VALUES($1,$2,$3,false,true)",
+     "ON CONFLICT(world_id,promotion_id) DO UPDATE",
+     "SET owner_player_id=EXCLUDED.owner_player_id,auto_renew_same_terms=true"
+    ].join(" "),[i.worldId,i.promotionId,i.playerId]);
+   }
    return {mailId:i.mailId,decision:i.decision,status,dueWeekIndex:staff.now+3};
   }});
 }
@@ -102,6 +124,13 @@ export async function settleBackstageStaffPromises(tx:SqlRows,worldId:string,wee
   " SELECT 1 FROM ppw_programmes programme",
   " WHERE programme.world_id=r.world_id AND programme.promotion_id=r.promotion_id",
   " AND programme.status='ACTIVE' AND programme.repetition>=3)",
+  "THEN 'KEPT'",
+  "WHEN r.role='TALENT_MANAGER' AND EXISTS(",
+  " SELECT 1 FROM ppw_contract_renewal_proposals proposal",
+  " WHERE proposal.world_id=r.world_id",
+  " AND proposal.promotion_id=r.promotion_id",
+  " AND proposal.proposal_id LIKE 'staff-renew-%'",
+  " AND proposal.created_week_index BETWEEN r.responded_week_index AND $2)",
   "THEN 'KEPT' ELSE 'BROKEN' END,settled_week_index=$2",
   "FROM ppw_staff_employments e",
   "WHERE r.world_id=$1 AND r.status='PENDING'",
@@ -119,7 +148,13 @@ export async function settleBackstageStaffPromises(tx:SqlRows,worldId:string,wee
   "OR (r.role='CREATIVE' AND NOT EXISTS(",
   " SELECT 1 FROM ppw_programmes p WHERE p.world_id=r.world_id",
   " AND p.promotion_id=r.promotion_id AND p.status='ACTIVE'",
-  " AND p.repetition>=3)))",
+  " AND p.repetition>=3))",
+  "OR (r.role='TALENT_MANAGER' AND EXISTS(",
+  " SELECT 1 FROM ppw_contract_renewal_proposals proposal",
+  " WHERE proposal.world_id=r.world_id",
+  " AND proposal.promotion_id=r.promotion_id",
+  " AND proposal.proposal_id LIKE 'staff-renew-%'",
+  " AND proposal.created_week_index BETWEEN r.responded_week_index AND $2)))",
   "RETURNING r.employment_id,r.status",
   "), morale AS (",
   "UPDATE ppw_staff_employments e",

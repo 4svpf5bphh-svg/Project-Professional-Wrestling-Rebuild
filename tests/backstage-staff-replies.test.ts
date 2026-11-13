@@ -7,6 +7,9 @@ import type {SqlRows} from "../src/db/world-operations.js";
 test("only real active staff concerns are actionable; follow-ups never require generated text",()=>{
  assert.match(WORLD_MAIL_SQL,/staff_followup AS/);
  assert.match(WORLD_MAIL_SQL,/ppw_backstage_staff_replies staff_reply/);
+ assert.match(WORLD_MAIL_SQL,/c.action IN \('STAFF','PROGRAMMES','CONTRACTS'\)/);
+ assert.match(WORLD_MAIL_SQL,/employee.role='TALENT_MANAGER'/);
+ assert.match(WORLD_MAIL_SQL,/consent.auto_renew_same_terms=true/);
  assert.match(WORLD_MAIL_SQL,/c.kind='STAFF' AND c.action IN \('STAFF','PROGRAMMES'\)/);
  assert.match(WORLD_MAIL_SQL,/pending.status='PENDING'/);
  assert.match(WORLD_MAIL_SQL,/r.status IN \('KEPT','BROKEN','EXCUSED'\)/);
@@ -20,6 +23,8 @@ test("staff promise settlement uses one atomic, bounded statement and retains th
   assert.match(sql,/UPDATE ppw_backstage_staff_replies r/);
   assert.match(sql,/ppw_staff_employments e/);
   assert.match(sql,/ppw_programmes programme/);
+  assert.match(sql,/ppw_contract_renewal_proposals proposal/);
+  assert.match(sql,/proposal.proposal_id LIKE 'staff-renew-%'/);
   assert.match(sql,/person.fatigue>=70/);
   assert.match(sql,/e.morale\+/);
   assert.match(sql,/r.responded_week_index<\$2/);

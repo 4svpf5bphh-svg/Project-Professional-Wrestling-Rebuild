@@ -161,7 +161,7 @@ WITH owner AS MATERIALIZED (
    ELSE 'Our rivalries are running in circles'
   END AS subject,
   CASE e.role
-   WHEN 'TALENT_MANAGER' THEN p.due||' signed contract(s) expire in the next four weeks. We should review the terms before anyone is left off the card.'
+   WHEN 'TALENT_MANAGER' THEN p.due||' signed contract(s) expire in the next four weeks. With your permission I can prepare unchanged renewal offers at World Lock. The wrestlers still decide whether to agree.'
    WHEN 'MEDICAL' THEN p.tired||' contracted wrestler(s) have fatigue at 70 or above. I''d check the upcoming workload before they work another long match.'
    ELSE p.stale||' active programme(s) have repeated without moving the story forward. Let''s book a proper next chapter.'
   END AS body,
@@ -182,7 +182,11 @@ WITH owner AS MATERIALIZED (
  SELECT 'STAFF'::text AS kind,
   'staff-followup:'||r.mail_id||':'||r.status AS evidence,
   r.staff_id AS sender_key,
-  CASE WHEN r.role='MEDICAL' AND r.status='KEPT'
+  CASE WHEN r.role='TALENT_MANAGER' AND r.status='KEPT'
+     THEN 'Renewal offers have been prepared'
+   WHEN r.role='TALENT_MANAGER' AND r.status='BROKEN'
+     THEN 'No renewal proposals were prepared'
+   WHEN r.role='MEDICAL' AND r.status='KEPT'
      THEN 'The workload changes helped'
    WHEN r.role='MEDICAL' AND r.status='BROKEN'
      THEN 'Fatigue is still a concern'
@@ -193,6 +197,10 @@ WITH owner AS MATERIALIZED (
    ELSE 'Staffing circumstances have changed' END AS subject,
   CASE WHEN r.status='EXCUSED'
     THEN 'My appointment ended before the commitment could be assessed. No unmet promise has been recorded.'
+   WHEN r.role='TALENT_MANAGER' AND r.status='KEPT'
+    THEN 'We prepared at least one genuine unchanged-terms renewal proposal under your delegation. The wrestler decides whether to accept; check Contracts for the actual answer.'
+   WHEN r.role='TALENT_MANAGER'
+    THEN 'The three-week review ended without an eligible renewal proposal being prepared. Check your staff permissions and expiring contracts.'
    WHEN r.role='MEDICAL' AND r.status='KEPT'
     THEN 'The current contracted roster has nobody at the high-fatigue warning threshold. That is a better workload to manage.'
    WHEN r.role='MEDICAL'
@@ -202,7 +210,8 @@ WITH owner AS MATERIALIZED (
    ELSE
     'The review period is up and some active rivalries are still repeating without progress. We need a new creative direction.'
   END AS body,
-  CASE WHEN r.role='MEDICAL' THEN 'STAFF'::text
+  CASE WHEN r.role='TALENT_MANAGER' THEN 'CONTRACTS'::text
+   WHEN r.role='MEDICAL' THEN 'STAFF'::text
    ELSE 'PROGRAMMES'::text END AS action,
   r.settled_week_index AS created_week_index,
   NULL::text AS target_person_id,NULL::text AS sender_name
@@ -329,15 +338,28 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  agent_offer.status AS free_agent_offer_status,
  (c.kind='FREE_AGENT' AND c.evidence LIKE 'free-agent:%'
   AND agent_reply.mail_id IS NULL) AS can_free_agent_reply,
- (c.kind='STAFF' AND c.action IN ('STAFF','PROGRAMMES')
+ (c.kind='STAFF' AND c.action IN ('STAFF','PROGRAMMES','CONTRACTS')
   AND c.evidence LIKE 'staff:%'
-  AND staff_reply.mail_id IS NULL AND NOT EXISTS (
+  AND staff_reply.mail_id IS NULL
+  AND NOT EXISTS (
    SELECT 1 FROM ppw_backstage_staff_replies pending
    WHERE pending.world_id=$1 AND pending.promotion_id=$2
-    AND pending.status='PENDING'
-    AND c.evidence='staff:'||pending.employment_id||':'||pending.role||':'||
-     floor((SELECT (year-1)*52+week-1 FROM ppw_worlds WHERE world_id=$1)/4)::integer
-  )) AS can_staff_reply,
+    AND pending.status='PENDING' AND pending.staff_id=c.sender_key)
+  AND (c.action<>'CONTRACTS' OR EXISTS (
+   SELECT 1 FROM ppw_staff_employments employee
+   JOIN owner owner_now ON true
+   WHERE employee.world_id=$1 AND employee.promotion_id=$2
+    AND employee.status='ACTIVE' AND employee.role='TALENT_MANAGER'
+    AND employee.staff_id=c.sender_key
+    AND NOT EXISTS(SELECT 1 FROM ppw_staff_continuity_settings consent
+      WHERE consent.world_id=$1 AND consent.promotion_id=$2
+       AND consent.owner_player_id=$3 AND consent.auto_renew_same_terms=true)
+    AND EXISTS(SELECT 1 FROM ppw_contracts contract
+      WHERE contract.world_id=$1 AND contract.promotion_id=$2
+       AND contract.status='SIGNED' AND contract.family<>'ONE_OFF'
+       AND contract.start_week_index<=owner_now.now
+       AND contract.expires_week_index BETWEEN owner_now.now AND owner_now.now+4)
+  ))) AS can_staff_reply,
  (c.evidence LIKE 'network-content:%') AS content_concern,
  (c.kind='NETWORK' AND reply.mail_id IS NULL AND
  (c.evidence LIKE 'network-content:%' OR EXISTS(

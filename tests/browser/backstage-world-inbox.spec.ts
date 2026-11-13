@@ -318,3 +318,63 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("Talent Manager opt-in from a genuine expiring contract message at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:4,name:"Genesis",year:1,week:5,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",cash:500000,
+    debt:0,lastWeeklyNet:10000,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,backstageUnreadCount:1,
+     plannedShows:1,expiringTalent:true,pendingContractOffers:false}}};
+  const mailId="backstage-world:"+"d".repeat(32);
+  const messages=[{id:mailId,kind:"STAFF",sender:"Morgan Keane",
+   subject:"Contract renewals need a look",
+   body:"Two signed contracts expire soon. I can prepare unchanged renewal offers with your authorisation; wrestlers still decide.",
+   action:"CONTRACTS",createdWeekIndex:4,read:false,
+   canStaffRespond:true,
+   staffResponse:undefined as {decision:string;status:string;dueWeekIndex:number}|undefined}];
+  const calls:string[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string;decision?:string;
+    expectedRevision?:number};
+   calls.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:5,worldRevision:4,canEdit:true,
+    roster:[],persona:null,history:[],recentRequests:[],conversations:[],
+    memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
+    worldMessages:messages}});
+   if(x.method==="markBackstageWorldRead"){messages[0]!.read=true;
+    return r.fulfill({json:{readCount:1}});}
+   if(x.method==="respondBackstageStaff"){
+    expect(x.mailId).toBe(mailId);expect(x.decision).toBe("COMMIT");
+    expect(x.expectedRevision).toBe(4);
+    messages[0]!.canStaffRespond=false;
+    messages[0]!.staffResponse={decision:"COMMIT",status:"PENDING",dueWeekIndex:7};
+    return r.fulfill({json:{status:"APPLIED",revision:5,
+     result:{mailId,decision:"COMMIT",status:"PENDING",dueWeekIndex:7}}});
+   }
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:/Contract renewals need a look/}).click();
+  const thread=page.getByLabel("Message from Morgan Keane");
+  await expect(thread).toContainText("wrestlers still decide");
+  await page.getByRole("button",{name:"Authorise same-terms renewal proposals"}).click();
+  await expect(thread).toContainText("I authorise unchanged-terms renewal proposals");
+  await expect(thread).toContainText("World Lock");
+  await expect(thread).toContainText("wrestlers still decide");
+  await expect(page.getByRole("button",{name:"Authorise same-terms renewal proposals"}))
+   .toHaveCount(0);
+  expect(calls.filter(x=>x==="respondBackstageStaff")).toHaveLength(1);
+  expect(calls.filter(x=>x==="backstage")).toHaveLength(1);
+  expect(calls.some(x=>/submitContractOffer|advanceWorld|signContract/i.test(x))).toBe(false);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

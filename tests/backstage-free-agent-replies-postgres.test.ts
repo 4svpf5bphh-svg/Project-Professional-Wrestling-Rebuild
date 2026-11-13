@@ -113,7 +113,8 @@ test("a published-show free agent receives an owner-only answer; a separate cano
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:result!.id}),
    {readCount:0});
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
-   ?.promotion?.attention.backstageUnreadCount,0);
+   ?.promotion?.attention.backstageUnreadCount??0,0,
+   "A cleared Home badge is intentionally omitted instead of showing zero");
   // The approach repeats no more often than the existing eight-week World cadence.
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("UPDATE ppw_worlds SET week=9 WHERE world_id=$1",[worldId]);

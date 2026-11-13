@@ -390,16 +390,23 @@ export function mountPersonaDesk(root:HTMLElement,
    }
    if(mail.kind==="STAFF"&&mail.staffResponse){
     const reply=mail.staffResponse;
-    const isMedical=mail.action==="STAFF";
+    const isMedical=mail.action==="STAFF",isTalent=mail.action==="CONTRACTS";
     chat.append(el("article","ppw-persona-bubble ppw-persona-out",
      reply.decision==="DEFER"?
       "Thanks for raising this. I'm not committing to a change just yet.":
+     isTalent?"I authorise unchanged-terms renewal proposals at World Lock. I'll review the real negotiations.":
      isMedical?"I'll manage the workload and reduce the fatigue concerns.":
       "I'll freshen up these rivalries. Check our creative progress."));
     chat.append(el("p","ppw-backstage-world-evidence",
-     reply.status==="PENDING"?"We'll review the actual roster or storyline situation over the next three weeks.":
-     reply.status==="KEPT"?"The genuine staff concern was resolved. Staff morale improved.":
-     reply.status==="BROKEN"?"The review window ended with the problem unresolved. Staff morale fell.":
+     reply.status==="PENDING"?isTalent?
+      "Delegation is enabled. Any eligible unchanged renewal offers are prepared at World Lock; wrestlers still decide.":
+      "We'll review the actual roster or storyline situation over the next three weeks.":
+     reply.status==="KEPT"?isTalent?
+      "An eligible renewal proposal was actually prepared. Staff morale improved.":
+      "The genuine staff concern was resolved. Staff morale improved.":
+     reply.status==="BROKEN"?isTalent?
+      "No eligible renewal proposal was prepared within three weeks. Staff morale fell.":
+      "The review window ended with the problem unresolved. Staff morale fell.":
      reply.status==="EXCUSED"?"The staff appointment ended before the review deadline.":
      "Your reply was received. No new workload or storyline change was made."));
    }
@@ -434,7 +441,8 @@ export function mountPersonaDesk(root:HTMLElement,
     actions.append(button("Review pending offer",()=>port.openDepartment?.("CONTRACTS"),
      loading||!port.openDepartment));
    if(mail.kind==="STAFF"&&mail.canStaffRespond&&!mail.staffResponse&&port.respondStaff){
-    actions.append(button(mail.action==="STAFF"?
+    actions.append(button(mail.action==="CONTRACTS"?
+     "Authorise same-terms renewal proposals":mail.action==="STAFF"?
      "I'll rest the tired roster":"I'll refresh the rivalries",
      ()=>void answerStaff(mail.id,"COMMIT"),loading));
     actions.append(button("Not now",()=>void answerStaff(mail.id,"DEFER"),loading));
