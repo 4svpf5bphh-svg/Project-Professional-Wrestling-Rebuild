@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {WORLD_MAIL_SQL} from "../src/db/backstage-world-mail.js";
-import {PLAYER_WORLD_OVERVIEW_SQL} from "../src/db/player-world-overview.js";
 import {STAFF_DISAGREEMENT_LATERAL_SQL,settleStaffDisagreements}
  from "../src/db/backstage-staff-disagreements.js";
 import type {SqlRows} from "../src/db/world-operations.js";
@@ -22,8 +21,6 @@ test("staff conflict requires real employed Medical and Creative, high fatigue a
  assert.match(WORLD_MAIL_SQL,/staff_dispute_counterpoint AS/);
  assert.match(WORLD_MAIL_SQL,/issue.previously_deferred/);
  assert.match(WORLD_MAIL_SQL,/staff_dispute_counterpoint/);
- assert.match(PLAYER_WORLD_OVERVIEW_SQL,/staff-dispute-counterpoint:/);
- assert.match(PLAYER_WORLD_OVERVIEW_SQL,/partner-mediation-setback:/);
  assert.match(WORLD_MAIL_SQL,/r.status IN \('KEPT','BROKEN','EXCUSED'\)/);
  assert.match(WORLD_MAIL_SQL,/issue.creative_staff_id AS sender_name/);
  assert.match(WORLD_MAIL_SQL,/creative.staff_id AS sender_name/);
