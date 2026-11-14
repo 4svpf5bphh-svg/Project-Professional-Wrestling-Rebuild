@@ -574,3 +574,63 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+// A setback is an actual certified-match message, not an instant relationship
+// attribute change. Later good work gets a separate, chronological follow-up.
+for(const width of [320,390]){
+ test("Locker-room setback and earned reconciliation remain readable at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:8,name:"Genesis",year:1,week:8,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:100000,debt:0,lastWeeklyNet:0,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,backstageUnreadCount:2,
+     plannedShows:0,expiringTalent:false,pendingContractOffers:false}}};
+  const messages=[
+   {id:"backstage-world:"+"a".repeat(32),kind:"LOCKER_ROOM",
+    sender:"Joe",subject:"That tag match did not fix things",
+    body:"I said I had doubts about teaming with Lance. That match did not change my mind.",
+    action:"PROGRAMMES",targetPersonId:"joe",createdWeekIndex:5,read:false},
+   {id:"backstage-world:"+"b".repeat(32),kind:"LOCKER_ROOM",
+    sender:"Joe",subject:"Our tag work finally came together",
+    body:"I had doubts about trying again with Lance, but that completed tag match was the kind of work we needed.",
+    action:"PROGRAMMES",targetPersonId:"joe",createdWeekIndex:6,read:false}
+  ];
+  const calls:string[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string};
+   calls.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:8,worldRevision:8,canEdit:true,
+    roster:[],persona:null,history:[],recentRequests:[],conversations:[],
+    memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
+    worldMessages:messages}});
+   if(x.method==="markBackstageWorldRead"){
+    const item=messages.find(m=>m.id===x.mailId);
+    if(item)item.read=true;
+    return r.fulfill({json:{readCount:item?1:0}});
+   }
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:"Locker room"}).click();
+  await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(2);
+  await page.getByRole("button",{name:/That tag match did not fix things/}).click();
+  await expect(page.getByLabel("Message from Joe"))
+   .toContainText("That match did not change my mind");
+  await expect(page.getByRole("button",{name:"Review next match booking"})).toBeVisible();
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  await page.getByRole("button",{name:/Our tag work finally came together/}).click();
+  await expect(page.getByLabel("Message from Joe"))
+   .toContainText("completed tag match was the kind of work we needed");
+  expect(calls.filter(x=>x==="markBackstageWorldRead")).toHaveLength(2);
+  expect(calls.filter(x=>x==="backstage")).toHaveLength(1);
+  expect(calls.some(x=>/groq|generate|advance/i.test(x))).toBe(false);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

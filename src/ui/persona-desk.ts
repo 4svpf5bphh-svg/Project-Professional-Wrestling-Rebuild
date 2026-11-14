@@ -573,6 +573,8 @@ export function mountPersonaDesk(root:HTMLElement,
       ()=>void answerNetwork(mail.id,"COMMIT_RECOVERY"),loading));
     actions.append(button("Stand by our show",()=>void answerNetwork(mail.id,"STAND_FIRM"),loading));
    }
+   if(mail.kind==="LOCKER_ROOM"&&port.openPlanner)
+    actions.append(button("Review next match booking",()=>port.openPlanner!(),loading));
    if(mail.targetPersonId&&port.openWrestler)
     actions.append(button("View wrestler dossier",()=>port.openWrestler!(mail.targetPersonId!),loading));
    actions.append(button(actionNames[mail.action],()=>port.openDepartment?.(mail.action),

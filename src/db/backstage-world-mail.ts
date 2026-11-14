@@ -374,6 +374,65 @@ WITH owner AS MATERIALIZED (
   p.responded_week_index AS created_week_index,
   p.partner_id AS target_person_id,p.partner_name AS sender_name
  FROM owner o JOIN LATERAL (${PARTNER_MEDIATION_CANDIDATES_SQL}) p ON true
+
+), partner_mediation_setback AS (
+ /* One genuine poor post-mediation tag appearance may prompt a response.
+  * It never alters chemistry or wrestler trust. The first failed match is
+  * stable across refreshes, and later certified teamwork can still recover.
+  * At most two recent owner-scoped requests reach the indexed evidence read. */
+ SELECT 'LOCKER_ROOM'::text AS kind,
+  'partner-mediation-setback:'||r.request_id||':'||bad.show_id||':'||bad.match_id AS evidence,
+  r.related_person_id AS sender_key,
+  'That tag match did not fix things' AS subject,
+  CASE
+   WHEN reply.decision='LEAVE' THEN
+    'You said we could have some space, but I still ended up teaming with '||
+    initiator.name||'. That match was rough. Do not take a booking as proof our partnership is repaired.'
+   WHEN reply.outcome='READY' THEN
+    'I agreed to give '||initiator.name||
+    ' another chance, but the teamwork in our completed match was poor. We have more to prove in the ring.'
+   WHEN reply.outcome='CAUTIOUS' THEN
+    'I said I had doubts about teaming with '||initiator.name||
+    '. That match did not change my mind. If you book us again, keep it sensible and let us earn it.'
+   ELSE
+    'My match alongside '||initiator.name||
+    ' was not good enough to settle our problems. Another booking alone will not repair the partnership.'
+  END AS body,
+  'PROGRAMMES'::text AS action,
+  bad.week_index AS created_week_index,
+  r.related_person_id AS target_person_id,partner.name AS sender_name
+ FROM owner o JOIN LATERAL (
+  SELECT request_id,person_id,related_person_id,responded_week_index,
+   follow_through_week_index
+  FROM ppw_backstage_requests request
+  WHERE request.world_id=$1 AND request.promotion_id=$2
+   AND request.kind='PARTNERSHIP' AND request.decision='MEDIATE'
+   AND request.status='ANSWERED' AND request.related_person_id IS NOT NULL
+   AND request.responded_week_index BETWEEN greatest(0,o.now-12) AND o.now
+  ORDER BY request.responded_week_index DESC,request.request_id DESC LIMIT 2
+ ) r ON true
+ JOIN ppw_people partner ON partner.world_id=$1
+  AND partner.person_id=r.related_person_id
+ JOIN ppw_people initiator ON initiator.world_id=$1
+  AND initiator.person_id=r.person_id
+ JOIN LATERAL (
+  SELECT pair.week_index,pair.show_id,pair.match_id
+  FROM ppw_tag_working_pair_appearances pair
+  JOIN ppw_completed_show_matches actual ON actual.world_id=pair.world_id
+   AND actual.show_id=pair.show_id AND actual.match_id=pair.match_id
+  JOIN ppw_completed_shows completed ON completed.world_id=pair.world_id
+   AND completed.show_id=pair.show_id AND completed.promotion_id=$2
+  WHERE pair.world_id=$1
+   AND pair.person_a_id=least(r.person_id,r.related_person_id)
+   AND pair.person_b_id=greatest(r.person_id,r.related_person_id)
+   AND pair.week_index>r.responded_week_index
+   AND pair.week_index<=o.now AND pair.execution_quality<50
+   AND (r.follow_through_week_index IS NULL
+    OR pair.week_index<r.follow_through_week_index)
+  ORDER BY pair.week_index,pair.show_id,pair.match_id LIMIT 1
+ ) bad ON true
+ LEFT JOIN ppw_backstage_partner_replies reply ON reply.world_id=$1
+  AND reply.promotion_id=$2 AND reply.source_request_id=r.request_id
 ), partner_mediation_followup AS (
  /* Certified good teamwork in a later match is the only reconciliation
   * evidence; the established working-relationship settlement stays authoritative. */
@@ -382,8 +441,19 @@ WITH owner AS MATERIALIZED (
     r.follow_through_week_index AS evidence,
   r.related_person_id AS sender_key,
   'Our tag work finally came together' AS subject,
-  'That last completed tag match with '||initiator.name||
-   ' was the kind of work we needed. We are starting to understand each other out there.' AS body,
+  CASE WHEN reply.decision='LEAVE' THEN
+   'I wanted space, but that completed match with '||initiator.name||
+   ' was genuinely good teamwork. I will give the partnership another look; one match is not a lifetime agreement.'
+   WHEN reply.outcome='CAUTIOUS' THEN
+   'I had doubts about trying again with '||initiator.name||
+   ', but that completed tag match was the kind of work we needed. We have something to build on.'
+   WHEN reply.outcome='READY' THEN
+   'We said we would try again, and that completed tag match with '||initiator.name||
+   ' delivered. The trust still has to be earned over time.'
+   ELSE
+   'That last completed tag match with '||initiator.name||
+   ' was the kind of work we needed. We are starting to understand each other out there.'
+  END AS body,
   'PROGRAMMES'::text AS action,
   r.follow_through_week_index AS created_week_index,
   r.related_person_id AS target_person_id,partner.name AS sender_name
@@ -392,6 +462,8 @@ WITH owner AS MATERIALIZED (
   AND partner.person_id=r.related_person_id
  JOIN ppw_people initiator ON initiator.world_id=r.world_id
   AND initiator.person_id=r.person_id
+ LEFT JOIN ppw_backstage_partner_replies reply ON reply.world_id=r.world_id
+  AND reply.promotion_id=r.promotion_id AND reply.source_request_id=r.request_id
  WHERE r.world_id=$1 AND r.promotion_id=$2
   AND r.kind='PARTNERSHIP' AND r.decision='MEDIATE'
   AND r.follow_through_kind='MEDIATION_MATCH_COMPLETED'
@@ -438,7 +510,8 @@ WITH owner AS MATERIALIZED (
  UNION ALL SELECT * FROM staff_disagreement UNION ALL SELECT * FROM staff_disagreement_answered
  UNION ALL SELECT * FROM staff_dispute_followup
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
- UNION ALL SELECT * FROM partner_mediation UNION ALL SELECT * FROM partner_mediation_followup
+ UNION ALL SELECT * FROM partner_mediation UNION ALL SELECT * FROM partner_mediation_setback
+ UNION ALL SELECT * FROM partner_mediation_followup
  UNION ALL SELECT * FROM recruitment_result
 ), candidate AS (
  SELECT 'backstage-world:'||md5(message.evidence) AS id,

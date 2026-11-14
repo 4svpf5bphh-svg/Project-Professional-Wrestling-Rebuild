@@ -17,6 +17,12 @@ test("Second wrestler's willingness is grounded in trust and fatigue, without cl
  assert.match(PARTNER_MEDIATION_CANDIDATES_SQL,/relation.professional_trust/);
  assert.match(PARTNER_MEDIATION_CANDIDATES_SQL,/signed.status='SIGNED'/);
  assert.match(WORLD_MAIL_SQL,/partner_mediation AS/);
+ assert.match(WORLD_MAIL_SQL,/partner_mediation_setback AS/);
+ assert.match(WORLD_MAIL_SQL,/pair.execution_quality<50/);
+ assert.match(WORLD_MAIL_SQL,/JOIN ppw_completed_show_matches actual/);
+ assert.match(WORLD_MAIL_SQL,/completed.promotion_id=\$2/);
+ assert.match(WORLD_MAIL_SQL,/pair.week_index>r.responded_week_index/);
+ assert.match(WORLD_MAIL_SQL,/reply.source_request_id=r.request_id/);
  assert.match(WORLD_MAIL_SQL,/partner_mediation_followup AS/);
  assert.match(WORLD_MAIL_SQL,/r.follow_through_kind='MEDIATION_MATCH_COMPLETED'/);
  assert.match(WORLD_MAIL_SQL,/partner_reply.outcome AS partner_reply_outcome/);

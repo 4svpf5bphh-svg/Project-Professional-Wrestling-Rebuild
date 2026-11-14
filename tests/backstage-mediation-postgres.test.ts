@@ -119,6 +119,25 @@ test("Backstage: both wrestlers speak, partner reply is private, and only certif
    });
   };
   await completed(6,40);
+  await run(tx=>tx.query("UPDATE ppw_worlds SET week=7 WHERE world_id=$1",[worldId]));
+  const afterPoorMatch=await run(tx=>readWorldMail(tx,partnerScope));
+  const setback=afterPoorMatch.find(x=>x.subject==="That tag match did not fix things")!;
+  assert.ok(setback,"A genuine poor completed tag match produces one truthful setback");
+  assert.equal(setback.sender,"Person B");
+  assert.equal(setback.createdWeekIndex,5);
+  assert.match(setback.body,/I said I had doubts/);
+  assert.match(setback.body,/If you book us again/);
+  assert.equal(setback.canPartnerRespond,undefined);
+  assert.deepEqual(await markWorldMailRead(db.pool,{...partnerScope,mailId:setback.id}),
+   {readCount:1},"A setback has its own private, stable unread receipt");
+  const repeated=await run(tx=>readWorldMail(tx,partnerScope));
+  assert.equal(repeated.filter(x=>x.id===setback.id).length,1,
+   "Repeated inbox reads cannot create additional setbacks");
+  assert.equal(repeated.find(x=>x.id===setback.id)?.read,true);
+  assert.equal((await read<{professional_trust:number}>(
+   "SELECT professional_trust FROM ppw_wrestler_relationships WHERE world_id=$1",
+   [worldId]))[0]!.professional_trust,12,
+   "Bad-result correspondence must not itself damage wrestler chemistry");
   assert.equal((await run(tx=>settleBackstageMediations(tx,worldId,5))).mediated,0,
    "Poor subsequent execution is not positive reconciliation");
   await completed(7,83);
@@ -136,6 +155,11 @@ test("Backstage: both wrestlers speak, partner reply is private, and only certif
   assert.equal(outcomeLetter.sender,"Person B");
   assert.equal(outcomeLetter.createdWeekIndex,6);
   assert.equal(outcomeLetter.read,false);
+  assert.match(outcomeLetter.body,/I had doubts about trying again/,
+   "Reconciliation acknowledges the real second-wrestler response");
+  assert.equal(afterReconciliation.filter(x=>x.id===setback.id).length,1);
+  assert.equal(afterReconciliation.find(x=>x.id===setback.id)?.read,true,
+   "The earlier setback remains in history, but does not become unread again");
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
    ?.promotion?.attention.backstageUnreadCount,
    afterReconciliation.filter(x=>!x.read).length+1,
