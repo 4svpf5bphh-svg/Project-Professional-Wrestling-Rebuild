@@ -272,8 +272,8 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
   assert.ok(deferral,"The actual unresolved fatigue and repeated programme opens the first debate");
   const defer=await respondToStaffDisagreement(db.pool,{...scope,mailId:deferral.id,
    decision:"DEFER",requestId:"defer-"+tag,expectedRevision:fourthReply.revision});
-  assert.equal(defer.result?.status,"ACKNOWLEDGED");
   assert.equal(defer.status,"APPLIED");
+  assert.equal(defer.result?.status,"ACKNOWLEDGED");
   assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,14)),{settled:0},
    "Hearing both sides creates no instant outcome or morale");
   await run(tx=>tx.query("UPDATE ppw_worlds SET week=17 WHERE world_id=$1",[worldId]));
