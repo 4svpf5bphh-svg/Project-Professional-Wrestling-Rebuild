@@ -62,6 +62,15 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
   assert.ok(dispute,"Only the actually fatigued programme member with both employees should trigger a debate");
   assert.equal(dispute.sender,medical.name);
   assert.equal(dispute.targetPersonId,personId);
+  assert.equal(dispute.staffDebate?.medical.name,medical.name);
+  assert.equal(dispute.staffDebate?.creative.name,creative.name,
+   "Creative is the actual second hired employee, not an invented sender");
+  assert.equal(dispute.staffDebate?.medical.personality,medical.personality);
+  assert.equal(dispute.staffDebate?.creative.personality,creative.personality);
+  assert.notEqual(dispute.staffDebate?.medical.position,
+   dispute.staffDebate?.creative.position);
+  assert.match(dispute.staffDebate!.medical.position,/fatigue|schedule|workload|body|performer/i);
+  assert.match(dispute.staffDebate!.creative.position,/programme|storyline|chapter|rivalry|story/i);
   assert.match(dispute.body,/Stressed Wrestler/);
   assert.match(dispute.body,/repeated 5 times/);
   const atHome=await readPlayerWorldOverview(db.pool,worldId,playerId);
@@ -79,8 +88,14 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
   assert.equal(choice.status,"APPLIED");
   assert.equal((await respondToStaffDisagreement(db.pool,input)).status,"REPLAYED");
   assert.equal(choice.result?.status,"PENDING");
-  assert.equal((await run(tx=>readWorldMail(tx,scope)))
-   .find(x=>x.id===dispute.id)?.disagreementResponse?.decision,"PRIORITISE_HEALTH");
+  const answered=(await run(tx=>readWorldMail(tx,scope)))
+   .find(x=>x.id===dispute.id)!;
+  assert.equal(answered.disagreementResponse?.decision,"PRIORITISE_HEALTH");
+  assert.equal(answered.staffDebate?.creative.name,creative.name,
+   "The same two staff voices persist after the original live source disappears");
+  assert.equal(answered.staffDebate?.medical.name,medical.name);
+  assert.deepEqual(answered.staffDebate,dispute.staffDebate,
+   "Opening the conversation or responding cannot regenerate staff personalities");
   const unchanged=await run(tx=>tx.query<{fatigue:number}>(
    "SELECT fatigue FROM ppw_people WHERE world_id=$1 AND person_id=$2",[worldId,personId]));
   assert.equal(unchanged[0]?.fatigue,84,

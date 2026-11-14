@@ -5,7 +5,8 @@
 import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
-import {worldStaff} from "../domain/world-staff.js";
+import {worldStaff,type WorldStaffMember} from "../domain/world-staff.js";
+import {staffDebateVoices,type StaffDebateVoices} from "../domain/backstage-staff-dialogue.js";
 import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
 import {PARTNER_MEDIATION_CANDIDATES_SQL} from "./backstage-partner-replies.js";
 import {COMMERCIAL_COMPANIES} from "../domain/commercial-offers.js";
@@ -20,6 +21,8 @@ export interface WorldMail{
  networkResponse?:{decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  canDisagree?:boolean;
+ /** Both participants are actually hired and carry their seeded personalities. */
+ staffDebate?:StaffDebateVoices;
  disagreementResponse?:{decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  canPartnerRespond?:boolean;
@@ -243,7 +246,7 @@ WITH owner AS MATERIALIZED (
    'to move forward. Which should we prioritise?' AS body,
   'STAFF'::text AS action,
   greatest(0,(o.now/4)*4)::integer AS created_week_index,
-  issue.person_id AS target_person_id,NULL::text AS sender_name
+  issue.person_id AS target_person_id,issue.creative_staff_id AS sender_name
  FROM owner o JOIN LATERAL (${STAFF_DISAGREEMENT_LATERAL_SQL}) issue ON true
 ), staff_disagreement_answered AS (
  /* A commitment must remain readable even when the qualifying condition
@@ -259,10 +262,12 @@ WITH owner AS MATERIALIZED (
    '. The real roster workload and programme progress determine the outcome.' AS body,
   'STAFF'::text AS action,
   greatest(0,(r.responded_week_index/4)*4)::integer AS created_week_index,
-  r.person_id AS target_person_id,NULL::text AS sender_name
+  r.person_id AS target_person_id,creative.staff_id AS sender_name
  FROM ppw_backstage_staff_disagreements r JOIN owner o ON true
  JOIN ppw_staff_employments medical ON medical.world_id=r.world_id
   AND medical.employment_id=r.medical_employment_id
+ JOIN ppw_staff_employments creative ON creative.world_id=r.world_id
+  AND creative.employment_id=r.creative_employment_id
  JOIN ppw_people person ON person.world_id=r.world_id
   AND person.person_id=r.person_id
  WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
@@ -611,8 +616,12 @@ ORDER BY c.created_week_index DESC,c.id DESC LIMIT 20
 function decode(rows:readonly MailRow[]):WorldMail[]{
  if(rows.length>20)throw new Error("Backstage World inbox source exceeded bound");
  const catalogue=new Map<string,string>();
+ const staffProfiles=new Map<string,WorldStaffMember>();
  if(rows.length){
-  for(const member of worldStaff(rows[0]!.seed))catalogue.set(member.staffId,member.name);
+  for(const member of worldStaff(rows[0]!.seed)){
+   catalogue.set(member.staffId,member.name);
+   staffProfiles.set(member.staffId,member);
+  }
  }
  return rows.map(r=>{
   if(!/^backstage-world:[a-f0-9]{32}$/.test(r.id)||
@@ -644,6 +653,14 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
   if(r.kind==="FREE_AGENT"&&(!r.target_person_id||!r.sender_name||
    r.sender_key!==r.target_person_id))
    throw new Error("Free-agent outreach requires a verifiable wrestler identity");
+  // Only staff-dispute source rows carry the second real staff ID in
+  // sender_name. All other types keep their original name/identity contract.
+  const doctor=r.kind==="STAFF"&&r.sender_name?
+   staffProfiles.get(r.sender_key):undefined;
+  const writer=r.kind==="STAFF"&&r.sender_name?
+   staffProfiles.get(r.sender_name):undefined;
+  const debate=doctor?.role==="MEDICAL"&&writer?.role==="CREATIVE"?
+   staffDebateVoices(doctor,writer):undefined;
   const network=r.kind==="NETWORK"?COMMERCIAL_COMPANIES[r.sender_key]?.name:null;
   if(r.staff_reply_decision!=null&&(!["COMMIT","DEFER"].includes(r.staff_reply_decision)||
    !["PENDING","ACKNOWLEDGED","KEPT","BROKEN","EXCUSED"].includes(r.staff_reply_status??"")||
@@ -670,6 +687,7 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
      (r.free_agent_offer_status??"INVITED") as "INVITED"|"PENDING"|"ACCEPTED"|"REJECTED"|"WITHDRAWN"}}:{}),
    ...(r.kind==="STAFF"&&r.can_staff_reply===true?{canStaffRespond:true}:{}),
    ...(r.kind==="STAFF"&&r.can_disagree===true?{canDisagree:true}:{}),
+   ...(debate?{staffDebate:debate}:{}),
    ...(r.disagreement_decision!=null?{disagreementResponse:{
     decision:r.disagreement_decision as "PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER",
     status:r.disagreement_status as "PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED",

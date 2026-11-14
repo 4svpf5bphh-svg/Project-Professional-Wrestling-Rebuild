@@ -634,3 +634,76 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("Two hired staff personalities speak across a real manager choice at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:3,name:"Genesis",year:1,week:5,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:80000,debt:0,lastWeeklyNet:0,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,
+     backstageUnreadCount:1,plannedShows:0,expiringTalent:false,
+     pendingContractOffers:false}}};
+  const mailId="backstage-world:"+"c".repeat(32);
+  let revision=3;
+  const dialogue={medical:{name:"Dr Lena Winters",personality:"FRANK" as const,
+   position:"The fatigue warning is real. I won't call another demanding match safe just because the story needs one."},
+   creative:{name:"Jules Sterling",personality:"PATIENT" as const,
+    position:"I can work around a lighter schedule. But we must find a fresh chapter for a rivalry that has started repeating."}};
+  const messages=[{id:mailId,kind:"STAFF",sender:dialogue.medical.name,
+   subject:"Medical and Creative see Toby differently",
+   body:"Toby has fatigue at 84 while their active programme has repeated 5 times.",
+   action:"STAFF",targetPersonId:"toby",createdWeekIndex:4,read:false,
+   canDisagree:true,staffDebate:dialogue,
+   disagreementResponse:undefined as {decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
+    status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number}|undefined}];
+  const calls:string[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string;decision?:string};
+   calls.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:5,worldRevision:revision,
+    canEdit:true,roster:[],persona:null,history:[],recentRequests:[],
+    conversations:[],memories:[],archetypes:[],documentedAlternates:[],
+    nextPitchWeek:0,worldMessages:messages}});
+   if(x.method==="markBackstageWorldRead"){
+    messages[0]!.read=true;return r.fulfill({json:{readCount:1}});
+   }
+   if(x.method==="respondBackstageDisagreement"){
+    expect(x.mailId).toBe(mailId);expect(x.decision).toBe("PRIORITISE_HEALTH");
+    revision=4;messages[0]!.canDisagree=false;
+    messages[0]!.disagreementResponse={decision:"PRIORITISE_HEALTH",status:"PENDING",dueWeekIndex:7};
+    return r.fulfill({json:{status:"APPLIED",revision,
+     result:{mailId,decision:"PRIORITISE_HEALTH",status:"PENDING",dueWeekIndex:7}}});
+   }
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:"Staff disagreements"}).click();
+  await page.getByRole("button",{name:/Medical and Creative see Toby differently/}).click();
+  const thread=page.getByLabel("Message from Dr Lena Winters");
+  await expect(thread.locator(".ppw-backstage-staff-voice")).toHaveCount(2);
+  await expect(thread.locator(".ppw-backstage-staff-voice").first()).toContainText("Dr Lena Winters");
+  await expect(thread.locator(".ppw-backstage-staff-voice").last()).toContainText("Jules Sterling");
+  await expect(thread).toContainText("fatigue at 84");
+  await page.getByRole("button",{name:"Prioritise medical recovery"}).click();
+  await expect(thread.locator(".ppw-backstage-staff-reaction")).toHaveCount(2);
+  await expect(thread).toContainText("actual fatigue level after the next World week");
+  await expect(thread).toContainText("room to recover");
+  await expect(page.getByRole("button",{name:"Prioritise medical recovery"})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Review medical workload"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Review active programmes"})).toBeVisible();
+  await page.getByRole("button",{name:"Review active programmes"}).click();
+  await expect(page).toHaveURL(/#\\/programmes/);
+  expect(calls.filter(x=>x==="respondBackstageDisagreement")).toHaveLength(1);
+  expect(calls.filter(x=>x==="markBackstageWorldRead")).toHaveLength(1);
+  expect(calls.some(x=>/groq|generate|worldAdvance/i.test(x))).toBe(false);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

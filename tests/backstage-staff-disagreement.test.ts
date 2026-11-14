@@ -14,6 +14,8 @@ test("staff conflict requires real employed Medical and Creative, high fatigue a
  assert.match(STAFF_DISAGREEMENT_LATERAL_SQL,/ppw_backstage_staff_disagreements answered/);
  assert.match(WORLD_MAIL_SQL,/staff_disagreement AS/);
  assert.match(WORLD_MAIL_SQL,/staff_dispute_followup AS/);
+ assert.match(WORLD_MAIL_SQL,/issue.creative_staff_id AS sender_name/);
+ assert.match(WORLD_MAIL_SQL,/creative.staff_id AS sender_name/);
  assert.match(WORLD_MAIL_SQL,/debate.decision AS disagreement_decision/);
  assert.match(WORLD_MAIL_SQL,/LIMIT 20/);
  assert.doesNotMatch(WORLD_MAIL_SQL,/random\(\)|groq/i);

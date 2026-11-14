@@ -10,6 +10,7 @@ import {describeBookingCommitment} from "../domain/backstage-booking-commitment.
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 import type {WorldMail,WorldMailAction} from "../db/backstage-world-mail.js";
+import {staffDebateReaction} from "../domain/backstage-staff-dialogue.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
  markRead(personId:string):Promise<{readCount:number}>;
@@ -426,6 +427,15 @@ export function mountPersonaDesk(root:HTMLElement,
    const message=el("article","ppw-persona-bubble ppw-persona-in ppw-backstage-world-body");
    message.append(el("strong","",mail.subject),el("p","",mail.body));
    chat.append(message);
+   if(mail.kind==="STAFF"&&mail.staffDebate){
+    for(const [role,staff] of [["MEDICAL",mail.staffDebate.medical],
+     ["CREATIVE",mail.staffDebate.creative]] as const){
+     const perspective=el("article","ppw-persona-bubble ppw-persona-in ppw-backstage-staff-voice");
+     perspective.append(el("strong","",staff.name+" · "+(role==="MEDICAL"?"Medical":"Creative")),
+      el("p","",staff.position));
+     chat.append(perspective);
+    }
+   }
    chat.append(el("p","ppw-backstage-world-evidence",
     mail.contentConcern?"From a completed television match with a verified hardcore stipulation.":
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
@@ -489,6 +499,15 @@ export function mountPersonaDesk(root:HTMLElement,
      reply.decision==="REFRESH_PROGRAMME"?
       "Give Creative a new chapter. I want that programme genuinely refreshed or concluded.":
       "I hear both departments. I'm not making a commitment yet."));
+    if(mail.staffDebate){
+     for(const [role,staff] of [["MEDICAL",mail.staffDebate.medical],
+      ["CREATIVE",mail.staffDebate.creative]] as const){
+      const answer=el("article","ppw-persona-bubble ppw-persona-in ppw-backstage-staff-reaction");
+      answer.append(el("strong","",staff.name+" · "+(role==="MEDICAL"?"Medical":"Creative")),
+       el("p","",staffDebateReaction(role,staff.personality,reply.decision)));
+      chat.append(answer);
+     }
+    }
     chat.append(el("p","ppw-backstage-world-evidence",
      reply.status==="PENDING"?
       "The decision will be checked against real fatigue or programme changes over the next three weeks.":
@@ -558,6 +577,12 @@ export function mountPersonaDesk(root:HTMLElement,
    if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse?.status==="PENDING")
     actions.append(button("Review pending offer",()=>port.openDepartment?.("CONTRACTS"),
      loading||!port.openDepartment));
+   if(mail.kind==="STAFF"&&mail.staffDebate){
+    actions.append(button("Review medical workload",()=>port.openDepartment?.("STAFF"),
+     loading||!port.openDepartment));
+    actions.append(button("Review active programmes",()=>port.openDepartment?.("PROGRAMMES"),
+     loading||!port.openDepartment));
+   }
    if(mail.kind==="STAFF"&&mail.canStaffRespond&&!mail.staffResponse&&port.respondStaff){
     actions.append(button(mail.action==="CONTRACTS"?
      "Authorise same-terms renewal proposals":mail.action==="STAFF"?
