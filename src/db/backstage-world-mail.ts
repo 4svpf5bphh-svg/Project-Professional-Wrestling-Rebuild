@@ -240,10 +240,16 @@ WITH owner AS MATERIALIZED (
    issue.programme_id||':'||issue.person_id||':'||floor(o.now/4)::integer AS evidence,
   issue.medical_staff_id AS sender_key,
   'Medical and Creative see '||issue.name||' differently' AS subject,
-  issue.name||' has fatigue at '||round(issue.fatigue)::integer||
+  CASE WHEN issue.previously_deferred THEN
+   'Four weeks after you asked us to revisit this, '||issue.name||
+   ' still has fatigue at '||round(issue.fatigue)::integer||
+   ' and their active programme has repeated '||issue.repetition||
+   ' times. Medical and Creative still disagree. Will you make a commitment now?'
+   ELSE
+   issue.name||' has fatigue at '||round(issue.fatigue)::integer||
    ' while their active programme has repeated '||issue.repetition||
    ' times. Medical wants a lighter workload. Creative needs the programme '||
-   'to move forward. Which should we prioritise?' AS body,
+   'to move forward. Which should we prioritise?' END AS body,
   'STAFF'::text AS action,
   greatest(0,(o.now/4)*4)::integer AS created_week_index,
   issue.person_id AS target_person_id,issue.creative_staff_id AS sender_name
@@ -304,6 +310,43 @@ WITH owner AS MATERIALIZED (
  JOIN ppw_staff_employments creative ON creative.world_id=r.world_id
   AND creative.employment_id=r.creative_employment_id
  WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
+  AND r.status IN ('KEPT','BROKEN','EXCUSED')
+  AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
+ ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+), staff_dispute_counterpoint AS (
+ /* The OTHER actually employed specialist has their own response to a
+  * certified decision. No additional staff event row or morale modification;
+  * this remains part of the original bounded owner-scoped World mail read. */
+ SELECT 'STAFF'::text AS kind,
+  'staff-dispute-counterpoint:'||r.mail_id||':'||r.status AS evidence,
+  CASE WHEN r.decision='PRIORITISE_HEALTH' THEN creative.staff_id
+   ELSE medical.staff_id END AS sender_key,
+  CASE WHEN r.decision='PRIORITISE_HEALTH'
+   THEN 'Creative after the staff review'
+   ELSE 'Medical after the staff review' END AS subject,
+  CASE
+   WHEN r.status='EXCUSED' THEN
+    'The appointment or contract ended before this dispute could be assessed. No promise was judged.'
+   WHEN r.decision='PRIORITISE_HEALTH' AND r.status='KEPT' THEN
+    'The actual fatigue dropped below the medical warning level. I welcome that. Creative still needs a meaningful next chapter whenever the wrestler is ready.'
+   WHEN r.decision='PRIORITISE_HEALTH' THEN
+    'Medical committed to a safer workload, but the three-week review found fatigue still above the warning level. We should rethink how this storyline can progress.'
+   WHEN r.status='KEPT' THEN
+    'Creative genuinely refreshed or concluded the programme. That is progress, but it does not prove the wrestler has recovered. Please check their actual fatigue.'
+   ELSE
+    'The promised programme change did not happen by the deadline. I still want the wrestler''s condition considered before another demanding match.'
+  END AS body,
+  CASE WHEN r.decision='PRIORITISE_HEALTH' THEN 'PROGRAMMES'::text
+   ELSE 'STAFF'::text END AS action,
+  r.settled_week_index AS created_week_index,
+  r.person_id AS target_person_id,NULL::text AS sender_name
+ FROM ppw_backstage_staff_disagreements r JOIN owner o ON true
+ JOIN ppw_staff_employments medical ON medical.world_id=r.world_id
+  AND medical.employment_id=r.medical_employment_id
+ JOIN ppw_staff_employments creative ON creative.world_id=r.world_id
+  AND creative.employment_id=r.creative_employment_id
+ WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
+  AND r.decision IN ('PRIORITISE_HEALTH','REFRESH_PROGRAMME')
   AND r.status IN ('KEPT','BROKEN','EXCUSED')
   AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
  ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
@@ -514,6 +557,7 @@ WITH owner AS MATERIALIZED (
  UNION ALL SELECT * FROM staff_followup
  UNION ALL SELECT * FROM staff_disagreement UNION ALL SELECT * FROM staff_disagreement_answered
  UNION ALL SELECT * FROM staff_dispute_followup
+ UNION ALL SELECT * FROM staff_dispute_counterpoint
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
  UNION ALL SELECT * FROM partner_mediation UNION ALL SELECT * FROM partner_mediation_setback
  UNION ALL SELECT * FROM partner_mediation_followup

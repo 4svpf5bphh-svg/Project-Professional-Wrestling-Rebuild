@@ -15,7 +15,14 @@ export const STAFF_DISAGREEMENT_LATERAL_SQL=String.raw`
  SELECT med.employment_id AS medical_id,med.staff_id AS medical_staff_id,
  creative.employment_id AS creative_id,creative.staff_id AS creative_staff_id,
  programme.programme_id,person.person_id,person.name,person.fatigue,
- programme.repetition
+ programme.repetition,
+ EXISTS(
+  SELECT 1 FROM ppw_backstage_staff_disagreements prior
+  WHERE prior.world_id=med.world_id AND prior.promotion_id=med.promotion_id
+   AND prior.programme_id=programme.programme_id AND prior.person_id=person.person_id
+   AND prior.decision='DEFER'
+   AND prior.responded_week_index BETWEEN greatest(0,o.now-12) AND o.now-4
+ ) AS previously_deferred
  FROM ppw_staff_employments med
  JOIN ppw_staff_employments creative ON creative.world_id=med.world_id
   AND creative.promotion_id=med.promotion_id
@@ -45,7 +52,8 @@ export const STAFF_DISAGREEMENT_LATERAL_SQL=String.raw`
     AND answered.promotion_id=med.promotion_id
     AND answered.programme_id=programme.programme_id
     AND answered.person_id=person.person_id
-    AND answered.responded_week_index BETWEEN greatest(0,o.now-12) AND o.now)
+    AND answered.responded_week_index BETWEEN greatest(0,o.now-12) AND o.now
+    AND (answered.decision<>'DEFER' OR answered.responded_week_index>o.now-4))
  ORDER BY person.fatigue DESC,programme.repetition DESC,
  programme.programme_id,person.person_id
  LIMIT 1`;

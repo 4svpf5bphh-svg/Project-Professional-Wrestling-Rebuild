@@ -707,3 +707,79 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("A deferred real staff conflict can resurface with a distinct unread review at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:6,name:"Genesis",year:1,week:18,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:90000,debt:0,lastWeeklyNet:0,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,backstageUnreadCount:1,
+     plannedShows:0,expiringTalent:false,pendingContractOffers:false}}};
+  const oldId="backstage-world:"+"b".repeat(32);
+  const currentId="backstage-world:"+"c".repeat(32);
+  const voices={
+   medical:{name:"Dr Lena Winters",personality:"FRANK" as const,
+    position:"The fatigue warning is real. I won't call another demanding match safe just because the story needs one."},
+   creative:{name:"Jules Sterling",personality:"PATIENT" as const,
+    position:"I can work around a lighter schedule. But we must find a fresh chapter for a rivalry that has started repeating."}
+  };
+  const letters=[{
+   id:oldId,kind:"STAFF",sender:"Dr Lena Winters",
+   subject:"Medical and Creative see Toby differently",
+   body:"You answered our disagreement about Toby.",action:"STAFF",
+   targetPersonId:"toby",createdWeekIndex:12,read:true,staffDebate:voices,
+   disagreementResponse:{decision:"DEFER",status:"ACKNOWLEDGED",dueWeekIndex:16}
+  },{
+   id:currentId,kind:"STAFF",sender:"Dr Lena Winters",
+   subject:"Medical and Creative see Toby differently",
+   body:"Four weeks after you asked us to revisit this, Toby still has fatigue at 94 and their active programme has repeated 9 times.",
+   action:"STAFF",targetPersonId:"toby",createdWeekIndex:16,read:false,
+   staffDebate:voices,canDisagree:true,
+   disagreementResponse:undefined as {decision:string;status:string;dueWeekIndex:number}|undefined
+  }];
+  let revision=6,readCount=0,decisions=0;
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string;decision?:string};
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:18,worldRevision:revision,
+    canEdit:true,roster:[],persona:null,history:[],recentRequests:[],
+    conversations:[],memories:[],archetypes:[],documentedAlternates:[],
+    nextPitchWeek:0,worldMessages:letters}});
+   if(x.method==="markBackstageWorldRead"){
+    expect(x.mailId).toBe(currentId);
+    readCount++;letters[1]!.read=true;
+    return r.fulfill({json:{readCount:1}});
+   }
+   if(x.method==="respondBackstageDisagreement"){
+    expect(x.mailId).toBe(currentId);expect(x.decision).toBe("REFRESH_PROGRAMME");
+    revision++;decisions++;
+    letters[1]!.canDisagree=false;
+    letters[1]!.disagreementResponse={decision:"REFRESH_PROGRAMME",status:"PENDING",dueWeekIndex:20};
+    return r.fulfill({json:{status:"APPLIED",revision,result:{
+     mailId:currentId,decision:"REFRESH_PROGRAMME",status:"PENDING",dueWeekIndex:20}}});
+   }
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage/unread");
+  await page.getByRole("button",{name:/Medical and Creative see Toby differently/}).click();
+  const thread=page.getByLabel("Message from Dr Lena Winters");
+  await expect(thread).toContainText("Four weeks after you asked us to revisit this");
+  await expect(thread.locator(".ppw-backstage-staff-voice")).toHaveCount(2);
+  await page.getByRole("button",{name:"Refresh the creative programme"}).click();
+  await expect(thread).toContainText("programme needs to genuinely change or finish");
+  await expect(page.getByRole("button",{name:"Refresh the creative programme"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  await page.getByRole("button",{name:"Staff disagreements"}).click();
+  await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(2);
+  expect(readCount).toBe(1);
+  expect(decisions).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

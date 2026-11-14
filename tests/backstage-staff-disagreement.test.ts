@@ -12,8 +12,16 @@ test("staff conflict requires real employed Medical and Creative, high fatigue a
  assert.match(STAFF_DISAGREEMENT_LATERAL_SQL,/person.fatigue>=70/);
  assert.match(STAFF_DISAGREEMENT_LATERAL_SQL,/deal.status='SIGNED'/);
  assert.match(STAFF_DISAGREEMENT_LATERAL_SQL,/ppw_backstage_staff_disagreements answered/);
+ assert.match(STAFF_DISAGREEMENT_LATERAL_SQL,/answered.decision<>'DEFER'/);
+ assert.match(STAFF_DISAGREEMENT_LATERAL_SQL,/answered.responded_week_index>o.now-4/);
+ assert.match(STAFF_DISAGREEMENT_LATERAL_SQL,/prior.decision='DEFER'/);
+ assert.match(STAFF_DISAGREEMENT_LATERAL_SQL,/AS previously_deferred/);
  assert.match(WORLD_MAIL_SQL,/staff_disagreement AS/);
  assert.match(WORLD_MAIL_SQL,/staff_dispute_followup AS/);
+ assert.match(WORLD_MAIL_SQL,/staff_dispute_counterpoint AS/);
+ assert.match(WORLD_MAIL_SQL,/issue.previously_deferred/);
+ assert.match(WORLD_MAIL_SQL,/staff_dispute_counterpoint/);
+ assert.match(WORLD_MAIL_SQL,/r.status IN \('KEPT','BROKEN','EXCUSED'\)/);
  assert.match(WORLD_MAIL_SQL,/issue.creative_staff_id AS sender_name/);
  assert.match(WORLD_MAIL_SQL,/creative.staff_id AS sender_name/);
  assert.match(WORLD_MAIL_SQL,/debate.decision AS disagreement_decision/);

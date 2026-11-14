@@ -115,12 +115,26 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
   assert.ok(followup);
   assert.equal(followup.sender,medical.name);
   assert.equal(followup.read,false);
+  const creativeCounterpoint=after.find(x=>x.subject==="Creative after the staff review")!;
+  assert.ok(creativeCounterpoint,"Both hired specialists follow up after one real settled outcome");
+  assert.equal(creativeCounterpoint.sender,creative.name);
+  assert.match(creativeCounterpoint.body,/actual fatigue dropped below/);
+  assert.equal(creativeCounterpoint.action,"PROGRAMMES");
+  assert.equal(creativeCounterpoint.read,false);
+  assert.notEqual(creativeCounterpoint.id,followup.id,
+   "The second real staff member has their own private stable read receipt");
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
    ?.promotion?.attention.backstageUnreadCount,after.filter(x=>!x.read).length);
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:followup.id}),
    {readCount:1});
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:followup.id}),
    {readCount:0});
+  assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:creativeCounterpoint.id}),
+   {readCount:1});
+  assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:creativeCounterpoint.id}),
+   {readCount:0});
+  assert.equal((await run(tx=>readWorldMail(tx,scope)))
+   .find(x=>x.id===creativeCounterpoint.id)?.read,true);
 
   // A second *real* conflicted programme can be backed by Creative.
   const nextPerson="second-"+tag,nextProgramme="second-story-"+tag;
@@ -153,6 +167,13 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
    "SELECT role,morale FROM ppw_staff_employments WHERE world_id=$1 ORDER BY role",[worldId]));
   assert.equal(updated.find(x=>x.role==="CREATIVE")?.morale,72);
   assert.equal(updated.find(x=>x.role==="MEDICAL")?.morale,72);
+  await run(tx=>tx.query("UPDATE ppw_worlds SET week=7 WHERE world_id=$1",[worldId]));
+  const creativeMails=await run(tx=>readWorldMail(tx,scope));
+  const medicalCounterpoint=creativeMails.find(x=>x.subject==="Medical after the staff review")!;
+  assert.ok(medicalCounterpoint,"Medical also speaks after the verified Creative choice");
+  assert.equal(medicalCounterpoint.sender,medical.name);
+  assert.match(medicalCounterpoint.body,/does not prove the wrestler has recovered/);
+  assert.equal(medicalCounterpoint.action,"STAFF");
   assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,6)),{settled:0},
    "No second morale award is possible");
 
@@ -225,6 +246,66 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
    "SELECT morale FROM ppw_staff_employments WHERE world_id=$1 AND role='CREATIVE'",[worldId]));
   assert.equal(lastMorale[0]?.morale,72,
    "One broken and one kept verified Creative commitment must cancel precisely");
+
+  // DEFER is not a silent twelve-week rejection. The genuine unresolved
+  // concern may be raised again in a NEW four-week window, after both
+  // departments had time to observe actual World changes.
+  const deferredPerson="deferred-"+tag,deferredProgramme="deferred-story-"+tag;
+  await run(async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=14 WHERE world_id=$1",[worldId]);
+   await tx.query("INSERT INTO ppw_people(world_id,person_id,name,status,fatigue) VALUES($1,$2,'Deferred Worker','ACTIVE',100)",
+    [worldId,deferredPerson]);
+   await tx.query([
+    "INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,",
+    "family,status,remaining_dates,start_week_index,expires_week_index)",
+    "VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',10,0,25)"
+   ].join(" "),[worldId,"deferred-contract-"+tag,deferredPerson,promotionId]);
+   await tx.query("INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,repetition) VALUES($1,$2,$3,'ACTIVE',9)",
+    [worldId,promotionId,deferredProgramme]);
+   await tx.query([
+    "INSERT INTO ppw_programme_side_refs(world_id,promotion_id,programme_id,",
+    "side,position,ref_kind,ref_id) VALUES($1,$2,$3,'A',0,'PERSON',$4)"
+   ].join(" "),[worldId,promotionId,deferredProgramme,deferredPerson]);
+  });
+  const deferral=(await run(tx=>readWorldMail(tx,scope))).find(x=>
+   x.canDisagree&&x.targetPersonId===deferredPerson)!;
+  assert.ok(deferral,"The actual unresolved fatigue and repeated programme opens the first debate");
+  const defer=await respondToStaffDisagreement(db.pool,{...scope,mailId:deferral.id,
+   decision:"DEFER",requestId:"defer-"+tag,expectedRevision:fourthReply.revision});
+  assert.equal(defer.result?.status,"ACKNOWLEDGED");
+  assert.equal(defer.status,"APPLIED");
+  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,14)),{settled:0},
+   "Hearing both sides creates no instant outcome or morale");
+  await run(tx=>tx.query("UPDATE ppw_worlds SET week=17 WHERE world_id=$1",[worldId]));
+  const tooSoon=await run(tx=>readWorldMail(tx,scope));
+  assert.equal(tooSoon.some(x=>x.canDisagree&&x.targetPersonId===deferredPerson),false,
+   "A deferred concern cannot instantly recur within the original four-week window");
+  await run(tx=>tx.query("UPDATE ppw_worlds SET week=18 WHERE world_id=$1",[worldId]));
+  const revisited=await run(tx=>readWorldMail(tx,scope));
+  const renewed=revisited.find(x=>x.canDisagree&&x.targetPersonId===deferredPerson)!;
+  assert.ok(renewed,
+   "After four weeks the same issue is raised again ONLY while fatigue and repetition persist");
+  assert.notEqual(renewed.id,deferral.id);
+  assert.match(renewed.body,/Four weeks after you asked us to revisit this/);
+  assert.equal(renewed.staffDebate?.medical.name,medical.name);
+  assert.equal(renewed.staffDebate?.creative.name,creative.name);
+  assert.ok(revisited.some(x=>x.id===deferral.id&&
+   x.disagreementResponse?.status==="ACKNOWLEDGED"),
+   "Original manager deferral remains an independent, auditable conversation");
+  const renewedChoice=await respondToStaffDisagreement(db.pool,{...scope,
+   mailId:renewed.id,decision:"PRIORITISE_HEALTH",
+   requestId:"defer-later-medical-"+tag,expectedRevision:defer.revision});
+  assert.equal(renewedChoice.status,"APPLIED");
+  assert.equal(renewedChoice.result?.status,"PENDING");
+  await run(tx=>tx.query("UPDATE ppw_people SET fatigue=56 WHERE world_id=$1 AND person_id=$2",
+   [worldId,deferredPerson]));
+  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,18)),{settled:1});
+  assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,18)),{settled:0});
+  const finalMorale=await run(tx=>tx.query<{role:string;morale:number}>(
+   "SELECT role,morale FROM ppw_staff_employments WHERE world_id=$1 ORDER BY role",[worldId]));
+  assert.equal(finalMorale.find(x=>x.role==="MEDICAL")?.morale,74,
+   "Only the later kept Medical promise changes morale; deferral did not");
+  assert.equal(finalMorale.find(x=>x.role==="CREATIVE")?.morale,72);
  }finally{
   await run(async tx=>{
    for(const table of ["ppw_player_attention_dismissals",
