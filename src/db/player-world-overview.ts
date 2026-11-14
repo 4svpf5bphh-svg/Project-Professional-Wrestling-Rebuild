@@ -1,5 +1,7 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
+import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
+import {PARTNER_MEDIATION_CANDIDATES_SQL} from "./backstage-partner-replies.js";
 import {derivePromoterAchievements,EMPTY_PROMOTER_COUNTERS,type AchievementMetric} from "../domain/promoter-achievements.js";
 import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
 import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
@@ -19,6 +21,7 @@ export interface PlayerWorldOverview {
   lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null;
   attention:{
    unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
+   backstageUnreadCount?:number;
    pendingContractOffers:boolean;plannedShows:number;
    backstageRequests?:{personId:string;name:string;kind:string}[];
    offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];
@@ -68,7 +71,8 @@ export async function readPlayerWorldOverview(
    last_weekly_net:string|number|null;runway_weeks:number|null;
    financial_distress:string|null;
    planned_shows:number|null;unprepared_show:boolean|null;
-   pending_backstage:boolean|null;expiring_talent:boolean|null;
+   pending_backstage:boolean|null;backstage_unread_count:number|null;
+   expiring_talent:boolean|null;
    pending_contract_offers:boolean|null;offer_results:unknown;date_decisions:unknown;
    backstage_requests:unknown;backstage_results:unknown;business_updates:unknown;
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
@@ -87,7 +91,8 @@ export async function readPlayerWorldOverview(
     owned.cash,owned.debt,owned.last_weekly_net,
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
-    notices.pending_backstage,notices.expiring_talent,notices.pending_contract_offers,
+    notices.pending_backstage,notices.backstage_unread_count,
+    notices.expiring_talent,notices.pending_contract_offers,
     notices.offer_results,notices.date_decisions,
     notices.backstage_requests,notices.backstage_results,
     notices.business_updates,notices.contract_alerts,notices.title_news,
@@ -130,6 +135,370 @@ export async function readPlayerWorldOverview(
      EXISTS (SELECT 1 FROM ppw_backstage_requests b
        WHERE b.world_id=w.world_id AND b.promotion_id=owned.promotion_id
         AND b.status='PENDING' LIMIT 1) AS pending_backstage,
+
+     /* One overview query; each unread source is genuine and private. */
+     least(99,
+      (SELECT count(*)::integer FROM (
+        /* The SMS inbox displays only the latest thread for a current
+         * wrestler. Old unread requests cannot inflate the Home badge. */
+        SELECT DISTINCT ON (r.person_id)
+         r.read_week_index,r.created_week_index,
+         coalesce(a.archived_through_week_index,-1) AS archived_through_week_index
+        FROM ppw_backstage_requests r
+        JOIN ppw_people person ON person.world_id=r.world_id
+         AND person.person_id=r.person_id
+        LEFT JOIN ppw_backstage_thread_archives a
+         ON a.world_id=r.world_id AND a.promotion_id=r.promotion_id
+         AND a.person_id=r.person_id AND a.player_id=$2
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND person.status IN ('ACTIVE','INJURED')
+         AND EXISTS (
+          SELECT 1 FROM ppw_contracts active
+          WHERE active.world_id=r.world_id
+           AND active.promotion_id=r.promotion_id
+           AND active.person_id=r.person_id
+           AND active.status='SIGNED'
+           AND active.start_week_index<=(w.year-1)*52+w.week-1
+           AND active.expires_week_index>=(w.year-1)*52+w.week-1)
+        ORDER BY r.person_id,r.created_week_index DESC,r.request_id DESC
+       ) latest
+       WHERE latest.read_week_index IS NULL
+        AND latest.created_week_index>latest.archived_through_week_index)
+      +(SELECT count(*)::integer FROM (
+        SELECT n.story_key FROM ppw_world_news_items n
+        WHERE n.world_id=w.world_id AND n.promotion_id=owned.promotion_id
+         AND n.desk='OFFICIAL' AND n.certainty='CONFIRMED'
+         AND n.source_kind='EVENT' AND n.story_key LIKE 'broadcast:network:%'
+         AND (n.year-1)*52+n.week-1
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY n.year DESC,n.week DESC,n.story_key DESC LIMIT 8
+       ) n WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2
+         AND r.attention_id='backstage-world:'||md5('network:'||n.story_key)))
+      /* Only completed regular television with a certified hardcore match
+       * earns a private network concern. Match the exact two-source inbox
+       * window and reuse the existing read receipt; never inspect drafts alone. */
+      +(SELECT count(*)::integer FROM (
+        SELECT d.deal_id,done.show_id
+        FROM ppw_commercial_deals d
+        JOIN ppw_completed_shows done ON done.world_id=d.world_id
+         AND done.promotion_id=d.promotion_id
+        JOIN ppw_booking_drafts draft ON draft.world_id=done.world_id
+         AND draft.draft_id=done.show_id AND draft.promotion_id=done.promotion_id
+         AND draft.status='SUBMITTED' AND draft.booking_class='REGULAR'
+        JOIN ppw_show_economics economics ON economics.world_id=done.world_id
+         AND economics.show_id=done.show_id
+         AND economics.promotion_id=done.promotion_id
+         AND economics.audience_format='TV'
+        WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
+         AND d.kind='BROADCAST' AND d.status='ACTIVE'
+         AND d.offer_code IN ('BROADCAST_STABLE','BROADCAST_TV',
+          'BROADCAST_ARCHIVE','BROADCAST_GLOBAL')
+         AND d.start_week_index<=(w.year-1)*52+w.week-1
+         AND d.end_week_index>=(w.year-1)*52+w.week-1
+         AND (done.year-1)*52+done.week-1
+          BETWEEN greatest(d.start_week_index,(w.year-1)*52+w.week-13)
+           AND least(d.end_week_index,(w.year-1)*52+w.week-1)
+         AND EXISTS(
+          SELECT 1 FROM ppw_completed_show_matches finished
+          JOIN ppw_card_slots slot ON slot.world_id=finished.world_id
+           AND slot.draft_id=finished.show_id AND slot.slot_id=finished.match_id
+           AND slot.kind='MATCH' AND slot.payload->>'stipulation'='HARDCORE'
+          WHERE finished.world_id=done.world_id AND finished.show_id=done.show_id)
+        ORDER BY done.year DESC,done.week DESC,done.show_id DESC LIMIT 2
+       ) concern WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'network-content:'||concern.deal_id||':'||concern.show_id)))
+      /* Certified replies become unread network follow-ups after settlement.
+       * Same private acknowledgement table and one existing overview query;
+       * no materialised notification row or extra home round-trip. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.mail_id,r.status FROM ppw_backstage_network_replies r
+        WHERE r.world_id=w.world_id
+         AND r.promotion_id=owned.promotion_id AND r.player_id=$2
+         AND r.status IN ('KEPT','BROKEN','EXCUSED')
+         AND r.settled_week_index
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+       ) outcome WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'network-followup:'||outcome.mail_id||':'||outcome.status)))
+      /* A settled personnel commitment sends one private staff follow-up;
+       * count the same two-message window as the iPhone inbox query. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.mail_id,r.status FROM ppw_backstage_staff_replies r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2 AND r.status IN ('KEPT','BROKEN','EXCUSED')
+         AND r.settled_week_index
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+       ) followup WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-followup:'||followup.mail_id||':'||followup.status)))
+      +(SELECT count(*)::integer FROM ppw_staff_employments e
+       WHERE e.world_id=w.world_id AND e.promotion_id=owned.promotion_id
+        AND e.status='ACTIVE' AND (
+         (e.role='TALENT_MANAGER' AND EXISTS(
+          SELECT 1 FROM ppw_contracts c
+          WHERE c.world_id=e.world_id AND c.promotion_id=e.promotion_id
+           AND c.status='SIGNED'
+           AND c.start_week_index<=(w.year-1)*52+w.week-1
+           AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
+             AND (w.year-1)*52+w.week+3))
+         OR (e.role='MEDICAL' AND EXISTS(
+          SELECT 1 FROM ppw_contracts c JOIN ppw_people p
+           ON p.world_id=c.world_id AND p.person_id=c.person_id
+          WHERE c.world_id=e.world_id AND c.promotion_id=e.promotion_id
+           AND c.status='SIGNED'
+           AND c.start_week_index<=(w.year-1)*52+w.week-1
+           AND c.expires_week_index>=(w.year-1)*52+w.week-1
+           AND p.status IN ('ACTIVE','INJURED') AND p.fatigue>=70))
+         OR (e.role='CREATIVE' AND EXISTS(
+          SELECT 1 FROM ppw_programmes p
+          WHERE p.world_id=e.world_id AND p.promotion_id=e.promotion_id
+           AND p.status='ACTIVE' AND p.repetition>=3)))
+        AND NOT EXISTS(
+         SELECT 1 FROM ppw_player_attention_dismissals r
+         WHERE r.world_id=e.world_id AND r.promotion_id=e.promotion_id
+          AND r.player_id=$2 AND r.attention_id='backstage-world:'||md5(
+           'staff:'||e.employment_id||':'||e.role||':'||
+           floor(((w.year-1)*52+w.week-1)/4)::integer)))
+      +(SELECT count(*)::integer FROM ppw_staff_employments e
+       JOIN LATERAL(SELECT p.person_id FROM ppw_people p
+        WHERE p.world_id=e.world_id AND p.status='ACTIVE'
+         AND NOT EXISTS(SELECT 1 FROM ppw_contracts c
+          WHERE c.world_id=p.world_id AND c.person_id=p.person_id
+           AND c.status='SIGNED'
+           AND c.start_week_index<=(w.year-1)*52+w.week-1
+           AND c.expires_week_index>=(w.year-1)*52+w.week-1)
+        ORDER BY p.popularity DESC,p.person_id LIMIT 1) candidate ON true
+       WHERE e.world_id=w.world_id AND e.promotion_id=owned.promotion_id
+        AND e.status='ACTIVE' AND e.role='SCOUT'
+        AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals r
+          WHERE r.world_id=e.world_id AND r.promotion_id=e.promotion_id
+           AND r.player_id=$2 AND r.attention_id='backstage-world:'||md5(
+            'scout:'||e.employment_id||':'||candidate.person_id||':'||
+            floor(((w.year-1)*52+w.week-1)/8)::integer)))
+      /* Recent certified company TV brings a genuinely available free agent
+       * to our door. This is one candidate, never a per-person inbox scan or
+       * a synthetic contract. It matches the Backstage projection's ID. */
+      +(SELECT count(*)::integer FROM (
+        SELECT p.person_id FROM ppw_people p
+        WHERE p.world_id=w.world_id AND p.status='ACTIVE'
+         AND p.popularity BETWEEN 25 AND 70
+         AND EXISTS(
+          SELECT 1 FROM ppw_completed_shows completed
+          JOIN ppw_world_news_weeks news ON news.world_id=completed.world_id
+           AND news.year=completed.year AND news.week=completed.week
+          WHERE completed.world_id=w.world_id AND completed.promotion_id=owned.promotion_id
+           AND (completed.year-1)*52+completed.week-1
+            BETWEEN (floor(((w.year-1)*52+w.week-1)/8)*8)::integer
+            AND (w.year-1)*52+w.week-1)
+         AND NOT EXISTS(
+          SELECT 1 FROM ppw_contracts c
+          WHERE c.world_id=p.world_id AND c.person_id=p.person_id
+           AND c.status='SIGNED'
+           AND c.start_week_index<=(w.year-1)*52+w.week-1
+           AND c.expires_week_index>=(w.year-1)*52+w.week-1)
+        ORDER BY p.popularity DESC,p.person_id LIMIT 1
+       ) prospect WHERE NOT EXISTS(
+         SELECT 1 FROM ppw_player_attention_dismissals receipt
+         WHERE receipt.world_id=w.world_id
+          AND receipt.player_id=$2
+          AND receipt.promotion_id=owned.promotion_id
+          AND receipt.attention_id='backstage-world:'||md5(
+           'free-agent:'||prospect.person_id||':'||
+           floor(((w.year-1)*52+w.week-1)/8)::integer)))
+      /* Canonical wrestler replies: new unread response only after a real,
+       * resolved contract offer following the manager's invitation. */
+      +(SELECT count(*)::integer FROM (
+        SELECT reply.mail_id,bid.offer_id,bid.status
+        FROM ppw_backstage_free_agent_replies reply
+        JOIN LATERAL (
+         SELECT o.offer_id,o.status,o.submitted_week_index
+         FROM ppw_contract_offers o
+         WHERE o.world_id=reply.world_id
+          AND o.promotion_id=reply.promotion_id
+          AND o.person_id=reply.person_id
+          AND o.source_contract_id IS NULL
+          AND o.submitted_week_index>=reply.responded_week_index
+          AND o.status IN ('ACCEPTED','REJECTED')
+         ORDER BY o.submitted_week_index DESC,o.offer_id DESC LIMIT 1
+        ) bid ON true
+        WHERE reply.world_id=w.world_id
+         AND reply.promotion_id=owned.promotion_id AND reply.player_id=$2
+         AND reply.decision='INVITE'
+         AND greatest(reply.responded_week_index+1,bid.submitted_week_index+1)
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY bid.submitted_week_index DESC,bid.offer_id DESC LIMIT 2
+       ) response WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.player_id=$2 AND receipt.promotion_id=owned.promotion_id
+         AND receipt.attention_id='backstage-world:'||md5(
+          'free-agent-result:'||response.mail_id||':'||response.offer_id||':'||response.status)))
+      /* One genuine Medical/Creative conflict. Same capped ranked source as
+       * Backstage read, no additional Home query or payroll-wide materialisation. */
+      +(SELECT count(*)::integer FROM (
+        SELECT issue.medical_id,issue.creative_id,issue.programme_id,
+         issue.person_id,o.now
+        FROM LATERAL (SELECT (w.year-1)*52+w.week-1 AS now) o
+        JOIN LATERAL (${STAFF_DISAGREEMENT_LATERAL_SQL.replace("med.promotion_id=$2","med.promotion_id=owned.promotion_id")}) issue ON true
+       ) dispute WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-dispute:'||dispute.medical_id||':'||dispute.creative_id||':'||
+          dispute.programme_id||':'||dispute.person_id||':'||
+          floor(dispute.now/4)::integer)))
+      /* Keep original unread state for answered but still pending Medical
+       * /Creative disputes. Inbox retains the same deterministic ID. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.medical_employment_id,r.creative_employment_id,
+         r.programme_id,r.person_id,r.responded_week_index
+        FROM ppw_backstage_staff_disagreements r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2 AND r.status IN ('PENDING','ACKNOWLEDGED')
+         AND r.responded_week_index BETWEEN
+          greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+        ORDER BY r.responded_week_index DESC,r.mail_id DESC LIMIT 2
+       ) answered WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-dispute:'||answered.medical_employment_id||':'||
+          answered.creative_employment_id||':'||
+          answered.programme_id||':'||answered.person_id||':'||
+          floor(answered.responded_week_index/4)::integer)))
+      /* An answered staff dilemma receives a new message only after the
+       * genuine fatigue/programme outcome is settled in the World rollover. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.mail_id,r.status
+        FROM ppw_backstage_staff_disagreements r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2 AND r.status IN ('KEPT','BROKEN','EXCUSED')
+         AND r.settled_week_index
+          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
+           AND (w.year-1)*52+w.week-1
+        ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+       ) response WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id
+         AND receipt.promotion_id=owned.promotion_id AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-dispute-followup:'||response.mail_id||':'||response.status)))
+      /* The second genuinely hired Medical/Creative employee also sends an
+       * owner-only follow-up after a verified commitment resolves. Mirror
+       * exactly the two-row World Mail source and its private read receipt. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.mail_id,r.status
+        FROM ppw_backstage_staff_disagreements r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2
+         AND r.decision IN ('PRIORITISE_HEALTH','REFRESH_PROGRAMME')
+         AND r.status IN ('KEPT','BROKEN','EXCUSED')
+         AND r.settled_week_index BETWEEN
+          greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+        ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+       ) response WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-dispute-counterpoint:'||response.mail_id||':'||response.status)))
+      /* The counterpart's message requires a real MEDIATE decision on a
+       * verified working-strain request. Same ranked source as Backstage. */
+      +(SELECT count(*)::integer FROM (
+        SELECT partner.request_id FROM
+         LATERAL (SELECT (w.year-1)*52+w.week-1 AS now) o
+         JOIN LATERAL (${PARTNER_MEDIATION_CANDIDATES_SQL.replace("r.promotion_id=$2","r.promotion_id=owned.promotion_id")}) partner ON true
+       ) conversation WHERE NOT EXISTS(
+         SELECT 1 FROM ppw_player_attention_dismissals read
+         WHERE read.world_id=w.world_id
+          AND read.promotion_id=owned.promotion_id AND read.player_id=$2
+          AND read.attention_id='backstage-world:'||md5(
+           'partner-mediation:'||conversation.request_id)))
+      /* A poor certified tag match can prompt one private partnership setback.
+       * The ranked two-request source, <50 execution threshold and stable
+       * first-match receipt are the same as in the one-read World inbox. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.request_id,bad.show_id,bad.match_id FROM (
+         SELECT request.request_id,request.person_id,request.related_person_id,
+          request.responded_week_index,request.follow_through_week_index
+         FROM ppw_backstage_requests request
+         WHERE request.world_id=w.world_id AND request.promotion_id=owned.promotion_id
+          AND request.kind='PARTNERSHIP' AND request.decision='MEDIATE'
+          AND request.status='ANSWERED' AND request.related_person_id IS NOT NULL
+          AND request.responded_week_index BETWEEN
+           greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+         ORDER BY request.responded_week_index DESC,request.request_id DESC LIMIT 2
+        ) r JOIN LATERAL (
+         SELECT pair.week_index,pair.show_id,pair.match_id
+         FROM ppw_tag_working_pair_appearances pair
+         JOIN ppw_completed_show_matches actual ON actual.world_id=pair.world_id
+          AND actual.show_id=pair.show_id AND actual.match_id=pair.match_id
+         JOIN ppw_completed_shows completed ON completed.world_id=pair.world_id
+          AND completed.show_id=pair.show_id
+          AND completed.promotion_id=owned.promotion_id
+         WHERE pair.world_id=w.world_id
+          AND pair.person_a_id=least(r.person_id,r.related_person_id)
+          AND pair.person_b_id=greatest(r.person_id,r.related_person_id)
+          AND pair.week_index>r.responded_week_index
+          AND pair.week_index<=(w.year-1)*52+w.week-1
+          AND pair.execution_quality<50
+          AND (r.follow_through_week_index IS NULL
+           OR pair.week_index<r.follow_through_week_index)
+         ORDER BY pair.week_index,pair.show_id,pair.match_id LIMIT 1
+        ) bad ON true
+       ) setback WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals read
+        WHERE read.world_id=w.world_id
+         AND read.promotion_id=owned.promotion_id AND read.player_id=$2
+         AND read.attention_id='backstage-world:'||md5(
+          'partner-mediation-setback:'||setback.request_id||':'||
+          setback.show_id||':'||setback.match_id)))
+      /* A partner's good-news response has to follow the original
+       * certified 68+-execution tag evidence, not manager invitation. */
+      +(SELECT count(*)::integer FROM (
+        SELECT request.request_id,request.follow_through_week_index
+        FROM ppw_backstage_requests request
+        WHERE request.world_id=w.world_id
+         AND request.promotion_id=owned.promotion_id
+         AND request.kind='PARTNERSHIP' AND request.decision='MEDIATE'
+         AND request.follow_through_kind='MEDIATION_MATCH_COMPLETED'
+         AND request.follow_through_week_index BETWEEN
+          greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+        ORDER BY request.follow_through_week_index DESC,
+         request.request_id DESC LIMIT 2
+       ) repaired WHERE NOT EXISTS(
+         SELECT 1 FROM ppw_player_attention_dismissals read
+         WHERE read.world_id=w.world_id
+          AND read.promotion_id=owned.promotion_id AND read.player_id=$2
+          AND read.attention_id='backstage-world:'||md5(
+           'partner-mediation-result:'||repaired.request_id||':'||
+           repaired.follow_through_week_index)))
+     )::integer AS backstage_unread_count,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'personId',request.person_id,'name',request.name,'kind',request.kind)
        ORDER BY request.created_week_index DESC,request.request_id DESC),'[]'::jsonb)
@@ -610,6 +979,11 @@ export async function readPlayerWorldOverview(
      unseenLegends:Number(x.unseen_legends??0),
      unpreparedShow:x.unprepared_show===true,
      pendingBackstage:x.pending_backstage===true,
+     // The compact Home snapshot did not contain a Backstage count before
+     // this feature. Omit zero rather than allocating an extra field on
+     // every ordinary overview response or breaking existing consumers.
+     ...(Number(x.backstage_unread_count??0)>0?{
+      backstageUnreadCount:Math.min(99,Number(x.backstage_unread_count))}:{}),
      expiringTalent:x.expiring_talent===true,
      pendingContractOffers:x.pending_contract_offers===true,
      plannedShows:x.planned_shows??0,

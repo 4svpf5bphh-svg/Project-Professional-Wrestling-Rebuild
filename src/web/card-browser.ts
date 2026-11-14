@@ -67,6 +67,23 @@ let pendingProgrammeFocusPersonId:string|null=null;
 type BackstageRivalryFocus={worldId:string;promotionId:string;
  personId:string;opponentId:string};
 let pendingBackstageRivalryFocus:BackstageRivalryFocus|null=null;
+/** A single private route handoff to the *existing* recruitment editor.
+ * No wrestler ID in a public hash or localStorage; consume only for the
+ * exact World and promotion. Server verifies person and offer eligibility.
+ */
+type BackstageRecruitmentFocus={worldId:string;promotionId:string;
+ personId:string;name:string};
+let pendingBackstageRecruitmentFocus:BackstageRecruitmentFocus|null=null;
+export function queueBackstageRecruitmentFocus(focus:BackstageRecruitmentFocus){
+ if(![focus.worldId,focus.promotionId,focus.personId,focus.name].every(
+  x=>typeof x==="string"&&!!x&&x.length<=200))return;
+ pendingBackstageRecruitmentFocus=focus;
+}
+export function consumeBackstageRecruitmentFocus(worldId:string,promotionId:string){
+ const focus=pendingBackstageRecruitmentFocus;
+ pendingBackstageRecruitmentFocus=null;
+ return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?focus:null;
+}
 export function queueBackstageRivalryFocus(focus:BackstageRivalryFocus){
  if(!focus.worldId||!focus.promotionId||!focus.personId||!focus.opponentId||
   focus.personId===focus.opponentId) return;
@@ -611,7 +628,9 @@ export function mountRosterPage(root:HTMLElement,scope:Scope){
 }
 export function mountTalentMarketPage(root:HTMLElement,scope:Scope){
  const call=createCardClient(scope);
- return mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET");
+ const focus=consumeBackstageRecruitmentFocus(scope.worldId,scope.promotionId);
+ return mountRosterMarket(root,rosterMarketPort(root,scope,call),"MARKET",
+  focus??undefined);
 }
 /** Contracts are promotion-private and require a real verified session. */
 export function mountContractsPage(root:HTMLElement,scope:Scope,
@@ -865,6 +884,20 @@ function personaPort(call:ReturnType<typeof createCardClient>,
  return {
   load:personId=>call("backstage",personId?{personId}:{inboxOnly:true}),
   markRead:personId=>call("markBackstageRead",{personId}),
+  markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),
+  respondNetwork:input=>call("respondBackstageNetwork",input),
+  respondStaff:input=>call("respondBackstageStaff",input),
+  respondDisagreement:input=>call("respondBackstageDisagreement",input),
+  respondPartner:input=>call("respondPartnerMediation",input),
+  respondFreeAgent:input=>call("respondBackstageFreeAgent",input),
+  openRecruitment:(personId,name)=>{
+   queueBackstageRecruitmentFocus({worldId:scope.worldId,
+    promotionId:scope.promotionId,personId,name});
+   window.location.hash=hostSectionHash("market");
+  },
+  openDepartment:destination=>{window.location.hash=hostSectionHash(({
+   COMMERCIALS:"commercials",CONTRACTS:"contracts",PROGRAMMES:"programmes",
+   STAFF:"staff",MARKET:"market"} as const)[destination]);},
   archiveThread:(personId,archived)=>call("backstageArchive",{personId,archived}),
   decide:({conversationId,decision,requestId,expectedRevision})=>
    call("backstageDecision",{conversationId,decision,requestId,expectedRevision}),

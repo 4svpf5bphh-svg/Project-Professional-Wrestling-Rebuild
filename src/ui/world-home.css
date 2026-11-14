@@ -329,3 +329,19 @@
  background:#214960;border:1px solid #7bd6f3;border-radius:11px;
  color:#f4fbff;cursor:pointer}
 .ppw-home-competition-action:focus-visible{outline:3px solid #f6cf82;outline-offset:2px}
+
+/* Phase 53: Backstage is the second dominant Home action, with an actual
+   private unread count from the existing overview, never a polling badge. */
+.ppw-home-backstage-action{position:relative;border-left:3px solid #79d8fb!important;
+ background:linear-gradient(112deg,#122c49,#132c50)!important}
+.ppw-home-backstage-action .ppw-home-icon{color:#a8e8ff}
+.ppw-home-backstage-badge{position:absolute;top:7px;right:9px;display:grid;
+ place-items:center;min-width:23px;height:23px;padding:0 5px;border-radius:16px;
+ background:#df4557;color:white;font-size:12px;font-weight:900;
+ box-shadow:0 0 0 3px #142f46}
+@media(max-width:699px){
+ .ppw-home-dashboard>.ppw-home-backstage-action{grid-column:1/-1;
+  min-height:74px!important;flex-direction:row!important}
+ .ppw-home-dashboard>.ppw-home-backstage-action .ppw-home-icon,
+ .ppw-home-dashboard>.ppw-home-backstage-action .ppw-home-arrow{display:flex!important}
+}

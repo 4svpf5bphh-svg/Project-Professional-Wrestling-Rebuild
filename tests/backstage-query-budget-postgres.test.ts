@@ -10,7 +10,7 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readPortablePersonaWorkspace} from "../src/db/portable-persona-workspace.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
-test("Backstage iPhone inbox avoids persona hydration: four bounded SQL reads for 600 wrestlers",
+test("Backstage iPhone inbox includes bounded World mail in five SQL reads for 600 wrestlers",
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
  const suffix=randomUUID(),worldId="backstage-budget-"+suffix,
   promotionId="mine-"+suffix,otherId="other-"+suffix,
@@ -54,19 +54,20 @@ test("Backstage iPhone inbox avoids persona hydration: four bounded SQL reads fo
   assert.equal(inbox.conversations.length,0);
   assert.equal(inbox.roster.filter(x=>x.latestIncoming!==null).length,0);
   assert.ok(inbox.roster.every(x=>x.personId.startsWith("worker-")));
-  const sample=meter.assertBudget({maxQueries:4,maxResultBytes:80_000});
-  assert.equal(sample.queryCount,4);
+  const sample=meter.assertBudget({maxQueries:5,maxResultBytes:85_000});
+  assert.equal(sample.queryCount,5);
   assert.ok(sample.resultRows<=110,"No rival roster or historical World data is hydrated");
   console.log("PPW Backstage inbox PostgreSQL budget:",JSON.stringify(sample));
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{
    worldId,promotionId,playerId,personId:"worker-1",inboxOnly:true}),
    /Inbox request cannot select/);
-  const beforeFull=meter.assertBudget({maxQueries:4,maxResultBytes:80_000}).queryCount;
+  const beforeFull=meter.assertBudget({maxQueries:5,maxResultBytes:85_000}).queryCount;
   const thread=await readPortablePersonaWorkspace(measured,{
    worldId,promotionId,playerId,personId:"worker-1"});
   assert.equal(thread.personId,"worker-1");
   assert.ok(thread.persona);
-  assert.equal(meter.assertBudget({maxQueries:13,maxResultBytes:100_000}).queryCount-beforeFull,9);
+  assert.equal(meter.assertBudget({maxQueries:14,maxResultBytes:105_000}).queryCount-beforeFull,9,
+    "A wrestler thread reuses cached company mail; it never repeats the inbox query");
   await assert.rejects(readPortablePersonaWorkspace(measured,{
    worldId,promotionId:otherId,playerId}),/access denied/);
  }finally{

@@ -9,9 +9,34 @@ import {livingWrestlerMotivation} from "../domain/living-character-motivation.js
 import {describeBookingCommitment} from "../domain/backstage-booking-commitment.js";
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
+import type {WorldMail,WorldMailAction} from "../db/backstage-world-mail.js";
+import {staffDebateReaction} from "../domain/backstage-staff-dialogue.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
  markRead(personId:string):Promise<{readCount:number}>;
+ markWorldRead?(mailId:string):Promise<{readCount:number}>;
+ respondNetwork?(input:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
+   status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
+ respondStaff?(input:{mailId:string;decision:"COMMIT"|"DEFER";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;decision:"COMMIT"|"DEFER";
+   status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
+ respondDisagreement?(input:{mailId:string;decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
+   status:"PENDING"|"ACKNOWLEDGED";dueWeekIndex:number}}>;
+ respondPartner?(input:{mailId:string;decision:"INVITE"|"LEAVE";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;decision:"INVITE"|"LEAVE";
+   outcome:"READY"|"CAUTIOUS"|"DECLINED";partnerPersonId:string}}>;
+ respondFreeAgent?(input:{mailId:string;decision:"INVITE"|"PASS";
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;personId:string;decision:"INVITE"|"PASS";
+   status:"INVITED"|"DECLINED"}}>;
+ openRecruitment?(personId:string,name:string):void;
+ openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
  decide(input:{conversationId:string;decision:BackstageDecision;
   requestId:string;expectedRevision:number}):Promise<unknown>;
@@ -31,10 +56,26 @@ export function mountPersonaDesk(root:HTMLElement,
  port:PersonaDeskPort,onBack?:()=>void,
  onOpenProgrammes?:(personId:string,opponentId:string)=>void,
  initialInboxFilter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
+ // Keep the company inbox in memory while the manager opens a wrestler thread.
+ let inboxWorldMessages:WorldMail[]|null=null;
+ let inboxWorldRevision:number|null=null;
+ let companyInboxPreviouslyLoaded=false;
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
- let pane:"INBOX"|"THREAD"|"PROFILE"=initialPersonId?"THREAD":"INBOX";
- let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"=initialInboxFilter;
+ let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
+ let selectedWorldMailId:string|null=null;
+ let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
+  requestId:string;expectedRevision:number}|null=null;
+ let pendingDisagreement:{mailId:string;decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
+  requestId:string;expectedRevision:number}|null=null;
+ let pendingPartner:{mailId:string;decision:"INVITE"|"LEAVE";
+  requestId:string;expectedRevision:number}|null=null;
+ let pendingRecruitment:{mailId:string;decision:"INVITE"|"PASS";
+  requestId:string;expectedRevision:number}|null=null;
+ let pendingStaff:{mailId:string;decision:"COMMIT"|"DEFER";
+  requestId:string;expectedRevision:number}|null=null;
+ let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
+  "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"|"DISAGREEMENTS"|"LOCKER_ROOM"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
  let scrollToLatest=false;
@@ -50,18 +91,36 @@ export function mountPersonaDesk(root:HTMLElement,
    {...w,latestIncoming:transform(w.latestIncoming)}:w)};
  }
  const returnToMessages=()=>{
-  pane="INBOX";render();
+  pane="INBOX";
+  // A world-changing answer to a wrestler can create a new certified
+  // company message (such as their partner speaking up). Reload only when
+  // the existing revision cache has been invalidated, never on routine reads.
+  if(inboxWorldMessages===null&&companyInboxPreviouslyLoaded){void load();return;}
+  render();
   requestAnimationFrame(()=>{
    const inbox=root.querySelector<HTMLElement>(".ppw-backstage-contacts");
    if(inbox)inbox.scrollTop=lastInboxScroll;
   });
  };
+ function withInboxWorldMessages(next:View,id?:string):View{
+  if(!id){
+   companyInboxPreviouslyLoaded=true;
+   inboxWorldMessages=next.worldMessages??[];
+   inboxWorldRevision=next.worldRevision;
+   return next;
+  }
+  if(inboxWorldRevision!==next.worldRevision){
+   inboxWorldMessages=null;inboxWorldRevision=null;return next;
+  }
+  return inboxWorldMessages!==null?
+   {...next,worldMessages:inboxWorldMessages}:next;
+ }
  async function load(id?:string){
   personId=id;loading=true;render();
   if(pendingDecision&&id!==view?.personId)pendingDecision=null;
   if(pendingPitch&&id!==view?.personId)pendingPitch=null;
   try{
-   view=await port.load(id);
+   view=withInboxWorldMessages(await port.load(id),id);
    // An inaccessible or retired target resolves to the normal inbox.
    if(id&&pane==="THREAD"&&view.personId!==id)pane="INBOX";
    if(pane==="THREAD"&&view.personId&&
@@ -111,7 +170,7 @@ export function mountPersonaDesk(root:HTMLElement,
    }
    if(response?.status!=="APPLIED"&&response?.status!=="REPLAYED")
     throw Error("Reply not confirmed. Retrying will reuse your original message.");
-   view=await port.load(selected);
+   view=withInboxWorldMessages(await port.load(selected),selected);
    pendingDecision=null;scrollToLatest=true;answer=null;
   }catch(e){
    const reason=e instanceof Error?e.message:"Unable to send reply";
@@ -136,7 +195,7 @@ export function mountPersonaDesk(root:HTMLElement,
    if((outcome?.status!=="APPLIED"&&outcome?.status!=="REPLAYED")||!outcome.result)
     throw Error("Pitch not confirmed. Retry without changing your choice.");
    const result=outcome.result;
-   view=await port.load(name);chosen=null;pendingPitch=null;scrollToLatest=true;
+   view=withInboxWorldMessages(await port.load(name),name);chosen=null;pendingPitch=null;scrollToLatest=true;
    answer=result.accepted?
     "Agreed. This is my character now — you'll see it wherever I work.":
     result.reason==="ICONIC_PERSONA_PROTECTED"?
@@ -150,6 +209,158 @@ export function mountPersonaDesk(root:HTMLElement,
   }
   finally{loading=false;render();}
  }
+ async function openWorldMail(mailId:string){
+  if(!view)return;
+  const item=view.worldMessages?.find(x=>x.id===mailId);
+  if(!item)return;
+  selectedWorldMailId=mailId;pane="WORLD_THREAD";error="";render();
+  if(item.read||!port.markWorldRead)return;
+  try{
+   await port.markWorldRead(mailId);
+   if(inboxWorldMessages)inboxWorldMessages=inboxWorldMessages.map(x=>
+    x.id===mailId?{...x,read:true}:x);
+   if(view){view={...view,worldMessages:(view.worldMessages??[]).map(x=>
+    x.id===mailId?{...x,read:true}:x)};
+    if(pane==="WORLD_THREAD"&&selectedWorldMailId===mailId)render();}
+  }catch(e){error=e instanceof Error?e.message:"Could not mark message read";render();}
+ }
+ async function answerNetwork(mailId:string,decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM"){
+  if(!view||loading||!port.respondNetwork||view.worldRevision===null)return;
+  const same=pendingNetwork?.mailId===mailId&&pendingNetwork.decision===decision;
+  const request=same?pendingNetwork!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingNetwork=request;loading=true;render();
+  try{
+   const result=await port.respondNetwork(request);
+   if(result.status!=="APPLIED"&&result.status!=="REPLAYED")
+    throw new Error("The World has changed. Refresh before replying.");
+   const receipt=result.result;
+   if(!receipt||receipt.mailId!==request.mailId||
+    receipt.decision!==request.decision||
+    !["PENDING","ACKNOWLEDGED"].includes(receipt.status)||
+    !Number.isSafeInteger(receipt.dueWeekIndex))
+    throw new Error("Broadcaster response could not be verified. Retry your reply.");
+   // Use the authenticated command receipt, not a new five-read company
+   // inbox fetch. The same exact response survives a retried request.
+   const update=(messages:WorldMail[]|undefined)=>(messages??[]).map(mail=>
+    mail.id===receipt.mailId?{...mail,canRespond:false,
+     networkResponse:{decision:receipt.decision,status:receipt.status,
+      dueWeekIndex:receipt.dueWeekIndex}}:mail);
+   view={...view,worldRevision:result.revision,worldMessages:update(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=update(inboxWorldMessages);
+   inboxWorldRevision=result.revision;
+   pendingNetwork=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Broadcaster reply not saved";}
+  finally{loading=false;render();}
+ }
+ async function answerStaff(mailId:string,decision:"COMMIT"|"DEFER"){
+  if(!view||loading||!port.respondStaff||view.worldRevision===null)return;
+  const same=pendingStaff?.mailId===mailId&&pendingStaff.decision===decision;
+  const request=same?pendingStaff!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingStaff=request;loading=true;render();
+  try{
+   const applied=await port.respondStaff(request);
+   if(applied.status!=="APPLIED"&&applied.status!=="REPLAYED")
+    throw new Error("The World has changed. Refresh the conversation before replying.");
+   const receipt=applied.result;
+   if(!receipt||receipt.mailId!==mailId||receipt.decision!==decision||
+    !["PENDING","ACKNOWLEDGED"].includes(receipt.status)||
+    !Number.isSafeInteger(receipt.dueWeekIndex))
+    throw Error("Staff reply not confirmed. Retrying uses your original answer.");
+   const updated=(messages:WorldMail[]|undefined)=>(messages??[]).map(m=>
+    m.id===receipt.mailId?{...m,canStaffRespond:false,
+     staffResponse:{decision:receipt.decision,status:receipt.status,
+      dueWeekIndex:receipt.dueWeekIndex}}:m);
+   view={...view,worldRevision:applied.revision,
+    worldMessages:updated(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=updated(inboxWorldMessages);
+   inboxWorldRevision=applied.revision;
+   pendingStaff=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Staff reply not confirmed";}
+  finally{loading=false;render();}
+ }
+ async function answerDisagreement(mailId:string,
+  decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER"){
+  if(!view||loading||!port.respondDisagreement||view.worldRevision===null)return;
+  const same=pendingDisagreement?.mailId===mailId&&pendingDisagreement.decision===decision;
+  const request=same?pendingDisagreement!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingDisagreement=request;loading=true;render();
+  try{
+   const applied=await port.respondDisagreement(request);
+   if(applied.status!=="APPLIED"&&applied.status!=="REPLAYED")
+    throw Error("The World changed. Refresh before answering the department heads.");
+   const receipt=applied.result;
+   if(!receipt||receipt.mailId!==mailId||receipt.decision!==decision||
+    !["PENDING","ACKNOWLEDGED"].includes(receipt.status)||
+    !Number.isSafeInteger(receipt.dueWeekIndex))
+    throw Error("Staff disagreement response not confirmed. Retrying uses your original choice.");
+   const update=(messages:WorldMail[]|undefined)=>(messages??[]).map(m=>
+    m.id===mailId?{...m,canDisagree:false,
+     disagreementResponse:{decision:receipt.decision,status:receipt.status,
+      dueWeekIndex:receipt.dueWeekIndex}}:m);
+   view={...view,worldRevision:applied.revision,worldMessages:update(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=update(inboxWorldMessages);
+   inboxWorldRevision=applied.revision;pendingDisagreement=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Staff disagreement reply not confirmed";}
+  finally{loading=false;render();}
+ }
+ async function answerPartner(mailId:string,decision:"INVITE"|"LEAVE"){
+  if(!view||loading||!port.respondPartner||view.worldRevision===null)return;
+  const same=pendingPartner?.mailId===mailId&&pendingPartner.decision===decision;
+  const request=same?pendingPartner!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingPartner=request;loading=true;render();
+  try{
+   const applied=await port.respondPartner(request);
+   if(applied.status!=="APPLIED"&&applied.status!=="REPLAYED")
+    throw Error("The World changed. Refresh before speaking to this partner.");
+   const receipt=applied.result;
+   const original=view.worldMessages?.find(x=>x.id===mailId);
+   if(!receipt||receipt.mailId!==mailId||receipt.decision!==decision||
+    !original?.targetPersonId||
+    receipt.partnerPersonId!==original.targetPersonId||
+    !["READY","CAUTIOUS","DECLINED"].includes(receipt.outcome)||
+    (decision==="LEAVE")!==(receipt.outcome==="DECLINED"))
+    throw Error("Partner reply was not confirmed. Retrying uses your original answer.");
+   const updated=(messages:WorldMail[]|undefined)=>(messages??[]).map(m=>
+    m.id===mailId?{...m,canPartnerRespond:false,
+     partnerResponse:{decision:receipt.decision,outcome:receipt.outcome}}:m);
+   view={...view,worldRevision:applied.revision,worldMessages:updated(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=updated(inboxWorldMessages);
+   inboxWorldRevision=applied.revision;pendingPartner=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Could not confirm partner conversation";}
+  finally{loading=false;render();}
+ }
+ async function answerFreeAgent(mailId:string,decision:"INVITE"|"PASS"){
+  if(!view||loading||!port.respondFreeAgent||view.worldRevision===null)return;
+  const same=pendingRecruitment?.mailId===mailId&&pendingRecruitment.decision===decision;
+  const request=same?pendingRecruitment!:{mailId,decision,
+   requestId:crypto.randomUUID(),expectedRevision:view.worldRevision};
+  pendingRecruitment=request;loading=true;render();
+  try{
+   const applied=await port.respondFreeAgent(request);
+   if(applied.status!=="APPLIED"&&applied.status!=="REPLAYED")
+    throw Error("The World changed. Refresh before answering this wrestler.");
+   const receipt=applied.result;
+   const current=view.worldMessages?.find(m=>m.id===mailId);
+   if(!receipt||!current?.targetPersonId||
+    receipt.personId!==current.targetPersonId||
+    receipt.mailId!==mailId||receipt.decision!==decision||
+    receipt.status!==(decision==="INVITE"?"INVITED":"DECLINED"))
+    throw Error("Recruitment response not confirmed. Retrying uses the same reply.");
+   const updated=(messages:WorldMail[]|undefined)=>(messages??[]).map(m=>
+    m.id===mailId?{...m,canFreeAgentRespond:false,
+     freeAgentResponse:{decision,status:receipt.status}}:m);
+   view={...view,worldRevision:applied.revision,
+    worldMessages:updated(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=updated(inboxWorldMessages);
+   inboxWorldRevision=applied.revision;
+   pendingRecruitment=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Recruitment reply not confirmed";}
+  finally{loading=false;render();}
+ }
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
  function render(){
   const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
@@ -158,7 +369,7 @@ export function mountPersonaDesk(root:HTMLElement,
    preservedThreadPerson=previous.dataset.personId??null;}
   root.classList.add("ppw-editor","ppw-persona-desk","ppw-messenger");
   root.classList.remove("ppw-messenger-inbox","ppw-messenger-thread",
-   "ppw-messenger-profile");
+   "ppw-messenger-profile","ppw-messenger-world_thread");
   root.classList.add("ppw-messenger-"+pane.toLowerCase());
   root.replaceChildren();
   const head=el("header","ppw-persona-header");
@@ -173,7 +384,7 @@ export function mountPersonaDesk(root:HTMLElement,
   else head.append(el("span","ppw-eyebrow","CONTACTS"),
    el("h1","","Contact details"),
    el("p","ppw-muted","Private career conversations and character history."));
-  if(pane!=="THREAD")root.append(head);
+  if(pane!=="THREAD"&&pane!=="WORLD_THREAD")root.append(head);
   else if(onBack){
    // From a dossier, leave the conversation without relying on a hidden
    // header or the thread's Chats button.
@@ -191,12 +402,218 @@ export function mountPersonaDesk(root:HTMLElement,
    if(pane===id)tab.classList.add("ppw-persona-selected");
    tabs.append(tab);
   }
-  if(pane!=="THREAD")root.append(tabs);
+  if(pane!=="THREAD"&&pane!=="WORLD_THREAD")root.append(tabs);
+  if(pane==="WORLD_THREAD"){
+   const mail=view.worldMessages?.find(x=>x.id===selectedWorldMailId);
+   if(!mail){pane="INBOX";render();return;}
+   const chat=el("section","ppw-persona-chat ppw-backstage-world-thread");
+   chat.setAttribute("aria-label","Message from "+mail.sender);
+   const header=el("header","ppw-backstage-phone-header");
+   const back=button("← Messages",returnToMessages);
+   back.classList.add("ppw-backstage-phone-back");
+   const avatar=el("span","ppw-backstage-phone-avatar",
+    mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
+    mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
+   const identity=el("span","ppw-backstage-phone-identity");
+   identity.append(el("strong","",mail.sender),
+    el("small","",mail.kind==="NETWORK"?"Broadcast partner":
+     mail.kind==="SCOUT"?"Talent scouting":
+     mail.kind==="FREE_AGENT"?"Free agent":
+     mail.kind==="LOCKER_ROOM"?"Locker room":"Staff Office"));
+   header.append(back,avatar,identity);chat.append(header);
+   chat.append(el("small","ppw-backstage-date","YEAR "+
+    (Math.floor(mail.createdWeekIndex/52)+1)+" · WEEK "+
+    (mail.createdWeekIndex%52+1)));
+   const message=el("article","ppw-persona-bubble ppw-persona-in ppw-backstage-world-body");
+   message.append(el("strong","",mail.subject),el("p","",mail.body));
+   chat.append(message);
+   if(mail.kind==="STAFF"&&mail.staffDebate){
+    for(const [role,staff] of [["MEDICAL",mail.staffDebate.medical],
+     ["CREATIVE",mail.staffDebate.creative]] as const){
+     const perspective=el("article","ppw-persona-bubble ppw-persona-in ppw-backstage-staff-voice");
+     perspective.append(el("strong","",staff.name+" · "+(role==="MEDICAL"?"Medical":"Creative")),
+      el("p","",staff.position));
+     chat.append(perspective);
+    }
+   }
+   chat.append(el("p","ppw-backstage-world-evidence",
+    mail.contentConcern?"From a completed television match with a verified hardcore stipulation.":
+    mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
+     mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
+     mail.kind==="FREE_AGENT"?"No contract or appearance has been agreed.":
+     mail.kind==="LOCKER_ROOM"?"From actual teammate match history and an answered mediation request.":
+     "Based on your actual roster, contracts or active programmes."));
+   const actionNames:Record<WorldMailAction,string>={
+    COMMERCIALS:"Review broadcaster →",CONTRACTS:"Review contracts →",
+    PROGRAMMES:"Plan a creative response →",STAFF:"Open Staff Office →",
+    MARKET:"View talent market →"};
+   if(mail.kind==="NETWORK"&&mail.networkResponse){
+    const answer=mail.networkResponse;
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     answer.decision==="COMMIT_RECOVERY"?
+      "We'll work to meet the agreed TV target. Judge our next broadcasts.":
+     answer.decision==="COMMIT_STANDARDS"?
+      "We hear you. We'll keep hardcore stipulations off our next TV broadcasts.":
+      "We stand by our creative direction. We understand the signed terms."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     answer.status==="PENDING"?
+      "Your promise will be measured against certified TV over the next three weeks.":
+     answer.status==="KEPT"?
+      answer.decision==="COMMIT_STANDARDS"?
+       "Your next certified TV show honoured the agreed content standard.":
+       "Your next on-target TV broadcast kept the promise.":
+     answer.status==="BROKEN"?
+      answer.decision==="COMMIT_STANDARDS"?
+       "The review window ended without a compliant TV show. The promise was broken.":
+       "The review window ended without an on-target broadcast. The promise was broken.":
+     answer.status==="EXCUSED"?"The signed term ended before the deadline; the promise was excused.":
+     "Your reply is recorded. The agreed network terms remain in force."));
+   }
+   if(mail.kind==="STAFF"&&mail.staffResponse){
+    const reply=mail.staffResponse;
+    const isMedical=mail.action==="STAFF",isTalent=mail.action==="CONTRACTS";
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     reply.decision==="DEFER"?
+      "Thanks for raising this. I'm not committing to a change just yet.":
+     isTalent?"I authorise unchanged-terms renewal proposals at World Lock. I'll review the real negotiations.":
+     isMedical?"I'll manage the workload and reduce the fatigue concerns.":
+      "I'll freshen up these rivalries. Check our creative progress."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     reply.status==="PENDING"?isTalent?
+      "Delegation is enabled. Any eligible unchanged renewal offers are prepared at World Lock; wrestlers still decide.":
+      "We'll review the actual roster or storyline situation over the next three weeks.":
+     reply.status==="KEPT"?isTalent?
+      "An eligible renewal proposal was actually prepared. Staff morale improved.":
+      "The genuine staff concern was resolved. Staff morale improved.":
+     reply.status==="BROKEN"?isTalent?
+      "No eligible renewal proposal was prepared within three weeks. Staff morale fell.":
+      "The review window ended with the problem unresolved. Staff morale fell.":
+     reply.status==="EXCUSED"?"The staff appointment ended before the review deadline.":
+     "Your reply was received. No new workload or storyline change was made."));
+   }
+   if(mail.kind==="STAFF"&&mail.disagreementResponse){
+    const reply=mail.disagreementResponse;
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     reply.decision==="PRIORITISE_HEALTH"?
+      "Protect their recovery. Reduce the workload until they are below the fatigue warning level.":
+     reply.decision==="REFRESH_PROGRAMME"?
+      "Give Creative a new chapter. I want that programme genuinely refreshed or concluded.":
+      "I hear both departments. I'm not making a commitment yet."));
+    if(mail.staffDebate){
+     for(const [role,staff] of [["MEDICAL",mail.staffDebate.medical],
+      ["CREATIVE",mail.staffDebate.creative]] as const){
+      const answer=el("article","ppw-persona-bubble ppw-persona-in ppw-backstage-staff-reaction");
+      answer.append(el("strong","",staff.name+" · "+(role==="MEDICAL"?"Medical":"Creative")),
+       el("p","",staffDebateReaction(role,staff.personality,reply.decision)));
+      chat.append(answer);
+     }
+    }
+    chat.append(el("p","ppw-backstage-world-evidence",
+     reply.status==="PENDING"?
+      "The decision will be checked against real fatigue or programme changes over the next three weeks.":
+     reply.status==="KEPT"?
+      "The promised outcome actually occurred. The supported staff member's morale improved.":
+     reply.status==="BROKEN"?
+      "The three-week deadline passed without the promised change. The supported staff member's morale fell.":
+     reply.status==="EXCUSED"?
+      "The relevant appointment or wrestler contract ended before the review.":
+      "Your answer was recorded. No match, programme or workload was changed."));
+   }
+   if(mail.kind==="LOCKER_ROOM"&&mail.partnerResponse){
+    const reply=mail.partnerResponse;
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     reply.decision==="INVITE"?
+      "I'd like you two to try working together again. Will you give it another shot?":
+      "I hear you. I won't ask for another shared match right now."));
+    chat.append(el("article","ppw-persona-bubble ppw-persona-in",
+     reply.outcome==="READY"?
+      "I'm willing. Book us together and we'll show what we can do. It'll have to happen in the ring.":
+     reply.outcome==="CAUTIOUS"?
+      "I'm not ready to promise anything. Trust and condition still matter. If you pair us, keep it simple and let the match do the talking.":
+      "Fair enough. I'll focus on my own work for now."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     "The original working relationship only changes from certified matches. This conversation made no booking or attribute change."));
+   }
+   if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse){
+    const reply=mail.freeAgentResponse;
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     reply.decision==="INVITE"?
+      "I'm interested. Let's discuss a contract and see if we can agree terms.":
+      "Thanks for getting in touch. We won't pursue a deal right now."));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     reply.status==="INVITED"?
+      "No offer has been made. Prepare the terms in Talent Market; the wrestler still decides.":
+     reply.status==="PENDING"?"Your actual contract offer is awaiting a wrestler response.":
+     reply.status==="ACCEPTED"?"The actual terms were accepted. Review the signed deal in Contracts.":
+     reply.status==="REJECTED"?"The wrestler declined the submitted terms. Review the decision in Contracts.":
+     reply.status==="WITHDRAWN"?"Your previously submitted offer was withdrawn.":
+     "No contract offer was submitted."));
+   }
+   const actions=el("div","ppw-backstage-world-actions");
+   if(mail.kind==="LOCKER_ROOM"&&mail.canPartnerRespond&&!mail.partnerResponse&&port.respondPartner){
+    actions.append(button("Ask them to work together",
+     ()=>void answerPartner(mail.id,"INVITE"),loading));
+    actions.append(button("Leave it for now",
+     ()=>void answerPartner(mail.id,"LEAVE"),loading));
+   }
+   if(mail.kind==="STAFF"&&mail.canDisagree&&!mail.disagreementResponse&&port.respondDisagreement){
+    actions.append(button("Prioritise medical recovery",
+     ()=>void answerDisagreement(mail.id,"PRIORITISE_HEALTH"),loading));
+    actions.append(button("Refresh the creative programme",
+     ()=>void answerDisagreement(mail.id,"REFRESH_PROGRAMME"),loading));
+    actions.append(button("Hear both sides",()=>void answerDisagreement(mail.id,"DEFER"),loading));
+   }
+   if(mail.kind==="FREE_AGENT"&&mail.canFreeAgentRespond&&
+    !mail.freeAgentResponse&&port.respondFreeAgent){
+    actions.append(button("Let's discuss a contract",
+     ()=>void answerFreeAgent(mail.id,"INVITE"),loading));
+    actions.append(button("Not right now",
+     ()=>void answerFreeAgent(mail.id,"PASS"),loading));
+   }
+   if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse?.decision==="INVITE"&&
+    mail.freeAgentResponse.status==="INVITED"&&mail.targetPersonId&&port.openRecruitment)
+    actions.append(button("Prepare real contract offer",()=>
+     port.openRecruitment!(mail.targetPersonId!,mail.sender),loading));
+   if(mail.kind==="FREE_AGENT"&&mail.freeAgentResponse?.status==="PENDING")
+    actions.append(button("Review pending offer",()=>port.openDepartment?.("CONTRACTS"),
+     loading||!port.openDepartment));
+   if(mail.kind==="STAFF"&&mail.staffDebate){
+    actions.append(button("Review medical workload",()=>port.openDepartment?.("STAFF"),
+     loading||!port.openDepartment));
+    actions.append(button("Review active programmes",()=>port.openDepartment?.("PROGRAMMES"),
+     loading||!port.openDepartment));
+   }
+   if(mail.kind==="STAFF"&&mail.canStaffRespond&&!mail.staffResponse&&port.respondStaff){
+    actions.append(button(mail.action==="CONTRACTS"?
+     "Authorise same-terms renewal proposals":mail.action==="STAFF"?
+     "I'll rest the tired roster":"I'll refresh the rivalries",
+     ()=>void answerStaff(mail.id,"COMMIT"),loading));
+    actions.append(button("Not now",()=>void answerStaff(mail.id,"DEFER"),loading));
+   }
+   if(mail.kind==="NETWORK"&&mail.canRespond&&!mail.networkResponse&&port.respondNetwork){
+    actions.append(mail.contentConcern?
+     button("Keep hardcore off our next TV show",
+      ()=>void answerNetwork(mail.id,"COMMIT_STANDARDS"),loading):
+     button("Promise to improve ratings",
+      ()=>void answerNetwork(mail.id,"COMMIT_RECOVERY"),loading));
+    actions.append(button("Stand by our show",()=>void answerNetwork(mail.id,"STAND_FIRM"),loading));
+   }
+   if(mail.kind==="LOCKER_ROOM"&&port.openPlanner)
+    actions.append(button("Review next match booking",()=>port.openPlanner!(),loading));
+   if(mail.targetPersonId&&port.openWrestler)
+    actions.append(button("View wrestler dossier",()=>port.openWrestler!(mail.targetPersonId!),loading));
+   actions.append(button(actionNames[mail.action],()=>port.openDepartment?.(mail.action),
+    loading||!port.openDepartment));
+   actions.append(button("Back to messages",returnToMessages));
+   chat.append(actions);root.append(chat);return;
+  }
   if(pane==="INBOX"){
    const inbox=el("section","ppw-backstage-inbox");
-   const threadCount=view.roster.filter(w=>!!w.latestIncoming||!!w.lastMessage).length;
+   const threadCount=view.roster.filter(w=>!!w.latestIncoming||!!w.lastMessage).length+
+    (view.worldMessages?.length??0);
    const unreadCount=view.roster.filter(w=>w.isCurrent&&w.latestIncoming&&
-    w.latestIncoming.read_week_index===null&&!w.latestIncoming.archived).length;
+    w.latestIncoming.read_week_index===null&&!w.latestIncoming.archived).length+
+    (view.worldMessages??[]).filter(x=>!x.read).length;
    const topline=el("div","ppw-messenger-inbox-topline");
    topline.append(el("span","ppw-messenger-inbox-label","MY CONVERSATIONS"),
     el("span","ppw-messenger-inbox-count",
@@ -204,13 +621,23 @@ export function mountPersonaDesk(root:HTMLElement,
    inbox.append(topline);
    const controls=el("div","ppw-backstage-filters");
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
-    ["ACTIVE","Requests"],["HISTORY","History"],
-    ["ARCHIVED","Archived"]] as const){
-    const b=button(label,()=>{inboxFilter=filter;render();});
+    ["ACTIVE","Requests"],["WRESTLERS","Wrestlers"],["STAFF","Staff"],
+    ["NETWORK","Networks"],["SCOUT","Scouting"],
+    ["FREE_AGENT","Free agents"],["DISAGREEMENTS","Staff disagreements"],
+    ["LOCKER_ROOM","Locker room"],["HISTORY","History"],["ARCHIVED","Archived"]] as const){
+    const b=button(label,()=>{
+     inboxFilter=filter;
+     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS"].includes(filter)){
+      void load();return;
+     }
+     render();
+    });
     if(filter===inboxFilter)b.classList.add("ppw-persona-selected");
     controls.append(b);
    }
    inbox.append(controls);
+   if(inboxWorldMessages===null)inbox.append(button("Load company messages",
+    ()=>void load()));
    // Local filtering keeps the iPhone keyboard and focus in place.
    const searchInput=document.createElement("input");
    searchInput.type="search";searchInput.value=inboxSearch;
@@ -223,7 +650,38 @@ export function mountPersonaDesk(root:HTMLElement,
    entries.onscroll=()=>{lastInboxScroll=entries.scrollTop;};
    inbox.append(searchInput);
    let count=0;
+   for(const mail of [...(view.worldMessages??[])].filter(item=>
+    inboxFilter==="ALL"||inboxFilter===item.kind||
+    (inboxFilter==="DISAGREEMENTS"&&
+     (item.canDisagree||!!item.disagreementResponse||
+      item.subject.startsWith("Our staff review")||
+      item.subject.startsWith("The workload concern")||
+      item.subject.startsWith("Creative found a new direction")||
+      item.subject.startsWith("Medical after the staff review")||
+      item.subject.startsWith("Creative after the staff review")||
+      item.subject.startsWith("The staff disagreement")))||
+    (inboxFilter==="UNREAD"&&!item.read)||
+    (inboxFilter==="ACTIVE"&&!item.read))){
+    const item=button("",()=>void openWorldMail(mail.id));
+    item.classList.add("ppw-backstage-contact","ppw-backstage-world-contact");
+    if(!mail.read)item.classList.add("ppw-backstage-unread");
+    const avatar=el("span","ppw-backstage-avatar",
+     mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
+     mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
+    const copy=el("span","ppw-backstage-contact-copy");
+    const top=el("span","ppw-backstage-contact-top");
+    top.append(el("strong","",mail.sender),el("small","ppw-backstage-contact-stamp",
+     "W"+(mail.createdWeekIndex%52+1)));
+    copy.append(top,el("span","ppw-backstage-contact-preview",mail.subject));
+    item.append(avatar,copy);
+    if(!mail.read)item.append(el("span","ppw-backstage-unread-dot",""));
+    entries.append(item);count++;
+   }
    for(const wrestler of [...view.roster].filter(w=>{
+    if(["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS"].includes(inboxFilter))
+     return false;
+    if(inboxFilter==="LOCKER_ROOM")return w.latestIncoming?.kind==="PARTNERSHIP"&&
+     !w.latestIncoming.archived;
     const latest=w.latestIncoming;
     if(inboxFilter==="ARCHIVED")return latest?.archived===true;
     if(latest?.archived)return false;
