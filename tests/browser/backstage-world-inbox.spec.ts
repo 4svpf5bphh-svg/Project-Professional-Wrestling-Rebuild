@@ -783,3 +783,64 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("Both staff send distinct certified follow-ups without duplicate inbox loads at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:11,name:"Genesis",year:1,week:10,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:160000,debt:0,lastWeeklyNet:0,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,backstageUnreadCount:2,
+     plannedShows:0,expiringTalent:false,pendingContractOffers:false}}};
+  const letters=[{
+   id:"backstage-world:"+"a".repeat(32),kind:"STAFF",sender:"Dr Lena Winters",
+   subject:"The workload concern has eased",
+   body:"The wrestler's actual fatigue dropped below our medical warning level.",
+   action:"STAFF",targetPersonId:"toby",createdWeekIndex:9,read:false
+  },{
+   id:"backstage-world:"+"b".repeat(32),kind:"STAFF",sender:"Jules Sterling",
+   subject:"Creative after the staff review",
+   body:"The actual fatigue dropped below the medical warning level. Creative still needs a meaningful next chapter whenever the wrestler is ready.",
+   action:"PROGRAMMES",targetPersonId:"toby",createdWeekIndex:9,read:false
+  }];
+  const seen:string[]=[],readIds:string[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string};
+   seen.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:10,worldRevision:11,canEdit:true,
+    roster:[],persona:null,history:[],recentRequests:[],conversations:[],
+    memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
+    worldMessages:letters}});
+   if(x.method==="markBackstageWorldRead"){
+    const mail=letters.find(m=>m.id===x.mailId)!;
+    readIds.push(x.mailId!);mail.read=true;
+    return r.fulfill({json:{readCount:1}});
+   }
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:"Staff disagreements"}).click();
+  await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(2);
+  await page.getByRole("button",{name:/Creative after the staff review/}).click();
+  await expect(page.getByLabel("Message from Jules Sterling"))
+   .toContainText("Creative still needs a meaningful next chapter");
+  await expect(page.getByRole("button",{name:"Plan a creative response"})).toBeVisible();
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  await page.getByRole("button",{name:/The workload concern has eased/}).click();
+  await expect(page.getByLabel("Message from Dr Lena Winters"))
+   .toContainText("actual fatigue dropped below");
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(2);
+  expect(seen.filter(x=>x==="backstage")).toHaveLength(1);
+  expect(seen.filter(x=>x==="markBackstageWorldRead")).toHaveLength(2);
+  expect(new Set(readIds).size).toBe(2);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

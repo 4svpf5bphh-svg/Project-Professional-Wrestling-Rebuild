@@ -657,6 +657,8 @@ export function mountPersonaDesk(root:HTMLElement,
       item.subject.startsWith("Our staff review")||
       item.subject.startsWith("The workload concern")||
       item.subject.startsWith("Creative found a new direction")||
+      item.subject.startsWith("Medical after the staff review")||
+      item.subject.startsWith("Creative after the staff review")||
       item.subject.startsWith("The staff disagreement")))||
     (inboxFilter==="UNREAD"&&!item.read)||
     (inboxFilter==="ACTIVE"&&!item.read))){
