@@ -699,7 +699,7 @@ for(const width of [320,390]){
   await expect(page.getByRole("button",{name:"Review medical workload"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Review active programmes"})).toBeVisible();
   await page.getByRole("button",{name:"Review active programmes"}).click();
-  await expect(page).toHaveURL(/#\\/programmes/);
+  await expect(page).toHaveURL(/#\/programmes/);
   expect(calls.filter(x=>x==="respondBackstageDisagreement")).toHaveLength(1);
   expect(calls.filter(x=>x==="markBackstageWorldRead")).toHaveLength(1);
   expect(calls.some(x=>/groq|generate|worldAdvance/i.test(x))).toBe(false);
