@@ -408,6 +408,25 @@ export async function readPlayerWorldOverview(
          AND receipt.promotion_id=owned.promotion_id AND receipt.player_id=$2
          AND receipt.attention_id='backstage-world:'||md5(
           'staff-dispute-followup:'||response.mail_id||':'||response.status)))
+      /* The second genuinely hired Medical/Creative employee also sends an
+       * owner-only follow-up after a verified commitment resolves. Mirror
+       * exactly the two-row World Mail source and its private read receipt. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.mail_id,r.status
+        FROM ppw_backstage_staff_disagreements r
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2
+         AND r.decision IN ('PRIORITISE_HEALTH','REFRESH_PROGRAMME')
+         AND r.status IN ('KEPT','BROKEN','EXCUSED')
+         AND r.settled_week_index BETWEEN
+          greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+        ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+       ) response WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-dispute-counterpoint:'||response.mail_id||':'||response.status)))
       /* The counterpart's message requires a real MEDIATE decision on a
        * verified working-strain request. Same ranked source as Backstage. */
       +(SELECT count(*)::integer FROM (
@@ -420,6 +439,45 @@ export async function readPlayerWorldOverview(
           AND read.promotion_id=owned.promotion_id AND read.player_id=$2
           AND read.attention_id='backstage-world:'||md5(
            'partner-mediation:'||conversation.request_id)))
+      /* A poor certified tag match can prompt one private partnership setback.
+       * The ranked two-request source, <50 execution threshold and stable
+       * first-match receipt are the same as in the one-read World inbox. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.request_id,bad.show_id,bad.match_id FROM (
+         SELECT request.request_id,request.person_id,request.related_person_id,
+          request.responded_week_index,request.follow_through_week_index
+         FROM ppw_backstage_requests request
+         WHERE request.world_id=w.world_id AND request.promotion_id=owned.promotion_id
+          AND request.kind='PARTNERSHIP' AND request.decision='MEDIATE'
+          AND request.status='ANSWERED' AND request.related_person_id IS NOT NULL
+          AND request.responded_week_index BETWEEN
+           greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+         ORDER BY request.responded_week_index DESC,request.request_id DESC LIMIT 2
+        ) r JOIN LATERAL (
+         SELECT pair.week_index,pair.show_id,pair.match_id
+         FROM ppw_tag_working_pair_appearances pair
+         JOIN ppw_completed_show_matches actual ON actual.world_id=pair.world_id
+          AND actual.show_id=pair.show_id AND actual.match_id=pair.match_id
+         JOIN ppw_completed_shows completed ON completed.world_id=pair.world_id
+          AND completed.show_id=pair.show_id
+          AND completed.promotion_id=owned.promotion_id
+         WHERE pair.world_id=w.world_id
+          AND pair.person_a_id=least(r.person_id,r.related_person_id)
+          AND pair.person_b_id=greatest(r.person_id,r.related_person_id)
+          AND pair.week_index>r.responded_week_index
+          AND pair.week_index<=(w.year-1)*52+w.week-1
+          AND pair.execution_quality<50
+          AND (r.follow_through_week_index IS NULL
+           OR pair.week_index<r.follow_through_week_index)
+         ORDER BY pair.week_index,pair.show_id,pair.match_id LIMIT 1
+        ) bad ON true
+       ) setback WHERE NOT EXISTS(
+        SELECT 1 FROM ppw_player_attention_dismissals read
+        WHERE read.world_id=w.world_id
+         AND read.promotion_id=owned.promotion_id AND read.player_id=$2
+         AND read.attention_id='backstage-world:'||md5(
+          'partner-mediation-setback:'||setback.request_id||':'||
+          setback.show_id||':'||setback.match_id)))
       /* A partner's good-news response has to follow the original
        * certified 68+-execution tag evidence, not manager invitation. */
       +(SELECT count(*)::integer FROM (

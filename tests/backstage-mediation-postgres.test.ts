@@ -128,6 +128,10 @@ test("Backstage: both wrestlers speak, partner reply is private, and only certif
   assert.match(setback.body,/I said I had doubts/);
   assert.match(setback.body,/If you book us again/);
   assert.equal(setback.canPartnerRespond,undefined);
+  assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
+   ?.promotion?.attention.backstageUnreadCount,
+   afterPoorMatch.filter(x=>!x.read).length+1,
+   "Home counts the new certified setback, not just the original wrestler thread");
   assert.deepEqual(await markWorldMailRead(db.pool,{...partnerScope,mailId:setback.id}),
    {readCount:1},"A setback has its own private, stable unread receipt");
   const repeated=await run(tx=>readWorldMail(tx,partnerScope));
