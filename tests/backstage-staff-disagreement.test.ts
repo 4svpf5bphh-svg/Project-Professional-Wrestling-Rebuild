@@ -19,6 +19,9 @@ test("staff conflict requires real employed Medical and Creative, high fatigue a
  assert.match(WORLD_MAIL_SQL,/staff_disagreement AS/);
  assert.match(WORLD_MAIL_SQL,/staff_dispute_followup AS/);
  assert.match(WORLD_MAIL_SQL,/staff_dispute_counterpoint AS/);
+ assert.match(WORLD_MAIL_SQL,/staff_wrestler_review AS/);
+ assert.match(WORLD_MAIL_SQL,/r.status IN \('KEPT','BROKEN'\)/);
+ assert.match(WORLD_MAIL_SQL,/staff-wrestler-review:/);
  assert.match(WORLD_MAIL_SQL,/issue.previously_deferred/);
  assert.match(WORLD_MAIL_SQL,/staff_dispute_counterpoint/);
  assert.match(WORLD_MAIL_SQL,/r.status IN \('KEPT','BROKEN','EXCUSED'\)/);

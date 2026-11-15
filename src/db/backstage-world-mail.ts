@@ -25,6 +25,8 @@ export interface WorldMail{
  staffDebate?:StaffDebateVoices;
  disagreementResponse?:{decision:"PRIORITISE_HEALTH"|"REFRESH_PROGRAMME"|"DEFER";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
+ /** A wrestler's review of a staff commitment that genuinely settled. */
+ staffReview?:boolean;
  canPartnerRespond?:boolean;
  partnerResponse?:{decision:"INVITE"|"LEAVE";outcome:"READY"|"CAUTIOUS"|"DECLINED"};
  canFreeAgentRespond?:boolean;
@@ -41,7 +43,7 @@ interface MailRow extends Record<string,unknown>{
  staff_reply_due_week_index:number|null;
  reply_decision:string|null;reply_status:string|null;reply_due_week_index:number|null;
  free_agent_decision:string|null;free_agent_offer_status:string|null;
- can_free_agent_reply:boolean;can_partner_reply:boolean;
+ can_free_agent_reply:boolean;can_partner_reply:boolean;staff_review:boolean;
  partner_reply_decision:string|null;partner_reply_outcome:string|null;
  can_disagree:boolean;disagreement_decision:string|null;
  disagreement_status:string|null;disagreement_due_week_index:number|null;
@@ -350,6 +352,36 @@ WITH owner AS MATERIALIZED (
   AND r.status IN ('KEPT','BROKEN','EXCUSED')
   AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
  ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+), staff_wrestler_review AS (
+ /* The ACTUAL affected wrestler weighs in only after a verified staff
+  * commitment has settled. This is a stable, owner-private commentary
+  * on the completed review, never a new match, booking or trust mutation. */
+ SELECT 'LOCKER_ROOM'::text AS kind,
+  'staff-wrestler-review:'||r.mail_id||':'||r.status AS evidence,
+  wrestler.person_id AS sender_key,
+  'About that staff meeting'::text AS subject,
+  CASE
+   WHEN r.decision='PRIORITISE_HEALTH' AND r.status='KEPT' THEN
+    'You backed Medical when the workload was getting to me. At the end of the review, my fatigue was below their warning line. Let''s be sensible with what we book next.'
+   WHEN r.decision='PRIORITISE_HEALTH' THEN
+    'You backed Medical, but my fatigue was still above their warning line when the review closed. I need you to keep an eye on the next bookings.'
+   WHEN r.status='KEPT' THEN
+    'You backed Creative, and by the time the review closed the programme had moved on or finished. That is better than running the same chapter again.'
+   ELSE
+    'You backed Creative, but the programme was still repeating when the review closed. I need a genuine next chapter, not another version of the same segment.'
+  END AS body,
+  CASE WHEN r.decision='PRIORITISE_HEALTH' THEN 'STAFF'::text
+   ELSE 'PROGRAMMES'::text END AS action,
+  r.settled_week_index AS created_week_index,
+  wrestler.person_id AS target_person_id,wrestler.name AS sender_name
+ FROM ppw_backstage_staff_disagreements r JOIN owner o ON true
+ JOIN ppw_people wrestler ON wrestler.world_id=r.world_id
+  AND wrestler.person_id=r.person_id
+ WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.player_id=$3
+  AND r.decision IN ('PRIORITISE_HEALTH','REFRESH_PROGRAMME')
+  AND r.status IN ('KEPT','BROKEN')
+  AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
+ ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
 ), scouting AS (
  SELECT 'SCOUT'::text AS kind,
   'scout:'||e.employment_id||':'||talent.person_id||':'||
@@ -558,6 +590,7 @@ WITH owner AS MATERIALIZED (
  UNION ALL SELECT * FROM staff_disagreement UNION ALL SELECT * FROM staff_disagreement_answered
  UNION ALL SELECT * FROM staff_dispute_followup
  UNION ALL SELECT * FROM staff_dispute_counterpoint
+ UNION ALL SELECT * FROM staff_wrestler_review
  UNION ALL SELECT * FROM scouting UNION ALL SELECT * FROM outreach
  UNION ALL SELECT * FROM partner_mediation UNION ALL SELECT * FROM partner_mediation_setback
  UNION ALL SELECT * FROM partner_mediation_followup
@@ -588,6 +621,7 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  agent_reply.decision AS free_agent_decision,
  agent_offer.status AS free_agent_offer_status,
  (c.evidence LIKE 'staff-dispute:%' AND debate.mail_id IS NULL) AS can_disagree,
+ (c.kind='LOCKER_ROOM' AND c.evidence LIKE 'staff-wrestler-review:%') AS staff_review,
  debate.decision AS disagreement_decision,
  debate.status AS disagreement_status,
  debate.due_week_index AS disagreement_due_week_index,
@@ -720,6 +754,7 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    subject:r.subject,body:r.body,action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
    ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
+   ...(r.kind==="LOCKER_ROOM"&&r.staff_review===true?{staffReview:true}:{}),
    ...(r.kind==="LOCKER_ROOM"&&r.can_partner_reply===true?{canPartnerRespond:true}:{}),
    ...(r.partner_reply_decision!=null?{partnerResponse:{
     decision:r.partner_reply_decision as "INVITE"|"LEAVE",

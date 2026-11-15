@@ -441,6 +441,8 @@ export function mountPersonaDesk(root:HTMLElement,
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
      mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
      mail.kind==="FREE_AGENT"?"No contract or appearance has been agreed.":
+     mail.kind==="LOCKER_ROOM"&&mail.staffReview?
+      "From your earlier staff decision and a completed review of real workload or programme progress.":
      mail.kind==="LOCKER_ROOM"?"From actual teammate match history and an answered mediation request.":
      "Based on your actual roster, contracts or active programmes."));
    const actionNames:Record<WorldMailAction,string>={

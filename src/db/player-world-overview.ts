@@ -427,6 +427,27 @@ export async function readPlayerWorldOverview(
          AND receipt.player_id=$2
          AND receipt.attention_id='backstage-world:'||md5(
           'staff-dispute-counterpoint:'||response.mail_id||':'||response.status)))
+      /* The named wrestler may comment after an actual Medical/Creative
+       * commitment is settled. Exact same 2-row bounded source as the
+       * owner-only World inbox, no new Home query or write. */
+      +(SELECT count(*)::integer FROM (
+        SELECT r.mail_id,r.status
+        FROM ppw_backstage_staff_disagreements r
+        JOIN ppw_people person ON person.world_id=r.world_id
+         AND person.person_id=r.person_id
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.player_id=$2
+         AND r.decision IN ('PRIORITISE_HEALTH','REFRESH_PROGRAMME')
+         AND r.status IN ('KEPT','BROKEN')
+         AND r.settled_week_index BETWEEN
+          greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1
+        ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
+       ) review WHERE NOT EXISTS (
+        SELECT 1 FROM ppw_player_attention_dismissals receipt
+        WHERE receipt.world_id=w.world_id AND receipt.promotion_id=owned.promotion_id
+         AND receipt.player_id=$2
+         AND receipt.attention_id='backstage-world:'||md5(
+          'staff-wrestler-review:'||review.mail_id||':'||review.status)))
       /* The counterpart's message requires a real MEDIATE decision on a
        * verified working-strain request. Same ranked source as Backstage. */
       +(SELECT count(*)::integer FROM (

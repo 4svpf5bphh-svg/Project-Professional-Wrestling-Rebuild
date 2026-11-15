@@ -844,3 +844,53 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [320,390]){
+ test("A wrestler answers a certified staff review and offers the real booking route at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:11,name:"Genesis",year:1,week:10,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:160000,debt:0,lastWeeklyNet:0,financialDistress:"HEALTHY",
+    attention:{unpreparedShow:false,pendingBackstage:false,backstageUnreadCount:1,
+     plannedShows:0,expiringTalent:false,pendingContractOffers:false}}};
+  const mailId="backstage-world:"+"e".repeat(32),seen:string[]=[],reads:string[]=[];
+  const messages=[{id:mailId,kind:"LOCKER_ROOM",sender:"Toby Mason",
+   subject:"About that staff meeting",
+   body:"You backed Medical, but my fatigue was still above their warning line when the review closed. I need you to keep an eye on the next bookings.",
+   action:"STAFF",createdWeekIndex:9,read:false,targetPersonId:"toby",staffReview:true}];
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const x=r.request().postDataJSON() as {method:string;mailId?:string};
+   seen.push(x.method);
+   if(x.method==="backstage")return r.fulfill({json:{
+    personId:null,worldYear:1,worldWeek:10,worldRevision:11,canEdit:true,
+    roster:[],persona:null,history:[],recentRequests:[],conversations:[],
+    memories:[],archetypes:[],documentedAlternates:[],nextPitchWeek:0,
+    worldMessages:messages}});
+   if(x.method==="markBackstageWorldRead"){
+    expect(x.mailId).toBe(mailId);
+    reads.push(x.mailId!);messages[0]!.read=true;return r.fulfill({json:{readCount:1}});
+   }
+   if(x.method==="overview")return r.fulfill({json:overview});
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/backstage/unread");
+  await page.getByRole("button",{name:/About that staff meeting/}).click();
+  const thread=page.getByLabel("Message from Toby Mason");
+  await expect(thread).toContainText("fatigue was still above their warning line");
+  await expect(thread).toContainText("completed review of real workload");
+  await expect(thread).not.toContainText("teammate match history");
+  await expect(page.getByRole("button",{name:"Review next match booking"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"View wrestler dossier"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Open Staff Office"})).toBeVisible();
+  await page.getByRole("button",{name:"Back to messages"}).click();
+  expect(reads).toEqual([mailId]);
+  expect(seen.filter(s=>s==="backstage")).toHaveLength(1);
+  expect(seen.some(s=>/groq|generate|advance|settle/i.test(s))).toBe(false);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

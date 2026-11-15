@@ -123,6 +123,16 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
   assert.equal(creativeCounterpoint.read,false);
   assert.notEqual(creativeCounterpoint.id,followup.id,
    "The second real staff member has their own private stable read receipt");
+  const actualWrestler=after.find(x=>x.staffReview&&x.targetPersonId===personId)!;
+  assert.ok(actualWrestler,"The affected signed wrestler gets their own reaction ONLY after settlement");
+  assert.equal(actualWrestler.kind,"LOCKER_ROOM");
+  assert.equal(actualWrestler.sender,"Stressed Wrestler");
+  assert.equal(actualWrestler.action,"STAFF");
+  assert.match(actualWrestler.body,/fatigue was below their warning line/);
+  assert.equal(actualWrestler.read,false);
+  await assert.rejects(markWorldMailRead(db.pool,{worldId,
+   promotionId:rivalId,playerId,mailId:actualWrestler.id}),/not available/,
+   "A rival promotion may not see or mark this wrestler's manager conversation");
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
    ?.promotion?.attention.backstageUnreadCount,after.filter(x=>!x.read).length);
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:followup.id}),
@@ -135,6 +145,13 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
    {readCount:0});
   assert.equal((await run(tx=>readWorldMail(tx,scope)))
    .find(x=>x.id===creativeCounterpoint.id)?.read,true);
+  assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:actualWrestler.id}),
+   {readCount:1});
+  assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:actualWrestler.id}),
+   {readCount:0});
+  assert.equal((await run(tx=>readWorldMail(tx,scope)))
+   .find(x=>x.id===actualWrestler.id)?.read,true,
+   "Rereading the wrestler reaction has no World revision or score changes");
 
   // A second *real* conflicted programme can be backed by Creative.
   const nextPerson="second-"+tag,nextProgramme="second-story-"+tag;
@@ -174,6 +191,11 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
   assert.equal(medicalCounterpoint.sender,medical.name);
   assert.match(medicalCounterpoint.body,/does not prove the wrestler has recovered/);
   assert.equal(medicalCounterpoint.action,"STAFF");
+  const creativeWrestler=creativeMails.find(x=>x.staffReview&&x.targetPersonId===nextPerson)!;
+  assert.ok(creativeWrestler);
+  assert.equal(creativeWrestler.sender,"Other Worker");
+  assert.match(creativeWrestler.body,/programme had moved on or finished/);
+  assert.equal(creativeWrestler.action,"PROGRAMMES");
   assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,6)),{settled:0},
    "No second morale award is possible");
 
@@ -242,6 +264,12 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
    [worldId,[third.id,fourth.id]]));
   assert.equal(outcomes.find(x=>x.mail_id===third.id)?.status,"BROKEN");
   assert.equal(outcomes.find(x=>x.mail_id===fourth.id)?.status,"KEPT");
+  await run(tx=>tx.query("UPDATE ppw_worlds SET week=12 WHERE world_id=$1",[worldId]));
+  const bothWrestlers=await run(tx=>readWorldMail(tx,scope));
+  assert.match(bothWrestlers.find(x=>x.staffReview&&x.targetPersonId===lastPerson)?.body??"",
+   /programme was still repeating/);
+  assert.match(bothWrestlers.find(x=>x.staffReview&&x.targetPersonId===fourthPerson)?.body??"",
+   /programme had moved on or finished/);
   const lastMorale=await run(tx=>tx.query<{morale:number}>(
    "SELECT morale FROM ppw_staff_employments WHERE world_id=$1 AND role='CREATIVE'",[worldId]));
   assert.equal(lastMorale[0]?.morale,72,
@@ -274,6 +302,9 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
    decision:"DEFER",requestId:"defer-"+tag,expectedRevision:fourthReply.revision});
   assert.equal(defer.status,"APPLIED");
   assert.equal(defer.result?.status,"ACKNOWLEDGED");
+  assert.ok(!(await run(tx=>readWorldMail(tx,scope))).some(x=>
+   x.staffReview&&x.targetPersonId===deferredPerson),
+   "Deferring a disagreement must never invent a wrestler outcome");
   assert.deepEqual(await run(tx=>settleStaffDisagreements(tx,worldId,14)),{settled:0},
    "Hearing both sides creates no instant outcome or morale");
   await run(tx=>tx.query("UPDATE ppw_worlds SET week=17 WHERE world_id=$1",[worldId]));
