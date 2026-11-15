@@ -131,7 +131,7 @@ test("authentic Medical/Creative disagreement: owner choice, real World follow-t
   assert.match(actualWrestler.body,/fatigue was below their warning line/);
   assert.equal(actualWrestler.read,false);
   await assert.rejects(markWorldMailRead(db.pool,{worldId,
-   promotionId:rivalId,playerId,mailId:actualWrestler.id}),/not available/,
+   promotionId:rivalId,playerId,mailId:actualWrestler.id}),/no longer available/,
    "A rival promotion may not see or mark this wrestler's manager conversation");
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
    ?.promotion?.attention.backstageUnreadCount,after.filter(x=>!x.read).length);
