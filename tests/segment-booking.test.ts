@@ -85,3 +85,13 @@ test("angle scene cannot forge medical consequences or nonsensical settings",()=
   ...make("TURN",["a"],[]),scene:good
  },known));
 });
+
+test("spoofing a mentioned target cannot waive a physical angle's contract",()=>{
+ const people=new Set(["joe","mistico"]);
+ const promo={slotId:"test",position:0,kind:"PROMO" as const,
+  actorIds:["joe"],targetIds:["mistico"],outcome:"HAPPENS" as const,
+  targetPresence:"MENTIONED" as const};
+ assert.equal(normalizeBookedSegment(promo,people).targetPresence,"MENTIONED");
+ assert.throws(()=>normalizeBookedSegment({...promo,kind:"ATTACK"},people),/Invalid authored segment/);
+ assert.throws(()=>normalizeBookedSegment({...promo,targetPresence:"NO_SHOW" as never},people),/Invalid authored segment/);
+});

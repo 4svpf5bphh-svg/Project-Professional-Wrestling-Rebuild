@@ -20,6 +20,12 @@ import {readCompletedShowArchive,type ShowArchiveCursor} from "../db/completed-s
 import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
 import {markBackstageThreadRead} from "../db/backstage-conversations.js";
+import {markWorldMailRead} from "../db/backstage-world-mail.js";
+import {replyToBroadcaster,type NetworkReplyInput} from "../db/backstage-network-replies.js";
+import {respondToStaffMail,type StaffReplyInput} from "../db/backstage-staff-replies.js";
+import {respondToStaffDisagreement,type DisagreementInput} from "../db/backstage-staff-disagreements.js";
+import {respondToFreeAgent,type RecruitmentResponseInput} from "../db/backstage-free-agent-replies.js";
+import {respondToPartnerMediation,type PartnerReplyInput} from "../db/backstage-partner-replies.js";
 import {setBackstageThreadArchive} from "../db/backstage-thread-archive.js";
 import {decideBackstageRequest,type BackstageDecisionInput} from "../db/backstage-conversations.js";
 import {requestPortablePersonaChange,type PersonaChangeInput}
@@ -773,6 +779,58 @@ export async function markBackstageReadAsActor(context:WorldApiContext,
  validate(promotionId,"promotion");validate(personId,"wrestler");
  return markBackstageThreadRead(context.pool,{worldId,promotionId,personId,
   playerId:context.actor.playerId});
+}
+
+/** A certified broadcaster/staff/scout message can be acknowledged only by
+ * its controlling manager; no World simulation write or new AI output. */
+export async function markBackstageWorldMailReadAsActor(context:WorldApiContext,
+ worldId:string,promotionId:string,mailId:string){
+ validate(context.actor.playerId,"actor");validate(worldId,"World");
+ validate(promotionId,"promotion");
+ return markWorldMailRead(context.pool,{worldId,promotionId,playerId:context.actor.playerId,
+  mailId});
+}
+
+/** Real broadcaster answer: authenticated, serialized and revision guarded. */
+export async function replyToBroadcasterAsActor(context:WorldApiContext,
+ input:Omit<NetworkReplyInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return replyToBroadcaster(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Authenticated staff promise on a genuine current personnel concern. */
+export async function respondBackstageStaffAsActor(context:WorldApiContext,
+ input:Omit<StaffReplyInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return respondToStaffMail(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Owner-only decision in a verifiable Medical/Creative workload disagreement. */
+export async function respondStaffDisagreementAsActor(context:WorldApiContext,
+ input:Omit<DisagreementInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return respondToStaffDisagreement(context.pool,{...input,
+  playerId:context.actor.playerId});
+}
+
+/** Direct answer to genuine free-agent outreach. Not a contract or offer. */
+export async function respondBackstageFreeAgentAsActor(context:WorldApiContext,
+ input:Omit<RecruitmentResponseInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return respondToFreeAgent(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Partner-owned voice following an original authenticated working-team mediation.
+ * Consent is a conversation, not a chemistry or match-result change. */
+export async function respondPartnerMediationAsActor(context:WorldApiContext,
+ input:Omit<PartnerReplyInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return respondToPartnerMediation(context.pool,{...input,playerId:context.actor.playerId});
 }
 
 /** Archive/restore is private presentation state, never a booking decision. */

@@ -25,3 +25,17 @@ test("pre-recorded videos do not cost contracted live dates",()=>{
   {kind:"PROMO",participants:[{personId:"b",contractId:"cb"}]}
  ])),[{personId:"a",contractId:"ca"},{personId:"b",contractId:"cb"}]);
 });
+
+test("mentioning a rival carries no fee until they appear",()=>{
+ const actor={personId:"joe",contractId:"joe-deal"},target={personId:"mistico",contractId:"mistico-deal"};
+ for(const kind of ["PROMO","INTERVIEW","CHALLENGE"]){
+  const speech={kind,actorIds:["joe"],targetIds:["mistico"],participants:[actor,target]};
+  assert.deepEqual(appearancesFromSlots([speech]),[actor]);
+  assert.deepEqual(appearancesFromSlots([{...speech,targetPresence:"ON_SCREEN"}]),[actor,target]);
+ }
+ const attack={kind:"ATTACK",actorIds:["joe"],targetIds:["mistico"],participants:[actor,target]};
+ assert.deepEqual(appearancesFromSlots([attack]),[actor,target]);
+ assert.deepEqual(uniqueShowAppearances(appearancesFromSlots([
+  {kind:"PROMO",actorIds:["joe"],targetIds:["mistico"],participants:[actor,target]},attack])),
+  [actor,target],"An eventual physical appearance must be paid only once");
+});

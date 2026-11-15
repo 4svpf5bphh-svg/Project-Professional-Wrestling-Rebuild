@@ -21,12 +21,21 @@ export function readCardParticipants(payload:unknown):CardParticipant[] {
   });
 }
 
+/** Subjects can be mentioned without working the show. */
+export function liveSlotParticipants(payload:unknown):CardParticipant[]{
+ const cast=readCardParticipants(payload);
+ const scene=payload as {kind?:unknown;targetPresence?:unknown;targetIds?:unknown};
+ if(!["PROMO","INTERVIEW","CHALLENGE"].includes(String(scene.kind))||
+  scene.targetPresence==="ON_SCREEN"||!Array.isArray(scene.targetIds))return cast;
+ const mentioned=new Set(scene.targetIds.filter((id):id is string=>typeof id==="string"));
+ return cast.filter(p=>!mentioned.has(p.personId));
+}
 export function appearancesFromSlots(payloads:readonly unknown[]):BookedAppearance[] {
   if(payloads.length>100) throw new Error("Too many card slots");
   // Ringside run-ins need a contracted appearance without becoming competitors.
   // Old historical interference without an agreement stays readable.
   return payloads.flatMap(payload=>{
-    const cast=readCardParticipants(payload),spot=readBookedInterference(payload);
+    const cast=liveSlotParticipants(payload),spot=readBookedInterference(payload);
     // Pre-recorded video does not require an in-person appearance or use a date.
     if((payload as Record<string,unknown>).kind==="VIDEO_PACKAGE")return [];
     return spot?.contractId?[...cast,{

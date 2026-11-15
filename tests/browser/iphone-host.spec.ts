@@ -325,7 +325,7 @@ test("resolved locker-room promise opens the exact private historical thread",as
  await page.goto("/#/home");
  await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText(/Victor Vale saw your promise kept/)).toBeVisible();
- await page.getByRole("button",{name:"Open Backstage"}).click();
+ await page.getByRole("button",{name:"Open Backstage",exact:true}).click();
  await expect(page).toHaveURL(/#\/backstage$/);
  await expect(page.getByRole("region",{name:"Conversation with Victor Vale"})).toBeVisible();
  expect(methods).toEqual(["overview","backstage"]);

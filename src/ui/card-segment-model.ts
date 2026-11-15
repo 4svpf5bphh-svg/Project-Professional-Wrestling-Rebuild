@@ -15,6 +15,7 @@ export interface EditorSegment{
  sourceMatchSlotId:string|null;
  turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;stableId:string|null;
  stableDecision:"ACCEPTED"|"REJECTED"|null;
+ targetPresence:"MENTIONED"|"ON_SCREEN";
 }
 export const ANGLE_TYPES:readonly {value:SegmentKind;label:string}[]=[
  {value:"PROMO",label:"Promo"},{value:"INTERVIEW",label:"Interview"},
@@ -35,12 +36,19 @@ export const REQUIRED_TARGETS=new Set<SegmentKind>([
  "CONFRONTATION","CHALLENGE","ATTACK","INTERRUPTION","RESCUE","POST_MATCH_ASSAULT",
  "INTERFERENCE","STABLE_INVITATION","STABLE_RECONCILIATION"
 ]);
+/** One source for financial previews and live participation checks. */
+export function liveSegmentPersonIds(segment:EditorSegment):string[]{
+ if(segment.kind==="VIDEO_PACKAGE")return [];
+ const targets=["PROMO","INTERVIEW","CHALLENGE"].includes(segment.kind)&&
+  segment.targetPresence!=="ON_SCREEN"?[]:segment.targets;
+ return [...segment.actors,...targets].map(p=>p.personId);
+}
 export const LIMITED_ACTORS=new Set<SegmentKind>(["DEBUT","POST_MATCH_ASSAULT"]);
 export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorSegment{
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",durationMinutes:5,videoPurpose:"WRESTLER_HYPE",programmeId:null,
   creativeBeat:initialCreativeBeat(kind),scene:initialAngleScene(kind),
   specialMoment:null,sourceMatchSlotId:null,
-  turnTargetAlignment:"HEEL",stableId:null,stableDecision:null};
+  turnTargetAlignment:"HEEL",stableId:null,stableDecision:null,targetPresence:"MENTIONED"};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Invalid segment");
@@ -55,6 +63,7 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
   actors:find(Array.isArray(p.actorIds)?p.actorIds:
    ["PROMO","INTERVIEW","CELEBRATION"].includes(kind)?participants.map(p=>p.personId):[]),
   targets:find(p.targetIds),
+  targetPresence:p.targetPresence==="ON_SCREEN"?"ON_SCREEN":"MENTIONED",
   durationMinutes:typeof p.durationMinutes==="number"&&Number.isSafeInteger(p.durationMinutes)&&p.durationMinutes>=1&&p.durationMinutes<=30?p.durationMinutes:5,
   sourceMatchSlotId:typeof p.sourceMatchSlotId==="string"&&p.sourceMatchSlotId.trim()?
    p.sourceMatchSlotId:null,
@@ -105,6 +114,8 @@ export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
   slotId:s.slotId,position:0,kind:s.kind,
   actorIds:s.actors.map(p=>p.personId),
   targetIds:s.targets.map(p=>p.personId),outcome:s.outcome,durationMinutes:s.durationMinutes,
+  ...(["PROMO","INTERVIEW","CHALLENGE"].includes(s.kind)&&s.targetPresence==="ON_SCREEN"?
+   {targetPresence:"ON_SCREEN" as const}:{}),
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
   ...(s.creativeBeat?{creativeBeat:s.creativeBeat}:{}),
   ...(s.scene?{scene:s.scene}:{}),

@@ -21,6 +21,8 @@ export interface CalendarPort{
  openCard?(draftId:string):void;
  load():Promise<{promotionId?:string;promotionName:string;year:number;week:number;worldRevision:number;
  canEdit:boolean;eventPosterStyle?:string|null;broadcastPackage?:string|null;series:ShowSeries[];
+ broadcastSlot?:{offerCode:string;networkName:string;day:number;hour:number;
+  startWeekIndex:number;endWeekIndex:number}|null;
  bookings?:CalendarBooking[];
  annual?:{tier:StandingTier;policyStartYear?:number;policy:PremiumPolicy;years:{
   year:number;confirmed:boolean;events:AnnualPremiumEvent[];
@@ -311,6 +313,11 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     date.setAttribute("aria-label","Year "+chosen.year+" week "+week+
      (showName?" — "+showName:" — available"));
     if(showName)date.append(node("small",showName));
+    const tv=data!.broadcastSlot,idx=weekIndex(chosen.year,week);
+    if(tv&&idx>=tv.startWeekIndex&&idx<=tv.endWeekIndex)
+     date.append(node("small","TV · "+
+      ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][tv.day-1],
+      "ppw-calendar-ppv-week-tv"));
     grid.append(date);
    }
    part.append(grid);quarters.append(part);
@@ -425,6 +432,11 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    card.querySelector(".ppw-calendar-artwork-shell")?.replaceWith(chosenArtwork);
    card.dataset.animatedPoster=String(s.eventType==="MAJOR");
   }
+  const slot=data?.broadcastSlot,index=weekIndex(year,week);
+  if(s.eventType==="REGULAR"&&slot&&index>=slot.startWeekIndex&&index<=slot.endWeekIndex)
+   card.append(node("span",slot.networkName+" · "+
+    ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][slot.day-1]+" "+
+    String(slot.hour).padStart(2,"0")+":00","ppw-calendar-tv-slot"));
   const booking=calendarBookingForSeries(s,year,week,due,data?.bookings??[]);
   const offset=weekIndex(year,week)-weekIndex(data!.year,data!.week);
   const near=offset>=0&&offset<6;
@@ -436,7 +448,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    if(offset===0&&data!.canEdit&&booking.status==="DRAFT"&&port.openCard)
     card.append(button("Open this card",()=>port.openCard?.(booking.draftId)));
    else if(near&&data!.canEdit&&booking.status==="DRAFT"&&port.openPlanner)
-    card.append(button("Change venue / day",()=>port.openPlanner?.({
+    card.append(button(s.eventType==="REGULAR"&&slot&&index>=slot.startWeekIndex&&
+     index<=slot.endWeekIndex?"Change venue":"Change venue / day",()=>port.openPlanner?.({
      year,week,seriesId:s.seriesId,draftId:booking.draftId
     })));
   }else{
@@ -508,6 +521,17 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    option.setAttribute("aria-pressed",String(mode===value));tabs.append(option);
   }
   upcoming.append(tabs);
+  if(mode==="mine"&&data.broadcastSlot){
+   const tv=data.broadcastSlot,current=weekIndex(data.year,data.week);
+   if(tv.endWeekIndex>=current){
+    const line=node("div","","ppw-calendar-network-term");
+    line.append(node("strong","WEEKLY TELEVISION · "+tv.networkName),
+     node("span",["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][tv.day-1]+
+      " · "+String(tv.hour).padStart(2,"0")+":00 · Fixed by your contract"),
+     node("small","Future episodes appear automatically while the agreement is active. Plan their venues and cards closer to each week."));
+    upcoming.append(line);
+   }
+  }
   if(mode==="mine"){
    const filters=node("div","","ppw-calendar-type-tabs");
    for(const [selected,title] of [[false,"All events"],[true,"PPVs & specials"]] as const){

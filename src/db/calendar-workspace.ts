@@ -13,6 +13,7 @@ import {premiumPolicy,projectYearEvents,scheduledSeriesOnWeek,
  suggestedAnnualPremiumEvents,type AnnualPremiumEvent}
  from "../domain/annual-premium-plan.js";
 import type {StandingTier} from "../domain/annual-promotion-standing.js";
+import {commercialCompanyName} from "../domain/commercial-offers.js";
 import {decodeAnnualPremiumSnapshot,plansMap}
  from "./annual-premium-calendar.js";
 export interface CalendarScope {worldId:string;promotionId:string;playerId:string}
@@ -33,7 +34,8 @@ export interface CalendarBooking {
 }
 type Owner={name:string;tier:StandingTier;year:number;week:number;
  premium_plan_start_year:number;revision:string|number;
- booking_open:boolean;cadence:number;major_interval:number|null;annual_plans:unknown;event_poster:string|null;broadcast_package:string|null};
+ booking_open:boolean;cadence:number;major_interval:number|null;annual_plans:unknown;event_poster:string|null;broadcast_package:string|null;
+ broadcast_slot:{offerCode:string;day:number|null;hour:number|null;startWeekIndex:number;endWeekIndex:number}|null};
 type Row={series_id:string;name:string;role:ShowSeries["role"];
  event_type:ShowSeries["eventType"];cadence_weeks:number;anchor_week:number;
  importance:number;active:boolean;poster_style:string|null;earned_prestige:number;
@@ -49,6 +51,13 @@ async function owner(tx:SqlRows,scope:CalendarScope):Promise<Owner>{
  "p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,",
   "(SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,",
    "(SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,",
+   "(SELECT jsonb_build_object('offerCode',deal.offer_code,'day',deal.airing_day,",
+   "'hour',deal.airing_hour,'startWeekIndex',deal.start_week_index,",
+   "'endWeekIndex',deal.end_week_index) FROM ppw_commercial_deals deal",
+   "WHERE deal.world_id=w.world_id AND deal.promotion_id=p.promotion_id",
+   "AND deal.kind='BROADCAST' AND deal.status='ACTIVE'",
+   "AND deal.end_week_index >= (w.year-1)*52+w.week-1",
+   "ORDER BY deal.end_week_index DESC LIMIT 1) AS broadcast_slot,",
   "(SELECT coalesce(jsonb_agg(jsonb_build_object('year',plan.year,",
   "'events',plan.events,'tierAtCommit',plan.tier_at_commit,",
   "'confirmedWeekIndex',plan.confirmed_week_index) ORDER BY plan.year),'[]'::jsonb)",
@@ -272,6 +281,12 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   });
   if(worldWeeks.reduce((total,w)=>total+w.events.length,0)>512)
    throw new Error("World calendar occurrence budget exceeded");
+  const slot=owned.broadcast_slot;
+  const broadcastSlot=slot&&Number.isInteger(slot.day)&&slot.day!>=1&&slot.day!<=7&&
+   Number.isInteger(slot.hour)&&slot.hour!>=0&&slot.hour!<=23?{
+    offerCode:slot.offerCode,networkName:commercialCompanyName(slot.offerCode),
+    day:slot.day!,hour:slot.hour!,startWeekIndex:slot.startWeekIndex,
+    endWeekIndex:slot.endWeekIndex}:null;
   const annualYears=[owned.year,owned.year+1].map(year=>({
    year,confirmed:ownerAnnual.some(plan=>plan.year===year),
    events:projectYearEvents(series,year,ownerPlans),
@@ -280,7 +295,8 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   return {annual:{tier:owned.tier,policyStartYear:owned.premium_plan_start_year,
    policy:premiumPolicy(owned.tier),
     years:annualYears},worldWeeks,bookings,eventPosterStyle:owned.event_poster,
-    broadcastPackage:owned.broadcast_package,promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
+    broadcastPackage:owned.broadcast_package,broadcastSlot,
+    promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,
    series:series.filter(s=>s.active),
    weeks:occurrences(series,weekIndex(owned.year,owned.week),52).map(w=>({

@@ -381,3 +381,26 @@ test("AI tag championship rewards a verified rising team rather than repeating a
  assert.ok(tag!.participants.some(p=>p.personId==="talent-17"));
  assert.ok(tag!.participants.every(p=>!["talent-04","talent-05"].includes(p.personId)));
 });
+
+
+test("AI cannot drift away from its contracted weekly broadcast night",()=>{
+ const weekly=chooseAiWorldCard({...base,contractedDay:5});
+ assert.equal(weekly.status,"READY");
+ if(weekly.status==="READY")assert.equal(weekly.schedule.day,5);
+ const other=chooseAiWorldCard({...base,contractedDay:2});
+ assert.equal(other.status,"READY");
+ if(other.status==="READY")assert.equal(other.schedule.day,2);
+ const premium=chooseAiWorldCard({...base,eventType:"MAJOR"});
+ assert.equal(premium.status,"READY");
+ if(premium.status==="READY")assert.ok([6,7].includes(premium.schedule.day),
+  "A PPV keeps its independent weekend booking options");
+ const grandfathered=chooseAiWorldCard({...base,contractedDay:5,eventType:"MAJOR"});
+ assert.equal(grandfathered.status,"READY");
+ if(grandfathered.status==="READY")assert.equal(grandfathered.schedule.day,5,
+  "A pre-modern legacy television special is still contracted weekly TV");
+ const blocked=chooseAiWorldCard({...base,contractedDay:5,
+  activeVenues:["a"],bookedShows:[{showId:"other",day:5,venueId:"a",personIds:[]}]});
+ assert.deepEqual(blocked,{status:"UNFILLED",reason:"NO_VENUE_OR_DAY"},
+  "A fixed network day is never evaded by quietly choosing another night");
+ assert.throws(()=>chooseAiWorldCard({...base,contractedDay:9}),/Invalid/);
+});

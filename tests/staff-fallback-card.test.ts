@@ -51,3 +51,14 @@ test("staff action order is independent of submission/worker arrival",()=>{
   assert.deepEqual(a,b);
   assert.equal(new Set(a).size,3);
 });
+
+
+test("delegated staff maintain a network night rather than reschedule the television show",()=>{
+ const card=chooseEmergencyStaffCard({...fixture,contractedDay:5});
+ assert.equal(card.status,"READY");
+ if(card.status==="READY")assert.equal(card.schedule.day,5);
+ const blocked=chooseEmergencyStaffCard({...fixture,contractedDay:3,activeVenues:["main"]});
+ assert.deepEqual(blocked,{status:"UNFILLED",reason:"NO_VENUE_OR_DAY"},
+  "Delegated staff cannot override a signed slot when its only venue is taken");
+ assert.throws(()=>chooseEmergencyStaffCard({...fixture,contractedDay:0}),/Invalid/);
+});

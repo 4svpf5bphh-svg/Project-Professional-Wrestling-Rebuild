@@ -102,7 +102,10 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  const comment=officialThread.locator(".ppw-hot-tag-news-copy p").first();
  await expect(comment).toBeVisible();
  await expect(comment).toHaveCSS("color","rgb(230, 236, 248)");
- await expect(officialThread.locator(".ppw-hot-tag-news-copy p")).toHaveCount(4);
+ // A verified wrestler post plus a variable three-to-six fan reactions.
+ const officialTotal=await officialThread.locator(".ppw-hot-tag-news-copy p").count();
+ expect(officialTotal).toBeGreaterThanOrEqual(4);
+ expect(officialTotal).toBeLessThanOrEqual(7);
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toHaveCount(1);
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toContainText("Cara");
  await expect(officialThread.getByRole("button",{name:"View wrestler dossier"})).toHaveCount(1);
@@ -113,7 +116,10 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(networkPost).toContainText("BBS Sports");
  await expect(networkPost).toContainText("Verified network");
  await expect(networkPost).toContainText("The board expects");
- await expect(networkThread.locator(".ppw-hot-tag-news-post")).toHaveCount(4);
+ // Certified broadcaster + varied, stable fan participation.
+ const networkTotal=await networkThread.locator(".ppw-hot-tag-news-post").count();
+ expect(networkTotal).toBeGreaterThanOrEqual(4);
+ expect(networkTotal).toBeLessThanOrEqual(7);
  await expect(networkPost.getByRole("button",{name:"Develop programme"})).toHaveCount(0);
  await expect(page.getByText("Maya Storm becomes a special attraction")).toBeVisible();
  await expect(page.getByText("Alex Rook hangs up the boots")).toBeVisible();
@@ -152,7 +158,10 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(threads).toHaveCount(2);
  await threads.first().locator("summary").click();
  await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("HOT TAG");
- await expect(threads.first().locator(".ppw-hot-tag-news-post")).toHaveCount(3);
+ // Dirt Sheet comments vary naturally, but never invent verified accounts.
+ const dirtTotal=await threads.first().locator(".ppw-hot-tag-news-post").count();
+ expect(dirtTotal).toBeGreaterThanOrEqual(3);
+ expect(dirtTotal).toBeLessThanOrEqual(6);
  await expect(threads.locator(".ppw-hot-tag-wrestler"),
   "Unverified reports must never impersonate an official wrestler account").toHaveCount(0);
  await expect(threads.first().locator(".ppw-hot-tag-brand")).toContainText("Tag in. Sound off.");

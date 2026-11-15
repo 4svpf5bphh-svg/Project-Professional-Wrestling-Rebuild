@@ -39,7 +39,7 @@ for(const width of [320,390]){
    }});
    if(method==="industryNews")return r.fulfill({json:{
     latestEdition:{year:2,week:52},awards:[],annualAwards:[],
-    voices:[],stories
+    voices:[],stories:[...stories,{...stories[0]!,id:"duplicate-editorial-source"}]
    }});
    return r.fulfill({json:{}});
   });

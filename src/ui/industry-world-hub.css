@@ -435,3 +435,13 @@
 .ppw-news-official .ppw-news-press .ppw-news-story-title{
  font-style:italic!important}
 .ppw-news-dirt .ppw-news-press{border-left-color:#dfa9b0!important}
+
+/* Phase 52: approved award art stays proportionate, never cover-zoomed. */
+.ppw-news-poster,.ppw-news-poster[data-kind=angle]{background-color:#081d30;
+ background-repeat:no-repeat;background-position:center,right center;
+ background-size:cover,auto 88%}
+@media(max-width:390px){
+ .ppw-news-poster,.ppw-news-poster[data-kind=angle]{background-size:cover,auto 73%}
+}
+.ppw-hot-tag-reply-to{display:block;font-size:11px!important;color:#f7bda8!important;
+ font-weight:800;line-height:1.4;margin-top:2px;overflow-wrap:anywhere}

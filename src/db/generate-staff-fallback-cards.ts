@@ -19,6 +19,7 @@ type Delegated={
   owner_player_id:string|null;current_controller:string|null;
   delegated:boolean|null;status:string;management_mode:string;
   promotion_name:string;cadence:number;tier:StandingTier;
+  contracted_day:number|null;
 };
 type SignedCandidate={
   promotion_id:string;person_id:string;contract_id:string;
@@ -85,7 +86,13 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         `SELECT a.promotion_id,a.show_id,a.controller_player_id,
           s.owner_player_id,s.allow_unfinished_fallback AS delegated,
           m.player_id AS current_controller,p.management_mode,a.status,
-           p.name AS promotion_name,p.event_cadence_weeks AS cadence,p.tier
+           p.name AS promotion_name,p.event_cadence_weeks AS cadence,p.tier,
+           (SELECT d.airing_day FROM ppw_commercial_deals d
+             WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
+             AND d.kind='BROADCAST' AND d.status='ACTIVE'
+             AND d.start_week_index <= ($2::integer-1)*52+$3::integer-1
+             AND d.end_week_index >= ($2::integer-1)*52+$3::integer-1
+             ORDER BY d.end_week_index DESC LIMIT 1) AS contracted_day
          FROM ppw_week_continuity_assessments a
          JOIN ppw_promotions p ON p.world_id=a.world_id AND p.promotion_id=a.promotion_id
          LEFT JOIN ppw_promotion_controls c ON c.world_id=a.world_id
@@ -354,6 +361,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             (context?.partners.get(aId)??[]).filter(bId=>aId<bId)
               .map(bId=>({aId,bId})));
           const card=chooseAiWorldCard({
+             contractedDay:d.contracted_day,
             worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
             promotionId,showId,roster,
             activeVenues:venueRows.map(x=>x.venue_id),bookedShows:booked,
@@ -387,6 +395,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             personIds:card.matches.flatMap(m=>m.participants.map(p=>p.personId))});
         }else{
           const choice=chooseEmergencyStaffCard({
+             contractedDay:d.contracted_day,
             worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
             promotionId,showId,roster:byPromotion.get(promotionId)??[],
             activeVenues:venueRows.map(v=>v.venue_id),bookedShows:booked,

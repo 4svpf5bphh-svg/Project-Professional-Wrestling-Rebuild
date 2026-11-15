@@ -11,7 +11,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,achievementsWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
- portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,backstageArchiveAsActor,
+ portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,respondStaffDisagreementAsActor,respondBackstageFreeAgentAsActor,respondPartnerMediationAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
@@ -112,6 +112,54 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="markBackstageRead")return markBackstageReadAsActor(context,
   worldId,promotionId,id("personId"));
+ if(method==="markBackstageWorldRead")return markBackstageWorldMailReadAsActor(context,
+  worldId,promotionId,id("mailId"));
+ if(method==="respondBackstageNetwork"){
+  if(p.decision!=="COMMIT_RECOVERY"&&p.decision!=="COMMIT_STANDARDS"&&
+    p.decision!=="STAND_FIRM")
+   throw new Error("Invalid broadcaster reply");
+  if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
+   throw new Error("Invalid World revision");
+  return replyToBroadcasterAsActor(context,{worldId,promotionId,mailId:id("mailId"),
+   requestId:id("requestId"),expectedRevision:p.expectedRevision as number,
+   decision:p.decision});
+ }
+ if(method==="respondBackstageStaff"){
+  if(p.decision!=="COMMIT"&&p.decision!=="DEFER")
+   throw new Error("Invalid staff response");
+  if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
+   throw new Error("Invalid World revision");
+  return respondBackstageStaffAsActor(context,{worldId,promotionId,
+   mailId:id("mailId"),requestId:id("requestId"),
+   expectedRevision:p.expectedRevision as number,decision:p.decision});
+ }
+ if(method==="respondBackstageDisagreement"){
+  if(p.decision!=="PRIORITISE_HEALTH"&&p.decision!=="REFRESH_PROGRAMME"&&p.decision!=="DEFER")
+   throw new Error("Invalid staff disagreement decision");
+  if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
+   throw new Error("Invalid World revision");
+  return respondStaffDisagreementAsActor(context,{worldId,promotionId,
+   mailId:id("mailId"),requestId:id("requestId"),
+   expectedRevision:p.expectedRevision as number,decision:p.decision});
+ }
+ if(method==="respondBackstageFreeAgent"){
+  if(p.decision!=="INVITE"&&p.decision!=="PASS")
+   throw new Error("Invalid free-agent reply");
+  if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
+   throw new Error("Invalid World revision");
+  return respondBackstageFreeAgentAsActor(context,{worldId,promotionId,
+   mailId:id("mailId"),requestId:id("requestId"),
+   expectedRevision:p.expectedRevision as number,decision:p.decision});
+ }
+ if(method==="respondPartnerMediation"){
+  if(p.decision!=="INVITE"&&p.decision!=="LEAVE")
+   throw new Error("Invalid partner mediation reply");
+  if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
+   throw new Error("Invalid World revision");
+  return respondPartnerMediationAsActor(context,{worldId,promotionId,
+   mailId:id("mailId"),requestId:id("requestId"),
+   expectedRevision:p.expectedRevision as number,decision:p.decision});
+ }
  if(method==="backstageArchive"){
   if(typeof p.archived!=="boolean")throw new Error("Invalid archive choice");
   return backstageArchiveAsActor(context,{worldId,promotionId,

@@ -152,7 +152,7 @@ for(const width of [320,390]){
   await expect(page).toHaveURL(/#\/(?:card|planner(?:\/card)?)/);
   await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
   expect(calls).toContain("planner");
-  expect(calls).toContain("load");
+  await expect.poll(()=>calls.includes("load")).toBe(true);
   await expect(page.getByText("Champion vs Earned Challenger")).toBeVisible();
   await page.getByRole("button",{name:"Start title match"}).click();
   await expect(page.getByRole("dialog",{name:/Edit match/})).toBeVisible();

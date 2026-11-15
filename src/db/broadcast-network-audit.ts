@@ -32,7 +32,7 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
   (SELECT max((e.payload->>'effectiveWeekIndex')::integer)
    FROM ppw_ledger_events e
    WHERE e.world_id=deal.world_id
-    AND e.event_type='BROADCAST_SLOT_CHANGED'
+    AND e.event_type IN ('BROADCAST_SLOT_CHANGED','BROADCAST_SLOT_RECOVERED')
     AND e.payload->>'dealId'=deal.deal_id) AS last_slot_change_week,
   evidence.show_id,evidence.year,evidence.week,
   evidence.show_day,evidence.audience_format,evidence.tv_rating

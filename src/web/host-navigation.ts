@@ -64,7 +64,8 @@ export function readHostSection(hash:string):HostSection{
 }
 export const hostSectionHash=(section:HostSection)=>"#/"+section;
 
-/** Original PPW IA: the five roots open a client-only drawer, never query Neon. */
+/** Backstage remains a deep-linkable section but opens prominently from Home,
+ * not as another nested promotion drawer option. The five roots remain client-only. */
 export const HOST_DRAWER_ROOTS=[
  {key:"world",label:"World",glyph:"W",landing:"home",destinations:[
   ["home","World Dashboard","Your promotion and the shared week"],
@@ -86,7 +87,6 @@ export const HOST_DRAWER_ROOTS=[
   ["championships","My Champions","Your belts, champions and title history"],
   ["tournaments","Tournaments","Create, active brackets and heritage"],
   ["contracts","Contracts","Deals, renewals and dates"],
-  ["backstage","Backstage","Private wrestler conversations"],
   ["teams","Tag Teams","Partnerships and pairings"],
   ["stables","Stables","Groups and factions"],
   ["connections","Connections","Working relationships"]]},

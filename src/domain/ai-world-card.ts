@@ -17,6 +17,9 @@ export interface AiCardInput{
  worldId:string;worldSeed:string;year:number;week:number;promotionId:string;showId:string;
  roster:readonly AiRosterCandidate[];bookedShows:readonly ExistingShowBooking[];
  activeVenues:readonly string[];eventType:EventType;
+ /** Signed weekly programme night (including grandfathered MAJOR-labelled TV).
+  * Actual PPVs omit this; the event rating alone never makes TV flexible. */
+ contractedDay?:number|null;
  excludedDays?:readonly number[];
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
  strategy?:AiPromotionStrategy;
@@ -155,7 +158,9 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   (input.recentResults?.length??0)>4096||
   (input.establishedPartners?.length??0)>512||
   (input.establishedTeams?.length??0)>512||
-  (input.tagTitles?.length??0)>256)
+  (input.tagTitles?.length??0)>256||
+  (input.contractedDay!==undefined&&input.contractedDay!==null&&
+   (!Number.isInteger(input.contractedDay)||input.contractedDay<1||input.contractedDay>7)))
    throw new Error("Invalid World AI card context");
  const used=new Map<string,number>();
  for(const x of input.bookedShows)for(const id of new Set(x.personIds))
@@ -187,7 +192,8 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  const schedule=chooseStaffFallbackSchedule({
   worldId:input.worldId,worldSeed:input.worldSeed,year:input.year,week:input.week,
   promotionId:input.promotionId,showId:input.showId,
-  preferredDay:null,preferredVenueId:null,personIds:[],
+  preferredDay:input.contractedDay??null,
+  preferredVenueId:null,personIds:[],
   excludedDays:input.excludedDays,
   preferredDays:input.eventType==="MAJOR"?[6,7]:undefined,
   availableVenueIds:input.activeVenues,bookedShows:input.bookedShows});

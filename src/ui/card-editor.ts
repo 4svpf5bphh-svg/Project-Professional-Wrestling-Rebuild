@@ -9,7 +9,7 @@ import {newEditorMatch,restoreEditorMatch,assignPerformer,changeWinner,
  FORMATS,type EditorMatch,type Format,type PersonPick}
  from "./card-editor-model.js";
 import {ANGLE_TYPES,VIDEO_PURPOSES,REQUIRED_TARGETS,LIMITED_ACTORS,newEditorSegment,
- restoreEditorSegment,addSegmentPerson,buildEditorSegment,type EditorSegment}
+ restoreEditorSegment,addSegmentPerson,buildEditorSegment,liveSegmentPersonIds,type EditorSegment}
  from "./card-segment-model.js";
 import {ANGLE_STORY_GOALS,angleGoalFor,anglesForGoal,firstAngleFor,angleDirection,
  type AngleGoal} from "./angle-story-goals.js";
@@ -994,8 +994,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      ...m.teams.flatMap(side=>side.flatMap(person=>person?[person.personId]:[])),
      ...(m.interference?[m.interference.personId]:[])
     ]),
-    ...committedSegments.filter(s=>s.kind!=="VIDEO_PACKAGE")
-     .flatMap(s=>[...s.actors,...s.targets].map(p=>p.personId))
+    ...committedSegments.flatMap(liveSegmentPersonIds)
    ];
    const feeEstimate=forecastCardAppearanceFees(participation,roster);
    const finance=bookingFinanceBrief(view.bookingFinancials,feeEstimate,
@@ -1410,6 +1409,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        segment.stableId:null,
       stableDecision:["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableDecision:null,
+      targetPresence:segment.kind===kind?segment.targetPresence:"MENTIONED",
       actors:LIMITED_ACTORS.has(kind)?segment.actors.slice(0,1):
        (kind==="RESCUE"||kind==="TURN")?segment.actors.slice(0,2):segment.actors,
       targets:["CELEBRATION","CONTRACT_SIGNING","DEBUT"].includes(kind)?
@@ -1675,6 +1675,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         "+ Include factions",()=>void loadStableChoices(),!mutable()||stableChoicesLoading,
         "ppw-angle-cast-faction"));
      }
+     if(role==="targets"&&segment.targets.length&&
+       ["PROMO","INTERVIEW","CHALLENGE"].includes(segment.kind))
+      section.append(field("Target participation",selector(segment.targetPresence,
+       [["MENTIONED","Spoken about · not appearing"],
+        ["ON_SCREEN","Appears on screen · paid appearance"]],
+       v=>editSegment(segment,{targetPresence:v as "MENTIONED"|"ON_SCREEN"}),!mutable())));
      if(role==="targets"&&REQUIRED_TARGETS.has(segment.kind)&&segment.targets.length===0)
       section.append(el("p","ppw-muted","This angle needs a target."));
      body.append(section);
@@ -2576,15 +2582,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        // booking screen. Match participants and run-ins are live; videos
        // are pre-recorded. Other unfinished wizards aren't on the card.
        const ids=m?[...assignedIds(m),...(m.interference?[m.interference.personId]:[])]:
-        segment!.kind==="VIDEO_PACKAGE"?[]:
-        [...segment!.actors,...segment!.targets].map(p=>p.personId);
+        liveSegmentPersonIds(segment!);
        const existingAppearances=[
         ...[...matches.values()].filter(other=>other.slotId!==slotId&&
          !inProgressWizards.has(other.slotId)).flatMap(other=>
          [...assignedIds(other),...(other.interference?[other.interference.personId]:[])]),
         ...[...segments.values()].filter(other=>other.slotId!==slotId&&
-         !inProgressWizards.has(other.slotId)&&other.kind!=="VIDEO_PACKAGE")
-         .flatMap(other=>[...other.actors,...other.targets].map(p=>p.personId))
+         !inProgressWizards.has(other.slotId))
+         .flatMap(liveSegmentPersonIds)
        ];
        const fees=forecastIncrementalAppearanceFees(ids,existingAppearances,roster);
        const allFees=forecastCardAppearanceFees([...existingAppearances,...ids],roster);
@@ -2602,6 +2607,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(segment?.kind==="VIDEO_PACKAGE")
         brief.append(el("p","ppw-guide-fee-note",
          "Pre-recorded video · No live appearance fees for this segment."));
+       else if(segment?.targets.length&&
+        ["PROMO","INTERVIEW","CHALLENGE"].includes(segment.kind)&&
+        segment.targetPresence!=="ON_SCREEN")
+        brief.append(el("p","ppw-guide-fee-note",
+         "Referenced opponents do not appear or incur an appearance fee."));
        else if(fees.performers)
         brief.append(el("p","ppw-guide-fee-note",
          "Additional appearance fees · $"+fees.amount.toLocaleString("en-GB")+

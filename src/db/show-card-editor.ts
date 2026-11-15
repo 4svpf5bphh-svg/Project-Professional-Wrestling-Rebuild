@@ -5,7 +5,7 @@ import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {withSqlClient} from "./postgres.js";
-import {readCardParticipants} from "../domain/card-participants.js";
+import {readCardParticipants,appearancesFromSlots} from "../domain/card-participants.js";
 import {uniqueShowAppearances} from "../domain/appearance-policy.js";
 import {normalizeBookableMatch} from "../domain/bookable-match.js";
 import {reserveBookedTournamentBouts}
@@ -685,6 +685,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    payload:buildBookedSegmentPayload({
    slotId:s.slotId,position:0,kind:p.kind as SegmentKind,
    actorIds:p.actorIds as string[],targetIds:p.targetIds as string[],
+   ...(p.targetPresence===undefined?{}:{targetPresence:p.targetPresence as "MENTIONED"|"ON_SCREEN"}),
    outcome:p.outcome as SegmentOutcome,
    ...(p.durationMinutes===undefined?{}:{durationMinutes:p.durationMinutes as number}),
    ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as VideoPurpose}),
@@ -820,8 +821,7 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      throw new Error("Unlock each Special Moment with Kayfabe Points before booking it");
    }
    const appearances=uniqueShowAppearances([
-    ...booked,...runIns,...segments.filter(s=>(s.payload as {kind?:unknown}|null)?.kind!=="VIDEO_PACKAGE")
-     .flatMap(s=>readCardParticipants(s.payload))]);
+    ...booked,...runIns,...appearancesFromSlots(segments.map(s=>s.payload))]);
    if(appearances.length>100)throw new Error("Show exceeds 100 unique wrestlers");
    const ids=appearances.map(p=>p.personId),contracts=appearances.map(p=>p.contractId);
    const week=(show.year-1)*52+show.week-1;
