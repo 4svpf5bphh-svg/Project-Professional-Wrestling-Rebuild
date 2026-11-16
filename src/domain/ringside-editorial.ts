@@ -219,9 +219,13 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   const hadInterference=source.fallout?.interference!==undefined;
   // A model-authored spot is flavour, not authority to create permanent
   // consequences. Confirmed fallout appears separately in the official UI.
-  if(!hadTitleChange&&(/\b(?:new (?:world |tag |women's )?champion|captured the (?:world |tag |women's )?title|title (?:changed hands|switch(?:ed|es) hands)|(?:won|claimed) the championship)\b/i.test(prose)||
-   (source.type==="MATCH"&&
-    /\b(?:captur(?:e|ed|es|ing)|claim(?:ed|s|ing)|win(?:s|ning)?|secur(?:e|ed|es|ing))\s+(?:(?:the|a|an|his|her|their|vacant|world|tag|women's|intercontinental|universal|heavyweight|singles)\s+){0,4}(?:title|championship|gold|belt)\b/i.test(prose))))
+  const goldClaims=source.type==="MATCH"&&
+   [...prose.matchAll(/\b(?:captur(?:e|ed|es|ing)|claim(?:ed|s|ing)|win(?:s|ning)?|secur(?:e|ed|es|ing))\s+(?:(?:the|a|an|his|her|their|vacant|world|tag|women's|intercontinental|universal|heavyweight|singles)\s+){0,4}(?:title|championship|gold|belt)\b/gi)]
+    .some(hit=>{
+     const before=prose.slice(Math.max(0,(hit.index??0)-35),hit.index);
+     return !/(?:\b(?:did|could|would|will|does|do)\s+not|\b(?:never|didn't|couldn't|wouldn't|failed\s+to|unable\s+to))\s*$/i.test(before);
+    });
+  if(!hadTitleChange&&(/\b(?:new (?:world |tag |women's )?champion|captured the (?:world |tag |women's )?title|title (?:changed hands|switch(?:ed|es) hands)|(?:won|claimed) the championship)\b/i.test(prose)||goldClaims))
    throw new Error("Invented championship change");
   // A physical trademark injury/defect must come from the certified
   // character or medical record, not a writer's improvised description.
