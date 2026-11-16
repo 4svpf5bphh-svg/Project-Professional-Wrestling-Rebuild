@@ -223,7 +223,7 @@ test("historical segments with no critic rating still render, and an optional ce
     const rows=await c.query<T>(sql,params);
     if(sql.includes("FROM ppw_completed_shows")&&rows.length){
      const copy={...(rows[0] as object),receipt_json:source};
-     return [copy] as T[];
+     return [copy] as unknown as T[];
     }
     return rows;
    }};
