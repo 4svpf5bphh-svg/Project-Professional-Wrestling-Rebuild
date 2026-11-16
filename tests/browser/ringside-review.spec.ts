@@ -778,7 +778,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"Return to Headlines"}).click();
   const opening=page.locator(".ppw-tv-opening-wrap .ppw-tv-frame");
   await expect(opening).toBeVisible();
-  await expect(opening).toContainText("ASCENSION");
+  await expect(opening).toContainText("Ascension");
   await expect(page.locator(".ppw-result-hero")).toHaveCount(0);
   await expect(page.locator(".ppw-broadcast-highlights")).toBeVisible();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
