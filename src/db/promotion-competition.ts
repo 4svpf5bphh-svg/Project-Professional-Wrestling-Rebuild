@@ -244,6 +244,11 @@ export function promotionCompetitionProjectionSql(world:string,owner:string):str
   JOIN ppw_worlds clock ON clock.world_id=own.world_id
   LEFT JOIN recent ownFacts ON ownFacts.promotion_id=own.promotion_id
   LEFT JOIN recent rivalFacts ON rivalFacts.promotion_id=candidate.promotion_id
+  -- Do not emit a large speculative rivalry object for a fresh World with
+  -- no certified show from either company. The existing Home empty state
+  -- explains when the first evidence-driven rival can appear.
+  WHERE coalesce(ownFacts.completed_shows,0)+
+   coalesce(rivalFacts.completed_shows,0)>0
  )`;
  return `(
   SELECT base.card||jsonb_build_object(

@@ -45,6 +45,8 @@ test("643-wrestler iPhone session: Home, roster, market, Business, Staff and Ind
   assert.equal(overview?.promotion?.id,promotion);
   assert.equal(overview?.promotion?.attention.plannedShows,0);
   assert.equal(overview?.promotion?.attention.pendingBackstage,false);
+  assert.equal(overview?.promotion?.competition??null,null,
+   "No completed shows means no invented provisional competitor payload");
   assert.equal(meter.assertBudget({maxQueries:1,maxResultBytes:2200}).queryCount,1);
   const roster=await readWrestlerDirectory(measured,scope,{view:"ROSTER",limit:25});
   assert.equal(roster.view,"ROSTER");
