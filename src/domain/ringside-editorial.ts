@@ -5,7 +5,7 @@ import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // Updated editorial is versioned independently. Published v4 remains immutable.
-export const RINGSIDE_PROMPT_VERSION="ringside-v8";
+export const RINGSIDE_PROMPT_VERSION="ringside-v9";
 export const RINGSIDE_PREVIOUS_VERSION="ringside-v7";
 export const RINGSIDE_OLDER_VERSION="ringside-v6";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
@@ -107,6 +107,37 @@ export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
 const moveSurface=(value:string)=>value.normalize("NFKC").toLowerCase()
  .replace(/[^\p{L}\p{N}]+/gu," ").trim().replace(/\s+/g," ");
 
+/** A referenced wrestler is not automatically an on-camera participant.
+ * Never turn a solo promo's named target into an unscripted entrance, reply,
+ * move, or physical reaction. Names are escaped as literal words. */
+const literalPattern=(value:string)=>[...value].map(ch=>
+ "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
+function assertReferencedPromoTargetStayedOffScreen(
+ source:ShowResultEntry,prose:string):void{
+ if(source.type!=="SEGMENT"||source.segmentKind!=="PROMO"||
+  !source.segmentContext)return;
+ const actors=new Set(source.segmentContext.actorNames.map(x=>x.toLocaleLowerCase()));
+ for(const name of source.segmentContext.targetNames){
+  if(actors.has(name.toLocaleLowerCase())||!name.trim())continue;
+  const target=literalPattern(name);
+  const body=new RegExp(
+   "(?:^|[^\\p{L}\\p{N}])"+target+
+   "(?:\\s+|['’]s\\s+)"+
+   "(?:answered|replied|responded|interrupted|stepped|walked|ran|"+
+   "charged|stood|approached|entered|arrived|appeared|performed|"+
+   "executed|landed|hit|launched|gestured|watched|stared|smirked|"+
+   "loomed|grabbed|raised|lifted|attacked|struck|climbed)\\b","iu");
+  const physical=new RegExp(
+   "(?:^|[^\\p{L}\\p{N}])"+target+"['’]s\\s+"+
+   "(?:mask|eyes|face|hands|fists|boots)\\s+"+
+   "(?:glint(?:ed|ing)|gleam(?:ed|ing)|flash(?:ed|ing)|"+
+   "shin(?:e|ing)|shone|sparkled|appeared|loomed)\\b","iu");
+  if(body.test(prose)||physical.test(prose))
+   throw new Error("Ringside invented an off-screen promo target appearance");
+ }
+}
+
+
 /** Remove only identical repeated sentences locally, no second Groq call.
  * No judgement of paraphrases or simulated finish reconstruction.
  */
@@ -188,8 +219,15 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   const hadInterference=source.fallout?.interference!==undefined;
   // A model-authored spot is flavour, not authority to create permanent
   // consequences. Confirmed fallout appears separately in the official UI.
-  if(!hadTitleChange&&/\b(?:new (?:world |tag |women's )?champion|captured the (?:world |tag |women's )?title|title (?:changed hands|switch(?:ed|es) hands)|(?:won|claimed) the championship)\b/i.test(prose))
+  if(!hadTitleChange&&(/\b(?:new (?:world |tag |women's )?champion|captured the (?:world |tag |women's )?title|title (?:changed hands|switch(?:ed|es) hands)|(?:won|claimed) the championship)\b/i.test(prose)||
+   (source.type==="MATCH"&&
+    /\b(?:captur(?:e|ed|es|ing)|claim(?:ed|s|ing)|win(?:s|ning)?|secur(?:e|ed|es|ing))\s+(?:(?:the|a|an|his|her|their|vacant|world|tag|women's|intercontinental|universal|heavyweight|singles)\s+){0,4}(?:title|championship|gold|belt)\b/i.test(prose))))
    throw new Error("Invented championship change");
+  // A physical trademark injury/defect must come from the certified
+  // character or medical record, not a writer's improvised description.
+  if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
+   throw new Error("Ringside invented unsupported physical traits");
+  assertReferencedPromoTargetStayedOffScreen(source,prose);
   if(!hadInjury&&/\b(?:suffered (?:a |an )?(?:serious |career-ending )?injury|was stretchered out|taken to hospital|injured (?:his|her|their) (?:knee|shoulder|neck|arm|leg)|left (?:the show|the arena) injured)\b/i.test(prose))
    throw new Error("Invented medical fallout");
   if(!hadInterference&&/\b(?:outside interference|run-in (?:decided|cost|secured)|(?:manager|referee) (?:interfered|attacked)|(?:third party|outsider) interfered)\b/i.test(prose))
@@ -462,6 +500,13 @@ stipulationRules if present.
 
 Angles are filmed scenes, not bouts. Use verified initiator, victim,
 location, outcome, scene purpose and visible scripted aftermath.
+In a solo PROMO, actorNames are the actual on-camera speakers; targetNames
+can mean people merely TALKED ABOUT. Never make an uncast promo target
+appear at ringside or on the ramp, answer, gesture, wrestle or deliver
+their signature moves. Being named is not being present.
+Do not invent signature physical traits, limps, scars, body language
+defects or artificial "eyes shining" flourishes. Temporary selling in
+an actual match is different from inventing a wrestler's character.
 For interviews, celebrations, contract signings or video packages,
 do not invent match moves, attackers, dialogue in quotes or combat.
 A scripted BLOODIED appearance is not a medical injury. An intent
