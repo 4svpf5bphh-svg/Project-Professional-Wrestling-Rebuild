@@ -29,8 +29,8 @@ export function deriveCompletedMatchReportFacts(
   // The legacy scoring adapter carries two representative IDs for any field
   // match, including triple threats and large tag bouts. The CANONICAL
   // layout is the complete authoritative participant list for staff reports.
-  const participantIds=p.multi?.layout.participants.map(x=>x.personId)??
-   p.tag?.layout.participants.map(x=>x.personId)??p.personIds;
+  const participantIds=p.multi?.layout?.participants?.map(x=>x.personId)??
+   p.tag?.layout?.participants?.map(x=>x.personId)??p.personIds;
   if(participantIds.length<2||participantIds.length>30||
    participantIds.some(id=>!id)||new Set(participantIds).size!==participantIds.length)
    throw new Error("Invalid certified report participant identities");

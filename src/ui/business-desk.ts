@@ -710,9 +710,10 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     rivalry.append(el("h3","",view.name+" vs "+circuit.name),
      el("p","ppw-ratings-circuit-sub",
       (circuit.humanManaged?"Human-managed":"AI-managed")+
-       " · "+circuit.tier+" · Reviewed Y"+
-       (Math.floor(circuit.reviewedWeekIndex/52)+1)+" W"+
-       (circuit.reviewedWeekIndex%52+1)));
+       " · "+circuit.tier+
+       (circuit.provisional?" · Provisional same-scale competitor":
+        " · Reviewed Y"+(Math.floor(circuit.reviewedWeekIndex/52)+1)+" W"+
+        (circuit.reviewedWeekIndex%52+1))));
     const metrics=el("div","ppw-ratings-circuit-metrics");
     const attendees=(n:number|null)=>n===null?"—":
      Math.round(n).toLocaleString("en-GB");
@@ -753,21 +754,25 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     el("p","ppw-ratings-circuit-status",
      "The first completed World week will establish your nearest rival."));
    // Preserve the original one-screen TV face-off on 320/390px when a
-   // World has not yet completed its first circuit-rivalry review.
+   // Show the peer's certified evidence even before the first World review.
    if(circuit)section.append(rivalry);
    const ranking=view.competitorBroadcasts??[];
    const own=ranking.find(episode=>episode.isYours)??null;
    const others=ranking.filter(episode=>!episode.isYours);
-   const opponent=others.find(episode=>episode.promotionId===selectedRatingsRivalId)??
-    others.find(episode=>episode.promotionId===circuit?.promotionId)??
-    // Real same-slot competition is the default comparison over a human
-    // promotion airing in a different window.
-    others.find(episode=>own&&episode.year===own.year&&
+   const explicitOpponent=selectedRatingsRivalId?
+    others.find(episode=>episode.promotionId===selectedRatingsRivalId)??null:null;
+   // A real circuit opponent is the default; never substitute the biggest
+   // broadcaster (often WWE) merely because it leads the TV standings.
+   // Without a saved or provisional peer, a certified same-slot opponent
+   // is meaningful. Every other broadcaster remains selectable below.
+   const sameSlot=others.find(episode=>own&&episode.year===own.year&&
      episode.week===own.week&&episode.day===own.day&&
      episode.airingHour!==null&&episode.airingHour!==undefined&&
      episode.airingHour===own.airingHour&&
-     (own.ratingsWarOpponents??0)>0&&(episode.ratingsWarOpponents??0)>0)??
-    others.find(episode=>episode.humanManaged)??others[0]??null;
+     (own.ratingsWarOpponents??0)>0&&(episode.ratingsWarOpponents??0)>0);
+   const opponent=explicitOpponent??
+    (circuit?others.find(episode=>episode.promotionId===circuit.promotionId)??null:
+     sameSlot??null);
    const ownRank=ranking.findIndex(episode=>episode.isYours);
    const compare=el("section","ppw-ratings-war-faceoff");
    compare.setAttribute("aria-label","Certified TV ratings comparison");
@@ -783,7 +788,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    };
    cards.append(scoreCard(own?.name??view.name,own?.householdRating??null,"OWNER"),
     el("span","ppw-ratings-war-versus","VS"),
-    scoreCard(opponent?.name??"No challenger recorded",
+    scoreCard(opponent?.name??circuit?.name??"No matched challenger",
      opponent?.householdRating??null,"RIVAL"));
    if(opponent?.humanManaged)
     cards.lastElementChild?.prepend(el("small","ppw-ratings-war-human-label",
@@ -817,7 +822,11 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
       "YOUR LATEST AIRTIME BATTLE ENDED EVEN"));
     }
    }else compare.append(el("p","ppw-ratings-war-result",
-    "Compare audiences once you and another promotion have certified TV results."));
+    circuit&&!opponent?
+     circuit.name+" has no recent certified TV broadcast. Compare the "+
+      "actual circuit attendance above, or select another broadcaster below.":
+     "No certified same-slot TV challenger yet. Select a broadcaster "+
+      "below to compare public TV standings."));
    section.append(compare);
    if(ownRank>=0){
     const position=el("p","ppw-ratings-war-standings",

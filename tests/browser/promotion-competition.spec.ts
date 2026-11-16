@@ -65,3 +65,65 @@ for(const width of [320,390]){
   expect(box!.width).toBeLessThanOrEqual(width);
  });
 }
+
+for(const width of [320,390]){
+ test("Home previews real certified rival shows and Ratings War never defaults to WWE at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const provisional={promotionId:"revolution",name:"Revolution Pro",
+   tier:"INDEPENDENT",humanManaged:false,provisional:true,
+   reviewedWeekIndex:23,sinceWeekIndex:23,ownShowCount:4,rivalShowCount:5,
+   ownAvgCrowd:70,rivalAvgCrowd:74,ownAvgAttendance:520,rivalAvgAttendance:810,
+   ownReach:22,rivalReach:30,ownTvRating:0.10,rivalTvRating:null,
+   targetName:null,targetTier:null,
+   ownLatestShow:{year:1,week:23,showName:"Ascension",crowdResponse:74,tvRating:0.1},
+   rivalLatestShow:{year:1,week:23,showName:"Uprising",crowdResponse:81,tvRating:null}};
+  const overview={world:{id:"w",revision:35,name:"PPW",year:1,week:24,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"cwa",name:"CWA",tier:"INDEPENDENT",
+   cash:550000,debt:0,lastWeeklyNet:2000,financialDistress:"HEALTHY",
+   competition:provisional,attention:{unpreparedShow:false,pendingBackstage:false,
+    expiringTalent:false,pendingContractOffers:false,plannedShows:0}}};
+  const business={name:"CWA",year:1,week:24,worldRevision:35,phase:"OPEN",
+   tier:"INDEPENDENT",cash:550000,debt:0,homeMarketName:"River Market",
+   mediaReach:22,weeklyMediaIncome:2000,weeklySponsorIncome:1200,
+   weeklyFixedOverhead:3000,weeklyGuarantees:2000,weeklyStaffPayroll:0,
+   recurringMargin:-1800,lastWeeklyNet:2000,runwayWeeks:null,
+   financialDistress:"HEALTHY",territories:[],recentTransactions:[],
+   standing:null,rollingFourWeeks:{income:0,spending:0,net:0,byCategory:[]},
+   recentTvEpisodes:1,averageTvRating:.1,recentAverageCrowd:74,
+   competition:provisional,shows:[],commercialAgreements:[],
+   commercialQualified:[],commercialOffers:[],partnerInventory:[],
+   competitorBroadcasts:[
+    {promotionId:"wwe",name:"WWE",showName:"RAW",day:1,year:1,week:23,
+     householdRating:3,estimatedViewers:4000000,isYours:false,humanManaged:false},
+    {promotionId:"cwa",name:"CWA",showName:"Ascension",day:5,year:1,week:23,
+     householdRating:.1,estimatedViewers:50000,isYours:true,humanManaged:true}]};
+  const methods:string[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"w",playerId:"owner",csrfToken:"opaque",overview,availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const method=(r.request().postDataJSON() as {method:string}).method;
+   methods.push(method);
+   return r.fulfill({json:method==="business"?business:method==="overview"?overview:{}});
+  });
+  await page.goto("/#/home");
+  const card=page.locator(".ppw-home-competition");
+  await expect(card).toContainText("Revolution Pro");
+  await expect(card).toContainText("Ascension");
+  await expect(card).toContainText("Uprising");
+  await expect(card).toContainText("74/100");
+  await expect(card).toContainText("81/100");
+  await expect(card).toContainText("Provisional peer");
+  await card.getByRole("button",{name:"Open Ratings War"}).click();
+  const war=page.locator(".ppw-ratings-war-desk");
+  await expect(war.locator(".ppw-ratings-circuit")).toContainText("CWA vs Revolution Pro");
+  await expect(war.locator(".ppw-ratings-war-score[data-side=RIVAL]")).toContainText("Revolution Pro");
+  await expect(war.locator(".ppw-ratings-war-score[data-side=RIVAL]")).not.toContainText("WWE");
+  await expect(war.locator(".ppw-ratings-war-result")).toContainText("has no recent certified TV");
+  await war.getByRole("button",{name:"Compare against WWE"}).click();
+  await expect(war.locator(".ppw-ratings-war-score[data-side=RIVAL]")).toContainText("WWE");
+  expect(methods).toEqual(["overview","business"]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

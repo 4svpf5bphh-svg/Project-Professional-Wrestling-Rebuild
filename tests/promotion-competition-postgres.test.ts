@@ -72,6 +72,26 @@ test("two human local managers get each other as their circuit rival, and tier g
       25000,90000,110000,110000)`,[world,show,promotion,attendance]);
    }
   });
+  // Before World Lock has ever selected an official circuit rival, both
+  // humans must already see a truthful provisional peer in the ONE snapshot.
+  const initialMeter=new MeasuredQuerySession("provisional-peer-one-query");
+  const early:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     return initialMeter.execute(()=>client.query<T>(sql,params));
+    }};
+  }};
+  const earlyA=await readPlayerWorldOverview(early,world,a);
+  const earlyB=await readPlayerWorldOverview(early,world,b);
+  assert.equal(initialMeter.assertBudget({maxQueries:2,maxResultBytes:16000}).queryCount,2);
+  assert.equal(earlyA?.promotion?.competition?.promotionId,"promotion-1");
+  assert.equal(earlyB?.promotion?.competition?.promotionId,"promotion-0");
+  assert.equal(earlyA?.promotion?.competition?.provisional,true);
+  assert.equal(earlyA?.promotion?.competition?.ownAvgAttendance,820);
+  assert.equal(earlyA?.promotion?.competition?.rivalAvgAttendance,940);
+  assert.equal(earlyA?.promotion?.competition?.ownLatestShow?.showName,"Weekly");
+  assert.equal(earlyA?.promotion?.competition?.rivalLatestShow?.crowdResponse,75);
   const first=await withWorldTransaction(db.pool,tx=>
    reviewWorldPromotionCompetition(tx,world,1,1));
   assert.equal(first.evaluated,8);
@@ -96,6 +116,7 @@ test("two human local managers get each other as their circuit rival, and tier g
   assert.equal(homeA?.promotion?.competition?.promotionId,"promotion-1");
   assert.equal(homeB?.promotion?.competition?.promotionId,"promotion-0");
   assert.equal(homeA?.promotion?.competition?.humanManaged,true);
+  assert.equal(homeA?.promotion?.competition?.provisional,false);
   assert.equal(homeA?.promotion?.competition?.ownAvgAttendance,820);
   assert.equal(homeA?.promotion?.competition?.rivalAvgAttendance,940);
   const businessA=await readBusinessWorkspace(db.pool,{

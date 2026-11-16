@@ -111,7 +111,15 @@ export async function reviewWorldPromotionCompetition(
 /** Cached bounded public rivalry projected in existing one-query owner
  * Home and Business workspaces. Never sends private opponent information.
  */
+export interface CompetitionShowPulse{
+ year:number;week:number;showName:string;crowdResponse:number;
+ tvRating:number|null;
+}
 export interface PromotionCompetitionCard {
+ /** Ephemeral starting rival while World Lock has not reviewed the circuit. */
+ provisional?:boolean;
+ ownLatestShow?:CompetitionShowPulse|null;
+ rivalLatestShow?:CompetitionShowPulse|null;
  promotionId:string;name:string;tier:string;humanManaged:boolean;
  sinceWeekIndex:number;reviewedWeekIndex:number;
  ownShowCount:number;rivalShowCount:number;
@@ -121,10 +129,35 @@ export interface PromotionCompetitionCard {
  ownTvRating:number|null;rivalTvRating:number|null;
  targetName:string|null;targetTier:string|null;
 }
+
+/** The existing one-query Home/Business snapshot can use a public, bounded
+ * provisional peer before the first eight-week World rivalry review. This is
+ * strictly a read projection: official World selection remains the authority
+ * and no rival or financial state is persisted on page visit.
+ */
 export function promotionCompetitionProjectionSql(world:string,owner:string):string{
- return `(
+ const latest=(promotion:string)=>`(
+  SELECT jsonb_build_object(
+   'year',s.year,'week',s.week,'showName',draft.show_name,
+   'crowdResponse',s.crowd_response,
+   'tvRating',CASE WHEN econ.audience_format='TV' THEN
+    econ.tv_household_rating ELSE NULL END)
+  FROM ppw_completed_shows s
+  JOIN ppw_booking_drafts draft ON draft.world_id=s.world_id
+   AND draft.draft_id=s.show_id AND draft.status='SUBMITTED'
+  LEFT JOIN ppw_show_economics econ ON econ.world_id=s.world_id
+   AND econ.show_id=s.show_id AND econ.promotion_id=s.promotion_id
+  JOIN ppw_worlds clock ON clock.world_id=s.world_id
+  WHERE s.world_id=${world} AND s.promotion_id=${promotion}
+   AND (s.year-1)*52+s.week-1 BETWEEN
+    greatest(0,(clock.year-1)*52+clock.week-7)
+    AND (clock.year-1)*52+clock.week-1
+  ORDER BY s.year DESC,s.week DESC,s.show_id DESC LIMIT 1
+ )`;
+ const cached=`(
   SELECT jsonb_build_object(
    'promotionId',r.promotion_id,'name',r.name,'tier',r.tier,
+   'provisional',false,
    'humanManaged',EXISTS(SELECT 1 FROM ppw_promotion_controls human
     WHERE human.world_id=r.world_id AND human.promotion_id=r.promotion_id
     AND human.active),
@@ -144,5 +177,79 @@ export function promotionCompetitionProjectionSql(world:string,owner:string):str
    AND target.promotion_id=c.target_promotion_id AND target.lifecycle='ACTIVE'
   WHERE c.world_id=${world} AND c.promotion_id=${owner}
   LIMIT 1
+ )`;
+ const tierRank=(value:string)=>`(CASE ${value}
+  WHEN 'LOCAL' THEN 0 WHEN 'REGIONAL' THEN 1
+  WHEN 'INDEPENDENT' THEN 1 WHEN 'RISING' THEN 2
+  WHEN 'NATIONAL' THEN 3 WHEN 'GLOBAL' THEN 4 ELSE 0 END)`;
+ const provisional=`(
+  WITH own AS (
+   SELECT p.world_id,p.promotion_id,p.tier,p.media_reach,p.home_market_id
+   FROM ppw_promotions p WHERE p.world_id=${world}
+    AND p.promotion_id=${owner} AND p.lifecycle='ACTIVE' LIMIT 1
+  ), candidate AS (
+   SELECT r.world_id,r.promotion_id,r.name,r.tier,r.media_reach,
+    EXISTS(SELECT 1 FROM ppw_promotion_controls human
+     WHERE human.world_id=r.world_id AND human.promotion_id=r.promotion_id
+      AND human.active) AS human_managed
+   FROM ppw_promotions r JOIN own ON own.world_id=r.world_id
+   WHERE r.lifecycle='ACTIVE' AND r.promotion_id<>own.promotion_id
+   ORDER BY (
+    abs(${tierRank("r.tier")}-${tierRank("own.tier")})*33+
+    least(26,abs(coalesce(r.media_reach,0)-coalesce(own.media_reach,0))/3.0)
+    - CASE WHEN own.home_market_id IS NOT NULL AND
+      r.home_market_id=own.home_market_id THEN 19 ELSE 0 END
+    - CASE WHEN EXISTS(SELECT 1 FROM ppw_promotion_controls human
+      WHERE human.world_id=r.world_id AND human.promotion_id=r.promotion_id
+       AND human.active)
+      THEN CASE WHEN r.tier=own.tier THEN 25 ELSE 10 END ELSE 0 END
+   ),r.promotion_id LIMIT 1
+  ), recent AS (
+   SELECT s.promotion_id,count(*)::integer AS completed_shows,
+    round(avg(s.crowd_response)::numeric,1) AS avg_crowd,
+    round(avg(econ.attendance)::numeric,1) AS avg_attendance,
+    round(avg(econ.tv_household_rating)
+     FILTER (WHERE draft.booking_class='REGULAR'
+      AND econ.audience_format='TV')::numeric,2) AS avg_tv
+   FROM ppw_completed_shows s
+   JOIN ppw_booking_drafts draft ON draft.world_id=s.world_id
+    AND draft.draft_id=s.show_id AND draft.status='SUBMITTED'
+   LEFT JOIN ppw_show_economics econ ON econ.world_id=s.world_id
+    AND econ.show_id=s.show_id AND econ.promotion_id=s.promotion_id
+   JOIN ppw_worlds clock ON clock.world_id=s.world_id
+   WHERE s.world_id=${world}
+    AND s.promotion_id IN (SELECT promotion_id FROM own
+      UNION ALL SELECT promotion_id FROM candidate)
+    AND (s.year-1)*52+s.week-1 BETWEEN
+     greatest(0,(clock.year-1)*52+clock.week-13)
+     AND (clock.year-1)*52+clock.week-1
+   GROUP BY s.promotion_id
+  )
+  SELECT jsonb_build_object(
+   'promotionId',candidate.promotion_id,
+   'name',candidate.name,'tier',candidate.tier,
+   'humanManaged',candidate.human_managed,
+   'provisional',true,
+   'sinceWeekIndex',(clock.year-1)*52+clock.week-1,
+   'reviewedWeekIndex',(clock.year-1)*52+clock.week-1,
+   'ownShowCount',coalesce(ownFacts.completed_shows,0),
+   'rivalShowCount',coalesce(rivalFacts.completed_shows,0),
+   'ownAvgCrowd',ownFacts.avg_crowd,'rivalAvgCrowd',rivalFacts.avg_crowd,
+   'ownAvgAttendance',ownFacts.avg_attendance,
+   'rivalAvgAttendance',rivalFacts.avg_attendance,
+   'ownReach',own.media_reach,'rivalReach',candidate.media_reach,
+   'ownTvRating',ownFacts.avg_tv,'rivalTvRating',rivalFacts.avg_tv,
+   'targetName',NULL,'targetTier',NULL)
+  FROM own JOIN candidate ON true
+  JOIN ppw_worlds clock ON clock.world_id=own.world_id
+  LEFT JOIN recent ownFacts ON ownFacts.promotion_id=own.promotion_id
+  LEFT JOIN recent rivalFacts ON rivalFacts.promotion_id=candidate.promotion_id
+ )`;
+ return `(
+  SELECT base.card||jsonb_build_object(
+   'ownLatestShow',${latest(owner)},
+   'rivalLatestShow',${latest("(base.card->>'promotionId')")})
+  FROM (SELECT coalesce(${cached},${provisional}) AS card) base
+  WHERE base.card IS NOT NULL
  )`;
 }
