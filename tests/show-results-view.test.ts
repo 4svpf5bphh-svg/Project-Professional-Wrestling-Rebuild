@@ -248,7 +248,7 @@ test("results projection preserves an explicitly on-screen segment target withou
       const r=row as {kind:string;payload:Record<string,unknown>};
       return r.kind==="SEGMENT"?{...row,payload:{
        ...r.payload,targetPresence:"ON_SCREEN"}}:row;
-     }) as T[];
+     }) as unknown as T[];
     }
     return rows;
    }};
