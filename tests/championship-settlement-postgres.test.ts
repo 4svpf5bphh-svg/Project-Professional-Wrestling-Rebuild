@@ -199,20 +199,21 @@ test("vacant singles and 2v2v2 tag titles crown verified winners with private pa
     await tx.query(`INSERT INTO ppw_completed_show_matches(
       world_id,show_id,match_id,position,crowd_response,
       actual_finish,actual_winner_side)
-      VALUES($1,$2,'main',0,76,'CLEAN_PIN',
-       CASE WHEN $2='tag-show' THEN 'C' ELSE 'B' END)`,[world,show]);
+      VALUES($1,$2,'main',0,76,
+       CASE WHEN $2='tag-show' THEN 'CLEAN_PIN' ELSE 'RETRIEVAL' END,
+       CASE WHEN $2='tag-show' THEN 'C' ELSE 'A' END)`,[world,show]);
    }
   });
   const receipt=(showId:string):CompletedShowReceipt=>({
    worldId:world,promotionId:promotion,showId,year:1,week:22,
    resolutionId:"resolve-"+showId,crowdResponse:76,
    matches:[{matchId:"main",position:0,crowdResponse:76,
-    actualFinish:"CLEAN_PIN",
-    actualWinnerSide:showId==="tag-show"?"C":"B"}],segments:[]
+    actualFinish:showId==="tag-show"?"CLEAN_PIN":"RETRIEVAL",
+    actualWinnerSide:showId==="tag-show"?"C":"A"}],segments:[]
   });
   const singles=await withWorldTransaction(db.pool,tx=>
    settleCanonicalSinglesTitleContests(tx,receipt("singles-show"),[{
-    slotId:"main",championshipId:"belt-s",participants:["a","c"]}]));
+    slotId:"main",championshipId:"belt-s",participants:["a","b","c"]}]));
   assert.deepEqual(singles,{contests:1,transfers:1});
   const tag=await withWorldTransaction(db.pool,tx=>
    settleCanonicalTagTitleContests(tx,receipt("tag-show"),[{
@@ -224,7 +225,8 @@ test("vacant singles and 2v2v2 tag titles crown verified winners with private pa
   assert.deepEqual(tag,{contests:1,transfers:1});
   const first=await readChampionshipDirectory(db.pool,world,player,promotion);
   assert.equal(first.titles.length,2);
-  assert.equal(first.titles.find(x=>x.championshipId==="belt-s")?.holderName,"Charlie");
+  assert.equal(first.titles.find(x=>x.championshipId==="belt-s")?.holderName,"Alpha",
+   "First entrant retrieving the suspended title wins the vacant belt in a 3-way");
   assert.equal(first.titles.find(x=>x.championshipId==="belt-t")?.holderName,"Third Side",
    "A genuine third 2v2v2 side can win the vacant tag championship from certified match facts");
   const contests=await withWorldTransaction(db.pool,tx=>tx.query<{

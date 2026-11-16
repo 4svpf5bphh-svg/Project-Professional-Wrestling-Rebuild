@@ -3,6 +3,7 @@
  * authorised medical/interference outcome) controls the winner side.
  */
 import type {SqlRows} from "./world-operations.js";
+import {isDecisiveChampionshipFinish} from "../domain/championship-finish.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 export interface BookedSinglesTitle{
  slotId:string;championshipId:string;participants:readonly string[];
@@ -49,10 +50,11 @@ export async function settleCanonicalSinglesTitleContests(
     state.person_id!==null)))
    throw new Error("A singles title bout needs its champion or a vacant belt");
   const winner=booking.participants[winnerIndex]!;
-  // A dirty finish, protected finish or referee's medical stoppage never
-  // transfers the belt; clean, submission and flash victories can.
+  // A legitimate special match ending (ladder retrieval, I Quit, etc.)
+  // is as decisive as a clean pin. Protected and dirty endings still cannot
+  // transfer a title or crown a holder of a vacant championship.
   const transfer=(!hasChampion||winner!==state.person_id)&&
-   ["CLEAN_PIN","SUBMISSION","FLASH_PIN"].includes(bout.actualFinish);
+   isDecisiveChampionshipFinish(bout.actualFinish);
   if(transfer){
    if(hasChampion){
     const ended=await tx.query<{reign_id:string}>(`

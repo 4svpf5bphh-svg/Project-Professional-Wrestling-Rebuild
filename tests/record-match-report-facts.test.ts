@@ -32,6 +32,24 @@ test("every match family generates factual non-AI ratings, time and injury recor
  assert.deepEqual(facts[1]!.injuries,[{personId:"c",severity:"MODERATE",weeksOut:3}]);
  assert.deepEqual(facts[2]!.injuries,[]);
 });
+test("all performers are reported for a three-way ladder and a six-person tag",()=>{
+ const field={...projection,projections:[{
+  ...projection.projections[2]!,slotId:"triple",personIds:["a","c"],
+  multi:{result:{actualFinish:"RETRIEVAL",injuries:[]},
+   layout:{participants:[{personId:"a"},{personId:"c"},{personId:"e"}]}},
+  plannedFinish:"RETRIEVAL"
+ }]} as unknown as Input;
+ assert.deepEqual(deriveCompletedMatchReportFacts(field)[0]?.personIds,
+  ["a","c","e"]);
+ const teams={...projection,projections:[{
+  ...projection.projections[1]!,slotId:"six-tag",personIds:["a","b"],
+  tag:{result:{final:{actualFinish:"CLEAN_PIN"},injury:{injuries:[]}},
+   layout:{participants:["a","b","c","d","e","f"].map(personId=>({personId}))}}
+ }]} as unknown as Input;
+ assert.deepEqual(deriveCompletedMatchReportFacts(teams)[0]?.personIds,
+  ["a","b","c","d","e","f"]);
+});
+
 test("one batch write persists all three bouts without per-match SQL",async()=>{
  let calls=0;
  const tx={
