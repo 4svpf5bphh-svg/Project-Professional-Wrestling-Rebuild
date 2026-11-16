@@ -755,3 +755,31 @@ test("A certified HOT TAG wrestler post opens focused Programmes without booking
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+for(const width of [320,390]){
+ test("Broadcast opening has one show title, then headlines without a duplicate oversized hero at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const named={...show,showName:"Ascension",broadcastPackage:"MIDNIGHT_FREQUENCY"};
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const q=r.request().postDataJSON() as {method:string};
+   return r.fulfill({json:q.method==="resultsArchive"?
+    {items:[{showId:"omega-night",year:1,week:4,showName:"Ascension",
+     crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}:named});
+  });
+  await page.route("**/api/results-commentary",r=>
+   r.fulfill({json:{status:"unavailable"}}));
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  const opening=page.locator(".ppw-tv-opening-wrap .ppw-tv-frame");
+  await expect(opening).toBeVisible();
+  await expect(opening).toContainText("ASCENSION");
+  await expect(page.locator(".ppw-result-hero")).toHaveCount(0);
+  await expect(page.locator(".ppw-broadcast-highlights")).toBeVisible();
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

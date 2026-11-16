@@ -640,6 +640,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  // All three chapters reuse one immutable completed show; no extra reads.
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
  let premiumOpening:HTMLElement|null=null;
+ let televisionOpening=false;
  // A permanent television identity, before the actual Results Skin report.
  // The certified narrative, manager analysis and results are untouched.
  if(poster){
@@ -665,9 +666,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(opening){
    const wrap=node("section","ppw-tv-opening-wrap");
    wrap.append(opening);headlines.append(wrap);
+   televisionOpening=true;
   }
  }
- headlines.append(header,...(featured.length?[highlights]:[]));
+ // The purchased TV opening already names this certified show. Repeating a
+ // second giant title-banner directly below it added no useful information.
+ // Preserve normal Results Skin and PPV header behaviour without a TV frame.
+ headlines.append(...(televisionOpening?[]:[header]),
+  ...(featured.length?[highlights]:[]));
  const full=node("section","ppw-results-page");full.dataset.page="full";
  if(premiumOpening)full.append(premiumOpening);
  else{

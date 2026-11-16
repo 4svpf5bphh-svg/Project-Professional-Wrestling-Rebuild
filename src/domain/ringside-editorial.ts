@@ -1,5 +1,5 @@
 /** A full-card editorial projection. It never writes simulation facts. */
-import type {CompletedShowView} from "../db/show-results-view.js";
+import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
