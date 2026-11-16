@@ -245,7 +245,7 @@ test("results projection preserves an explicitly on-screen segment target withou
     const rows=await c.query<T>(sql,params);
     if(sql.includes("FROM ppw_card_slots")){
      return rows.map(row=>{
-      const r=row as {kind:string;payload:Record<string,unknown>};
+      const r=row as unknown as {kind:string;payload:Record<string,unknown>};
       return r.kind==="SEGMENT"?{...row,payload:{
        ...r.payload,targetPresence:"ON_SCREEN"}}:row;
      }) as unknown as T[];
