@@ -771,6 +771,11 @@ for(const width of [320,390]){
    r.fulfill({json:{status:"unavailable"}}));
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
+  // Results deliberately start on Play-by-play. Visit Headlines before
+  // inspecting the on-air graphic so a hidden page is never mistaken for
+  // missing artwork; no new result read or alternative rendering path.
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+  await page.getByRole("button",{name:"Return to Headlines"}).click();
   const opening=page.locator(".ppw-tv-opening-wrap .ppw-tv-frame");
   await expect(opening).toBeVisible();
   await expect(opening).toContainText("ASCENSION");
