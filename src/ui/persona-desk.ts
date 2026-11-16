@@ -882,7 +882,7 @@ export function mountPersonaDesk(root:HTMLElement,
      ...eligible.filter(x=>x.familyLabel==="Classic Wrestling")];
     const matches=(search?eligible:ordered).slice(0,showAllGimmicks||search?24:6);
     for(const p of matches){
-     const item=button("",()=>{chosen=p.id;render();},loading);
+     const item=button("",()=>{chosen=p.id;gimmickExpanded=true;render();},loading);
      item.classList.add("ppw-gimmick-choice");
      item.append(el("strong","",p.label),el("small","",p.familyLabel),
       el("span","",p.description));

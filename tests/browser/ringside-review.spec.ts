@@ -209,11 +209,11 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
-  await expect(page.locator(".ppw-next-show-choice")).toHaveCount(4);
+  await expect(page.locator(".ppw-next-show-choice")).toHaveCount(3);
   await expect(page.getByRole("button",{name:"Check roster"})).toBeVisible();
   await expect(page.getByRole("button",{name:"View championships"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Review programmes"})).toBeVisible();
-  await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Plan a show"})).toHaveCount(0);
   await expect(page.locator(".ppw-next-show-actions").getByRole("button",{name:"See the recorded moment"})).toHaveCount(3);
   await expect(page.getByRole("button",{name:"Open wrestler dossier"})).toHaveCount(2);
   await expect(page.getByText(/who holds it now before planning/)).toBeVisible();
@@ -239,8 +239,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByText(/4.50 verified stars/)).toBeVisible();
-  await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
-  await page.getByRole("button",{name:"Plan a show"}).click();
+  await expect(page.getByRole("button",{name:"Plan a show"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Open show planner"}).click();
   await expect(page).toHaveURL(/#\/planner$/);
  });
 }

@@ -201,13 +201,13 @@ for(const width of [320,390]){
   const drawer=page.locator(".ppw-gimmick-drawer");
   await expect(drawer).toBeVisible();
   await expect(drawer).not.toHaveAttribute("open");
-  await expect(page.locator(".ppw-gimmick-choice")).toHaveCount(0);
+  await expect(page.locator(".ppw-gimmick-choice").first()).toBeHidden();
   await drawer.locator("summary").click();
   await expect(drawer).toHaveAttribute("open","");
   await expect(page.locator(".ppw-gimmick-choice")).toHaveCount(6);
   await page.getByRole("button",{name:"Browse more gimmicks"}).click();
   await expect(page.locator(".ppw-gimmick-choice")).toHaveCount(12);
-  await page.getByRole("button",{name:"Character 7"}).click();
+  await page.locator(".ppw-gimmick-choice").filter({hasText:"Character 7"}).click();
   await expect(drawer).toHaveAttribute("open","");
   await expect(page.getByRole("button",{name:"Suggest gimmick"})).toBeEnabled();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
