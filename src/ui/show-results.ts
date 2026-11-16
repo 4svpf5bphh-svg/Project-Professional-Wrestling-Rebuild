@@ -542,7 +542,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   node("h3","","What needs your attention"),
   node("p","","These are recorded events from this show, not automatic orders. "+
    "You decide what to carry forward."));
- management.append(intro);
+ if(handoff.actions.length)management.append(intro);
  const choices=node("div","ppw-next-show-actions");
  for(const task of handoff.actions){
   const item=node("article","ppw-next-show-choice");
@@ -576,7 +576,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(actionRow.childElementCount)item.append(actionRow);
   choices.append(item);
  }
- management.append(choices);
+ if(handoff.actions.length)management.append(choices);
  if(report){
   const office=node("div","ppw-post-show-road-agent");
   office.append(node("span","ppw-eyebrow","FROM THE LOCKER ROOM"),

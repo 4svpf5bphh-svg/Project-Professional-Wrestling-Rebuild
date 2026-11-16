@@ -13,34 +13,34 @@ const view=(entries:ShowResultEntry[]):CompletedShowView=>({
  showId:"show",year:1,week:4,crowdResponse:83,matchCount:entries.filter(e=>e.type==="MATCH").length,
  angleCount:0,entries,showName:"PPW Night"
 });
-test("medical, title and cooling rivalry get exactly three historic, truthful routes plus booking",()=>{
+test("medical, title and cooling rivalry give only evidence-backed recommendations",()=>{
  const one=match("a","COOL_PROGRAMME",4.5);
  one.fallout!.injuries=[{personName:"Joe",severity:"MODERATE",weeksOut:3,stoppage:false}];
  one.fallout!.title={name:"World Championship",winnerName:"Omega",priorHolderName:"Joe",changed:true};
  const advice=postShowHandoff(view([one]));
  assert.deepEqual(advice.actions.map(x=>x.key),
-  ["medical","title","cooling","plan"]);
+  ["medical","title","cooling"]);
  assert.deepEqual(advice.actions.map(x=>x.destination),
-  ["roster","championships","programmes","planner"]);
+  ["roster","championships","programmes"]);
  assert.match(advice.actions[0]!.detail,/current status/);
  assert.match(advice.actions[1]!.detail,/who holds it now/);
  assert.ok(advice.actions.every(x=>!x.detail.includes("You must")));
  assert.ok(advice.standout?.includes("verified stars"));
  assert.deepEqual(advice.actions.slice(0,3).map(x=>x.evidenceSlotId),["a","a","a"]);
- assert.equal(advice.actions[3]!.evidenceSlotId,undefined);
+ assert.equal(advice.actions.length,3);
  assert.equal(advice.actions[0]!.personId,undefined,
   "Do not guess identities absent from older completed receipts");
 });
-test("hot rivalries take priority over generic standout while free booking stays optional",()=>{
+test("hot rivalries take priority over generic standout without redundant planner calls",()=>{
  const advice=postShowHandoff(view([match("a","HOT_PROGRAMME",4.8)]));
- assert.deepEqual(advice.actions.map(x=>x.key),["hot","plan"]);
+ assert.deepEqual(advice.actions.map(x=>x.key),["hot"]);
  assert.ok(advice.actions[0]!.detail.includes("purpose"));
  const simple=postShowHandoff(view([match("a",null,2.9)]));
- assert.deepEqual(simple.actions.map(x=>x.key),["plan"]);
+ assert.deepEqual(simple.actions.map(x=>x.key),[]);
 });
 test("verified standout is editorial only and low ratings never invent a star",()=>{
  const advice=postShowHandoff(view([match("a",null,4.45)]));
- assert.deepEqual(advice.actions.map(x=>x.key),["standout","plan"]);
+ assert.deepEqual(advice.actions.map(x=>x.key),["standout"]);
  assert.match(advice.actions[0]!.detail,/4.45 verified stars/);
  const noFacts=match("b");noFacts.fallout={injuries:[],eliminations:[]};
  assert.equal(postShowHandoff(view([noFacts])).standout,null);
@@ -54,7 +54,7 @@ test("old injury, production and title evidence never claim the current World st
  };
  const actions=postShowHandoff(old).actions;
  assert.equal(actions[0]?.destination,"staff");
- assert.equal(actions[1]?.destination,"planner");
+ assert.equal(actions.length,1);
  assert.ok(actions.every(a=>!a.detail.includes("currently injured")));
 });
 

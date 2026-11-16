@@ -7,7 +7,7 @@ import type {CompletedShowView} from "../db/show-results-view.js";
 
 export type NextStepDestination="roster"|"championships"|"programmes"|"planner"|"staff";
 export interface PostShowNextStep{
- key:"medical"|"title"|"cooling"|"hot"|"standout"|"production"|"plan";
+ key:"medical"|"title"|"cooling"|"hot"|"standout"|"production";
  eyebrow:string;headline:string;detail:string;
  destination:NextStepDestination;action:string;
  /** Which completed match supports this suggestion; never a current booking ID. */
@@ -17,8 +17,8 @@ export interface PostShowNextStep{
 export interface PostShowHandoff{
  actions:PostShowNextStep[];standout:string|null;
 }
-/** At most 3 contextual items plus an always available player-controlled
- * return to booking. No one must complete these before advancing the World. */
+/** At most three actual certified concerns. PPW's existing Planner is always
+ * in navigation: don't instruct the player to book their next show. */
 export function postShowHandoff(show:CompletedShowView):PostShowHandoff{
  const entries=show.entries;
  const priorities:PostShowNextStep[]=[];
@@ -89,10 +89,5 @@ export function postShowHandoff(show:CompletedShowView):PostShowHandoff{
     (show.gorillaLog.incidents.length===1?" was":"s were")+
     " recorded on this show. The saved Gorilla Log below has the evidence.",
    destination:"staff",action:"Open staff office"});
- const actions=priorities.slice(0,3);
- actions.push({key:"plan",eyebrow:"YOUR NEXT SHOW",
-  headline:"Write the next chapter",
-  detail:"Use your existing six-week planner. Nothing has been booked or changed by this report.",
-  destination:"planner",action:"Plan a show"});
- return {actions,standout};
+ return {actions:priorities.slice(0,3),standout};
 }
