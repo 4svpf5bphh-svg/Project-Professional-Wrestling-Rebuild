@@ -50,7 +50,8 @@ export function assembleArchivedShowResolution(
   resolutionId,crowdResponse:Math.min(100,Math.round((weighted/total+boost)*10)/10),
   matches:matches.map(m=>m.receipt),
   segments:scoredSegments.map(s=>({slotId:s.slotId,position:s.position,
-   kind:kinds.get(s.slotId)!,outcome:s.outcome,crowdResponse:s.crowdResponse})),
+   kind:kinds.get(s.slotId)!,outcome:s.outcome,
+   crowdResponse:s.crowdResponse,ratingStars:s.ratingStars})),
  });
  return {receipt,evidence:matches.map(m=>m.evidence)};
 }

@@ -9,6 +9,8 @@ export interface CompletedMatchReceipt {
 export interface CompletedSegmentReceipt {
  slotId:string;position:number;kind:string;
  outcome:"HAPPENS"|"REFUSED"|"INTERRUPTED";crowdResponse:number;
+ /** Optional to preserve every historical, already-certified World receipt. */
+ ratingStars?:number;
 }
 export interface CompletedShowReceipt {
  worldId:string;promotionId:string;showId:string;
@@ -39,6 +41,9 @@ export function validateCompletedShowReceipt(r:CompletedShowReceipt):CompletedSh
  for(const s of r.segments){
   if(!id(s.slotId)||slots.has(s.slotId)||!Number.isSafeInteger(s.position)||
    s.position<0||positions.has(s.position)||!score(s.crowdResponse)||
+   (s.ratingStars!==undefined&&(!Number.isFinite(s.ratingStars)||
+    s.ratingStars<0||s.ratingStars>5||
+    !Number.isInteger(s.ratingStars*4)))||
    !id(s.kind)||!["HAPPENS","REFUSED","INTERRUPTED"].includes(s.outcome))
    throw new Error("Invalid completed segment receipt");
   slots.add(s.slotId);positions.add(s.position);

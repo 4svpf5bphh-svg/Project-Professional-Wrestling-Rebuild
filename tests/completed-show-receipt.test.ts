@@ -30,3 +30,16 @@ test("invalid time and non-finite scores are rejected",()=>{
  assert.throws(()=>validateCompletedShowReceipt({...receipt,matches:[
   {...receipt.matches[0]!,crowdResponse:Infinity}]}));
 });
+
+test("new segments include a bounded quarter-star execution grade; old World receipts remain valid",()=>{
+ const historical=validateCompletedShowReceipt(receipt);
+ assert.equal(historical.segments[0]?.ratingStars,undefined);
+ const rated=validateCompletedShowReceipt({...receipt,segments:[
+  {...receipt.segments[0]!,ratingStars:3.75}
+ ]});
+ assert.equal(rated.segments[0]?.ratingStars,3.75);
+ for(const invalid of [NaN,Infinity,-0.25,5.25,3.3])
+  assert.throws(()=>validateCompletedShowReceipt({...receipt,segments:[
+   {...receipt.segments[0]!,ratingStars:invalid}
+  ]}),/Invalid completed segment receipt/);
+});

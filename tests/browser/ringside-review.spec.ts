@@ -788,3 +788,32 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+for(const width of [320,390]){
+ test("a certified angle earns a separate five-star rating without hiding match stars at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  let resultReads=0;
+  const rated={...show,entries:[show.entries[0],
+   {...show.entries[1],segmentRatingStars:3.75}]};
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const m=r.request().postDataJSON().method;
+   if(m==="results")resultReads++;
+   return r.fulfill({json:m==="resultsArchive"?{
+    items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+     crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}:rated});
+  });
+  await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  const angle=page.locator(".ppw-result-angle");
+  await expect(angle.locator(".ppw-result-angle-grade"))
+   .toHaveText("SEGMENT ★ 3.75 / 5");
+  await expect(page.locator(".ppw-result-match .ppw-result-rating"))
+   .toHaveText("★ 4.50 / 5");
+  await expect(angle).toContainText("74 / 100");
+  expect(resultReads).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

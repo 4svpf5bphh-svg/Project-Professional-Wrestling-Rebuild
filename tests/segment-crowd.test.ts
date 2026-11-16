@@ -54,3 +54,34 @@ test("booked live debuts retain the arrival but give different story objectives 
    objective:"CREATE_MYSTERY"}}}])[0]!;
  assert.equal(refused.outcome,"REFUSED","No scripted arrival is forced by performance");
 });
+
+test("angle rating is certified craft, not wrestler popularity, and booking mentions do not count as performers",()=>{
+ const promo={...c,segment:{...c.segment,kind:"PROMO" as const,
+  targetPresence:"MENTIONED" as const}};
+ const low=evaluateAuthoredSegmentCrowd([{...promo,performers:[
+  {...c.performers[0]!,popularity:15},
+  {...c.performers[1]!,popularity:100,presentation:0,momentum:0}
+ ]}])[0]!;
+ const high=evaluateAuthoredSegmentCrowd([{...promo,performers:[
+  {...c.performers[0]!,popularity:95},
+  {...c.performers[1]!,popularity:100,presentation:0,momentum:0}
+ ]}])[0]!;
+ assert.ok(high.crowdResponse>low.crowdResponse,
+  "Recognition should help the actual speaker connect with the audience");
+ assert.equal(high.ratingStars,low.ratingStars,
+  "Quality of the same promo is independent of audience familiarity");
+ const onScreen=evaluateAuthoredSegmentCrowd([{
+  ...promo,segment:{...promo.segment,targetPresence:"ON_SCREEN"},
+  performers:[{...c.performers[0]!,popularity:95},
+   {...c.performers[1]!,popularity:100,presentation:0,momentum:0}]
+ }])[0]!;
+ assert.ok(onScreen.ratingStars<high.ratingStars,
+  "Only a physically appearing target can affect on-screen execution");
+ const repeated=evaluateAuthoredSegmentCrowd([{...promo,repetitionCount:8}])[0]!;
+ assert.ok(repeated.ratingStars<high.ratingStars,
+  "Repeated creative beats should be marked down independently of popularity");
+ for(const value of [high.ratingStars,low.ratingStars,onScreen.ratingStars]){
+  assert.ok(value>=0&&value<=5);
+  assert.equal(value*4,Math.trunc(value*4));
+ }
+});

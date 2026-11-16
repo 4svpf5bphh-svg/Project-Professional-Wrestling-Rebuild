@@ -23,6 +23,8 @@ const videoByPurpose:Record<NonNullable<AuthoredSegment["videoPurpose"]>,number>
 export function evaluateAuthoredSegmentCrowd(
  contexts:readonly SegmentCrowdContext[],
 ):readonly {slotId:string;position:number;crowdResponse:number;
+ /** A separate certified promo/angle execution rating; not audience size. */
+ ratingStars:number;
  outcome:AuthoredSegment["outcome"];components:{
   performer:number;storyline:number;kind:number;repetition:number;
  }}[]{
@@ -38,7 +40,10 @@ export function evaluateAuthoredSegmentCrowd(
     [p.popularity,p.presentation,p.momentum].some(n=>
      !Number.isFinite(n)||n<0||n>100)))
    throw new Error("Invalid segment crowd context");
-  const ids=[...segment.actorIds,...segment.targetIds];
+  // A named target in a solo PROMO may be mentioned, not present on camera.
+  // Never count their star power or presentation as part of the segment.
+  const ids=[...segment.actorIds,
+   ...(segment.targetPresence==="MENTIONED"?[]:segment.targetIds)];
   if(ids.length===0||ids.some(id=>!performers.some(p=>p.personId===id)))
    throw new Error("Missing segment participant");
   const featured=performers.filter(p=>ids.includes(p.personId));
@@ -62,7 +67,17 @@ export function evaluateAuthoredSegmentCrowd(
    (segment.videoPurpose?videoByPurpose[segment.videoPurpose]:0);
   const repetition=-Math.min(14,repetitionCount*2);
   const crowdResponse=round1(clamp(performer+storyline+kind+repetition,0,100));
+  // An angle can be expertly performed without being over with this crowd.
+  // Grade execution/presentation, coherent story stakes and originality
+  // separately from the popularity-led crowd metric. Star grades are
+  // quarter-step, World-certified and never supplied by generative AI.
+  const delivery=featured.reduce((sum,p)=>
+   sum+p.presentation*0.72+p.momentum*0.28,0)/featured.length;
+  const craft=delivery*0.67+storylineHeat*0.20+7+
+   Math.max(0,kind)*0.9-Math.min(18,repetitionCount*1.75);
+  const ratingStars=Math.round(clamp(craft/20,0,5)*4)/4;
   return {slotId:segment.slotId,position:segment.position,crowdResponse,
+   ratingStars,
    outcome:segment.outcome,components:{performer:round1(performer),
     storyline:round1(storyline),kind,repetition}};
  });

@@ -205,3 +205,30 @@ test("Retro Booker keeps real winners, account privacy and five Neon reads",asyn
  await assert.rejects(readCompletedShowView(fake(false,true,false,false,
   "RETRO_BOOKER_02").pool,scope),/unavailable/);
 });
+
+test("historical segments with no critic rating still render, and an optional certified rating needs no additional read",async()=>{
+ const original=await readCompletedShowView(fake().pool,scope);
+ assert.equal(original.entries[1]?.segmentRatingStars,undefined);
+ const source=JSON.parse(JSON.stringify(receipt)) as typeof receipt & {
+  segments:{slotId:string;position:number;kind:string;outcome:"REFUSED";crowdResponse:number;
+   ratingStars?:number}[]};
+ source.segments[0]!.ratingStars=3.75;
+ let reads=0;
+ const base=fake().pool;
+ const measured:TransactionPool={async connect(){
+  const c=await base.connect();
+  return {release(){c.release();},async query<T extends Record<string,unknown>>(
+   sql:string,params:readonly unknown[]){
+    reads++;
+    const rows=await c.query<T>(sql,params);
+    if(sql.includes("FROM ppw_completed_shows")&&rows.length){
+     const copy={...(rows[0] as object),receipt_json:source};
+     return [copy] as T[];
+    }
+    return rows;
+   }};
+ }};
+ const rated=await readCompletedShowView(measured,scope);
+ assert.equal(rated.entries[1]?.segmentRatingStars,3.75);
+ assert.equal(reads,5);
+});

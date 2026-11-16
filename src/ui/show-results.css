@@ -706,3 +706,7 @@
 #game .ppw-results[data-premium-poster] .ppw-results-next,
 #game .ppw-results[data-premium-poster] .ppw-show-breakdown-toggle[aria-pressed="true"]{
  background:var(--ppw-ppv-surface);border-color:var(--ppw-ppv-accent);color:#fff}
+
+/* Independently earned angle execution rating, separate from audience noise. */
+.ppw-result-angle-grade{font-size:12px;font-weight:850;color:#9aeed5;
+ letter-spacing:.015em;font-variant-numeric:tabular-nums}

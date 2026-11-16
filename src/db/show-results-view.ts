@@ -42,6 +42,8 @@ export interface ShowResultEntry{
  matchContext?:CompletedMatchBroadcastContext;
  fallout?:BroadcastFallout;
  segmentKind?:string;
+ /** Certified on-screen delivery, distinct from spectator response. */
+ segmentRatingStars?:number;
  segmentContext?:CompletedAngleContext;
  performerIdentities?:BroadcastIdentity[];
  /** Programme history as it stood when this broadcast occurred. */
@@ -382,6 +384,8 @@ export async function readCompletedShowView(
     headline:story?.headline??human(segment.kind),
     summary:story?.summary??"Authored outcome: "+human(segment.outcome)+".",
     crowdResponse:segment.crowdResponse,outcome:segment.outcome,
+    ...(segment.ratingStars!==undefined?
+     {segmentRatingStars:segment.ratingStars}:{}),
     actorIds:story?[...story.actorIds]:[],targetIds:story?[...story.targetIds]:[],
     intent:story?.intent??null,segmentKind:segment.kind,segmentContext,
     programmeChapters:programmesBySlot.get(segment.slotId)??[],

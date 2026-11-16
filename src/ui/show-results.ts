@@ -409,6 +409,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(entry.fallout?.ratingStars!==undefined)
    append(meta,node("span","ppw-result-rating",
     "★ "+entry.fallout.ratingStars.toFixed(2)+" / 5"));
+  if(entry.type==="SEGMENT"&&entry.segmentRatingStars!==undefined)
+   append(meta,node("span","ppw-result-angle-grade",
+    "SEGMENT ★ "+entry.segmentRatingStars.toFixed(2)+" / 5"));
   if(entry.fallout?.actualMinutes!==undefined)
    append(meta,node("span","ppw-result-minutes",
     entry.fallout.actualMinutes+" MIN"));
