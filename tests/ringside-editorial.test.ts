@@ -320,3 +320,24 @@ test("Groq cannot invent signature physical defects or gold that never changed h
   "Omega climbed the ladder for a near fall but did not capture a title. "+
   "The official match ended by a clean pin."),example));
 });
+
+test("Ringside permits physically staged promo targets but never fabricates a mentioned-only entrance",()=>{
+ const base=example.entries[1]!;
+ const segment={...base,segmentKind:"PROMO",
+  segmentContext:{actorNames:["Samoa Joe"],targetNames:["Místico"],
+   targetPresence:"ON_SCREEN" as const,videoPurpose:null,
+   stableDecision:null,turnTargetAlignment:null}};
+ const scene:CompletedShowView={...example,entries:[segment]};
+ const article=(recap:string)=>({
+  showHeadline:"Joe speaks to the crowd",opening:"The issue came to the ring.",
+  closing:"The promo ended in front of the audience.",
+  slots:[{slotId:segment.slotId,headline:"Joe's confrontation",recap}]
+ });
+ const onScreen=article("Místico stepped into the ring while Samoa Joe addressed the crowd.");
+ assert.doesNotThrow(()=>validateRingsideCopy(onScreen,scene));
+ const spokenOnly:CompletedShowView={...scene,entries:[{
+  ...segment,segmentContext:{...segment.segmentContext,targetPresence:"MENTIONED"}
+ }]};
+ assert.throws(()=>validateRingsideCopy(onScreen,spokenOnly),
+  /off-screen promo target appearance/);
+});

@@ -232,3 +232,27 @@ test("historical segments with no critic rating still render, and an optional ce
  assert.equal(rated.entries[1]?.segmentRatingStars,3.75);
  assert.equal(reads,5);
 });
+
+test("results projection preserves an explicitly on-screen segment target without assigning presence to a legacy mention",async()=>{
+ const world=await readCompletedShowView(fake().pool,scope);
+ assert.equal(world.entries[1]?.segmentContext?.targetPresence,null);
+ // Canonical source is the submitted slot, not a generated headline.
+ const base=fake(true,true).pool;
+ const modified:TransactionPool={async connect(){
+  const c=await base.connect();
+  return {release(){c.release();},async query<T extends Record<string,unknown>>(
+   sql:string,params:readonly unknown[]){
+    const rows=await c.query<T>(sql,params);
+    if(sql.includes("FROM ppw_card_slots")){
+     return rows.map(row=>{
+      const r=row as {kind:string;payload:Record<string,unknown>};
+      return r.kind==="SEGMENT"?{...row,payload:{
+       ...r.payload,targetPresence:"ON_SCREEN"}}:row;
+     }) as T[];
+    }
+    return rows;
+   }};
+ }};
+ const projected=await readCompletedShowView(modified,scope);
+ assert.equal(projected.entries[1]?.segmentContext?.targetPresence,"ON_SCREEN");
+});

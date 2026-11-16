@@ -115,7 +115,8 @@ const literalPattern=(value:string)=>[...value].map(ch=>
 function assertReferencedPromoTargetStayedOffScreen(
  source:ShowResultEntry,prose:string):void{
  if(source.type!=="SEGMENT"||source.segmentKind!=="PROMO"||
-  !source.segmentContext)return;
+  !source.segmentContext||
+  source.segmentContext.targetPresence==="ON_SCREEN")return;
  const actors=new Set(source.segmentContext.actorNames.map(x=>x.toLocaleLowerCase()));
  for(const name of source.segmentContext.targetNames){
   if(actors.has(name.toLocaleLowerCase())||!name.trim())continue;
@@ -504,10 +505,12 @@ stipulationRules if present.
 
 Angles are filmed scenes, not bouts. Use verified initiator, victim,
 location, outcome, scene purpose and visible scripted aftermath.
-In a solo PROMO, actorNames are the actual on-camera speakers; targetNames
-can mean people merely TALKED ABOUT. Never make an uncast promo target
-appear at ringside or on the ramp, answer, gesture, wrestle or deliver
-their signature moves. Being named is not being present.
+In a PROMO, actorNames are speakers. The verified angle.targetPresence
+field decides whether targetNames are merely MENTIONED or ON_SCREEN.
+If MENTIONED (or unrecorded legacy presence), the named target must NOT
+enter, respond, gesture, attack, sell or deliver a move. If ON_SCREEN,
+they may appear as booked, but do not invent the outcome of a confrontation
+or any additional uncast wrestler. Being named is not being present.
 Do not invent signature physical traits, limps, scars, body language
 defects or artificial "eyes shining" flourishes. Temporary selling in
 an actual match is different from inventing a wrestler's character.
