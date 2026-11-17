@@ -57,6 +57,41 @@ test("contract desk handles pending proposals, withdrawal and ownership",{
   const after=await readContractDesk(db.pool,worldId,playerId,promotionId);
   assert.equal(after.summary.pendingNegotiations,0);
   assert.equal(after.roster[0]!.remainingDates,0);
+  // A real player-submitted new-term offer must immediately replace
+  // the expiry attention ribbon, yet never claim a signature was received.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_contracts SET expires_week_index=3,"+
+    "remaining_dates=2 WHERE world_id=$1 AND contract_id=$2",
+    [worldId,contractId]);
+  });
+  const soon=await readContractDesk(db.pool,worldId,playerId,promotionId);
+  assert.equal(soon.roster[0]?.expiringSoon,true);
+  const offerId="renew-offer-"+id;
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_contract_offers(world_id,offer_id,person_id,promotion_id,
+    source_contract_id,submitted_week_index,terms)
+   VALUES($1,$2,$3,$4,$5,0,$6::jsonb)`,
+   [worldId,offerId,personId,promotionId,contractId,JSON.stringify({
+    family:"LIMITED_NON_EXCLUSIVE",startWeekIndex:4,
+    termWeeks:13,dateEntitlement:4,weeklyGuarantee:100,
+    appearanceFee:100,roleExpectation:"REGULAR",
+    creativeControl:"NONE",signingBonus:0
+   })]));
+  const submitted=await readContractDesk(db.pool,worldId,playerId,promotionId);
+  assert.equal(submitted.roster[0]?.pendingRenewalOffer,true);
+  assert.equal(submitted.roster[0]?.expiringSoon,false);
+  assert.equal(submitted.roster[0]?.needsAttention,false);
+  assert.equal(submitted.roster[0]?.renewalArranged,false,
+   "An offered renewal is not an accepted contract");
+  assert.equal(submitted.summary.pendingOffers,1);
+  assert.equal(submitted.summary.expiringSoon,0);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_contract_offers WHERE world_id=$1",
+    [worldId]);
+   await tx.query("UPDATE ppw_contracts SET expires_week_index=12,"+
+    "remaining_dates=0 WHERE world_id=$1 AND contract_id=$2",
+    [worldId,contractId]);
+  });
   // An accepted renewal must suppress another same-terms offer, while
   // remaining visible to the owner without an extra Neon read.
   await withWorldTransaction(db.pool,tx=>tx.query(`
@@ -73,6 +108,7 @@ test("contract desk handles pending proposals, withdrawal and ownership",{
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("DELETE FROM ppw_contract_date_requests WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_contract_offers WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_contract_renewal_proposals WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);
