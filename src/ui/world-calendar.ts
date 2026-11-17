@@ -309,17 +309,19 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     const picked=week===yearActiveWeek;
     const date=button("W"+String(week).padStart(2,"0"),()=>{
      yearActiveWeek=week;render();
-    },!canEdit);
+    },busy);
     date.classList.add("ppw-calendar-week-button");
     date.dataset.hasEvent=String(!!show);
     date.setAttribute("aria-pressed",String(picked));
-    date.setAttribute("aria-label","Year "+chosen.year+" week "+week+
-     (showName?" — "+showName:" — available"));
     if(showName)date.append(node("small",showName,
      "ppw-calendar-year-major"));
     const tv=data!.broadcastSlot,idx=weekIndex(chosen.year,week);
     const dueTv=data!.series.filter(s=>s.eventType==="REGULAR"&&
      seriesDue(s,idx));
+    date.dataset.hasTelevision=String(dueTv.length>0);
+    date.setAttribute("aria-label","Year "+chosen.year+" week "+week+" — "+
+     [showName,...dueTv.map(x=>x.name)].filter(Boolean).join(" + ")||
+     "No event due");
     for(const regular of dueTv.slice(0,2)){
      const validSlot=tv&&idx>=tv.startWeekIndex&&idx<=tv.endWeekIndex;
      date.append(node("small",regular.name+
@@ -376,6 +378,24 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    }
    rootSection.append(picker);
   }
+  if(yearActiveWeek!==null&&!canEdit){
+   const week=yearActiveWeek,index=weekIndex(chosen.year,week);
+   const due=data.series.filter(s=>s.eventType==="REGULAR"&&seriesDue(s,index));
+   const premium=dated.get(week);
+   const premiumName=premium?.name??data.series.find(s=>
+    s.seriesId===premium?.seriesId)?.name;
+   const detail=node("section","","ppw-calendar-year-picker");
+   detail.append(node("strong","Year "+chosen.year+" · Week "+week));
+   for(const tv of due)detail.append(node("p",
+    tv.name+" · "+(tv.cadenceWeeks===1?"weekly":
+     tv.cadenceWeeks===2?"alternate-week":"every "+tv.cadenceWeeks+" weeks")+" TV"));
+   if(premiumName)detail.append(node("p","PPV / special · "+premiumName));
+   if(!due.length&&!premiumName)detail.append(node("p","No show due this week"));
+   if(lockedCurrent)detail.append(node("small",
+    "Current-year commitments are locked. Select Year "+(data.year+1)+
+    " to plan future annual PPV dates.","ppw-calendar-year-footer"));
+   rootSection.append(detail);
+  }
   if(canEdit){
    rootSection.append(button("Use recommended dates",()=>{
     yearlyDrafts.set(chosen.year,[...chosen.suggested]);yearActiveWeek=null;
@@ -386,7 +406,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    commit.classList.add("ppw-calendar-year-confirm");rootSection.append(commit);
   }
   rootSection.append(node("small",
-   "A confirmed year reserves show names and weeks only. TV broadcasts keep their contracted slots; PPV cards, venues and costs are planned closer to the event.",
+   "TV follows its actual recurrence. PPV dates and names are saved per World year.",
    "ppw-calendar-year-footer"));
   return rootSection;
  }
