@@ -168,7 +168,7 @@ for(const width of [320,390]){
   await board.getByRole("button",{
    name:"Edit booked storyline chapter · Joe vs Místico · Year 1 Week 1"
   }).click();
-  await expect(page).toHaveURL(/#\\/card$/);
+  await expect(page).toHaveURL(/#\/card$/);
   expect(loaded).toEqual(["card-1"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
