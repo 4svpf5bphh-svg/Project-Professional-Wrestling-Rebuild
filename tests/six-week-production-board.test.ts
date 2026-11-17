@@ -98,3 +98,26 @@ test("mixed PPV/TV week retains a real editable draft and only one planned payof
   editableDraftId:premium.draftId,finalePayoff:"DECISIVE_MATCH"
  }]);
 });
+
+
+test("an active, genuinely unbooked Programme stays visible without invented story beats",()=>{
+ const current=week(1,4,0,[]);
+ const active=[{programmeId:"unbooked",name:"Joe vs Místico"}];
+ const summary=buildSixWeekProduction([current],active);
+ assert.equal(summary.programmeCount,1);
+ assert.deepEqual(summary.programmes,[{
+  programmeId:"unbooked",name:"Joe vs Místico",chapters:[]
+ }]);
+ assert.equal(summary.weeks[0]?.state,"UNBOOKED");
+ assert.equal(summary.submittedShows,0);
+});
+
+test("a Programme with real future chapters is not duplicated by the active list",()=>{
+ const show={...draft("DRAFT",true),programmeChapters:[{
+  programmeId:"feud",name:"Booked feud",matches:0,segments:1}]};
+ const summary=buildSixWeekProduction([week(1,5,0,[show])],[
+  {programmeId:"feud",name:"Active feud"}]);
+ assert.equal(summary.programmeCount,1);
+ assert.equal(summary.programmes[0]?.name,"Booked feud");
+ assert.equal(summary.programmes[0]?.chapters.length,1);
+});
