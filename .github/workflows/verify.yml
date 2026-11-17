@@ -711,6 +711,29 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0147_backstage_free_agent_replies.sql
+      - name: Apply certified talent overness and gimmick reception schema
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0150_wrestler_overness_and_gimmick_reception.sql
+      - name: Verify overness migration is additive and leaves original talent untouched
+        env:
+          PGPASSWORD: ppw_test
+        run: |
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -c "
+          DO \\\$\\\$
+          BEGIN
+            IF NOT EXISTS(SELECT 1 FROM information_schema.columns
+              WHERE table_schema='public' AND table_name='ppw_people'
+                AND column_name='overness')
+              OR NOT EXISTS(SELECT 1 FROM information_schema.columns
+              WHERE table_schema='public' AND table_name='ppw_people'
+                AND column_name='gimmick_reception')
+            THEN RAISE EXCEPTION 'Missing certified overness columns'; END IF;
+            IF EXISTS(SELECT 1 FROM ppw_people
+              WHERE overness IS NOT NULL OR gimmick_reception IS NOT NULL)
+            THEN RAISE EXCEPTION 'Overness migration changed historic people'; END IF;
+          END
+          \\\$\\\$;"
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test
