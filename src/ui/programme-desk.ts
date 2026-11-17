@@ -391,7 +391,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(view.canEdit&&eligible.length){
     const available=eligible.map(x=>({chapter:x,key:x.showId+"::"+x.slotId}));
     const defaultChapter=available.find(x=>x.chapter.showId===existing?.showId&&
-      x.chapter.slotId===existing?.slotId)??available[0]!;
+      x.chapter.slotId===existing?.slotId)??
+      available.find(x=>x.chapter.premium)??available[0]!;
     const prior=finaleChoices.get(p.programmeId);
     const choice=available.find(x=>x.key===prior?.slotKey)??defaultChapter;
     const choices=variants(choice.chapter);
@@ -405,7 +406,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       p.sideA.map(x=>x.name).join(" & ")+" vs "+p.sideB.map(x=>x.name).join(" & "));
     for(const x of available){
      const opt=document.createElement("option");opt.value=x.key;
-     opt.textContent=x.chapter.showName+" · Y"+x.chapter.year+
+     opt.textContent=x.chapter.showName+(x.chapter.premium?" · PPV":"")+" · Y"+x.chapter.year+
       " W"+x.chapter.week+" · "+(x.chapter.kind==="MATCH"?"Match":
       (x.chapter.segmentKind??"Angle").replaceAll("_"," ").toLowerCase());
      chapterSelect.append(opt);
