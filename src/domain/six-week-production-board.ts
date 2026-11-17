@@ -16,7 +16,8 @@ export interface BuildWeek{
 
 export interface ProgrammeBuildLane{
  programmeId:string;name:string;
- chapters:{year:number;week:number;matches:number;segments:number;submitted:boolean}[];
+ chapters:{year:number;week:number;matches:number;segments:number;
+  submitted:boolean;editableDraftId:string|null;finalePayoff:string|null}[];
 }
 export interface SixWeekBuild{
  weeks:BuildWeek[];
@@ -72,9 +73,13 @@ export function buildSixWeekProduction(weeks:readonly PlannerWeek[]):SixWeekBuil
    if(existing){
     existing.matches+=chapter.matches;existing.segments+=chapter.segments;
     existing.submitted=existing.submitted&&show.status==="SUBMITTED";
+    if(show.status==="DRAFT")existing.editableDraftId=show.draftId;
+    if(chapter.finalePayoff)existing.finalePayoff=chapter.finalePayoff;
    }else lane.chapters.push({year:week.year,week:week.week,
     matches:chapter.matches,segments:chapter.segments,
-    submitted:show.status==="SUBMITTED"});
+    submitted:show.status==="SUBMITTED",
+    editableDraftId:show.status==="DRAFT"?show.draftId:null,
+    finalePayoff:chapter.finalePayoff??null});
   }
  }
  return {
