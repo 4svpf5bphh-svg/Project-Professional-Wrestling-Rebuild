@@ -69,12 +69,30 @@ test("booked Programme chapters show the same story building over several weeks"
  const first={...draft("DRAFT",false),programmeChapters:[
   {programmeId:"feud",name:"Joe vs Místico",matches:0,segments:1}]};
  const second={...draft("SUBMITTED",true),programmeChapters:[
-  {programmeId:"feud",name:"Joe vs Místico",matches:1,segments:1}]};
+  {programmeId:"feud",name:"Joe vs Místico",matches:1,segments:1,
+   finalePayoff:"DECISIVE_MATCH"}]};
  const board=buildSixWeekProduction([
   week(1,24,0,[first]),week(1,25,1,[second])]);
  assert.equal(board.programmeCount,1);
  assert.equal(board.programmes[0]?.name,"Joe vs Místico");
  assert.deepEqual(board.programmes[0]?.chapters,[
-  {year:1,week:24,matches:0,segments:1,submitted:false},
-  {year:1,week:25,matches:1,segments:1,submitted:true}]);
+  {year:1,week:24,matches:0,segments:1,submitted:false,
+   editableDraftId:"draft-DRAFTWeekly",finalePayoff:null},
+  {year:1,week:25,matches:1,segments:1,submitted:true,
+   editableDraftId:null,finalePayoff:"DECISIVE_MATCH"}]);
+});
+
+test("mixed PPV/TV week retains a real editable draft and only one planned payoff",()=>{
+ const submitted={...draft("SUBMITTED",true),programmeChapters:[{
+  programmeId:"feud",name:"Joe vs Místico",matches:0,segments:1}]};
+ const premium={...draft("DRAFT",false,true,"Spring Riot"),programmeChapters:[{
+  programmeId:"feud",name:"Joe vs Místico",matches:1,segments:0,
+  finalePayoff:"DECISIVE_MATCH"}]};
+ const build=buildSixWeekProduction([week(1,6,0,[submitted,premium],[
+  series("tv","REGULAR","CWA Weekly"),series("ppv","MAJOR","Spring Riot")])]);
+ assert.equal(build.weeks[0]?.state,"PARTIALLY_BOOKED");
+ assert.deepEqual(build.programmes[0]?.chapters,[{
+  year:1,week:6,matches:1,segments:1,submitted:false,
+  editableDraftId:premium.draftId,finalePayoff:"DECISIVE_MATCH"
+ }]);
 });
