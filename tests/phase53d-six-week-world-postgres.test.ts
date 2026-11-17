@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
-import {withWorldTransaction} from "../src/db/transaction.js";
+import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {advancePlaytestWeek} from "../src/db/manual-playtest-week.js";
 import {readSixWeekPlanner,saveCreativeOutline} from "../src/db/planner-workspace.js";
@@ -99,6 +100,13 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
   assert.equal(begun.status,"APPLIED");
   if(begun.status!=="APPLIED")throw Error("Manager could not create Programme");
   const programmeId=begun.result.programmeId;
+  const noChapters=await readSixWeekPlanner(db.pool,scope);
+  assert.deepEqual(noChapters.activeProgrammes,[{
+   programmeId,name:"Wrestler 0 vs Wrestler 1"
+  }],"The owner sees their real active feud before any future chapters are booked");
+  const unbooked=buildSixWeekProduction(noChapters.weeks,noChapters.activeProgrammes);
+  assert.equal(unbooked.programmes[0]?.chapters.length,0,
+   "An empty storyline is a planning gap, not a fictitious card");
   const participants=[0,1].map(i=>({personId:people[i]!,contractId:contracts[i]!}));
   const match=(winner:"A"|"B")=>({
    matchType:"SINGLES" as const,family:"INDIVIDUAL" as const,
@@ -172,8 +180,22 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
   assert.ok(pendingStory.plannedActivity.some(a=>a.showId==="spring-riot"&&
    a.slotId==="ppv-main"&&a.kind==="MATCH"),
    "A real booked main event is linked to its Programme before World Lock");
-  const snapshot=await readSixWeekPlanner(db.pool,scope);
-  const build=buildSixWeekProduction(snapshot.weeks);
+  // Measure the complete, actual future-Programme + named-PPV projection.
+  // Extra per-render queries or excessive payload would directly harm Neon
+  // Free usage; keep the same four-query/24KB Planner acceptance budget.
+  const meter=new MeasuredQuerySession("phase53d-connected-ppv-build");
+  const measured:TransactionPool={async connect(){
+   const client=await db.pool.connect();
+   return {release(){client.release();},
+    async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]){
+     return meter.execute(()=>client.query<T>(sql,args));
+    }};
+  }};
+  const snapshot=await readSixWeekPlanner(measured,scope);
+  const budget=meter.assertBudget({maxQueries:4,maxResultBytes:24000});
+  assert.equal(budget.queryCount,4);
+  console.log("PPW 53D connected-PPV Planner Neon SQL budget:",budget);
+  const build=buildSixWeekProduction(snapshot.weeks,snapshot.activeProgrammes);
   assert.equal(build.submittedShows,3);
   assert.equal(snapshot.weeks.flatMap(w=>w.shows)
    .filter(show=>show.status==="SUBMITTED"||show.ready).length,7,
