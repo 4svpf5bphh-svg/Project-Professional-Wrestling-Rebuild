@@ -196,9 +196,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   section.append(node("span","YOUR NEXT SIX WEEKS","ppw-planner-board-kicker"),
    node("h2","Production board"));
   const summary=node("p",
-   snapshot.submittedShows+" submitted show"+(snapshot.submittedShows===1?"":"s")+
-   " · "+snapshot.unsubmittedWeeks+" week"+(snapshot.unsubmittedWeeks===1?"":"s")+
-   " still to review. Drafts are not submitted.",
+   snapshot.preparedShows+" prepared for World Lock · "+
+   snapshot.submittedShows+" submitted · "+
+   snapshot.needsActionWeeks+" week"+(snapshot.needsActionWeeks===1?"":"s")+
+   " need booking or confirmation. Prepared drafts stay drafts.",
    "ppw-planner-board-summary");
   section.append(summary);
   if(snapshot.nextPremium){
@@ -284,10 +285,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   }
   section.append(outlineEditor());
   const pending=source.weeks.find(w=>w.canEdit&&(
-   w.shows.some(show=>show.status==="DRAFT")||
-   !w.shows.length&&w.scheduled.length>0));
+   w.shows.some(show=>show.status==="DRAFT"&&!show.ready)||
+   w.scheduled.some(event=>!w.shows.some(show=>show.bookingClass===
+    (event.eventType==="MAJOR"?"PREMIUM":"REGULAR")))||
+   !w.shows.length&&w.required));
   if(pending){
-   const draft=pending.shows.find(show=>show.status==="DRAFT"&&show.venueId);
+   const draft=pending.shows.find(show=>show.status==="DRAFT"&&!show.ready&&show.venueId);
    const unplanned=pending.scheduled.find(s=>!pending.shows.some(show=>
     show.bookingClass===(s.eventType==="MAJOR"?"PREMIUM":"REGULAR")));
    const action=draft?()=>port.openCard(draft.draftId):()=>edit(pending,undefined,
@@ -487,7 +490,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    const hasDraft=week.shows.some(show=>show.status==="DRAFT"&&!show.ready);
    const allReady=week.shows.length>0&&week.shows.every(show=>
     show.ready||show.status==="SUBMITTED");
-   const status=allReady?(week.shows.every(show=>show.status==="SUBMITTED")?"SUBMITTED":"READY TO SUBMIT"):
+   const status=allReady?(week.shows.every(show=>show.status==="SUBMITTED")?"SUBMITTED":"PREPARED FOR WORLD LOCK"):
     hasDraft?"FINISH YOUR CARD":week.shows.length?"BOOKING IN PROGRESS":
     week.required?"SHOW NEEDS PLANNING":"NO SHOW PLANNED";
    card.dataset.bookingState=allReady?"ready":hasDraft?"attention":
@@ -521,7 +524,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     card.append(node("p",show.showName+" · "+
      (dayName??"Day unassigned")+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
-     (show.status==="SUBMITTED"?" · Submitted":show.ready?" · Ready to submit":" · Draft")));
+     (show.status==="SUBMITTED"?" · Submitted":show.ready?" · Prepared for World Lock":" · Draft")));
     const competing=show.venueId&&show.day!==null?
      venuePressureCount(data,week.year,week.week,show.day,show.venueId):0;
     if(competing)card.append(node("p",competing+" other "+
