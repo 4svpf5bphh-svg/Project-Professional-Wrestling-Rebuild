@@ -56,12 +56,12 @@ for(const width of [320,390]){
   await expect(board.locator(".ppw-planner-board-tile").nth(0))
    .toHaveAttribute("data-state","CARD_IN_PROGRESS");
   await expect(board.locator(".ppw-planner-board-tile").nth(1))
-   .toHaveAttribute("data-state","READY_TO_SUBMIT");
+   .toHaveAttribute("data-state","READY_FOR_LOCK");
   await expect(board.locator(".ppw-planner-board-tile").nth(2))
    .toHaveAttribute("data-state","SUBMITTED");
   await expect(board.locator(".ppw-planner-board-tile").nth(5))
    .toHaveAttribute("data-state","UNBOOKED");
-  await expect(board).toContainText("Drafts are not submitted");
+  await expect(board).toContainText("Prepared drafts stay drafts");
   await board.getByRole("button",{name:/Year 1 Week 6, PPV Spring Riot/}).click();
   await expect(page.locator("#ppw-planner-week-1-6")).toBeFocused();
   await expect(page.locator("#ppw-planner-week-1-6")).toContainText("Spring Riot");
