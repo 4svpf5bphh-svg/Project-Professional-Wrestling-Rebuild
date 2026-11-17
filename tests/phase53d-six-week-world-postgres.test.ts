@@ -131,6 +131,24 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
    matches:[{slotId:"ppv-main",payload:match("A")}],
    segments:[],runningOrder:["ppv-main"]});
   assert.equal(savedPpv.status,"APPLIED");
+  // A fresh full-approval clause on the participant requires authentic
+  // consent. No future booking or creative note may override this right.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET creative_control='FULL_APPROVAL'"+
+   " WHERE world_id=$1 AND contract_id=$2",
+   [worldId,contracts[1]!]));
+  const beforeConsent=await revision();
+  await assert.rejects(markPreparedShowReadyAsActor(context,{...scope,
+   showId:"spring-riot",requestId:"unapproved-ppv",expectedRevision:beforeConsent,
+   confirmReadyToRun:true}),/creative agreement/i);
+  assert.equal(await revision(),beforeConsent,
+   "A refused PPV confirmation must not mutate the World");
+  // Test-only reversion of the changed contractual term. The player would
+  // need a genuine consent receipt if the right remained in force.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET creative_control='NONE'"+
+   " WHERE world_id=$1 AND contract_id=$2",
+   [worldId,contracts[1]!]));
   const confirmedPpv=await markPreparedShowReadyAsActor(context,{...scope,
    showId:"spring-riot",requestId:"confirm-ppv",expectedRevision:await revision(),
    confirmReadyToRun:true});
@@ -154,6 +172,30 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
   assert.ok(pendingStory.plannedActivity.some(a=>a.showId==="spring-riot"&&
    a.slotId==="ppv-main"&&a.kind==="MATCH"),
    "A real booked main event is linked to its Programme before World Lock");
+  // An actual medical record warns the manager about a blocked future arc,
+  // without fabricating a replacement wrestler or clearing the injury itself.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_medical_absences("+
+    "world_id,person_id,show_id,match_id,injured_week_index,"+
+    "cleared_week_index,weeks_out,severity,status)"+
+    " VALUES($1,$2,'tv-1','main',0,9,9,'MODERATE','ACTIVE')",
+    [worldId,people[0]!]);
+   await tx.query("UPDATE ppw_people SET status='INJURED'"+
+    " WHERE world_id=$1 AND person_id=$2",[worldId,people[0]!]);
+  });
+  const onHold=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.deepEqual(onHold.medicalHolds,[{
+   personId:people[0]!,name:"Wrestler 0",clearedWeekIndex:9
+  }],"The forward PPV build must surface a medically unavailable wrestler");
+  // Medical clearance here is controlled fixture setup, not an automatic
+  // mechanic to hide an injury before a premium World Lock.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_medical_absences"+
+    " WHERE world_id=$1 AND person_id=$2",[worldId,people[0]!]);
+   await tx.query("UPDATE ppw_people SET status='ACTIVE'"+
+    " WHERE world_id=$1 AND person_id=$2",[worldId,people[0]!]);
+  });
   const snapshot=await readSixWeekPlanner(db.pool,scope);
   const build=buildSixWeekProduction(snapshot.weeks);
   assert.equal(build.submittedShows,3);
