@@ -928,6 +928,7 @@ export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  const port:PlannerPort={
   load:()=>call("planner"),
   save:input=>call("planShow",input),
+  saveCreativeOutline:input=>call("saveCreativeOutline",input),
   // Resume the same booked date after a broadcaster detour, with fresh
   // contract terms rather than returning the player to World Home.
   openDeals:target=>mountBusinessDesk(root,businessPort(root,scope,call,
