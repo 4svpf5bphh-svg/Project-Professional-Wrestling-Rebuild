@@ -66,6 +66,12 @@ for(const width of [320,390]){
     return r.fulfill({json:{status:"APPLIED",result:{performers:1}}});
    }
    if(method==="kpWorkspace")return r.fulfill({json:{entitlements:[]}});
+   if(method==="planProgrammeFinale"){
+    expect(body).toMatchObject({programmeId:"joe-riddle",
+     targetShowId:"ascension",targetSlotId:savedSlotId,payoff:"FINAL_CHAPTER"});
+    revision++;
+    return r.fulfill({json:{status:"APPLIED",revision,result:{planned:true}}});
+   }
    if(method==="planner")return r.fulfill({json:planner});
    if(method==="load")return r.fulfill({json:load()});
    if(method==="talent")return r.fulfill({json:{talent:[{
@@ -103,6 +109,16 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Save card|Save changes/}).click();
   await expect(page.getByText("Show card saved")).toBeVisible();
   expect(calls.filter(x=>x==="save")).toHaveLength(1);
+  // A story can genuinely finish with this interview, not an invented attack.
+  // Planning it is a second explicit command only after the card is saved.
+  await page.locator(".ppw-card-bar .ppw-expand").last().click();
+  dialog=page.getByRole("dialog",{name:"Edit angle"});
+  if(await dialog.getByRole("button",{name:"Next · Staff briefing"}).count())
+   await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+  await expect(dialog.getByRole("group",{name:"Choose storyline ending"})).toBeVisible();
+  await dialog.getByRole("button",{name:"Plan this storyline ending"}).click();
+  await expect(page.getByText(/Storyline ending planned/)).toBeVisible();
+  expect(calls.filter(x=>x==="planProgrammeFinale")).toHaveLength(1);
   expect(calls.filter(x=>x==="talent")).toHaveLength(1);
   expect(calls).not.toContain("groq");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

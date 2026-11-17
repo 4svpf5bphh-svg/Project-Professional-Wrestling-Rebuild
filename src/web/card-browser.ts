@@ -271,6 +271,9 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
   requestCreativeConsent:({requestId,expectedRevision,slotId,personId,proposedMatch})=>
    call("creativeConsent",{requestId,expectedRevision,slotId,personId,
     ...(proposedMatch===undefined?{}:{proposedMatch})}),
+  planFinale:({requestId,expectedRevision,programmeId,showId,slotId,payoff})=>
+   call("planProgrammeFinale",{requestId,expectedRevision,programmeId,
+    targetShowId:showId,targetSlotId:slotId,payoff}),
   openPlanner:()=>{
    if(onReturnToPlanner){onReturnToPlanner();return;}
    // A reminder can enter directly at #/planner/card. Leaving that

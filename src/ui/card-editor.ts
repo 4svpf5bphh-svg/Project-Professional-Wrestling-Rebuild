@@ -51,6 +51,8 @@ import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarte
 import {STORY_BLUEPRINTS,storyBlueprintFamily,type BlueprintFamily}
  from "../domain/story-blueprints.js";
 import {storyBlueprintAngleStarter} from "./story-blueprint-starter.js";
+import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
+ from "../domain/programme-finales.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -71,6 +73,9 @@ export interface CardEditorPort{
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
  requestCreativeConsent?(input:{requestId:string;expectedRevision:number;
   slotId:string;personId:string;proposedMatch?:unknown}):Promise<unknown>;
+ /** A separate, revision-checked owner decision on an existing saved scene. */
+ planFinale?(input:{requestId:string;expectedRevision:number;
+  programmeId:string;showId:string;slotId:string;payoff:ProgrammePayoff}):Promise<unknown>;
  /** Notify the host only when the active editor has locally unsaved authorship. */
  onDraftChange?(dirty:boolean):void;
  openPlanner?():void;
@@ -141,6 +146,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   division:string|null;alignment?:string|null;available:boolean;reason:string;appearanceFee?:number|null;creativeControl?:string|null;
   workingConnections?:AdvisorPerson["workingConnections"]}&Partial<ConditionSnapshot>>();
  let expanded:string|null=null;
+ const selectedFinalePayoffs=new Map<string,ProgrammePayoff>();
+ const finaleRequests=new Map<string,{fingerprint:string;requestId:string}>();
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
@@ -673,6 +680,42 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     success=previous==="REPLAYED"?"Booking already saved":"Show card saved";
    else
     error="The booking was accepted, but its refreshed card could not load. Retry without changing your selections.";
+  }catch(e){error=errorText(e);}
+  finally{saving=false;render();}
+ }
+ /** Finales are only authoritatively planned after this exact angle is saved
+  * and linked to an active Programme. A failed network response replays the
+  * original command receipt; no accidental second ledger write or finale.
+  */
+ async function planStorylineFinale(slotId:string,programmeId:string,payoff:ProgrammePayoff){
+  if(!view||dirty||saving||!view.canEdit||!port.planFinale)return;
+  if(!view.slots.some(s=>s.slotId===slotId&&s.kind==="SEGMENT")||
+   !view.programmeLinks.some(x=>x.slotId===slotId&&x.programmeId===programmeId)){
+   error="Save this angle with its active storyline before choosing the ending.";
+   render();return;
+  }
+  const fingerprint=JSON.stringify({slotId,programmeId,payoff});
+  const prior=finaleRequests.get(slotId);
+  const requestId=prior?.fingerprint===fingerprint?
+   prior.requestId:crypto.randomUUID();
+  finaleRequests.set(slotId,{fingerprint,requestId});
+  saving=true;error="";success="";render();
+  try{
+   const result=await port.planFinale({requestId,expectedRevision:view.worldRevision,
+    programmeId,showId:view.showId,slotId,payoff}) as {status?:string};
+   if(result.status==="STALE"){
+    finaleRequests.delete(slotId);
+    await load();
+    error="Another manager changed the World. Review this saved scene before setting its ending.";
+    return;
+   }
+   if(result.status!=="APPLIED"&&result.status!=="REPLAYED")
+    throw new Error("The storyline finale was not confirmed. Retry with your saved choice.");
+   finaleRequests.delete(slotId);
+   if(await load())
+    success="Storyline ending planned. Only the certified on-air scene can finish this story.";
+   else
+    error="The ending was planned, but the refreshed card could not load. Reload the card.";
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
  }
@@ -2692,6 +2735,42 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(segment?.kind==="VIDEO_PACKAGE")
         brief.append(el("p","ppw-guide-fee-note",
          "Pre-recorded video · No live appearance fees for this segment."));
+       // A Blueprint's exact saved scene is a legitimate finale without a
+       // forced attack, turn or match. Never write this while the card is
+       // unsaved: the existing canonical Programme command verifies the
+       // owner, active story, slot association and World revision.
+       if(segment?.programmeId&&port.planFinale){
+        const story=view.programmes.find(p=>p.programmeId===segment.programmeId);
+        if(story){
+         const panel=el("section","ppw-guide-finale");
+         panel.append(el("strong","ppw-guide-section-label","Final chapter?"),
+          el("p","ppw-guide-finale-explain",
+           "This scene can be the last chapter of "+story.label+
+           ". The story only closes after this exact angle actually airs."));
+         const choices=el("div","ppw-guide-finale-choices");
+         choices.setAttribute("role","group");
+         choices.setAttribute("aria-label","Choose storyline ending");
+         const payoffs=eligibleProgrammePayoffs("SEGMENT",{kind:segment.kind});
+         const selected=selectedFinalePayoffs.get(slotId)??"FINAL_CHAPTER";
+         for(const payoff of payoffs){
+          const pick=button(PROGRAMME_PAYOFFS[payoff],()=>{
+           selectedFinalePayoffs.set(slotId,payoff);render();
+          },!mutable(),"ppw-guide-finale-choice");
+          pick.setAttribute("aria-pressed",String(selected===payoff));
+          choices.append(pick);
+         }
+         panel.append(choices);
+         const saved=!dirty&&view.slots.some(s=>s.slotId===slotId&&
+          s.kind==="SEGMENT")&&view.programmeLinks.some(link=>
+          link.slotId===slotId&&link.programmeId===segment.programmeId);
+         if(!saved)panel.append(el("small","ppw-guide-finale-note",
+          "Finish and save this card first. Then reopen the angle to confirm its ending."));
+         panel.append(button("Plan this storyline ending",()=>{
+          void planStorylineFinale(slotId,story.programmeId,selected);
+         },!mutable()||!saved,"ppw-guide-finale-confirm"));
+         brief.append(panel);
+        }
+       }
        else if(segment?.targets.length&&
         ["PROMO","INTERVIEW","CHALLENGE"].includes(segment.kind)&&
         segment.targetPresence!=="ON_SCREEN")

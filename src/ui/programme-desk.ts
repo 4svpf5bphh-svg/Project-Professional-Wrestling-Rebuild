@@ -4,6 +4,8 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
  */
 import type {readProgrammeWorkspace,ProgrammeDirectionChoice,ProgrammePayoff} from "../db/programme-workspace.js";
 import {readProgrammeContinuity} from "../domain/programme-continuity.js";
+import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS}
+ from "../domain/programme-finales.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
 import {programmeOverlaps,availableProgrammeOption} from "../domain/programme-selector.js";
 import {evaluateProgrammeReview} from "../domain/programme-review.js";
