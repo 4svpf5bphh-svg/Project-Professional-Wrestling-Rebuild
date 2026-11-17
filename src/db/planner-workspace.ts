@@ -13,6 +13,8 @@ import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import type {TicketStrategy} from "../domain/legacy-show-economics.js";
 import {commercialCompanyName} from "../domain/commercial-offers.js";
+import {validateCreativeOutline,type CreativeWeekOutline}
+ from "../domain/creative-outline.js";
 
 export interface BroadcastPlannerSlot{
  networkName:string;offerCode:string;day:number;hour:number;
@@ -20,6 +22,9 @@ export interface BroadcastPlannerSlot{
 }
 export type PlannedEventType="REGULAR"|"MAJOR";
 export interface PlannerScope {worldId:string;promotionId:string;playerId:string}
+export interface CreativeOutlineInput extends PlannerScope{
+ requestId:string;expectedRevision:number;notes:CreativeWeekOutline[];
+}
 export interface PlanWeekInput extends PlannerScope {
  requestId:string;expectedRevision:number;year:number;week:number;
  eventType:PlannedEventType;day:number;marketId:string;venueId:string;
@@ -50,7 +55,7 @@ export interface PlannerVenuePressure {
 }
 export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
- worldRevision:number;canEdit:boolean;homeMarketId:string|null;eventPosterStyle?:string|null;broadcastPackage?:string|null;
+ worldRevision:number;canEdit:boolean;creativeOutline:CreativeWeekOutline[];homeMarketId:string|null;eventPosterStyle?:string|null;broadcastPackage?:string|null;
  venues:PlannerVenue[];weeks:PlannerWeek[];venuePressure:PlannerVenuePressure[];
  broadcastSlot:BroadcastPlannerSlot|null;
 }
@@ -65,7 +70,7 @@ type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
  premium_plan_start_year:number;annual_plans:unknown;
  major_interval:number|null;home_market_id:string|null;event_poster:string|null;
- broadcast_package:string|null;
+ broadcast_package:string|null;creative_outline:unknown;
  broadcast_slot:{offerCode:string;day:number|null;hour:number|null;
  startWeekIndex:number;endWeekIndex:number}|null};
 async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
@@ -74,7 +79,7 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
  SELECT w.name AS world_name,p.name AS promotion_name,w.year,w.week,
   w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
-  w.premium_plan_start_year,
+  w.premium_plan_start_year,p.creative_outline,
   p.home_market_id,
    (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,
    (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,
@@ -160,6 +165,14 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  [s.worldId,s.promotionId,start,start+6]);
  if(drafts.length>72)throw new Error("Planner show count exceeds safe limit");
  const end=dateAt(start+6);
+ // Old intentions may remain in the compact JSON after World advances.
+ // Read only the seven current weeks; never reinterpret an old note as an event.
+ const creativeOutline=Array.isArray(owned.creative_outline)?
+  owned.creative_outline.filter((x):x is CreativeWeekOutline=>
+   x!==null&&typeof x==="object"&&
+   Number.isSafeInteger(x.year)&&Number.isSafeInteger(x.week)&&
+   typeof x.note==="string"&&x.note.length>0&&x.note.length<=240&&
+   weekIndex(x.year,x.week)>=start&&weekIndex(x.year,x.week)<=start+6).slice(0,7):[];
  const venues=await tx.query<{
   venue_id:string;market_id:string;market_name:string;name:string;
   capacity:number;weekly_hire_cost:string|number;
@@ -251,7 +264,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
-  canEdit:owned.booking_open,homeMarketId:owned.home_market_id,eventPosterStyle:owned.event_poster,
+  creativeOutline,canEdit:owned.booking_open,homeMarketId:owned.home_market_id,eventPosterStyle:owned.event_poster,
    broadcastPackage:owned.broadcast_package,
   broadcastSlot:owned.broadcast_slot&&owned.broadcast_slot.day!==null&&
    owned.broadcast_slot.hour!==null&&
@@ -423,5 +436,28 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
      selected?.importance??70]);
    if(created.length!==1)throw new Error("Show draft was not created");
    return {draftId,year:input.year,week:input.week,status:"CREATED" as const};
+  }});
+}
+
+/** One explicit player command saves the entire bounded six-week outline.
+ * These notes never change a booked show, wrestler, programme or World result.
+ * Updates are replay-safe, signed-owner scoped, and share World revision checks.
+ */
+export async function saveCreativeOutline(pool:TransactionPool,input:CreativeOutlineInput){
+ checkScope(input);
+ if(!id(input.requestId)||!Number.isSafeInteger(input.expectedRevision))
+  throw new Error("Invalid creative outline request");
+ return applyWorldCommand(pool,{worldId:input.worldId,playerId:input.playerId,
+  requestId:input.requestId,expectedRevision:input.expectedRevision,
+  commandType:"SAVE_CREATIVE_OUTLINE",requiresOpenWeek:true,execute:async tx=>{
+   const auth=await owner(tx,input);
+   if(!auth.booking_open)
+    throw new Error("Creative planning is closed during World Lock");
+   const notes=validateCreativeOutline(input.notes,auth.year,auth.week);
+   await tx.query(`
+    UPDATE ppw_promotions SET creative_outline=$3::jsonb
+    WHERE world_id=$1 AND promotion_id=$2
+   `,[input.worldId,input.promotionId,JSON.stringify(notes)]);
+   return {notes,status:"SAVED" as const};
   }});
 }
