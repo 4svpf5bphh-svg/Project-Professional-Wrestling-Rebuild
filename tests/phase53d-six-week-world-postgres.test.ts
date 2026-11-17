@@ -328,17 +328,23 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
     "ppw_programme_finales","ppw_programme_postshow_directions",
-    "ppw_programme_resolved_activities","ppw_medical_absences",
-    "ppw_completed_match_evidence","ppw_completed_show_segments",
-    "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
+    "ppw_programme_resolved_activities","ppw_wrestler_relationship_changes",
+    "ppw_tag_working_pair_appearances","ppw_wrestler_relationships",
+    "ppw_medical_absences","ppw_completed_match_evidence",
+    "ppw_completed_show_segments","ppw_individual_field_career_effects",
+    "ppw_tag_match_career_effects","ppw_completed_show_matches",
+    "ppw_show_economics","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",
-    "ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
-    "ppw_playtest_dark_weeks","ppw_ledger_events","ppw_command_receipts",
-    "ppw_programme_match_activities","ppw_card_slots","ppw_booking_drafts",
-    "ppw_show_series","ppw_programme_creative_agreements",
-    "ppw_programme_talent_baselines","ppw_programme_side_refs",
-    "ppw_programme_participants","ppw_programmes","ppw_contracts",
-    "ppw_people","ppw_venues","ppw_promotion_controls","ppw_memberships",
+    "ppw_week_prepared_finalizations","ppw_week_logistics_authorizations",
+    "ppw_week_continuity_assessments","ppw_playtest_dark_weeks",
+    "ppw_ledger_events","ppw_command_receipts",
+    "ppw_promotion_alignment_changes","ppw_programme_match_activities",
+    "ppw_card_slots","ppw_booking_drafts","ppw_show_series",
+    "ppw_contract_offers","ppw_contract_renewal_proposals",
+    "ppw_programme_creative_agreements","ppw_programme_talent_baselines",
+    "ppw_programme_side_refs","ppw_programme_participants","ppw_programmes",
+    "ppw_contracts","ppw_people","ppw_venues",
+    "ppw_promotion_market_states","ppw_promotion_controls","ppw_memberships",
     "ppw_promotions","ppw_markets"
    ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
