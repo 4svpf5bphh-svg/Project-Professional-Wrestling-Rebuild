@@ -242,14 +242,33 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     const weeks=node("div","","ppw-planner-story-weeks");
     for(const week of snapshot.weeks){
      const chapter=lane.chapters.find(c=>c.year===week.year&&c.week===week.week);
-     const cell=node("span",chapter?
-      (chapter.matches&&chapter.segments?"Match + angle":
-       chapter.matches?"Match":"Angle"):"—",
-      "ppw-planner-story-beat");
+     const scheduled=source.weeks.find(w=>w.year===week.year&&w.week===week.week);
+     const editable=scheduled?.canEdit===true&&source.canEdit;
+     const draft=editable?scheduled?.shows.find(show=>
+      show.draftId===chapter?.editableDraftId&&show.status==="DRAFT"&&show.venueId)??(
+       !chapter?scheduled?.shows.find(show=>show.status==="DRAFT"&&show.venueId):undefined):undefined;
+     const missing=editable&&!draft&&!chapter?scheduled?.scheduled.find(event=>
+      !scheduled.shows.some(show=>show.bookingClass===
+       (event.eventType==="MAJOR"?"PREMIUM":"REGULAR"))):undefined;
+     const label=chapter?(chapter.finalePayoff?"Finale":
+      chapter.matches&&chapter.segments?"Match + angle":
+      chapter.matches?"Match":"Angle"):"—";
+     const cell=draft||missing?
+      button(label,()=>{
+       if(draft)port.openCard(draft.draftId);
+       else if(scheduled&&missing)edit(scheduled,undefined,missing.seriesId);
+      },busy):node("span",label);
+     cell.classList.add("ppw-planner-story-beat");
+     if(draft||missing)cell.classList.add("ppw-planner-story-action");
      cell.dataset.submitted=String(chapter?.submitted??false);
      cell.dataset.hasChapter=String(Boolean(chapter));
+     cell.dataset.finale=String(Boolean(chapter?.finalePayoff));
      cell.title="Year "+week.year+" Week "+week.week+(chapter?
+      (chapter.finalePayoff?" · Planned on-screen payoff":"")+
       (chapter.submitted?" · Submitted":" · Draft"):" · No chapter booked");
+     if(draft||missing)cell.setAttribute("aria-label",
+      (chapter?"Edit booked storyline chapter":"Book a storyline chapter")+
+      " · "+lane.name+" · Year "+week.year+" Week "+week.week);
      weeks.append(cell);
     }
     row.append(weeks);stories.append(row);
