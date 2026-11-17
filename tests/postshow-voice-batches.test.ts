@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {getWrestlingBenchmark} from "../src/domain/wrestling-ai-benchmark.js";
 import {postShowVoiceBrief,postShowVoicePrompt,
  validatePostShowVoiceCopy,readPostShowVoiceCopy,
- localPostShowVoiceCopy,blendPostShowVoiceCopy}
+ localPostShowVoiceCopy,blendPostShowVoiceCopy,wrestlerVoiceRejectionReason}
  from "../src/domain/postshow-voice-batch.js";
 import {postShowVoiceEnabled,generatePostShowVoiceCopy}
  from "../src/db/postshow-voice-batches.js";
@@ -528,4 +528,23 @@ test("editorial facts remove technical disclaimers without leaving punctuation f
  const tagBrief=postShowVoiceBrief(tag);
  assert.doesNotMatch(tagBrief.mainEvent!.summary,/individual fall scorer was not recorded|;\s*$/i);
  assert.deepEqual(tagBrief.mainEvent!.winners,["Rey Sol","Marcus Drake"]);
+});
+
+test("HOT TAG cannot publish or replay the wrong wrestler speaking as a certified opponent",()=>{
+ const show=fixture(),brief=postShowVoiceBrief(show);
+ assert.equal(brief.wrestler?.displayName,"Jett Mercer");
+ assert.deepEqual(brief.wrestler?.opponentNames,["Ronan Wolfe"]);
+ const impostor="I'm Ronan Wolfe, and Jett Mercer could not stop me in that "+
+  "I Quit match tonight. Everybody saw what I accomplished in the ring.";
+ assert.equal(wrestlerVoiceRejectionReason(brief,impostor),"WRONG_SPEAKER");
+ assert.equal(validatePostShowVoiceCopy(brief,{wrestler:{text:impostor}}),null,
+  "A model cannot write a loser's first-person account under the winner");
+ const legitimate=validatePostShowVoiceCopy(brief,{wrestler:valid.wrestler});
+ assert.ok(legitimate?.wrestler);
+ const historic={...legitimate!,wrestler:{
+  ...legitimate!.wrestler!,text:impostor}};
+ assert.equal(readPostShowVoiceCopy(show,historic),null,
+  "An already-cached impersonation must also be suppressed on read");
+ assert.ok(readPostShowVoiceCopy(show,legitimate)?.wrestler,
+  "Normal grounded cached reactions remain available");
 });
