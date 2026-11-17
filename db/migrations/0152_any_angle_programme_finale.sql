@@ -3,6 +3,13 @@
 -- stay untouched. Running twice is safe and does not rewrite historic shows.
 DO $$
 BEGIN
+ -- PostgreSQL names the original table-level unnamed constraint "check1",
+ -- not "check". Remove both historical variants on first application AND
+ -- when retrying a previously half-upgraded schema.
+ ALTER TABLE ppw_programme_finales
+  DROP CONSTRAINT IF EXISTS ppw_programme_finales_check1;
+ ALTER TABLE ppw_programme_finales
+  DROP CONSTRAINT IF EXISTS ppw_programme_finales_check;
  IF NOT EXISTS(SELECT 1 FROM pg_constraint
   WHERE conrelid='ppw_programme_finales'::regclass
     AND conname='ppw_programme_finales_any_angle_payoff_check') THEN
