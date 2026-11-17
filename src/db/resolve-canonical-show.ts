@@ -114,7 +114,7 @@ export async function resolveCanonicalShow(
        m.actualWinnerSide==="B"?[projectionMatch.personIds[1]!]:[]);
      return {slotId:m.matchId,personIds:people,
       crowdResponse:m.crowdResponse,ratingStars:matchStars.get(m.matchId)??0,
-      winnerIds:winners};
+      ...(winners.length?{winnerIds:winners}:{})};
     }),
     receipt.segments.map(s=>{
      const booked=segments.find(x=>x.segment.slotId===s.slotId)?.segment;

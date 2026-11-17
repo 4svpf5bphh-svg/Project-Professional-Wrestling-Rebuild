@@ -51,9 +51,12 @@ export function deriveCertifiedOvernessChanges(
     contribution*0.48);
  }
  for(const a of angles){
-  if(!a.slotId||seen.has(a.slotId)||!validIds(a.actorIds,20)||
+  if(!a.slotId||seen.has(a.slotId)||!Array.isArray(a.actorIds)||
+   a.actorIds.length>20||
+   a.actorIds.some(x=>typeof x!=="string"||!x.trim()||x.length>200)||
    !Array.isArray(a.targetIds)||a.targetIds.length>20||
    a.targetIds.some(x=>typeof x!=="string"||!x.trim()||x.length>200)||
+   a.actorIds.length+a.targetIds.length===0||
    new Set([...a.actorIds,...a.targetIds]).size!==
     a.actorIds.length+a.targetIds.length||
    !validScore(a.crowdResponse,100)||!validScore(a.ratingStars,5)||

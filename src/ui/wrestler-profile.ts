@@ -230,7 +230,8 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   attrs.append(grid);sections("OVERVIEW",attrs);
   const character=section("Character & repertoire",
    "Their character follows them between promotions. Any change needs the wrestler's approval.");
-  character.append(el("p","ppw-profile-info",
+  if(typeof view.gimmickReception==="number")
+   character.append(el("p","ppw-profile-info",
    "Gimmick reception · "+Math.round(view.gimmickReception)+"/100 "+
    (view.gimmickReception>=75?"· Getting over":
     view.gimmickReception>=55?"· Connecting":
