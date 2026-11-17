@@ -24,7 +24,8 @@ export function readProgrammeCrowdTrend(
  }
  const weeks=[...byWeek].sort(([a],[b])=>b-a);
  if(!weeks.length)return null;
- const [[weekIndex,latest],prior]=weeks;
+ const newest=weeks[0]!,prior=weeks[1];
+ const weekIndex=newest[0],latest=newest[1];
  const latestCrowd=Math.round(latest.total/latest.count);
  if(!prior)return {weekIndex,latestCrowd,priorWeekIndex:null,
   priorCrowd:null,delta:null,direction:"FIRST"};
