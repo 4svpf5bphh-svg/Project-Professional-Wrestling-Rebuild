@@ -77,9 +77,9 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
      INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,
      position,kind,payload) VALUES($1,$2,'main',0,'MATCH',$3::jsonb)`,
      [worldId,showId,JSON.stringify({matchType:"SINGLES",
-      participants:(week===6?[2,3]:[0,1]).map(i=>({
+      participants:[2,3].map(i=>({
        personId:people[i],contractId:contracts[i]})),
-      scriptedWinner:people[week===6?2:week%2],intent:"TECHNICAL",
+      scriptedWinner:people[week%2===0?2:3],intent:"TECHNICAL",
       plannedLengthMinutes:15,plannedFinish:"CLEAN_PIN"})]);
    }
    await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,
