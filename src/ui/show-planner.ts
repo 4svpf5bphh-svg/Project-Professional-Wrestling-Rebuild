@@ -28,6 +28,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
  // but the mobile connection died before the receipt reached the browser.
  let pendingSave:{fingerprint:string;requestId:string}|null=null;
  let pendingOutline:{fingerprint:string;requestId:string}|null=null;
+ let pendingStoryProgrammeId:string|null=null;
  const outlinedNotes=new Map<string,string>();
  let outlineExpanded=false;
  const button=(label:string,action:()=>void,disabled=false)=>{
@@ -81,6 +82,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    pendingSave={fingerprint,requestId:crypto.randomUUID()};
   const requestId=pendingSave.requestId;
   busy=true;error="";draw();
+  let openAfterSave:{draftId:string;programmeId:string}|null=null;
   try{
    const response=await port.save({requestId,...input});
    const status=response&&typeof response==="object"&&"status" in response?
@@ -99,12 +101,22 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    // requestId can be retried and safely REPLAYED, never creating a second
    // weekly/PPV draft or charging twice.
    const refreshed=await port.load();
-   data=refreshed;editing=null;selectedDraft="";pendingSave=null;error="";
+   if(pendingStoryProgrammeId){
+    const planned=refreshed.weeks.find(w=>w.year===input.year&&w.week===input.week)?
+     .shows.find(show=>show.status==="DRAFT"&&
+      (!input.showSeriesId||show.showSeriesId===input.showSeriesId)&&
+      (!input.draftId||show.draftId===input.draftId));
+    if(planned)openAfterSave={draftId:planned.draftId,programmeId:pendingStoryProgrammeId};
+   }
+   data=refreshed;editing=null;selectedDraft="";pendingSave=null;
+   pendingStoryProgrammeId=null;error="";
   }catch(e){error=e instanceof Error?e.message:"Could not save show";}
-  finally{busy=false;draw();}
+  finally{busy=false;if(!openAfterSave)draw();}
+  if(openAfterSave)port.openCard(openAfterSave.draftId,openAfterSave.programmeId);
  }
- function edit(week:PlannerWeek,draft?:PlannerWeek["shows"][number],seriesId=""){
-  pendingSave=null;
+ function edit(week:PlannerWeek,draft?:PlannerWeek["shows"][number],
+  seriesId="",storyProgrammeId:string|null=null){
+  pendingSave=null;pendingStoryProgrammeId=storyProgrammeId;
   editing=week;selectedDraft=draft?.draftId??"";
   selectedSeriesId=draft?.showSeriesId??seriesId;
   venueId=draft?.venueId??data?.venues.find(v=>v.home)?.venueId??data?.venues[0]?.venueId??"";
@@ -233,9 +245,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   section.append(tiles);
   if(snapshot.programmes.length){
    const stories=node("section","","ppw-planner-stories");
-   stories.append(node("h3","Booked storyline build"),
-    node("p","Only matches and angles already linked to Programmes appear here. "+
-     "Draft chapters are still provisional.","ppw-planner-board-summary"));
+   stories.append(node("h3","Storyline build"),
+    node("p","Active Programmes stay visible even before their next chapter is booked. "+
+     "Only actual linked matches and angles count as chapters; drafts remain provisional.",
+     "ppw-planner-board-summary"));
    for(const lane of snapshot.programmes){
     const row=node("div","","ppw-planner-story-lane");
     row.append(node("strong",lane.name,"ppw-planner-story-title"));
@@ -256,7 +269,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      const cell=draft||missing?
       button(label,()=>{
        if(draft)port.openCard(draft.draftId,lane.programmeId);
-       else if(scheduled&&missing)edit(scheduled,undefined,missing.seriesId);
+       else if(scheduled&&missing)edit(scheduled,undefined,missing.seriesId,
+        lane.programmeId);
       },busy):node("span",label);
      cell.classList.add("ppw-planner-story-beat");
      if(draft||missing)cell.classList.add("ppw-planner-story-action");
@@ -278,8 +292,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      snapshot.programmeCount+" connected Programmes.","ppw-planner-board-summary"));
    section.append(stories);
   }else{
-   section.append(node("p","Booked Programme chapters will appear here once "+
-    "you link matches or angles to a storyline in the Card Editor.",
+   section.append(node("p","Create a Programme or book a match or angle linked "+
+    "to an existing storyline to build your next PPV.",
     "ppw-planner-board-summary"));
   }
   section.append(outlineEditor());
@@ -316,7 +330,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   root.append(node("p","HOME MARKET  /  "+(home?.marketName??"Not assigned")+
    " · "+(home?"Your promotion\u0027s local audience and venue territory":"See Business for your promotion identity"),
    "ppw-planner-home-market"));
-  const progress=buildSixWeekProduction(data.weeks);
+  const progress=buildSixWeekProduction(data.weeks,data.activeProgrammes??[]);
   if(!editing)root.append(buildBoard(progress));
   if(editing){
    const form=node("section","","ppw-planner-form");
