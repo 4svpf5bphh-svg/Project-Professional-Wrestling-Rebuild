@@ -32,6 +32,8 @@ test("Roster and talent market validate paging, offer rights and two-query direc
    {view:"ROSTER",limit:40});
   assert.equal(owned.people.length,15);
   assert.ok(owned.people.every(x=>x.contractId!==null));
+  assert.ok(owned.people.every(x=>x.estimatedWeeklyValue===null),
+   "Signed talent has contract terms, not an unnecessary market valuation projection");
   const exclusive=owned.people.find(x=>x.personId==="person-0")!;
   assert.equal(exclusive.availability,"YOUR_ROSTER");
   assert.equal(exclusive.remainingDates,null);
@@ -55,6 +57,8 @@ test("Roster and talent market validate paging, offer rights and two-query direc
    {view:"MARKET",search:"Wrestler 87",division:"WOMEN",limit:5});
   assert.deepEqual(young.people.map(x=>x.personId),["person-87"]);
   assert.equal(young.people[0]!.availability,"FREE_AGENT");
+  assert.ok(typeof young.people[0]!.estimatedWeeklyValue==="number",
+   "Recruitment still carries the original market valuation");
   // Affordability shares the existing two-query directory read.
   assert.equal(owned.offerBudget,null);
   assert.equal(young.offerBudget?.cash,5_000_000);

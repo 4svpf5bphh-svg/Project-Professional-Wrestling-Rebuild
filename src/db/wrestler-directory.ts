@@ -175,7 +175,7 @@ export async function readWrestlerDirectory(
     mine.weekly_guarantee::text,mine.appearance_fee::text,
     contracts.exclusive_to,contracts.other_contracts,contracts.active_contracts,
     contracts.future_contracts,contracts.next_future_start,contracts.future_exclusive_to,
-    mv.estimated_value,
+    ${f.view==="MARKET"?"mv.estimated_value,":""}
     EXISTS(SELECT 1 FROM ppw_contract_offers o
       WHERE o.world_id=p.world_id AND o.person_id=p.person_id
        AND o.promotion_id=$2 AND o.status='PENDING') AS pending_offer
@@ -319,7 +319,11 @@ export async function readWrestlerDirectory(
     activeContracts:p.active_contracts,pendingOffer:p.pending_offer,
     futureContracts:p.future_contracts,nextFutureStart:p.next_future_start,
     futureExclusiveToPromotionId:p.future_exclusive_to,
-    estimatedWeeklyValue:p.estimated_value,
+    // The indicative market valuation only belongs on the recruitment desk.
+    // Omit its per-person SQL field on the roster, where the real signed
+    // contract is authoritative. Saves ~500–600 PostgreSQL result bytes for
+    // a full 25-person iPhone roster without weakening any Neon limits.
+    estimatedWeeklyValue:f.view==="MARKET"?p.estimated_value:null,
     // Availability only describes contract eligibility. It is NOT a promise
     // that a particular wrestler will accept terms at World resolution.
     availability:p.contract_id?
