@@ -225,6 +225,42 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
   await assert.rejects(readSixWeekPlanner(db.pool,{...scope,playerId:"rival-manager"}),
    /denied|not accessible/i);
 
+  // The sixth FUTURE week (Week 7) must be usable as a finale target too.
+  // Test a real linked chapter and then deliberately cancel it before
+  // leaving the player alone to run their already confirmed PPV programme.
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,
+    status,show_day,venue_id,market_id,booking_class,event_type,
+    show_name,show_series_id,event_importance)
+   VALUES($1,'tv-7',$2,1,7,'DRAFT',5,$3,'home','REGULAR','REGULAR',
+    'CWA Weekly','flagship',70)`,[worldId,promotionId,venueId]));
+  assert.equal((await saveCardEditorAsActor(context,{...scope,
+   showId:"tv-7",requestId:"potential-week-seven",
+   expectedRevision:await revision(),
+   matches:[{slotId:"main",payload:match("A")}],
+   segments:[],runningOrder:["main"]})).status,"APPLIED");
+  const future=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.ok(future.plannedActivity.some(p=>p.showId==="tv-7"),
+   "The Programme desk must include the sixth future week, not stop at five");
+  assert.equal((await chooseProgrammeFinale(db.pool,{...scope,programmeId,
+   showId:"tv-7",slotId:"main",payoff:"DECISIVE_MATCH",
+   requestId:"tentative-week-seven",expectedRevision:await revision()})).status,
+   "APPLIED","A genuine Week 7 chapter is eligible in a Week 1 Planner");
+  assert.equal((await chooseProgrammeFinale(db.pool,{...scope,programmeId,
+   showId:"spring-riot",slotId:"ppv-main",payoff:"DECISIVE_MATCH",
+   requestId:"restore-spring-riot",expectedRevision:await revision()})).status,
+   "APPLIED","The owner may move an unfinished finale back to the booked PPV");
+  assert.equal((await saveCardEditorAsActor(context,{...scope,
+   showId:"tv-7",requestId:"remove-tentative-chapter",
+   expectedRevision:await revision(),matches:[],segments:[],
+   runningOrder:[]})).status,"APPLIED");
+  const restored=(await readProgrammeWorkspace(db.pool,scope)).programmes
+   .find(p=>p.programmeId===programmeId)!;
+  assert.equal(restored.finale?.showId,"spring-riot");
+  assert.ok(!restored.plannedActivity.some(p=>p.showId==="tv-7"),
+   "Removing a draft chapter must not leave an invented future feud beat");
+
   // Never call a booking save, Planner edit or manager response in this loop.
   // Manual advancement remains explicit, exercising canonical World Lock
   // on each of six distinct certified weeks, including the named premium.
