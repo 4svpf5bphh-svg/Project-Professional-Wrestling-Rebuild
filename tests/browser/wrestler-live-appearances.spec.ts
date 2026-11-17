@@ -108,7 +108,8 @@ test("iPhone dossier loads accurate in-person debut/return history only on deman
  await expect(dialog.getByRole("button",{name:"Open show planner"})).toBeVisible();
  await expect(dialog.getByRole("button",{name:"Talk in Backstage"})).toBeVisible();
  await expect(dialog.getByText(/actual show week/)).toHaveCount(0);
- await expect(dialog.locator(".ppw-profile-attributes .ppw-profile-stat")).toHaveCount(11);
+ await expect(dialog.locator(".ppw-profile-attributes .ppw-profile-stat")).toHaveCount(12);
+ await expect(dialog.getByText("Overness",{exact:true})).toBeVisible();
  await expect(dialog.locator(".ppw-profile-attributes summary")).toHaveCount(0);
  await expect(dialog.getByRole("button",{name:"Manage contract"}).first()).toBeVisible();
   // The compact Overview may fit without scrolling. The detail tabs must

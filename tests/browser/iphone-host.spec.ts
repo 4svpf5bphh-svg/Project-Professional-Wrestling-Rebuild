@@ -1365,7 +1365,9 @@ test("Calendar shows only owned booked venues and opens the correct six-week PPV
  await expect(page.getByText("AEW Arena")).toHaveCount(0);
  await page.getByRole("button",{name:"PPVs & specials"}).click();
  await expect(page.getByText("Raw")).toHaveCount(0);
- await expect(page.getByText("WrestleMania")).toBeVisible();
+ await expect(page.locator(".ppw-dynamic-event-heading").filter({
+  hasText:"WrestleMania"
+ })).toBeVisible();
  await page.getByRole("button",{name:"My shows"}).click();
  await page.getByRole("button",{name:"All events"}).click();
  const premium=page.locator(".ppw-calendar-event-major");
