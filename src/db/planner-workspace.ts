@@ -34,6 +34,7 @@ export interface PlannerVenue {
  home:boolean;
 }
 export interface PlannedShow {
+ programmeChapters?:{programmeId:string;name:string;matches:number;segments:number}[];
  draftId:string;year:number;week:number;status:string;eventType:PlannedEventType;
  day:number|null;marketId:string|null;venueId:string|null;
  marketName:string|null;venueName:string|null;ticketStrategy:TicketStrategy|null;
@@ -112,11 +113,42 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
    event_type:PlannedEventType|null;show_day:number|null;market_id:string|null;
    venue_id:string|null;ticket_strategy:TicketStrategy|null;
    market_name:string|null;venue_name:string|null;
-   lock_ready_fingerprint:string|null;slots:number;
+   lock_ready_fingerprint:string|null;slots:number;programme_chapters:unknown;
   }>(`
  SELECT d.draft_id,d.year,d.week,d.status,d.booking_class,d.show_series_id,d.show_name,d.event_type,d.show_day,
    d.market_id,d.venue_id,d.ticket_strategy,
    m.name AS market_name,v.name AS venue_name,d.lock_ready_fingerprint,
+   -- Real pre-booked Programme activities in this exact future show, not notes or predictions.
+   -- Reuse the existing indexed draft query: no fifth Planner SQL roundtrip.
+   (SELECT coalesce(jsonb_agg(jsonb_build_object(
+     'programmeId',chapter.programme_id,'name',coalesce(names.name,'Programme'),
+     'matches',chapter.matches,'segments',chapter.segments)
+     ORDER BY chapter.programme_id),'[]'::jsonb)
+    FROM (
+     SELECT a.programme_id,
+       count(*) FILTER (WHERE a.kind='MATCH')::integer AS matches,
+       count(*) FILTER (WHERE a.kind='SEGMENT')::integer AS segments
+     FROM ppw_programme_match_activities a
+     WHERE a.world_id=d.world_id AND a.promotion_id=d.promotion_id
+       AND a.draft_id=d.draft_id
+     GROUP BY a.programme_id ORDER BY a.programme_id LIMIT 12
+    ) chapter
+    LEFT JOIN LATERAL (
+     SELECT coalesce(string_agg(CASE WHEN refs.side='A' THEN
+       coalesce(person.name,team.name,refs.ref_id) END,', ' ORDER BY refs.position),'Side A')
+       || ' vs ' ||
+       coalesce(string_agg(CASE WHEN refs.side='B' THEN
+       coalesce(person.name,team.name,refs.ref_id) END,', ' ORDER BY refs.position),'Side B')
+       AS name
+     FROM ppw_programme_side_refs refs
+     LEFT JOIN ppw_people person ON person.world_id=refs.world_id
+       AND person.person_id=refs.ref_id AND refs.ref_kind='PERSON'
+     LEFT JOIN ppw_tag_teams team ON team.world_id=refs.world_id
+       AND team.team_id=refs.ref_id AND refs.ref_kind='TEAM'
+     WHERE refs.world_id=d.world_id AND refs.promotion_id=d.promotion_id
+       AND refs.programme_id=chapter.programme_id
+    ) names ON true
+   ) AS programme_chapters,
    (SELECT count(*)::integer FROM ppw_card_slots c
     WHERE c.world_id=d.world_id AND c.draft_id=d.draft_id) AS slots
  FROM ppw_booking_drafts d
@@ -252,6 +284,11 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
     scheduled:due,
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
      bookingClass:d.booking_class,showSeriesId:d.show_series_id,
+     programmeChapters:Array.isArray(d.programme_chapters)?d.programme_chapters.filter(
+      (chapter):chapter is {programmeId:string;name:string;matches:number;segments:number}=>
+       chapter!==null&&typeof chapter==="object"&&
+       typeof chapter.programmeId==="string"&&typeof chapter.name==="string"&&
+       Number.isInteger(chapter.matches)&&Number.isInteger(chapter.segments)).slice(0,12):[],
       posterStyle:scheduled.find(x=>x.seriesId===d.show_series_id)?.posterStyle??null,
      showName:d.show_name??scheduled.find(x=>x.seriesId===d.show_series_id)?.name??
       (d.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
