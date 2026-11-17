@@ -194,7 +194,8 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    turn_alignment:string|null;stable_decision:string|null};
   type Planned={programme_id:string;draft_id:string;slot_id:string;kind:"MATCH"|"SEGMENT";
    segment_kind:string|null;title_match:boolean;stipulation_match:boolean;
-   year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED"};
+   year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED";
+   booking_class:"REGULAR"|"PREMIUM"};
   type Finale={programme_id:string;show_id:string;slot_id:string;
    kind:"MATCH"|"SEGMENT";payoff:ProgrammePayoff;planned_week_index:number;
    resolved_week_index:number|null;resolved_crowd_response:number|null;
@@ -241,7 +242,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "CASE WHEN a.kind='MATCH' THEN",
    "COALESCE(s.payload->>'stipulation','STANDARD')<>'STANDARD'",
    "ELSE false END AS stipulation_match,",
-   "d.show_name,d.status FROM ppw_programme_match_activities a",
+   "d.show_name,d.status,d.booking_class FROM ppw_programme_match_activities a",
    "JOIN ppw_booking_drafts d ON d.world_id=a.world_id",
    "AND d.promotion_id=a.promotion_id AND d.draft_id=a.draft_id",
    "JOIN ppw_card_slots s ON s.world_id=a.world_id",
@@ -311,12 +312,34 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
       sceneIntensity:x.scene_intensity??null,sceneVisual:x.scene_visual??null,
       angleOutcome:x.angle_outcome??null,turnAlignment:x.turn_alignment??null,
       stableDecision:x.stable_decision??null})),
-    plannedActivity:planned.filter(x=>x.programme_id===p.programme_id)
-     .slice(0,6).map(x=>({showId:x.draft_id,slotId:x.slot_id,
+    plannedActivity:(()=>{
+     // A six-week arc often contains many more than six segments/matches.
+     // Keep the genuine next premium event and the exact authored finale in
+     // a bounded 16-activity view so a TV-heavy buildup never hides its PPV.
+     const upcoming=planned.filter(x=>x.programme_id===p.programme_id);
+     const selected=upcoming.slice(0,16);
+     const finale=finales.find(x=>x.programme_id===p.programme_id);
+     const selectedPayoff=finale&&upcoming.find(x=>
+      x.draft_id===finale.show_id&&x.slot_id===finale.slot_id);
+     const priority=[upcoming.find(x=>x.booking_class==="PREMIUM"),
+      selectedPayoff].filter((x):x is Planned=>Boolean(x));
+     for(const important of priority){
+      if(selected.includes(important))continue;
+      let replace=-1;
+      for(let i=selected.length-1;i>=0;i--){
+       if(!priority.includes(selected[i]!)){replace=i;break;}
+      }
+      if(replace>=0)selected[replace]=important;
+     }
+     selected.sort((a,b)=>a.year-b.year||a.week-b.week||
+      a.draft_id.localeCompare(b.draft_id)||a.slot_id.localeCompare(b.slot_id));
+     return selected.map(x=>({showId:x.draft_id,slotId:x.slot_id,
       kind:x.kind,segmentKind:x.segment_kind,
       titleMatch:x.title_match,stipulationMatch:x.stipulation_match,
+      premium:x.booking_class==="PREMIUM",
       year:x.year,week:x.week,
-      showName:x.show_name??"Scheduled show",status:x.status})),
+      showName:x.show_name??"Scheduled show",status:x.status}));
+    })(),
     finale:(()=>{
      const f=finales.find(x=>x.programme_id===p.programme_id);
      return f?{showId:f.show_id,slotId:f.slot_id,kind:f.kind,payoff:f.payoff,
