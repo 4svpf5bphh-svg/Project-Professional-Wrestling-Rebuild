@@ -48,6 +48,9 @@ import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from
 import {isQuickBookField} from "./quick-book.js";
 import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter}
  from "./programme-booking-starter.js";
+import {STORY_BLUEPRINTS,storyBlueprintFamily,type BlueprintFamily}
+ from "../domain/story-blueprints.js";
+import {storyBlueprintAngleStarter} from "./story-blueprint-starter.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -170,6 +173,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  // existing unsaved-card state. Already saved slots are never discarded.
  const inProgressWizards=new Map<string,{wasDirty:boolean}>();
  const openQuickExtras=new Set<string>();
+ const blueprintPickerOpen=new Set<string>();
+ const blueprintFamilies=new Map<string,BlueprintFamily>();
+ const blueprintChoices=new Map<string,string>();
  let resetGuideScroll=false;
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
@@ -332,6 +338,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   matches.delete(slotId);segments.delete(slotId);
   order=order.filter(id=>id!==slotId);
   inProgressWizards.delete(slotId);
+  blueprintPickerOpen.delete(slotId);
+  blueprintFamilies.delete(slotId);
+  blueprintChoices.delete(slotId);
   slotBookingSteps.delete(slotId);
   guidedPickerSlots.delete(slotId);
   dirty=pending.wasDirty;pendingRequestId=null;error="";success="";
@@ -1053,6 +1062,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const id="angle-"+crypto.randomUUID();
     segments.set(id,newEditorSegment(id));
     slotBookingSteps.set(id,"SETUP");
+    blueprintPickerOpen.add(id);
     order.push(id);expanded=id;startWizard(id);
     if(specialOwned===null&&port.specialMoments)void loadSpecialMoments();
    },!mutable(),"ppw-add-angle ppw-action-angle"));
@@ -2171,6 +2181,81 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         guide.append(context);
        }else{
         const angleSetup=el("div","ppw-guide-angle-setup");
+        // The Blueprint is an optional creative starting point. It is
+        // deliberately not a booked outcome, a new ledger or invented feud.
+        const blueprintPanel=el("section","ppw-story-blueprint-panel");
+        const blueprintHead=el("div","ppw-story-blueprint-heading");
+        blueprintHead.append(el("strong","","What story are you telling?"),
+         button(blueprintPickerOpen.has(slotId)?"Use custom angle":"Browse Story Blueprints",()=>{
+          if(blueprintPickerOpen.has(slotId))blueprintPickerOpen.delete(slotId);
+          else blueprintPickerOpen.add(slotId);
+          render();
+         },!mutable(),"ppw-story-blueprint-toggle"));
+        blueprintPanel.append(blueprintHead);
+        if(blueprintPickerOpen.has(slotId)){
+         const families=el("div","ppw-story-blueprint-families");
+         const familyLabels:Record<BlueprintFamily,string>={
+          RISE:"The Rise",FALL:"The Fall",
+          RELATIONSHIPS:"Relationships",CONFLICT:"Conflict"
+         };
+         const family=blueprintFamilies.get(slotId)??"RISE";
+         for(const [key,label] of Object.entries(familyLabels)){
+          const choice=button(label,()=>{
+           blueprintFamilies.set(slotId,key as BlueprintFamily);
+           blueprintChoices.delete(slotId);render();
+          },!mutable(),"ppw-story-blueprint-family");
+          choice.setAttribute("aria-pressed",String(family===key));
+          families.append(choice);
+         }
+         blueprintPanel.append(families);
+         const choices=el("div","ppw-story-blueprint-options");
+         const selectedId=blueprintChoices.get(slotId);
+         for(const blueprint of storyBlueprintFamily(family)){
+          const pick=button("",()=>{
+           blueprintChoices.set(slotId,blueprint.id);render();
+          },!mutable(),"ppw-story-blueprint-option");
+          pick.append(el("strong","",blueprint.name),
+           el("small","",blueprint.description));
+          pick.setAttribute("aria-pressed",String(selectedId===blueprint.id));
+          choices.append(pick);
+         }
+         blueprintPanel.append(choices);
+         const selected=STORY_BLUEPRINTS.find(x=>x.id===selectedId);
+         if(selected){
+          blueprintPanel.append(el("p","ppw-story-blueprint-intention",
+           "Why: "+selected.motivation+" · Audience: "+selected.desiredFeeling));
+          if(view!.programmes.length){
+           const storyLinks=el("div","ppw-story-blueprint-links");
+           storyLinks.append(el("strong","","Connect an active Programme (optional)"));
+           const linkChoices=el("div","ppw-story-blueprint-link-chips");
+           for(const [id,name] of [[null,"Standalone angle"] as const,
+            ...view!.programmes.map(p=>[p.programmeId,p.label] as const)]){
+            const link=button(name,()=>{
+             editSegment(segment!,{programmeId:id});
+            },!mutable(),"ppw-story-blueprint-link");
+            link.setAttribute("aria-pressed",String((segment?.programmeId??null)===id));
+            linkChoices.append(link);
+           }
+           storyLinks.append(linkChoices);blueprintPanel.append(storyLinks);
+          }
+          const beats=el("div","ppw-story-blueprint-beats");
+          beats.append(el("strong","","Choose the next beat — any order"));
+          for(const beat of selected.beats){
+           const action=button("",()=>{
+            const next=storyBlueprintAngleStarter(slotId,beat,
+             segment!.programmeId??null);
+            segments.set(slotId,next);
+            slotBookingSteps.set(slotId,"CAST");
+            resetGuideScroll=true;render();
+           },!mutable(),"ppw-story-blueprint-beat");
+           action.append(el("strong","",beat.title),
+            el("small","",beat.intention));
+           beats.append(action);
+          }
+          blueprintPanel.append(beats);
+         }
+        }
+        angleSetup.append(blueprintPanel);
         // Preserve the original validated selectors as handlers, but show
         // only tappable categories and scene choices to the player.
         const goalSelect=essentials.querySelector<HTMLSelectElement>(
