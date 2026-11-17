@@ -11,7 +11,7 @@ export interface PlannerPort {
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
  saveCreativeOutline?(input:{requestId:string;expectedRevision:number;
   notes:CreativeWeekOutline[]}):Promise<unknown>;
- openCard(draftId:string):void;
+ openCard(draftId:string,programmeId?:string):void;
  openCalendar?():void;
  openDeals?(target?:CalendarPlanningTarget):void;
 }
@@ -255,7 +255,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
       chapter.matches?"Match":"Angle"):"—";
      const cell=draft||missing?
       button(label,()=>{
-       if(draft)port.openCard(draft.draftId);
+       if(draft)port.openCard(draft.draftId,lane.programmeId);
        else if(scheduled&&missing)edit(scheduled,undefined,missing.seriesId);
       },busy):node("span",label);
      cell.classList.add("ppw-planner-story-beat");
