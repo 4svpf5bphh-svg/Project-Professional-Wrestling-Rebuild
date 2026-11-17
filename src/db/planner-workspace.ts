@@ -40,7 +40,7 @@ export interface PlannerVenue {
 }
 export interface PlannedShow {
  programmeChapters?:{programmeId:string;name:string;matches:number;
-  segments:number;finalePayoff:string|null}[];
+  segments:number;finalePayoff?:string|null}[];
  draftId:string;year:number;week:number;status:string;eventType:PlannedEventType;
  day:number|null;marketId:string|null;venueId:string|null;
  marketName:string|null;venueName:string|null;ticketStrategy:TicketStrategy|null;
