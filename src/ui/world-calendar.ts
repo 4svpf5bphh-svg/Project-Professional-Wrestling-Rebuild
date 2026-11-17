@@ -365,10 +365,13 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
      const tile=root.querySelector<HTMLButtonElement>(
       ".ppw-calendar-week-button[aria-pressed=true]");
      if(tile&&shown){
-      const title=tile.querySelector("small");
+      const title=tile.querySelector(".ppw-calendar-year-major");
       if(title)title.textContent=shown;
+      const index=weekIndex(chosen.year,yearActiveWeek!);
+      const dueNames=data!.series.filter(x=>x.eventType==="REGULAR"&&
+       seriesDue(x,index)).map(x=>x.name);
       tile.setAttribute("aria-label","Year "+chosen.year+" week "+yearActiveWeek+
-       " — "+shown);
+       " — "+[shown,...dueNames].join(" + "));
      }
     };
     named.append(name);
