@@ -54,9 +54,11 @@ export interface PlannerWeek {
 export interface PlannerVenuePressure {
  year:number;week:number;day:number;venueId:string;otherPromotions:number;
 }
+export interface ActiveProgrammeOutline {programmeId:string;name:string}
 export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
- worldRevision:number;canEdit:boolean;creativeOutline:CreativeWeekOutline[];homeMarketId:string|null;eventPosterStyle?:string|null;broadcastPackage?:string|null;
+ worldRevision:number;canEdit:boolean;creativeOutline:CreativeWeekOutline[];
+ activeProgrammes:ActiveProgrammeOutline[];homeMarketId:string|null;eventPosterStyle?:string|null;broadcastPackage?:string|null;
  venues:PlannerVenue[];weeks:PlannerWeek[];venuePressure:PlannerVenuePressure[];
  broadcastSlot:BroadcastPlannerSlot|null;
 }
@@ -71,7 +73,7 @@ type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
  premium_plan_start_year:number;annual_plans:unknown;
  major_interval:number|null;home_market_id:string|null;event_poster:string|null;
- broadcast_package:string|null;creative_outline:unknown;
+ broadcast_package:string|null;creative_outline:unknown;active_programmes:unknown;
  broadcast_slot:{offerCode:string;day:number|null;hour:number|null;
  startWeekIndex:number;endWeekIndex:number}|null};
 async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
@@ -82,6 +84,31 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
   w.premium_plan_start_year,p.creative_outline,
   p.home_market_id,
+  -- Include active storylines even when no future chapter exists yet. This
+  -- bounded lateral projection reuses the owner read, not a fifth RPC/query.
+  (SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'programmeId',active.programme_id,'name',active.label)
+    ORDER BY active.started_week_index DESC,active.programme_id),'[]'::jsonb)
+   FROM (
+    SELECT pr.programme_id,pr.started_week_index,
+      (SELECT coalesce(string_agg(CASE WHEN ref.side='A' THEN
+         coalesce(person.name,team.name,ref.ref_id) END,' & '
+         ORDER BY ref.position),'Side A') || ' vs ' ||
+       coalesce(string_agg(CASE WHEN ref.side='B' THEN
+         coalesce(person.name,team.name,ref.ref_id) END,' & '
+         ORDER BY ref.position),'Side B')
+       FROM ppw_programme_side_refs ref
+       LEFT JOIN ppw_people person ON person.world_id=ref.world_id
+        AND person.person_id=ref.ref_id AND ref.ref_kind='PERSON'
+       LEFT JOIN ppw_tag_teams team ON team.world_id=ref.world_id
+        AND team.team_id=ref.ref_id AND ref.ref_kind='TEAM'
+       WHERE ref.world_id=pr.world_id AND ref.promotion_id=pr.promotion_id
+        AND ref.programme_id=pr.programme_id) AS label
+    FROM ppw_programmes pr
+    WHERE pr.world_id=w.world_id AND pr.promotion_id=p.promotion_id
+      AND pr.status='ACTIVE'
+    ORDER BY pr.started_week_index DESC NULLS LAST,pr.programme_id LIMIT 16
+   ) active) AS active_programmes,
    (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,
    (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,
    (SELECT jsonb_build_object('offerCode',d.offer_code,'day',d.airing_day,
@@ -282,7 +309,14 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
-  creativeOutline,canEdit:owned.booking_open,homeMarketId:owned.home_market_id,eventPosterStyle:owned.event_poster,
+  creativeOutline,
+  activeProgrammes:Array.isArray(owned.active_programmes)?
+   owned.active_programmes.filter((item):item is ActiveProgrammeOutline=>
+    item!==null&&typeof item==="object"&&!Array.isArray(item)&&
+    typeof item.programmeId==="string"&&item.programmeId.length>0&&
+    item.programmeId.length<=200&&typeof item.name==="string"&&
+    item.name.length>0&&item.name.length<=300).slice(0,16):[],
+  canEdit:owned.booking_open,homeMarketId:owned.home_market_id,eventPosterStyle:owned.event_poster,
    broadcastPackage:owned.broadcast_package,
   broadcastSlot:owned.broadcast_slot&&owned.broadcast_slot.day!==null&&
    owned.broadcast_slot.hour!==null&&
