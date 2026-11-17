@@ -341,3 +341,43 @@ test("Ringside permits physically staged promo targets but never fabricates a me
  assert.throws(()=>validateRingsideCopy(onScreen,spokenOnly),
   /off-screen promo target appearance/);
 });
+
+
+test("steel cage report cannot claim a tap-out somehow doubled as the official pin",()=>{
+ const article=(recap:string)=>({...valid,slots:[
+  {...valid.slots[0]!,recap},valid.slots[1]!]});
+ const broken="Inside the steel cage the wrestlers clashed. The winner trapped "+
+  "his opponent's arm against the steel and applied an arm-triangle, forcing "+
+  "a tap-out that doubled as the official pin for the Intercontinental title.";
+ assert.throws(()=>validateRingsideCopy(article(broken),example),
+  /submission cannot itself secure the recorded pinfall/);
+ const lawful="Inside the cage the opponent escaped an arm-triangle. Later "+
+  "the winner hit a separate decisive move and covered for a legal pinfall.";
+ assert.doesNotThrow(()=>validateRingsideCopy(article(lawful),example));
+});
+test("a booked face turn cannot invent former partners or an alliance banner",()=>{
+ const base=example.entries[1]!;
+ const segment={...base,segmentKind:"TURN",outcome:"HAPPENS",
+  segmentContext:{actorNames:["Konosuke Takeshita"],targetNames:["Mr. Perfect"],
+   targetPresence:"ON_SCREEN" as const,videoPurpose:null,
+   stableDecision:null,turnTargetAlignment:"FACE",
+   turnPresentation:"PUBLIC_DECLARATION"}};
+ const show:CompletedShowView={...example,entries:[segment]};
+ const article=(recap:string)=>({
+  showHeadline:"A change of direction",opening:"The crowd watched closely.",
+  closing:"A new chapter began.",
+  slots:[{slotId:segment.slotId,headline:"Takeshita chooses his path",recap}]
+ });
+ const validTurn="Konosuke Takeshita confronted Mr. Perfect and publicly "+
+  "declared his new face alignment. The rivalry now has new tension.";
+ assert.doesNotThrow(()=>validateRingsideCopy(article(validTurn),show));
+ for(const madeUp of [
+  "Konosuke Takeshita stormed the ring and confronted his longtime partner "+
+   "Mr. Perfect before announcing he was now a face.",
+  "Konosuke Takeshita tore the alliance's banner in half and rejected "+
+   "Mr. Perfect as his former friend in the middle of the ring."
+ ]){
+  assert.throws(()=>validateRingsideCopy(article(madeUp),show),
+   /partnership or alliance/);
+ }
+});
