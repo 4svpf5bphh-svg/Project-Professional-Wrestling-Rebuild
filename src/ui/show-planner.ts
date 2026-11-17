@@ -1,8 +1,8 @@
 import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
 import type {CreativeWeekOutline} from "../domain/creative-outline.js";
-import {createAnimatedEventPoster} from "./animated-event-poster.js";
-import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
+
+
 import type {CalendarPlanningTarget} from "./world-calendar.js";
 import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
 import {buildSixWeekProduction,type SixWeekBuild} from "../domain/six-week-production-board.js";
@@ -499,11 +499,16 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    root.append(form);return;
   }
   for(const week of data.weeks){
+   // A contract may license Friday airtime, but fortnightly television
+   // doesn't make off-weeks compulsory. Keep the seven-week timeline above;
+   // render detailed booking forms only for due/actually booked weeks.
+   if(!week.required&&!week.shows.length)continue;
    const card=node("section","","ppw-planner-week");
    card.id="ppw-planner-week-"+week.year+"-"+week.week;
    card.tabIndex=-1;
    const state=progress.weeks.find(w=>w.year===week.year&&w.week===week.week)?.state;
-   const status=state==="SUBMITTED"?"SUBMITTED":
+   const status=state==="NO_SHOW_DUE"?"NO TV OR PPV DUE":
+    state==="SUBMITTED"?"SUBMITTED":
     state==="READY_FOR_LOCK"?"PREPARED FOR WORLD LOCK":
     state==="CARD_IN_PROGRESS"?"FINISH YOUR CARD":
     state==="PARTIALLY_BOOKED"?"BOOKING IN PROGRESS":
@@ -515,8 +520,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    card.append(node("h2","Year "+week.year+" · Week "+week.week),
     node("p",week.major?"Major event week":week.required?"Regular show week":"Optional show week"));
    const contracted=data.broadcastSlot,weekIndex=(week.year-1)*52+week.week-1;
-   if(contracted&&weekIndex>=contracted.startWeekIndex&&weekIndex<=contracted.endWeekIndex)
-    card.append(node("span",contracted.networkName+" · Weekly TV "+
+   const dueTV=week.scheduled.find(s=>s.eventType==="REGULAR");
+   if(dueTV&&contracted&&weekIndex>=contracted.startWeekIndex&&
+    weekIndex<=contracted.endWeekIndex)
+    card.append(node("span",contracted.networkName+" · "+
+     (dueTV.cadenceWeeks===1?"Weekly":dueTV.cadenceWeeks===2?
+      "Alternate-week":"Every "+dueTV.cadenceWeeks+" weeks")+" TV "+
      ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][contracted.day-1]+" "+
      String(contracted.hour).padStart(2,"0")+":00","ppw-planner-week-tv-slot"));
    if(week.scheduled?.length)card.append(node("p",
@@ -524,20 +533,11 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      (s.role==="FLAGSHIP"?"A":s.role==="SECONDARY"?"B":s.role==="PREMIUM"?"PPV":s.role)+")").join(" · "),
     "ppw-planner-calendar-label"));
    for(const show of week.shows){
-     const posterShell=node("div","","ppw-planner-event-shell");
-     posterShell.dataset.premium=String(show.bookingClass==="PREMIUM");
-     posterShell.append(node("span",show.bookingClass==="PREMIUM"?"PREMIUM EVENT":"WEEKLY SHOW","ppw-event-type-line"),
-      node("strong",show.showName,"ppw-dynamic-event-heading"),
-      node("small",data.promotionName,"ppw-event-promoter-line"));
-     const animated=show.bookingClass==="PREMIUM"?createAnimatedEventPoster({
-      style:show.posterStyle??data.eventPosterStyle,eventName:show.showName,promotionName:data.promotionName,
-      compact:true}):null;
-     const television=show.bookingClass==="REGULAR"?createBroadcastPackageFrame({
-      style:data.broadcastPackage,kind:"OPEN",show:show.showName,
-      promotion:data.promotionName,compact:true}):null;
-     card.append(animated??television??posterShell);
+    // Actual themed show art is displayed when opening the show or Results,
+    // not repeated for every future fixture in the operational Planner.
+    card.append(node("strong",show.showName,"ppw-planner-week-show-name"));
     const dayName=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][(show.day??0)-1];
-    card.append(node("p",show.showName+" · "+
+    card.append(node("p",
      (dayName??"Day unassigned")+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
      (show.status==="SUBMITTED"?" · Submitted":show.ready?" · Prepared for World Lock":" · Draft")));
@@ -564,10 +564,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
        "Book PPV · "+s.name:"Plan "+s.name,
        ()=>edit(week,undefined,s.seriesId),busy||!data.venues.length));
     }
-    if(!week.scheduled.some(s=>s.eventType==="REGULAR")&&
-     !week.shows.some(s=>s.bookingClass==="REGULAR"))
-     card.append(button("Plan weekly show",()=>edit(week),
-      busy||!data.venues.length));
+
    }
    root.append(card);
   }
