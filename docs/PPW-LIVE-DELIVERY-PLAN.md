@@ -36,12 +36,17 @@
 | 46 | Real player-journey integrity | Future contracts, tournament/creative consent, title settlement and mobile actions actually work together | 45 baseline | **RELEASED 8 NOV — PR #89, formerly verified on PR #86** |
 | 47 | Living wrestler stories and Programmes | A wrestler's request progresses from Backstage through authored booking to certified follow-through, refusals and interrupted plans | 46 | **RELEASED 8 NOV — PR #89, formerly verified on PR #87** |
 | 48 | Booking, staff and financial decisions | Useful in-flow staff advice and real show affordability without UI clutter | 46–47 | **RELEASED 8 NOV — PR #89; later playtest feedback remains active** |
-| 49 | Contenders, championships and credible rival promotions | Earned title opportunities, meaningful divisions and sustainable AI title programmes | 46–48 | **CODE VERIFIED — draft PR #91, stacked after balance correction #90; UNRELEASED** |
-| 50 | Living wrestling media and Groq refinement | Distinct journalism, truthful press reactions and evolving stories without excessive AI calls | 47, 49 | **CODE VERIFIED — 50A–D draft PRs #93–#96; owner installed-iPhone visual acceptance and actual live Neon Free cost pending; UNRELEASED** |
-| 51 | Commercials, Ratings War and economic competition | Network, sponsor and financial decisions react believably to performance and rivals | 48–50 | PLANNED |
-| 52 | Player-uploaded PPV posters | Bring personally created artwork into the full PPV lifecycle, free, persistent and safely stored | 45, verified media/storage design | PLANNED |
-| 53 | Wider industry and multi-season depth | Rankings, working agreements, loans/excursions, joint events, regional growth and long-run career balance | 49–51 | PLANNED; phase internally sequenced |
-| 54 | World Updating and future scheduled operation | Truthful lock status and recoverable settlement, with cron still OFF unless separately authorised | real-world workload/operational tests | DEFERRED; **NOT AUTHORISED TO ACTIVATE** |
+| 49 | Contenders, championships and credible rival promotions | Earned title opportunities, meaningful divisions and sustainable AI title programmes | 46–48 | **RELEASED 12 NOV — PR #100** |
+| 50 | Living wrestling media and Groq refinement | Distinct journalism, truthful press reactions and evolving stories without excessive AI calls | 47, 49 | **RELEASED 12 NOV — PR #100; further playtest feedback remains tracked** |
+| 51 | Commercials, Ratings War and economic competition | Network, sponsor and financial decisions react believably to performance and rivals | 48–50 | **RELEASED 12 NOV — PR #100; further playtest feedback remains tracked** |
+| 54-Playtest | Owner-reported gameplay/mobile fixes | Title results, segment grades, overness, mobile UI and results truth | live owner feedback | **CURRENT — draft PR #103; QA and owner release gate** |
+| 53D | Six-week creative and advance-booking planner | Plan TV/PPV builds and submit future cards without daily interaction | 54-Playtest | **NEXT — PLANNED** |
+| 53E | Flexible story Programme architecture | Slow turns, alliances, factions, non-rival arcs and real payoffs | 53D | PLANNED |
+| 53F | Consequences, smart staff and living Backstage | Connected wrestler growth, certified staff advice and actionable fallout | 53E | PLANNED |
+| 52 (original) | Player-uploaded PPV posters | Free event-specific artwork with persistent, secure storage | 53F (owner order); existing media components | PLANNED |
+| 53A (original) | World rankings and heritage | Certified cross-promotion standings, form and multi-year history | original 52 (owner order) | PLANNED |
+| 53B / 53C | Loans, working agreements, excursions, joint shows/territory | Retained below only as dated historical proposals, not active requirements | — | **REMOVED FROM ROADMAP 17 NOV (OWNER DECISION)** |
+| 54 (original) | World Updating and future scheduled operation | Truthful lock status and recoverable settlement; cron OFF without separate approval | separate owner authorisation | **DEFERRED — NOT AUTHORISED TO ACTIVATE** |
 
 **14 November 2026 — keep historical phase names distinct.** The playtest-correction PR #101 uses the newer release label *Phase 52* (fees, TV commitments, calendar, HOT TAG), and the Backstage PR #102 uses *Phase 53* (living inbox, staff, locker room). These do **not** complete or remove the original table's planned **Phase 52 player-uploaded PPV posters** or **Phase 53 industry/multi-season depth**. Track the newer work as **52-Corrections** and **53-Backstage** here; keep the original poster/industry deliverables pending. As of this entry main contains the owner-released Phases 49–51B (commit `642707c`). Both #101 and #102 remain draft development-only PRs.
 
@@ -56,7 +61,7 @@
 
 **15 November 2026 — 53-Backstage J: the affected wrestler's real response to staff outcomes.** A contracted programme member now has a private, clearly distinct locker-room message only when a Medical-versus-Creative commitment has actually settled as KEPT or BROKEN. All copy is grounded in that actual settled decision and fatigue/programme outcome; DEFER and EXCUSED emit no wrestler response, and no physical match, medical improvement, morale or relationship stat is fabricated. The existing Backstage thread offers the wrestler dossier, relevant Staff Office/Programmes route and actual Planner; the visible attribution is the actual `ppw_people` person, not a generative persona. Keep deterministic owner-scoped read receipts and mirror the same bounded two-row outcome source in the **one-read Home unread badge**. No new schema, record-on-page-visit, Groq call, or extra SQL roundtrip. Validate owner/rival privacy, original settlement idempotence, copy for both decisions and results, 320/390px mobile and the 52-week World. Draft-only; no cron or release.
 
-**Execution order:** 45 release gate → 46 → 47 → 48 → 49 → 50 → 51 → 52 → 53 → 54. Phase 52 is relatively self-contained and may be brought forward *only by recording an owner-approved reorder here*; no silent deviations. Testing and Neon efficiency are continuous across all phases, not deferred to Phase 54.
+**Current owner-approved execution order (17 Nov):** Phase 54-Playtest acceptance/release decision → **53D** multi-week creative planning → **53E** flexible Programmes and slow turns → **53F** wrestler/staff/Backstage consequences → **original 52** free PPV posters → **original 53A** World rankings/heritage → **original 54** World Updating/recovery **DEFERRED**. Owner explicitly removed **original 53B/53C** (loans, excursions, working agreements and joint shows) from active scope; no work on those modules is authorised by this roadmap. The chronological 45–51 rows above are completed history, not a competing execution order. Testing and Neon efficiency remain continuous.
 
 ## 4. Milestone delivery specifications
 
@@ -225,9 +230,9 @@
 
 **53A: World rankings and heritage.** Derive public World ranking/form/major-event reputation from actual cross-promotion certified results (separate from Phase 49 owner-promotion rankings), annual winners and World Moments. No private records leak. Test multi-year trends.
 
-**53B: Working agreements, loans, excursions and development.** Extend existing working-relationship and market/contract systems with explicit negotiated rights, dates, permission, appearances, medical/workload checks, consequences and safe ownership. No involuntary player talent transfer; a loan is not a free contract rewrite. Test two-human conflict and finances.
+**53B: REMOVED FROM ACTIVE ROADMAP by owner (17 Nov 2026).** Historical proposal only: working agreements, wrestler loans, excursions, negotiated cross-promotion rights. Do not implement as a phase or assume it is a dependency of later work.
 
-**53C: Joint shows and market expansion.** Only after 53B rights exist: co-promoted/guest events with authoritative promoter/fee/venue/TV responsibilities, one official result and agreed credit, then targeted territory/international expansion. Separate user-visible choices from deep simulation. No accidental second World week.
+**53C: REMOVED FROM ACTIVE ROADMAP by owner (17 Nov 2026).** Historical proposal only: joint events, co-promoted shows and linked territorial expansion. No 53B/53C prerequisite remains for planned 53D–F or 53A.
 
 **Why:** broaden long-term strategies without losing the simplicity of the immediate weekly booker experience.
 
@@ -314,11 +319,11 @@ Each future chat can read this document from the repository first rather than re
 
 ## 9. 17 November 2026 — owner-approved creative-depth extensions (plan only)
 
-**Decision.** Maintain the one authoritative phase roadmap and original delivery order. Owner accepts: better multi-week/PPV planning, distinct and meaningful overness/gimmick reception, intelligent varied storylines including slow turns and non-opponent programmes, evidence-backed useful staff, and a living Backstage. Owner **rejects a click-through “Watch the Show” sequence**; do not build that feature. These are future integrated gameplay requirements, **not** approval to implement, merge, deploy, change the World, or activate cron immediately. Only demonstrated urgent playtest faults may interrupt current milestone order.
+**Decision (superseded in sequencing by the later owner order below).** Maintain the one authoritative phase roadmap. Owner accepts: better multi-week/PPV planning, distinct and meaningful overness/gimmick reception, intelligent varied storylines including slow turns and non-opponent programmes, evidence-backed useful staff, and a living Backstage. Owner **rejects a click-through “Watch the Show” sequence**; do not build that feature. These are future integrated gameplay requirements, **not** approval to implement, merge, deploy, change the World, or activate cron immediately. Only demonstrated urgent playtest faults may interrupt current milestone order.
 
-**Name collision / true release register:** Original Phase 52 remains **free custom PPV poster uploads**, original Phase 53 remains **wider industry A/B/C**, and original Phase 54 remains **deferred World Updating/recovery**. Newer release labels 52-Corrections and 53-Backstage do not satisfy those original milestones. Owner-released Phase 49–51B went live in PR #100 (12 Nov); corrective #101 and Backstage #102 merged 15 Nov. Phase 54-Playtest is **draft PR #103**, development only on this branch; its certified segment scores, wrestler overness/gimmick reception, multi-person title/results fixes, 4-week calendar and iPhone Backstage work must pass final QA and separately receive deployment approval. The title-history reconciliation must be separately authorised and dry-run first. Do not conflate corrective “Phase 54” with deferred original operational Phase 54.
+**Name collision / true release register:** Original Phase 52 remains **free custom PPV poster uploads**, original Phase 53 now retains **53A rankings/heritage only** (owner removed B/C on 17 Nov), and original Phase 54 remains **deferred World Updating/recovery**. Newer release labels 52-Corrections and 53-Backstage do not satisfy those original milestones. Owner-released Phase 49–51B went live in PR #100 (12 Nov); corrective #101 and Backstage #102 merged 15 Nov. Phase 54-Playtest is **draft PR #103**, development only on this branch; its certified segment scores, wrestler overness/gimmick reception, multi-person title/results fixes, 4-week calendar and iPhone Backstage work must pass final QA and separately receive deployment approval. The title-history reconciliation must be separately authorised and dry-run first. Do not conflate corrective “Phase 54” with deferred original operational Phase 54.
 
-**Execution queue without displacement:** (a) finish and owner-gate corrective Phase 54-Playtest; (b) resume original Phase 52 poster-upload milestone; (c) original Phase 53A World rankings/heritage, 53B working agreements/loans/excursions, 53C joint shows/territory; (d) append 53D/53E/53F below as extensions to the original industry/multi-season phase, with coherent, full playable acceptance; (e) original Phase 54 operational World Updating remains deferred and cron requires a separate explicit GO. Phase 53D–F may be reordered only with a recorded owner decision; planning these now does not silently reprioritise delivery.
+**Previous proposed execution queue — superseded by the specific owner-approved 17 November sequence in §10.** Scope and acceptance definitions for 53D–F below remain valid; 53B/C are no longer planned. World Updating remains deferred and cron requires a separate GO.
 
 ### Phase 53D — Multi-week creative planner and PPV build (PLANNED)
 
@@ -354,3 +359,19 @@ Each future chat can read this document from the repository first rather than re
 - No “Watch the Show / tap next segment” feature. Keep direct full Results with improved factual analysis.
 - Only concrete and verified urgent bugs may interrupt the original execution queue; record any intentional reprioritisation and its approval in this file.
 - No production changes, live Neon writes, release merge, background/scheduled World Lock or cron activation from this planning change. Every milestone needs exact-head browser/unit/disposable-PostgreSQL/World/privacy/Neon acceptance and a distinct release GO.
+
+## 10. 17 November 2026 — definitive owner-approved milestone order and scope removal
+
+The owner specifically **reordered** the creative milestones ahead of the older poster and industry work. This section supersedes all conflicting delivery-order instructions in prior dated entries of this file. It changes the roadmap only, **not** the application, live World or production deployment.
+
+1. **CURRENT — Phase 54-Playtest corrections (PR #103):** finish integrated acceptance, migration/Neon/owner-device readiness and separately request production release approval; historical title recovery remains a separate approval.
+2. **NEXT — Phase 53D:** multi-week booking, advance prepared shows, clear six-week/PPV build progress and credible time-away behaviour (while World Lock remains manual until authorised).
+3. **THEN — Phase 53E:** versatile Programmes including slow turns, non-opponent narratives, alliance/faction journeys and earned payoff.
+4. **THEN — Phase 53F:** wrestler overness/gimmick consequences, evidence-based post-show staff insight, genuine Backstage decisions and settled follow-through.
+5. **THEN — original Phase 52:** zero-KP custom PPV poster upload and storage, with originally approved event-specific lifecycle and security safeguards.
+6. **THEN — original Phase 53A:** actual World rankings, heritage, annual achievements and long-run reputation.
+7. **DEFERRED — original Phase 54:** World Updating, recovery and any possible scheduled operation; a separate, explicit owner authorisation is essential before any cron activation.
+
+**Explicitly removed from future development scope:** original **53B** (working agreements, loans, excursions) and original **53C** (joint shows / co-promoted events and the dependent expansion work). Do not develop them, retain them as dependencies or reintroduce them without a new owner decision. Preserve the historical phase text only to show why they are not pending. Do not remove working simulation mechanics already in the original game as part of this planning decision.
+
+**Execution discipline:** only genuine urgent playtest faults may interrupt this order. The three creative milestones must be developed as complete playable, tested end-to-end additions reusing original modules; planning does not authorise feature deployment. Existing deliberately long test booking window and real player save remain preserved. World Lock cron OFF.
