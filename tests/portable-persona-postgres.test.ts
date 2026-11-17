@@ -59,6 +59,10 @@ test("real World: original portable wrestler identity, authored proposal, cross-
   }).accepted);
   assert.ok(accepted,"At least one ordinary character should be supported by fictional wrestler consent");
   const context={pool:db.pool,actor:{playerId}};
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_people SET overness=77.5,gimmick_reception=84 "+
+   "WHERE world_id=$1 AND person_id=$2",
+   [worldId,personId]));
   const response=await dispatchCardRpc(context,"requestPersona",{
    worldId,promotionId,showId:"unused",requestId:"offer-"+id,
    expectedRevision:0,personId,gimmickId:accepted,playerId:"forged-user"});
@@ -78,9 +82,16 @@ test("real World: original portable wrestler identity, authored proposal, cross-
   assert.equal(view.history[0]!.endedWeekIndex,0);
   assert.equal(view.recentRequests.length,1);
   assert.equal(view.nextPitchWeek,12);
-  assert.equal((await read<{portable_gimmick_id:string}>(
-   "SELECT portable_gimmick_id FROM ppw_people WHERE world_id=$1 AND person_id=$2",
-   [worldId,personId]))[0]!.portable_gimmick_id,accepted);
+  const identity=(await read<{portable_gimmick_id:string;
+   overness:number;gimmick_reception:number}>(
+   "SELECT portable_gimmick_id,overness,gimmick_reception "+
+   "FROM ppw_people WHERE world_id=$1 AND person_id=$2",
+   [worldId,personId]))[0]!;
+  assert.equal(identity.portable_gimmick_id,accepted);
+  assert.equal(identity.overness,77.5,
+   "Changing character never erases earned wrestler overness");
+  assert.equal(identity.gimmick_reception,50,
+   "A genuinely new approved gimmick must earn its own crowd connection");
   await assert.rejects(requestPortablePersonaChange(db.pool,{
    ...scope,personId,gimmickId:"REBEL",requestId:"again-"+id,
    expectedRevision:1}),/12 weeks/);

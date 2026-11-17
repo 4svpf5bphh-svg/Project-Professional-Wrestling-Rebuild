@@ -85,3 +85,26 @@ test("angle rating is certified craft, not wrestler popularity, and booking ment
   assert.equal(value*4,Math.trunc(value*4));
  }
 });
+
+test("overness can get a lesser-known performer over without changing their fame or scripted angle",()=>{
+ const baseline=evaluateAuthoredSegmentCrowd([c])[0]!;
+ const over=evaluateAuthoredSegmentCrowd([{
+  ...c,performers:c.performers.map((p,i)=>({...p,
+   overness:i===0?95:p.popularity}))
+ }])[0]!;
+ assert.ok(over.crowdResponse>baseline.crowdResponse);
+ assert.equal(over.ratingStars,baseline.ratingStars);
+ assert.equal(over.outcome,baseline.outcome);
+});
+test("mentioned-only target contributes no audience or execution score until physically on camera",()=>{
+ const promo={...c,segment:{...c.segment,kind:"PROMO" as const}};
+ const hidden=evaluateAuthoredSegmentCrowd([{
+  ...promo,segment:{...promo.segment,targetPresence:"MENTIONED" as const}
+ }])[0]!;
+ const implicit=evaluateAuthoredSegmentCrowd([promo])[0]!;
+ assert.equal(hidden.crowdResponse,implicit.crowdResponse);
+ const onScreen=evaluateAuthoredSegmentCrowd([{
+  ...promo,segment:{...promo.segment,targetPresence:"ON_SCREEN" as const}
+ }])[0]!;
+ assert.notEqual(onScreen.crowdResponse,hidden.crowdResponse);
+});

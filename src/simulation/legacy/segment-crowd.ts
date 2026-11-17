@@ -44,8 +44,11 @@ export function evaluateAuthoredSegmentCrowd(
    throw new Error("Invalid segment crowd context");
   // A named target in a solo PROMO may be mentioned, not present on camera.
   // Never count their star power or presentation as part of the segment.
+  const absentTarget=segment.targetPresence==="MENTIONED"||
+   (segment.targetPresence===undefined&&
+    ["PROMO","INTERVIEW","CHALLENGE"].includes(segment.kind));
   const ids=[...segment.actorIds,
-   ...(segment.targetPresence==="MENTIONED"?[]:segment.targetIds)];
+   ...(absentTarget?[]:segment.targetIds)];
   if(ids.length===0||ids.some(id=>!performers.some(p=>p.personId===id)))
    throw new Error("Missing segment participant");
   const featured=performers.filter(p=>ids.includes(p.personId));

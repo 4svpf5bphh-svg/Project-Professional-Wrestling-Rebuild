@@ -44,6 +44,15 @@ test("one wrestler dossier uses seven bounded SQL reads, preserves rival privacy
   assert.equal(owned.onYourRoster,true);
   assert.equal(owned.canEdit,true);
   assert.equal(owned.name,"Wrestler 0");
+  assert.ok(owned.overness>=0&&owned.overness<=100);
+  assert.equal(owned.gimmickReception,50,
+   "An unplayed original character starts with neutral reception");
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_people SET overness=82.5,gimmick_reception=68 WHERE world_id=$1 AND person_id='person-0'",
+   [world]));
+  const connected=await readWrestlerProfile(db.pool,scope);
+  assert.equal(connected.overness,82.5);
+  assert.equal(connected.gimmickReception,68);
   assert.equal(owned.contracts.find(c=>c.isYours)?.weeklyGuarantee,18000);
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("INSERT INTO ppw_backstage_memories (world_id,promotion_id,person_id,memory_id,kind,occurred_week_index,importance,source_id) VALUES($1,$2,'person-0','trust-break','PROMISE_BROKEN',0,5,'recorded-breach')",[world,promotionId]);

@@ -35,6 +35,9 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   const exclusive=owned.people.find(x=>x.personId==="person-0")!;
   assert.equal(exclusive.availability,"YOUR_ROSTER");
   assert.equal(exclusive.remainingDates,null);
+  assert.ok(typeof exclusive.overness==="number"&&
+   exclusive.overness>=0&&exclusive.overness<=100,
+   "Old Genesis gets a lazy baseline without a 643-person update");
   // A future agreement is visible with its start date, not as
   // an eligible wrestler on the current week's booking card.
   await withWorldTransaction(db.pool,tx=>tx.query(
@@ -128,6 +131,16 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",limit:500}),/Invalid/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",offset:-1}),/Invalid/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minPopularity:101}),/threshold/);
+  assert.throws(()=>validateDirectoryFilter({view:"MARKET",minOverness:101}),/threshold/);
+  const overOrder=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",sort:"OVERNESS",limit:40});
+  assert.ok(overOrder.people.every((p,i,all)=>i===0||
+   (all[i-1]!.overness??0)>=(p.overness??0)));
+  const gettingOver=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",minOverness:60,limit:40});
+  assert.ok(gettingOver.people.every(p=>(p.overness??0)>=60));
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minPresentation:-1}),/threshold/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minInRing:101}),/threshold/);
   const strongRing=await readWrestlerDirectory(db.pool,
