@@ -25,8 +25,10 @@ test("a ready draft is not falsely advertised as submitted or certified",()=>{
   week(1,25,1,[draft("DRAFT",true)]),
   week(1,26,2,[draft("SUBMITTED",true)])]);
  assert.deepEqual(board.weeks.map(x=>x.state),[
-  "CARD_IN_PROGRESS","READY_TO_SUBMIT","SUBMITTED"]);
+  "CARD_IN_PROGRESS","READY_FOR_LOCK","SUBMITTED"]);
  assert.equal(board.submittedShows,1);
+ assert.equal(board.preparedShows,1);
+ assert.equal(board.needsActionWeeks,1);
  assert.equal(board.unsubmittedWeeks,2);
 });
 
