@@ -63,3 +63,18 @@ test("an unscheduled week is not promoted to a fictional PPV",()=>{
  assert.equal(board.weeks[0]!.premiumName,null);
  assert.equal(board.weeks[0]!.submittedCount,0);
 });
+
+
+test("booked Programme chapters show the same story building over several weeks",()=>{
+ const first={...draft("DRAFT",false),programmeChapters:[
+  {programmeId:"feud",name:"Joe vs Místico",matches:0,segments:1}]};
+ const second={...draft("SUBMITTED",true),programmeChapters:[
+  {programmeId:"feud",name:"Joe vs Místico",matches:1,segments:1}]};
+ const board=buildSixWeekProduction([
+  week(1,24,0,[first]),week(1,25,1,[second])]);
+ assert.equal(board.programmeCount,1);
+ assert.equal(board.programmes[0]?.name,"Joe vs Místico");
+ assert.deepEqual(board.programmes[0]?.chapters,[
+  {year:1,week:24,matches:0,segments:1,submitted:false},
+  {year:1,week:25,matches:1,segments:1,submitted:true}]);
+});
