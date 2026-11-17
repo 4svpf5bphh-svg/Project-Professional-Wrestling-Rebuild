@@ -8,6 +8,8 @@ const overview={
 };
 const session={worldId:"playtest",playerId:"owner",csrfToken:"csrf",overview,
  availablePromotions:[]};
+const weekly={seriesId:"flagship",name:"weekly show",role:"FLAGSHIP",
+ eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:65,active:true};
 const arena={
  venueId:"home-hall",marketId:"home",marketName:"Home market",name:"Town Hall",
  capacity:900,weeklyHireCost:6000,prestige:45,productionSuitability:60,
@@ -19,7 +21,7 @@ function planner(revision:number,showCreated:boolean){
   worldRevision:revision,canEdit:true,homeMarketId:"home",
   venues:[arena],venuePressure:[],
   weeks:[{year:1,week:1,offset:0,required:true,major:false,canEdit:true,
-   scheduled:[],shows:showCreated?[{
+   scheduled:[weekly],shows:showCreated?[{
     draftId:"created-on-server",year:1,week:1,status:"DRAFT",eventType:"REGULAR",
     bookingClass:"REGULAR",showSeriesId:null,showName:"Weekly show",
     day:5,marketId:"home",venueId:"home-hall",marketName:"Home market",
@@ -210,7 +212,7 @@ test("iPhone Planner fixes a signed Thursday TV slot while PPVs default to Satur
   calls.push({method:q.method,...(typeof q.day==="number"?{day:q.day}:{})});
   if(q.method==="planner")return route.fulfill({json:{
    ...planner(4,false),broadcastSlot:slot,
-   weeks:[{...planner(4,false).weeks[0]!,scheduled:[premium]}]
+   weeks:[{...planner(4,false).weeks[0]!,scheduled:[weekly,premium]}]
   }});
   if(q.method==="planShow")return route.fulfill({json:{status:"APPLIED",revision:5,
    result:{draftId:"planned-on-server",status:"CREATED"}}});
@@ -287,7 +289,7 @@ test("Saturday network television moves the PPV weekend default to Sunday",async
    offerCode:"BROADCAST_TV",networkName:"BBS Sports",day:6,hour:20,
    startWeekIndex:0,endWeekIndex:25
   },
-  weeks:[{...planner(4,false).weeks[0]!,scheduled:[premium]}]
+  weeks:[{...planner(4,false).weeks[0]!,scheduled:[weekly,premium]}]
  }}));
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Book PPV · Summer Showdown"}).click();
