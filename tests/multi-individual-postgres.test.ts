@@ -7,12 +7,14 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {resolveCanonicalShow} from "../src/db/resolve-canonical-show.js";
 import {previewArchivedShowMatchScores} from "../src/db/legacy-match-scoring.js";
 import {previewLegacyShowMatchStyles} from "../src/db/legacy-match-projection.js";
+import {deriveCompletedMatchReportFacts} from "../src/db/record-match-report-facts.js";
 const url=process.env.PPW_NEON_TEST_URL;
 for(const count of [3,4]){
  test(`Canonical ${count}-person individual match persists exact participants, title result and career effects once`,
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
   const db=postgresPool(url!,3),world="field-"+count+"-"+randomUUID();
   const promotion="promotion",show="show",ids=["a","b","c","d"].slice(0,count);
+  const ladder=count===3;
   const champ=ids[0]!,winner=ids.at(-1)!;
   try{
    await withWorldTransaction(db.pool,async tx=>{
@@ -40,7 +42,8 @@ for(const count of [3,4]){
     const payload={matchType:"SINGLES",family:"INDIVIDUAL",participants:people,
      sides:people.map((x,i)=>({sideId:"ABCD"[i],participants:[x]})),
      scriptedWinnerSide:"ABCD"[count-1],scriptedWinner:winner,
-     plannedFinish:"CLEAN_PIN",plannedLengthMinutes:22,
+     plannedFinish:ladder?"RETRIEVAL":"CLEAN_PIN",
+     ...(ladder?{stipulation:"LADDER"}:{}),plannedLengthMinutes:22,
      intent:"TECHNICAL",championshipId:"belt"};
     await tx.query(`INSERT INTO ppw_card_slots(
       world_id,draft_id,slot_id,position,kind,payload)
@@ -66,9 +69,15 @@ for(const count of [3,4]){
    assert.equal(styles.projections[0]!.status,"READY");
    const projected=await previewArchivedShowMatchScores(db.pool,scope);
    assert.equal(projected.projections[0]!.multi?.result.members.length,count);
+   assert.deepEqual(deriveCompletedMatchReportFacts(projected)[0]!.personIds,ids,
+    "Every wrestler must reach Road Agent reporting, even in a field match");
    const recorded=await resolveCanonicalShow(db.pool,{...scope,year:1,week:1,
     resolutionId:"multi-1"});
    assert.equal(recorded,"RECORDED");
+   const actual=await withWorldTransaction(db.pool,tx=>tx.query<{actual_finish:string}>(`
+    SELECT actual_finish FROM ppw_completed_show_matches WHERE world_id=$1
+     AND show_id=$2 AND match_id='main'`,[world,show]));
+   assert.equal(actual[0]?.actual_finish,ladder?"RETRIEVAL":"CLEAN_PIN");
    const re=await resolveCanonicalShow(db.pool,{...scope,year:1,week:1,
     resolutionId:"multi-1"});
    assert.equal(re,"IDENTICAL_RETRY");

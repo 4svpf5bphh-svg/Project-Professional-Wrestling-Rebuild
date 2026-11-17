@@ -8,7 +8,7 @@ import {originalGenesisFixture} from "./fixtures/original-genesis.js";
 import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
-import {readSixWeekPlanner,planShowWeek} from "../src/db/planner-workspace.js";
+import {readSixWeekPlanner,planShowWeek,saveCreativeOutline} from "../src/db/planner-workspace.js";
 import {showCardEditorAsActor,saveCardEditorAsActor,markPreparedShowReadyAsActor}
  from "../src/api/world-service.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -102,6 +102,25 @@ test("two human managers retain separate current + six future weeks, protected c
    requestId:"join-b",expectedRevision:revision})).status);
   checked((await submitPromotionClaim(db.pool,{...scopes[1]!,
    requestId:"claim-b",expectedRevision:revision})).status);
+  // One revision-checked, idempotent manager-authored outline for all seven
+  // weeks, private to the owning promotion. No phantom show or wrestlers.
+  const notes=[{year:1,week:1,note:"Establish the title challenger"},
+   {year:1,week:7,note:"PPV resolution if the booking remains valid"}];
+  const version=revision;
+  const savedOutline=await saveCreativeOutline(db.pool,{...scopes[0]!,
+   requestId:"cwa-future-outline",expectedRevision:version,notes});
+  checked(savedOutline.status);
+  const replayOutline=await saveCreativeOutline(db.pool,{...scopes[0]!,
+   requestId:"cwa-future-outline",expectedRevision:version,notes});
+  assert.equal(replayOutline.status,"REPLAYED","Retries cannot duplicate a week note");
+  const kept=await readSixWeekPlanner(db.pool,scopes[0]!);
+  const privateView=await readSixWeekPlanner(db.pool,scopes[1]!);
+  assert.deepEqual(kept.creativeOutline,notes);
+  assert.deepEqual(privateView.creativeOutline,[]);
+  await assert.rejects(saveCreativeOutline(db.pool,{
+   ...scopes[0]!,playerId:scopes[1]!.playerId,
+   requestId:"other-owner-attempt",expectedRevision:revision,notes}),
+   /access denied|not accessible|requires.*owner/i);
   const venues=await Promise.all(scopes.map(scope=>readSixWeekPlanner(db.pool,scope)));
   assert.ok(venues.every(v=>v.weeks.length===7&&v.weeks[6]!.week===7));
   const home=venues.map(v=>v.venues.find(x=>x.home)!);
@@ -192,6 +211,8 @@ test("two human managers retain separate current + six future weeks, protected c
   for(let i=0;i<2;i++){
    const after=await readSixWeekPlanner(db.pool,scopes[i]!);
    assert.equal(after.weeks[0]!.week,2);
+   assert.deepEqual(after.creativeOutline,i===0?[notes[1]!]:[],
+    "Past intent drops from the current view; future intention survives");
    assert.equal(after.weeks[5]!.shows[0]!.draftId,showIds[i]!.get(7));
    assert.equal(after.weeks[5]!.shows[0]!.slots,1);
    assert.equal(after.weeks[5]!.shows[0]!.ready,i===1);

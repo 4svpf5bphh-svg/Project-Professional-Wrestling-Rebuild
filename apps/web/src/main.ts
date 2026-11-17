@@ -345,7 +345,9 @@ function renderSection(){
    const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
    mountPlannerPage(view,scope,back,
     location.hash===plannerCardHash||!!storyFocus,undefined,
-    storyFocus?(showId=>openBooking(showId,storyFocus)):openBooking);
+    (showId,programmeId)=>openBooking(showId,programmeId?{
+     worldId:scope.worldId,promotionId:scope.promotionId,programmeId
+    }:storyFocus));
    break;
   }
   case "card":{
@@ -353,7 +355,8 @@ function renderSection(){
    if(!showId){
     bookingDirty=false;activeBooking=null;
     history.replaceState(null,"",hostSectionHash("planner"));
-    mountPlannerPage(view,scope,back,false,undefined,openBooking);
+    mountPlannerPage(view,scope,back,false,undefined,
+     showId=>openBooking(showId));
    }else{
     activeBooking={worldId:scope.worldId,promotionId:scope.promotionId,showId};
     const storyFocus=readBookingProgrammeFocus(history.state,

@@ -114,7 +114,8 @@ export async function requestPortablePersonaChange(
      JSON.stringify(previous),current[0]?.introduced_week_index??0,
      week,input.promotionId]);
     const altered=await tx.query<{person_id:string}>([
-     "UPDATE ppw_people SET portable_gimmick_id=$3",
+     "UPDATE ppw_people SET portable_gimmick_id=$3,",
+     "gimmick_reception=50",
      "WHERE world_id=$1 AND person_id=$2 RETURNING person_id"
     ].join(" "),[input.worldId,input.personId,input.gimmickId]);
     if(altered.length!==1)throw new Error("Wrestler persona changed during review");

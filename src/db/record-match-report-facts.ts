@@ -26,6 +26,14 @@ export function deriveCompletedMatchReportFacts(
   throw new Error("Incomplete certified programme context");
  return projection.projections.map(p=>{
   const score=p.score;
+  // The legacy scoring adapter carries two representative IDs for any field
+  // match, including triple threats and large tag bouts. The CANONICAL
+  // layout is the complete authoritative participant list for staff reports.
+  const participantIds=p.multi?.layout?.participants?.map(x=>x.personId)??
+   p.tag?.layout?.participants?.map(x=>x.personId)??p.personIds;
+  if(participantIds.length<2||participantIds.length>30||
+   participantIds.some(id=>!id)||new Set(participantIds).size!==participantIds.length)
+   throw new Error("Invalid certified report participant identities");
   const injuries=p.multi?.result.injuries??
    p.tag?.result.injury.injuries??p.injuryPreview?.injuries??[];
   if(!Number.isFinite(score.executionQuality)||
@@ -37,7 +45,7 @@ export function deriveCompletedMatchReportFacts(
     injuries.length>30||
     !Number.isFinite(p.chemistryModifier)||Math.abs(p.chemistryModifier)>100||
     (p.finishCheaterId!==null&&
-      (!p.personIds.includes(p.finishCheaterId)||
+      (!participantIds.includes(p.finishCheaterId)||
        !["DISQUALIFICATION","FOREIGN_OBJECT"].includes(p.plannedFinish))))
 
    throw new Error("Invalid verified match report facts");
@@ -60,7 +68,7 @@ export function deriveCompletedMatchReportFacts(
    p.plannedFinish;
   const recordedCheater=["DISQUALIFICATION","FOREIGN_OBJECT"].includes(actualFinish)?
    p.finishCheaterId:null;
-  return {matchId:p.slotId,personIds:[...p.personIds],ratingStars:score.criticalRatingStars,
+  return {matchId:p.slotId,personIds:[...participantIds],ratingStars:score.criticalRatingStars,
    executionQuality:score.executionQuality,
    chemistryModifier:p.chemistryModifier,
    finishCheaterPersonId:recordedCheater,

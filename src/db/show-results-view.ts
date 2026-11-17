@@ -30,6 +30,8 @@ export interface CompletedMatchBroadcastContext{
 }
 export interface CompletedAngleContext{
  actorNames:string[];targetNames:string[];
+ /** Canonical booking controls whether the named target appears on camera. */
+ targetPresence?:"MENTIONED"|"ON_SCREEN"|null;
  videoPurpose:string|null;stableDecision:"ACCEPTED"|"REJECTED"|null;
  turnTargetAlignment:string|null;
  scene?:AngleScene|null;
@@ -42,6 +44,8 @@ export interface ShowResultEntry{
  matchContext?:CompletedMatchBroadcastContext;
  fallout?:BroadcastFallout;
  segmentKind?:string;
+ /** Certified on-screen delivery, distinct from spectator response. */
+ segmentRatingStars?:number;
  segmentContext?:CompletedAngleContext;
  performerIdentities?:BroadcastIdentity[];
  /** Programme history as it stood when this broadcast occurred. */
@@ -372,6 +376,8 @@ export async function readCompletedShowView(
    const decision=story?.stableDecision??angle.stableDecision;
    const segmentContext:CompletedAngleContext={
     actorNames,targetNames,
+    targetPresence:angle.targetPresence==="MENTIONED"||
+     angle.targetPresence==="ON_SCREEN"?angle.targetPresence:null,
     scene:angle.scene===undefined?null:isAngleScene(angle.scene,segment.kind)?angle.scene:null,
     videoPurpose:typeof angle.videoPurpose==="string"?angle.videoPurpose:null,
     stableDecision:decision==="ACCEPTED"||decision==="REJECTED"?decision:null,
@@ -382,6 +388,8 @@ export async function readCompletedShowView(
     headline:story?.headline??human(segment.kind),
     summary:story?.summary??"Authored outcome: "+human(segment.outcome)+".",
     crowdResponse:segment.crowdResponse,outcome:segment.outcome,
+    ...(segment.ratingStars!==undefined?
+     {segmentRatingStars:segment.ratingStars}:{}),
     actorIds:story?[...story.actorIds]:[],targetIds:story?[...story.targetIds]:[],
     intent:story?.intent??null,segmentKind:segment.kind,segmentContext,
     programmeChapters:programmesBySlot.get(segment.slotId)??[],

@@ -166,7 +166,7 @@ test("Ringside recovers bad I Quit prose without losing Cage, First Blood or Cas
 });
 
 test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls",()=>{
- assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v8");
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v9");
  assert.match(ringsideStipulationNote("I Quit Match · SINGLES")!.winningCondition,/VERBALLY/);
  assert.match(ringsideStipulationNote("Steel Cage · SINGLES")!.plausibleAction,/Steel mesh/);
  const quit:CompletedShowView={...example,entries:[{
@@ -275,4 +275,69 @@ test("Ringside avoids invented steel-cage roofs without banning actual mesh cont
  }
  const possible="Omega pushed the opponent into the chain-link mesh, then dragged them to the mat for a legal three-count.";
  assert.doesNotThrow(()=>validateRingsideCopy(article(possible),cage));
+});
+
+
+// Playtest reality checks: a mentioned wrestler must not become a surprise
+// physical cast member, and glossy AI cannot create traits or championship wins.
+test("Groq cannot make a promo target appear, reply or land a move off-camera",()=>{
+ const show:CompletedShowView={...example,entries:[{
+  ...example.entries[1]!,segmentKind:"PROMO",
+  segmentContext:{actorNames:["Samoa Joe"],targetNames:["Místico"],
+   videoPurpose:null,stableDecision:null,turnTargetAlignment:null},
+  performerIdentities:[{personId:"joe",ringName:"Samoa Joe",
+   character:"The Samoan Submission Machine",style:"POWER",
+   signatureMoves:["Muscle Buster"],finishingMoves:["Coquina Clutch"],
+   source:"WORLD_RECORD"}]
+ }]};
+ const article=(recap:string)=>({showHeadline:"Joe calls for answers",
+  opening:"An audience waited for an answer.",closing:"Joe made his intentions clear.",
+  slots:[{slotId:"angle-1",headline:"Joe sends a warning",recap}]});
+ assert.doesNotThrow(()=>validateRingsideCopy(
+  article("Samoa Joe called out Místico and made his demand over the microphone."),show));
+ for(const bad of [
+  "Joe's challenge rang out. Místico answered with a Plancha from the ramp.",
+  "Samoa Joe spoke, with Místico's mask glinting from the entrance ramp.",
+  "Místico stepped into the ring and interrupted Samoa Joe.",
+  "Místico raised his arms before Samoa Joe finished speaking."
+ ])
+  assert.throws(()=>validateRingsideCopy(article(bad),show),
+   /off-screen promo target appearance/);
+});
+test("Groq cannot invent signature physical defects or gold that never changed hands",()=>{
+ const article=(recap:string)=>({...valid,slots:[
+  {...valid.slots[0]!,recap},valid.slots[1]!]});
+ assert.throws(()=>validateRingsideCopy(article(
+  "Omega was dragged down by his signature roundhouse limp."),example),
+  /physical traits/);
+ assert.throws(()=>validateRingsideCopy(article(
+  "Omega finished the match, eyes shining as he stood up."),example),
+  /physical traits/);
+ assert.throws(()=>validateRingsideCopy(article(
+  "Omega captured Intercontinental Gold in the closing stretch."),example),
+  /championship change/);
+ assert.doesNotThrow(()=>validateRingsideCopy(article(
+  "Omega climbed the ladder for a near fall but did not capture a title. "+
+  "The official match ended by a clean pin."),example));
+});
+
+test("Ringside permits physically staged promo targets but never fabricates a mentioned-only entrance",()=>{
+ const base=example.entries[1]!;
+ const segment={...base,segmentKind:"PROMO",
+  segmentContext:{actorNames:["Samoa Joe"],targetNames:["Místico"],
+   targetPresence:"ON_SCREEN" as const,videoPurpose:null,
+   stableDecision:null,turnTargetAlignment:null}};
+ const scene:CompletedShowView={...example,entries:[segment]};
+ const article=(recap:string)=>({
+  showHeadline:"Joe speaks to the crowd",opening:"The issue came to the ring.",
+  closing:"The promo ended in front of the audience.",
+  slots:[{slotId:segment.slotId,headline:"Joe's confrontation",recap}]
+ });
+ const onScreen=article("Místico stepped into the ring while Samoa Joe addressed the crowd.");
+ assert.doesNotThrow(()=>validateRingsideCopy(onScreen,scene));
+ const spokenOnly:CompletedShowView={...scene,entries:[{
+  ...segment,segmentContext:{...segment.segmentContext,targetPresence:"MENTIONED"}
+ }]};
+ assert.throws(()=>validateRingsideCopy(onScreen,spokenOnly),
+  /off-screen promo target appearance/);
 });

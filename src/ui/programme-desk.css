@@ -608,3 +608,19 @@
 .ppw-programme-medical-hold strong{color:#fff3de;font-size:13px}
 .ppw-programme-medical-hold span,.ppw-programme-medical-hold small{
  color:#ffdbb7;font-size:12px;line-height:1.4}
+
+/* No separate World score or fetched graph: certified feud chapters in the
+ * already-loaded Programme workspace show week-over-week crowd direction. */
+.ppw-programme-crowd-trend{display:grid;gap:3px;min-width:0;
+ padding:10px 12px;margin:7px 0 9px;
+ background:#173047;border:1px solid #496b82;border-radius:10px}
+.ppw-programme-crowd-trend strong{
+ font-size:12px;line-height:1.4;font-weight:850;color:#effbff}
+.ppw-programme-crowd-trend span{
+ font-size:11px;line-height:1.4;color:#b7d5e4;overflow-wrap:anywhere}
+.ppw-programme-crowd-trend[data-direction=rising]{
+ border-left:3px solid #7ce8bd}
+.ppw-programme-crowd-trend[data-direction=rising] span{color:#a4f6d8}
+.ppw-programme-crowd-trend[data-direction=cooling]{
+ border-left:3px solid #f8a69e}
+.ppw-programme-crowd-trend[data-direction=cooling] span{color:#ffcbcb}

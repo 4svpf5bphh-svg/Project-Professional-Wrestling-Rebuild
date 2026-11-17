@@ -32,9 +32,14 @@ test("Roster and talent market validate paging, offer rights and two-query direc
    {view:"ROSTER",limit:40});
   assert.equal(owned.people.length,15);
   assert.ok(owned.people.every(x=>x.contractId!==null));
+  assert.ok(owned.people.every(x=>x.estimatedWeeklyValue===null),
+   "Signed talent has contract terms, not an unnecessary market valuation projection");
   const exclusive=owned.people.find(x=>x.personId==="person-0")!;
   assert.equal(exclusive.availability,"YOUR_ROSTER");
   assert.equal(exclusive.remainingDates,null);
+  assert.ok(typeof exclusive.overness==="number"&&
+   exclusive.overness>=0&&exclusive.overness<=100,
+   "Old Genesis gets a lazy baseline without a 643-person update");
   // A future agreement is visible with its start date, not as
   // an eligible wrestler on the current week's booking card.
   await withWorldTransaction(db.pool,tx=>tx.query(
@@ -52,6 +57,8 @@ test("Roster and talent market validate paging, offer rights and two-query direc
    {view:"MARKET",search:"Wrestler 87",division:"WOMEN",limit:5});
   assert.deepEqual(young.people.map(x=>x.personId),["person-87"]);
   assert.equal(young.people[0]!.availability,"FREE_AGENT");
+  assert.ok(typeof young.people[0]!.estimatedWeeklyValue==="number",
+   "Recruitment still carries the original market valuation");
   // Affordability shares the existing two-query directory read.
   assert.equal(owned.offerBudget,null);
   assert.equal(young.offerBudget?.cash,5_000_000);
@@ -128,6 +135,16 @@ test("Roster and talent market validate paging, offer rights and two-query direc
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",limit:500}),/Invalid/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",offset:-1}),/Invalid/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minPopularity:101}),/threshold/);
+  assert.throws(()=>validateDirectoryFilter({view:"MARKET",minOverness:101}),/threshold/);
+  const overOrder=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",sort:"OVERNESS",limit:40});
+  assert.ok(overOrder.people.every((p,i,all)=>i===0||
+   (all[i-1]!.overness??0)>=(p.overness??0)));
+  const gettingOver=await readWrestlerDirectory(db.pool,
+   {worldId:world,playerId:player,promotionId},
+   {view:"ROSTER",minOverness:60,limit:40});
+  assert.ok(gettingOver.people.every(p=>(p.overness??0)>=60));
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minPresentation:-1}),/threshold/);
   assert.throws(()=>validateDirectoryFilter({view:"MARKET",minInRing:101}),/threshold/);
   const strongRing=await readWrestlerDirectory(db.pool,

@@ -345,3 +345,11 @@
  .ppw-home-dashboard>.ppw-home-backstage-action .ppw-home-icon,
  .ppw-home-dashboard>.ppw-home-backstage-action .ppw-home-arrow{display:flex!important}
 }
+
+/* Real certified last-show comparison on Home; no extra page request. */
+.ppw-home-rival-scoreboard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+.ppw-home-rival-stat{min-width:0;display:grid;gap:4px;align-content:start;background:#142e49;border:1px solid #4c7990;border-radius:12px;padding:10px}
+.ppw-home-rival-stat small{font-size:10px;font-weight:750;letter-spacing:.05em;color:#a8dce9}
+.ppw-home-rival-stat b{font-size:25px;line-height:1.1;color:#f8d88d}
+.ppw-home-rival-stat span{font-size:11px;color:#e4e8f1;overflow-wrap:anywhere;line-height:1.35}
+@media(max-width:350px){.ppw-home-rival-scoreboard{gap:6px}.ppw-home-rival-stat{padding:7px}.ppw-home-rival-stat b{font-size:22px}}

@@ -451,3 +451,98 @@ html[data-ppw-screen="backstage"] #game .ppw-messenger-thread{
  overflow-x:auto!important;overflow-y:hidden!important}
 .ppw-messenger-inbox .ppw-backstage-filters>button{
  flex:0 0 auto!important;white-space:nowrap!important}
+
+/* Phase 54 iPhone playtest corrections. Do not let arrow text wrap into a
+ * vertical column; the identity gets the remaining narrow-screen width. */
+#game .ppw-messenger-thread .ppw-backstage-phone-header{
+ display:grid!important;grid-template-columns:auto 36px minmax(0,1fr) auto!important;
+ align-items:center;gap:7px!important;
+ padding:9px 10px!important;background:#f3f7ff!important;
+ border-bottom:1px solid #c7d7ee!important;color:#172f4e!important}
+#game .ppw-messenger-thread .ppw-backstage-phone-back,
+#game .ppw-messenger-world_thread .ppw-backstage-phone-back{
+ display:inline-flex!important;align-items:center;justify-content:center;
+ width:auto!important;min-width:0!important;max-width:none!important;
+ height:44px!important;min-height:44px!important;
+ font-size:14px!important;line-height:1.1!important;font-weight:800!important;
+ color:#1555a7!important;padding:0 4px!important;
+ white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important;
+ flex:0 0 auto!important}
+#game .ppw-messenger-thread .ppw-backstage-phone-identity{
+ min-width:0!important;max-width:100%;overflow:hidden;display:grid}
+#game .ppw-messenger-thread .ppw-backstage-phone-identity strong{
+ color:#19334c!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#game .ppw-messenger-thread .ppw-backstage-phone-identity small{
+ color:#587089!important}
+#game .ppw-messenger-thread .ppw-backstage-phone-details{
+ margin:0!important;min-width:0!important;white-space:nowrap!important;
+ font-size:12px!important;padding:4px!important;color:#1555a7!important}
+#game .ppw-messenger-thread .ppw-backstage-phone-avatar{width:36px;height:36px}
+#game .ppw-messenger-thread .ppw-backstage-current-drive{
+ display:grid!important;gap:4px!important;
+ margin:8px 12px!important;padding:11px 13px!important;
+ background:#172b43!important;border:1px solid #497a9f!important;color:#f4fbff!important}
+#game .ppw-messenger-thread .ppw-backstage-current-drive small{
+ display:block!important;margin:0!important;color:#9bdcff!important}
+#game .ppw-messenger-thread .ppw-backstage-current-drive strong{
+ display:block!important;margin:0!important;opacity:1!important;
+ color:#f4fbff!important;font-size:14px!important;line-height:1.35!important;
+ text-shadow:none!important}
+#game .ppw-messenger-thread .ppw-backstage-current-drive span{
+ display:block!important;margin:0!important;color:#d5e7fa!important;
+ font-size:13px!important;line-height:1.48!important}
+#game .ppw-messenger-thread .ppw-persona-chat .ppw-persona-in{
+ color:#edf4ff!important}
+#game .ppw-messenger-profile .ppw-gimmick-drawer{
+ display:block;min-width:0;max-width:100%;
+ margin:18px 0!important;padding:12px!important;border-radius:16px;
+ border:1px solid #b6cce4!important;background:#f6f9fe!important;
+ color:#1d354f!important;box-shadow:none!important}
+#game .ppw-messenger-profile .ppw-gimmick-drawer>summary{
+ cursor:pointer;min-height:44px;display:flex;align-items:center;
+ font-size:17px;font-weight:800;line-height:1.3;color:#173a64;
+ overflow-wrap:anywhere}
+#game .ppw-messenger-profile .ppw-gimmick-intro{
+ margin:5px 0 12px;font-size:13px;line-height:1.45;color:#4d6582}
+#game .ppw-messenger-profile .ppw-gimmick-drawer>input[type=search]{
+ width:100%!important;max-width:100%;min-width:0;
+ margin:4px 0 8px!important;min-height:46px;
+ box-sizing:border-box;border:1px solid #a8c1e0!important;
+ border-radius:12px;background:white!important;color:#17304e!important;
+ padding:10px 12px!important;font-size:16px}
+#game .ppw-messenger-profile .ppw-gimmick-pitch-controls{
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ margin:8px 0 12px!important;min-width:0!important;
+ background:#e2edf9!important;border:1px solid #b5cde6!important}
+#game .ppw-messenger-profile .ppw-gimmick-pick-name{
+ color:#203c5d!important;font-size:13px!important}
+#game .ppw-messenger-profile .ppw-gimmick-submit{
+ width:100%!important;text-align:center!important}
+#game .ppw-messenger-profile .ppw-persona-options{
+ max-height:none!important;overflow:visible!important;min-width:0;
+ margin:8px 0 12px!important;grid-template-columns:repeat(2,minmax(0,1fr))}
+#game .ppw-messenger-profile .ppw-gimmick-choice{
+ width:100%;min-width:0!important;overflow-wrap:anywhere;
+ background:#e4edf8!important;color:#172e4e!important;
+ border:1px solid #b7c8e3!important;border-radius:12px!important;
+ box-shadow:none!important}
+#game .ppw-messenger-profile .ppw-gimmick-choice strong{color:#183354!important}
+#game .ppw-messenger-profile .ppw-gimmick-choice small{color:#426087!important}
+#game .ppw-messenger-profile .ppw-gimmick-choice span{color:#3b536e!important}
+#game .ppw-messenger-profile .ppw-gimmick-choice[aria-pressed=true]{
+ background:#c4e1f6!important;border:2px solid #207bd0!important}
+#game .ppw-messenger-profile .ppw-gimmick-more{
+ width:100%;min-height:44px;text-align:center;color:#164f9e;
+ background:#eaf2fe;border:1px solid #b5c8e4;border-radius:12px;
+ padding:10px;font-weight:750}
+@media(max-width:390px){
+ #game .ppw-messenger-thread .ppw-backstage-phone-header{
+  grid-template-columns:auto 32px minmax(0,1fr) auto!important;
+  gap:5px!important;padding:8px 7px!important}
+ #game .ppw-messenger-thread .ppw-backstage-phone-back{
+  padding:0 2px!important;font-size:13px!important}
+ #game .ppw-messenger-thread .ppw-backstage-phone-avatar{
+  width:32px;height:32px;font-size:11px}
+ #game .ppw-messenger-profile .ppw-persona-options{
+  grid-template-columns:minmax(0,1fr)!important}
+}

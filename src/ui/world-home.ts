@@ -269,8 +269,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     "WORLD RANK · Standings",
     "See where your promotion stands by broadcast reach.",port.industry,"◆"));
    root.append(dashboard);
-   // A circuit rival exists even when neither small promotion has a TV deal.
-   // This is a saved World-level matchup, not a fictional same-slot TV fight.
+   // An officially reviewed or provisional same-scale circuit rival exists
+   // even without TV. Compare only certified data, never fictional airtime.
    const competition=promotion.competition;
    const circuit=el("section","ppw-home-competition");
    circuit.setAttribute("aria-label","Your current promotional competition");
@@ -286,8 +286,28 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      "Recent average attendance: "+Math.round(competition.ownAvgAttendance).toLocaleString("en-GB")+
       " vs "+Math.round(competition.rivalAvgAttendance).toLocaleString("en-GB"):
      "Compare recent show results, reach and industry growth.";
-    circuit.append(el("p","ppw-home-competition-note",note));
-    circuit.append(el("small","ppw-home-competition-review",
+    const me=competition.ownLatestShow,theirs=competition.rivalLatestShow;
+    if(me&&theirs){
+     const pulse=el("div","ppw-home-rival-scoreboard");
+     const stat=(label:string,show:typeof me)=>{
+      const tile=el("div","ppw-home-rival-stat");
+      tile.append(el("small","",label),
+       el("b","",Math.round(show.crowdResponse)+"/100"),
+       el("span","",show.showName+" · Y"+show.year+" W"+show.week));
+      if(typeof show.tvRating==="number")
+       tile.append(el("small","",show.tvRating.toFixed(2)+" TV rating"));
+      return tile;
+     };
+     pulse.append(stat("YOUR LATEST SHOW",me),stat("RIVAL'S LATEST SHOW",theirs));
+     circuit.append(pulse);
+     circuit.append(el("p","ppw-home-competition-note",
+      "Certified crowd response from each company's latest show. "+
+      "Different dates or broadcast slots are not a head-to-head audience battle."));
+    }else circuit.append(el("p","ppw-home-competition-note",note));
+    if(competition.provisional)
+     circuit.append(el("small","ppw-home-competition-review",
+      "Provisional peer based on company size and reach · World review pending"));
+    else circuit.append(el("small","ppw-home-competition-review",
      "Last circuit review · Year "+(Math.floor(competition.reviewedWeekIndex/52)+1)+
       ", Week "+(competition.reviewedWeekIndex%52+1)));
     if(competition.targetName&&competition.targetName!==competition.name)

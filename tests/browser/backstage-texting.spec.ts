@@ -148,3 +148,69 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-bottom-navigation")).toBeHidden();
  });
 }
+
+/** A real iPhone must never split the Chats back button into vertical text,
+ * hide the current motivation's title or show 24 gimmick tiles by default. */
+for(const width of [320,390]){
+ test("Backstage private header and opt-in gimmick composer are readable at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const overview={world:{id:"world",revision:12,name:"Genesis",year:1,week:23,
+   phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"mine",name:"CWA",tier:"LOCAL",
+    cash:250000,debt:0,lastWeeklyNet:1000,financialDistress:"HEALTHY"}};
+  const roster=[{personId:"worker",name:"Masha Slamovich",isCurrent:true,
+   morale:64,momentum:40,fatigue:15,status:"ACTIVE",careerStage:"ESTABLISHED",
+   latestIncoming:{request_id:"c-23",kind:"CONTRACT",status:"PENDING",
+    created_week_index:22,read_week_index:22,archived:false}}];
+  const archetypes=Array.from({length:12},(_,i)=>({id:"gimmick-"+i,
+   label:"Character "+i,familyLabel:"Family "+i,description:"Concept "+i}));
+  await page.route("**/api/session",r=>r.fulfill({json:{
+   worldId:"world",playerId:"owner",csrfToken:"opaque",overview,
+   availablePromotions:[]}}));
+  await page.route("**/api/card",r=>{
+   const q=r.request().postDataJSON() as {method:string;personId?:string};
+   if(q.method==="backstage")return r.fulfill({json:{
+    personId:q.personId==="worker"?"worker":null,
+    personName:q.personId==="worker"?"Masha Slamovich":"",
+    worldYear:1,worldWeek:23,worldRevision:12,canEdit:true,
+    roster,conversations:[],memories:[],history:[],recentRequests:[],
+    persona:q.personId==="worker"?{personaName:"Masha Slamovich",
+     gimmickId:"hero",primaryStyle:"POWER",secondaryStyle:null,
+     signatureMoves:[],finishingMoves:[]}:null,
+    archetypes,documentedAlternates:[],nextPitchWeek:0
+   }});
+   return r.fulfill({json:{readCount:0}});
+  });
+  await page.goto("/#/backstage");
+  await page.getByRole("button",{name:/Masha Slamovich/}).click();
+  const back=page.getByRole("button",{name:"Back to messages"});
+  await expect(back).toBeVisible();
+  const rect=await back.boundingBox();expect(rect).not.toBeNull();
+  expect(rect!.width).toBeGreaterThan(48);
+  expect(rect!.height).toBeLessThanOrEqual(47);
+  const style=await back.evaluate(el=>({
+   ws:getComputedStyle(el).whiteSpace,break:getComputedStyle(el).wordBreak}));
+  expect(style.ws).toBe("nowrap");
+  expect(style.break).toBe("keep-all");
+  await expect(page.getByRole("button",{name:"View Masha Slamovich wrestler dossier"}))
+   .toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+  await back.click();
+  await page.getByRole("button",{name:"People",exact:true}).click();
+  const drawer=page.locator(".ppw-gimmick-drawer");
+  await expect(drawer).toBeVisible();
+  await expect(drawer).not.toHaveAttribute("open");
+  await expect(page.locator(".ppw-gimmick-choice").first()).toBeHidden();
+  await drawer.locator("summary").click();
+  await expect(drawer).toHaveAttribute("open","");
+  await expect(page.locator(".ppw-gimmick-choice")).toHaveCount(6);
+  await page.getByRole("button",{name:"Browse more gimmicks"}).click();
+  await expect(page.locator(".ppw-gimmick-choice")).toHaveCount(12);
+  await page.locator(".ppw-gimmick-choice").filter({hasText:"Character 7"}).click();
+  await expect(drawer).toHaveAttribute("open","");
+  await expect(page.getByRole("button",{name:"Suggest gimmick"})).toBeEnabled();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+  });
+}

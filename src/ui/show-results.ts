@@ -409,6 +409,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(entry.fallout?.ratingStars!==undefined)
    append(meta,node("span","ppw-result-rating",
     "★ "+entry.fallout.ratingStars.toFixed(2)+" / 5"));
+  if(entry.type==="SEGMENT"&&entry.segmentRatingStars!==undefined)
+   append(meta,node("span","ppw-result-angle-grade",
+    "SEGMENT ★ "+entry.segmentRatingStars.toFixed(2)+" / 5"));
   if(entry.fallout?.actualMinutes!==undefined)
    append(meta,node("span","ppw-result-minutes",
     entry.fallout.actualMinutes+" MIN"));
@@ -542,7 +545,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   node("h3","","What needs your attention"),
   node("p","","These are recorded events from this show, not automatic orders. "+
    "You decide what to carry forward."));
- management.append(intro);
+ if(handoff.actions.length)management.append(intro);
  const choices=node("div","ppw-next-show-actions");
  for(const task of handoff.actions){
   const item=node("article","ppw-next-show-choice");
@@ -576,7 +579,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(actionRow.childElementCount)item.append(actionRow);
   choices.append(item);
  }
- management.append(choices);
+ if(handoff.actions.length)management.append(choices);
  if(report){
   const office=node("div","ppw-post-show-road-agent");
   office.append(node("span","ppw-eyebrow","FROM THE LOCKER ROOM"),
@@ -640,6 +643,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  // All three chapters reuse one immutable completed show; no extra reads.
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
  let premiumOpening:HTMLElement|null=null;
+ let televisionOpening=false;
  // A permanent television identity, before the actual Results Skin report.
  // The certified narrative, manager analysis and results are untouched.
  if(poster){
@@ -665,9 +669,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(opening){
    const wrap=node("section","ppw-tv-opening-wrap");
    wrap.append(opening);headlines.append(wrap);
+   televisionOpening=true;
   }
  }
- headlines.append(header,...(featured.length?[highlights]:[]));
+ // The purchased TV opening already names this certified show. Repeating a
+ // second giant title-banner directly below it added no useful information.
+ // Preserve normal Results Skin and PPV header behaviour without a TV frame.
+ headlines.append(...(televisionOpening?[]:[header]),
+  ...(featured.length?[highlights]:[]));
  const full=node("section","ppw-results-page");full.dataset.page="full";
  if(premiumOpening)full.append(premiumOpening);
  else{

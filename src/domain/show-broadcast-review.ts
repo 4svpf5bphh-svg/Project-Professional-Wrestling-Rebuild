@@ -232,7 +232,12 @@ export function reviewCompletedEntry(entry:ShowResultEntry,showId:string):Broadc
     entry.outcome==="INTERRUPTED"?
     "The planned moment was interrupted before completion; the full booked action was not performed.":
     performed??"The segment went ahead as authored.",
-   reactionText+" "+opinion];
+   reactionText+" "+opinion+
+    (entry.segmentRatingStars===undefined?"":
+     entry.segmentRatingStars*20>=entry.crowdResponse+15?
+      " The performers delivered more than the live crowd gave back.":
+     entry.crowdResponse>=entry.segmentRatingStars*20+15?
+      " The crowd reaction outstripped the segment's execution.":"")];
  }else{
   const context=entry.matchContext;
   const billing=context?.sides.map(side=>side.join(" & ")).join(" vs ");

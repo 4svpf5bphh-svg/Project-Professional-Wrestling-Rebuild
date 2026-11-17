@@ -10,6 +10,7 @@ import {evaluateProgrammeReview} from "../domain/programme-review.js";
 import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
 import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {describeProgrammeChapter} from "./programme-chapter-summary.js";
+import {readProgrammeCrowdTrend} from "../domain/programme-crowd-trend.js";
 import {describeWrestlerStory} from "../domain/programme-story-spine.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {wrestlerInitials} from "./wrestler-card.js";
@@ -272,6 +273,24 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    const currentIndex=(view.year-1)*52+view.week-1;
    const ageNow=p.startedWeekIndex===null?null:Math.max(0,currentIndex-p.startedWeekIndex);
    const latestBeat=p.recentActivity[0];
+   const crowdTrend=readProgrammeCrowdTrend(p.recentActivity);
+   if(crowdTrend){
+    const row=element("div","ppw-programme-crowd-trend");
+    row.dataset.direction=crowdTrend.direction.toLowerCase();
+    row.append(element("strong","",
+     "Crowd connection · "+crowdTrend.latestCrowd+"/100"));
+    const trajectory=crowdTrend.delta===null?
+     "First certified show · More weeks needed for a trend":
+     crowdTrend.direction==="RISING"?
+      "Getting over · +"+crowdTrend.delta+" vs previous recorded week":
+     crowdTrend.direction==="COOLING"?
+      "Cooling · "+crowdTrend.delta+" vs previous recorded week":
+      "Holding steady · "+(crowdTrend.delta>0?"+":"")+
+       crowdTrend.delta+" vs previous recorded week";
+    row.append(element("span","",trajectory));
+    row.title="Certified crowd response grouped by show week, separate from rivalry heat";
+    glance.append(row);
+   }
    const lastCertifiedMatch=p.recentActivity.find(x=>x.kind==="MATCH");
    const sideAName=p.sideA.map(x=>x.name).join(" & ");
    const sideBName=p.sideB.map(x=>x.name).join(" & ");
@@ -372,7 +391,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(view.canEdit&&eligible.length){
     const available=eligible.map(x=>({chapter:x,key:x.showId+"::"+x.slotId}));
     const defaultChapter=available.find(x=>x.chapter.showId===existing?.showId&&
-      x.chapter.slotId===existing?.slotId)??available[0]!;
+      x.chapter.slotId===existing?.slotId)??
+      available.find(x=>x.chapter.premium)??available[0]!;
     const prior=finaleChoices.get(p.programmeId);
     const choice=available.find(x=>x.key===prior?.slotKey)??defaultChapter;
     const choices=variants(choice.chapter);
@@ -386,7 +406,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       p.sideA.map(x=>x.name).join(" & ")+" vs "+p.sideB.map(x=>x.name).join(" & "));
     for(const x of available){
      const opt=document.createElement("option");opt.value=x.key;
-     opt.textContent=x.chapter.showName+" · Y"+x.chapter.year+
+     opt.textContent=x.chapter.showName+(x.chapter.premium?" · PPV":"")+" · Y"+x.chapter.year+
       " W"+x.chapter.week+" · "+(x.chapter.kind==="MATCH"?"Match":
       (x.chapter.segmentKind??"Angle").replaceAll("_"," ").toLowerCase());
      chapterSelect.append(opt);

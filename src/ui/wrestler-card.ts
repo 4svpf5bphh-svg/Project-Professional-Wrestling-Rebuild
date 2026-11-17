@@ -10,6 +10,7 @@ export interface WrestlerCardModel{
  alignment?:string|null;gimmickId?:string|null;primaryStyle?:string|null;
  signatureMove?:string|null;finisherMove?:string|null;
  popularity?:number|null;recognition?:number|null;momentum?:number|null;
+ overness?:number|null;
  inRingQuality?:number|null;matchCraft?:number|null;presentation?:number|null;
  remainingDates?:number|null;available?:boolean;reason?:string|null;
  championships?:readonly string[]|null;
@@ -88,6 +89,11 @@ const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
  const identity=[p.gimmickId?wrestlerLabel(p.gimmickId):null,
   p.primaryStyle?wrestlerLabel(p.primaryStyle):null].filter(Boolean);
  if(identity.length)copy.append(span("ppw-wrestler-identity",identity.join(" · ")));
+ if(typeof p.overness==="number"){
+  const score=span("ppw-wrestler-overness","OVER "+Math.round(p.overness));
+  score.title="Overness: live crowd connection, separate from popularity and momentum";
+  copy.append(score);
+ }
  if(p.championships?.length){
   const belts=span("ppw-wrestler-championship-titles",p.championships.join(" · "));
   belts.title="Current championships";

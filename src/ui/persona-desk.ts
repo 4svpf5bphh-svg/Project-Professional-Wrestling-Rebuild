@@ -81,6 +81,7 @@ export function mountPersonaDesk(root:HTMLElement,
  let scrollToLatest=false;
  let pendingDecision:{conversationId:string;decision:BackstageDecision;revision:number;requestId:string}|null=null;
  let pendingPitch:{personId:string;gimmickId:string;revision:number;requestId:string}|null=null;
+ let gimmickExpanded=false,showAllGimmicks=false;
  // Private read/archive receipts change presentation, not the wrestler's
  // simulation. Keep the current bounded inbox rather than loading it twice.
  function updateIncoming(person:string,
@@ -850,8 +851,15 @@ export function mountPersonaDesk(root:HTMLElement,
   if(cooldown)root.append(el("p","ppw-muted",
    "Reconsideration available in "+(view.nextPitchWeek-now)+" weeks."));
   if(view.canEdit&&!cooldown&&persona){
-   root.append(el("h3","","Pitch a new character"),
-    el("p","ppw-muted","These are creative archetypes, not simple face/heel switches. Your wrestler can accept or reject the pitch, and retains ownership of their identity."));
+   // Pitching a character is deliberate, not a 24-card wall in People.
+   // An accessible collapsed disclosure preserves the current gimmick
+   // while letting managers opt into deeper archetype selection.
+   const drawer=el("details","ppw-gimmick-drawer") as HTMLDetailsElement;
+   drawer.open=gimmickExpanded;
+   drawer.addEventListener("toggle",()=>{gimmickExpanded=drawer.open;});
+   drawer.append(el("summary","","Pitch a new character"),
+    el("p","ppw-gimmick-intro",
+     "Choose a creative archetype. The wrestler can accept or reject it."));
    const filter=document.createElement("input");
    filter.type="search";filter.placeholder="Search gimmicks or families";
    filter.value=search;filter.setAttribute("aria-label","Search gimmick archetypes");
@@ -870,10 +878,11 @@ export function mountPersonaDesk(root:HTMLElement,
      if(perFamily.has(x.familyLabel))return false;
      perFamily.add(x.familyLabel);return true;
     });
-    const matches=(search?eligible:[...featured,...familyFirst.filter(x=>!featured.includes(x)),
-     ...eligible.filter(x=>x.familyLabel==="Classic Wrestling")]).slice(0,24);
+    const ordered=[...featured,...familyFirst.filter(x=>!featured.includes(x)),
+     ...eligible.filter(x=>x.familyLabel==="Classic Wrestling")];
+    const matches=(search?eligible:ordered).slice(0,showAllGimmicks||search?24:6);
     for(const p of matches){
-     const item=button("",()=>{chosen=p.id;render();},loading);
+     const item=button("",()=>{chosen=p.id;gimmickExpanded=true;render();},loading);
      item.classList.add("ppw-gimmick-choice");
      item.append(el("strong","",p.label),el("small","",p.familyLabel),
       el("span","",p.description));
@@ -886,7 +895,7 @@ export function mountPersonaDesk(root:HTMLElement,
    // Keep the actual input node mounted while searching. Replacing the page
    // on every keystroke dismisses the keyboard in iPhone standalone PWAs.
    filter.oninput=()=>{search=filter.value;refreshOptions();};
-   root.append(filter);
+   drawer.append(filter);
    const pitch=el("div","ppw-gimmick-pitch-controls");
    pitch.append(el("span","ppw-gimmick-pick-name",
     chosen?"Pitch: "+(availableArchetypes.find(x=>x.id===chosen)?.label??"Selected"):
@@ -894,8 +903,15 @@ export function mountPersonaDesk(root:HTMLElement,
    const send=button(loading?"Asking wrestler…":"Suggest gimmick →",()=>{
     void request();},loading||!chosen);
    send.classList.add("ppw-gimmick-submit");pitch.append(send);
-   root.append(pitch);
-   refreshOptions();root.append(options);
+   drawer.append(pitch,options);
+   const more=button("Browse more gimmicks",()=>{
+    showAllGimmicks=!showAllGimmicks;
+    more.textContent=showAllGimmicks?"Show fewer gimmicks":"Browse more gimmicks";
+    refreshOptions();
+   });
+   more.classList.add("ppw-gimmick-more");
+   if(availableArchetypes.length>7)drawer.append(more);
+   refreshOptions();root.append(drawer);
   }
   }
   if(pane==="PROFILE")return;

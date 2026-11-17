@@ -19,6 +19,9 @@ test("full card produces match, segment, weighted show and evidence",()=>{
  assert.equal(x.receipt.matches.length,1);
  assert.equal(x.receipt.segments.length,1);
  assert.equal(x.receipt.segments[0]!.outcome,"HAPPENS");
+ assert.ok((x.receipt.segments[0]!.ratingStars??0)>0);
+ assert.equal((x.receipt.segments[0]!.ratingStars??0)*4,
+  Math.trunc((x.receipt.segments[0]!.ratingStars??0)*4));
  assert.equal(x.evidence.length,1);
  assert.ok(x.receipt.crowdResponse>0&&x.receipt.crowdResponse<100);
 });

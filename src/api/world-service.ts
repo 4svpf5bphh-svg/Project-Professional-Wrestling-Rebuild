@@ -4,7 +4,8 @@ import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries,
  type SeriesMutation,type ArchiveSeries} from "../db/calendar-workspace.js";
 import {saveAnnualPremiumPlan,type AnnualPremiumMutation}
  from "../db/annual-premium-calendar.js";
-import {readSixWeekPlanner,planShowWeek,type PlanWeekInput}
+import {readSixWeekPlanner,planShowWeek,saveCreativeOutline,
+ type PlanWeekInput,type CreativeOutlineInput}
  from "../db/planner-workspace.js";
 import {readTagTeamWorkspace,createTagTeam,nameTagTeam,createTrio,
  type CreateTagTeam,type NameTagTeam,type CreateTrio}
@@ -502,6 +503,12 @@ export async function plannerAsActor(context:WorldApiContext,worldId:string,prom
  validate(context.actor.playerId,"actor");validate(worldId,"World");
  validate(promotionId,"promotion");
  return readSixWeekPlanner(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+}
+export async function saveCreativeOutlineAsActor(context:WorldApiContext,
+ input:Omit<CreativeOutlineInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return saveCreativeOutline(context.pool,{...input,playerId:context.actor.playerId});
 }
 export async function planShowAsActor(context:WorldApiContext,
  input:Omit<PlanWeekInput,"playerId">){

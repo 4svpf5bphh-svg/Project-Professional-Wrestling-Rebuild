@@ -13,6 +13,8 @@ import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
 import type {TicketStrategy} from "../domain/legacy-show-economics.js";
 import {commercialCompanyName} from "../domain/commercial-offers.js";
+import {validateCreativeOutline,type CreativeWeekOutline}
+ from "../domain/creative-outline.js";
 
 export interface BroadcastPlannerSlot{
  networkName:string;offerCode:string;day:number;hour:number;
@@ -20,6 +22,9 @@ export interface BroadcastPlannerSlot{
 }
 export type PlannedEventType="REGULAR"|"MAJOR";
 export interface PlannerScope {worldId:string;promotionId:string;playerId:string}
+export interface CreativeOutlineInput extends PlannerScope{
+ requestId:string;expectedRevision:number;notes:CreativeWeekOutline[];
+}
 export interface PlanWeekInput extends PlannerScope {
  requestId:string;expectedRevision:number;year:number;week:number;
  eventType:PlannedEventType;day:number;marketId:string;venueId:string;
@@ -34,6 +39,8 @@ export interface PlannerVenue {
  home:boolean;
 }
 export interface PlannedShow {
+ programmeChapters?:{programmeId:string;name:string;matches:number;
+  segments:number;finalePayoff?:string|null}[];
  draftId:string;year:number;week:number;status:string;eventType:PlannedEventType;
  day:number|null;marketId:string|null;venueId:string|null;
  marketName:string|null;venueName:string|null;ticketStrategy:TicketStrategy|null;
@@ -47,9 +54,11 @@ export interface PlannerWeek {
 export interface PlannerVenuePressure {
  year:number;week:number;day:number;venueId:string;otherPromotions:number;
 }
+export interface ActiveProgrammeOutline {programmeId:string;name:string}
 export interface PlannerView {
  worldName:string;promotionName:string;year:number;week:number;
- worldRevision:number;canEdit:boolean;homeMarketId:string|null;eventPosterStyle?:string|null;broadcastPackage?:string|null;
+ worldRevision:number;canEdit:boolean;creativeOutline:CreativeWeekOutline[];
+ activeProgrammes:ActiveProgrammeOutline[];homeMarketId:string|null;eventPosterStyle?:string|null;broadcastPackage?:string|null;
  venues:PlannerVenue[];weeks:PlannerWeek[];venuePressure:PlannerVenuePressure[];
  broadcastSlot:BroadcastPlannerSlot|null;
 }
@@ -64,7 +73,7 @@ type Owner={world_name:string;promotion_name:string;year:number;week:number;
  revision:string|number;booking_open:boolean;cadence:number;
  premium_plan_start_year:number;annual_plans:unknown;
  major_interval:number|null;home_market_id:string|null;event_poster:string|null;
- broadcast_package:string|null;
+ broadcast_package:string|null;creative_outline:unknown;active_programmes:unknown;
  broadcast_slot:{offerCode:string;day:number|null;hour:number|null;
  startWeekIndex:number;endWeekIndex:number}|null};
 async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
@@ -73,8 +82,33 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
  SELECT w.name AS world_name,p.name AS promotion_name,w.year,w.week,
   w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
-  w.premium_plan_start_year,
+  w.premium_plan_start_year,p.creative_outline,
   p.home_market_id,
+  -- Include active storylines even when no future chapter exists yet. This
+  -- bounded lateral projection reuses the owner read, not a fifth RPC/query.
+  (SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'programmeId',active.programme_id,'name',active.label)
+    ORDER BY active.started_week_index DESC,active.programme_id),'[]'::jsonb)
+   FROM (
+    SELECT pr.programme_id,pr.started_week_index,
+      (SELECT coalesce(string_agg(CASE WHEN ref.side='A' THEN
+         coalesce(person.name,team.name,ref.ref_id) END,' & '
+         ORDER BY ref.position),'Side A') || ' vs ' ||
+       coalesce(string_agg(CASE WHEN ref.side='B' THEN
+         coalesce(person.name,team.name,ref.ref_id) END,' & '
+         ORDER BY ref.position),'Side B')
+       FROM ppw_programme_side_refs ref
+       LEFT JOIN ppw_people person ON person.world_id=ref.world_id
+        AND person.person_id=ref.ref_id AND ref.ref_kind='PERSON'
+       LEFT JOIN ppw_tag_teams team ON team.world_id=ref.world_id
+        AND team.team_id=ref.ref_id AND ref.ref_kind='TEAM'
+       WHERE ref.world_id=pr.world_id AND ref.promotion_id=pr.promotion_id
+        AND ref.programme_id=pr.programme_id) AS label
+    FROM ppw_programmes pr
+    WHERE pr.world_id=w.world_id AND pr.promotion_id=p.promotion_id
+      AND pr.status='ACTIVE'
+    ORDER BY pr.started_week_index DESC NULLS LAST,pr.programme_id LIMIT 16
+   ) active) AS active_programmes,
    (SELECT style FROM ppw_kp_event_poster_styles WHERE player_id=$3) AS event_poster,
    (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$3) AS broadcast_package,
    (SELECT jsonb_build_object('offerCode',d.offer_code,'day',d.airing_day,
@@ -112,11 +146,59 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
    event_type:PlannedEventType|null;show_day:number|null;market_id:string|null;
    venue_id:string|null;ticket_strategy:TicketStrategy|null;
    market_name:string|null;venue_name:string|null;
-   lock_ready_fingerprint:string|null;slots:number;
+   lock_ready_fingerprint:string|null;slots:number;programme_chapters:unknown;
   }>(`
  SELECT d.draft_id,d.year,d.week,d.status,d.booking_class,d.show_series_id,d.show_name,d.event_type,d.show_day,
    d.market_id,d.venue_id,d.ticket_strategy,
    m.name AS market_name,v.name AS venue_name,d.lock_ready_fingerprint,
+   -- Real pre-booked Programme activities in this exact future show, not notes or predictions.
+   -- Reuse the existing indexed draft query: no fifth Planner SQL roundtrip.
+   (SELECT coalesce(jsonb_agg(jsonb_build_object(
+     'programmeId',chapter.programme_id,'name',coalesce(names.name,'Programme'),
+     'matches',chapter.matches,'segments',chapter.segments,
+     'finalePayoff',plannedFinale.payoff)
+     ORDER BY chapter.programme_id),'[]'::jsonb)
+    FROM (
+     SELECT a.programme_id,
+       count(*) FILTER (WHERE a.kind='MATCH')::integer AS matches,
+       count(*) FILTER (WHERE a.kind='SEGMENT')::integer AS segments
+     FROM ppw_programme_match_activities a
+     WHERE a.world_id=d.world_id AND a.promotion_id=d.promotion_id
+       AND a.draft_id=d.draft_id
+     GROUP BY a.programme_id ORDER BY a.programme_id LIMIT 12
+    ) chapter
+    LEFT JOIN LATERAL (
+     SELECT coalesce(string_agg(CASE WHEN refs.side='A' THEN
+       coalesce(person.name,team.name,refs.ref_id) END,', ' ORDER BY refs.position),'Side A')
+       || ' vs ' ||
+       coalesce(string_agg(CASE WHEN refs.side='B' THEN
+       coalesce(person.name,team.name,refs.ref_id) END,', ' ORDER BY refs.position),'Side B')
+       AS name
+     FROM ppw_programme_side_refs refs
+     LEFT JOIN ppw_people person ON person.world_id=refs.world_id
+       AND person.person_id=refs.ref_id AND refs.ref_kind='PERSON'
+     LEFT JOIN ppw_tag_teams team ON team.world_id=refs.world_id
+       AND team.team_id=refs.ref_id AND refs.ref_kind='TEAM'
+     WHERE refs.world_id=d.world_id AND refs.promotion_id=d.promotion_id
+       AND refs.programme_id=chapter.programme_id
+    ) names ON true
+    -- A PPV payoff is an explicit, still-linked author decision, not a
+    -- predicted winner. Once its card slot is removed, stop advertising it.
+    LEFT JOIN LATERAL (
+     SELECT f.payoff
+     FROM ppw_programme_finales f
+     WHERE f.world_id=d.world_id AND f.promotion_id=d.promotion_id
+       AND f.programme_id=chapter.programme_id AND f.show_id=d.draft_id
+       AND f.resolved_week_index IS NULL
+       AND EXISTS (
+        SELECT 1 FROM ppw_programme_match_activities linked
+        WHERE linked.world_id=f.world_id AND linked.promotion_id=f.promotion_id
+          AND linked.programme_id=f.programme_id
+          AND linked.draft_id=f.show_id AND linked.slot_id=f.slot_id
+       )
+     LIMIT 1
+    ) plannedFinale ON true
+   ) AS programme_chapters,
    (SELECT count(*)::integer FROM ppw_card_slots c
     WHERE c.world_id=d.world_id AND c.draft_id=d.draft_id) AS slots
  FROM ppw_booking_drafts d
@@ -128,6 +210,14 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  [s.worldId,s.promotionId,start,start+6]);
  if(drafts.length>72)throw new Error("Planner show count exceeds safe limit");
  const end=dateAt(start+6);
+ // Old intentions may remain in the compact JSON after World advances.
+ // Read only the seven current weeks; never reinterpret an old note as an event.
+ const creativeOutline=Array.isArray(owned.creative_outline)?
+  owned.creative_outline.filter((x):x is CreativeWeekOutline=>
+   x!==null&&typeof x==="object"&&
+   Number.isSafeInteger(x.year)&&Number.isSafeInteger(x.week)&&
+   typeof x.note==="string"&&x.note.length>0&&x.note.length<=240&&
+   weekIndex(x.year,x.week)>=start&&weekIndex(x.year,x.week)<=start+6).slice(0,7):[];
  const venues=await tx.query<{
   venue_id:string;market_id:string;market_name:string;name:string;
   capacity:number;weekly_hire_cost:string|number;
@@ -219,6 +309,13 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  return {
   worldName:owned.world_name,promotionName:owned.promotion_name,
   year:owned.year,week:owned.week,worldRevision:Number(owned.revision),
+  creativeOutline,
+  activeProgrammes:Array.isArray(owned.active_programmes)?
+   owned.active_programmes.filter((item):item is ActiveProgrammeOutline=>
+    item!==null&&typeof item==="object"&&!Array.isArray(item)&&
+    typeof item.programmeId==="string"&&item.programmeId.length>0&&
+    item.programmeId.length<=200&&typeof item.name==="string"&&
+    item.name.length>0&&item.name.length<=300).slice(0,16):[],
   canEdit:owned.booking_open,homeMarketId:owned.home_market_id,eventPosterStyle:owned.event_poster,
    broadcastPackage:owned.broadcast_package,
   broadcastSlot:owned.broadcast_slot&&owned.broadcast_slot.day!==null&&
@@ -252,6 +349,13 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
     scheduled:due,
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
      bookingClass:d.booking_class,showSeriesId:d.show_series_id,
+     programmeChapters:Array.isArray(d.programme_chapters)?d.programme_chapters.filter(
+      (chapter):chapter is {programmeId:string;name:string;matches:number;
+       segments:number;finalePayoff:string|null}=>
+       chapter!==null&&typeof chapter==="object"&&
+       typeof chapter.programmeId==="string"&&typeof chapter.name==="string"&&
+       Number.isInteger(chapter.matches)&&Number.isInteger(chapter.segments)&&
+       (chapter.finalePayoff===null||typeof chapter.finalePayoff==="string")).slice(0,12):[],
       posterStyle:scheduled.find(x=>x.seriesId===d.show_series_id)?.posterStyle??null,
      showName:d.show_name??scheduled.find(x=>x.seriesId===d.show_series_id)?.name??
       (d.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
@@ -386,5 +490,28 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
      selected?.importance??70]);
    if(created.length!==1)throw new Error("Show draft was not created");
    return {draftId,year:input.year,week:input.week,status:"CREATED" as const};
+  }});
+}
+
+/** One explicit player command saves the entire bounded six-week outline.
+ * These notes never change a booked show, wrestler, programme or World result.
+ * Updates are replay-safe, signed-owner scoped, and share World revision checks.
+ */
+export async function saveCreativeOutline(pool:TransactionPool,input:CreativeOutlineInput){
+ checkScope(input);
+ if(!id(input.requestId)||!Number.isSafeInteger(input.expectedRevision))
+  throw new Error("Invalid creative outline request");
+ return applyWorldCommand(pool,{worldId:input.worldId,playerId:input.playerId,
+  requestId:input.requestId,expectedRevision:input.expectedRevision,
+  commandType:"SAVE_CREATIVE_OUTLINE",requiresOpenWeek:true,execute:async tx=>{
+   const auth=await owner(tx,input);
+   if(!auth.booking_open)
+    throw new Error("Creative planning is closed during World Lock");
+   const notes=validateCreativeOutline(input.notes,auth.year,auth.week);
+   await tx.query(`
+    UPDATE ppw_promotions SET creative_outline=$3::jsonb
+    WHERE world_id=$1 AND promotion_id=$2
+   `,[input.worldId,input.promotionId,JSON.stringify(notes)]);
+   return {notes,status:"SAVED" as const};
   }});
 }

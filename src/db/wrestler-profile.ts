@@ -28,7 +28,8 @@ type Person={
  career_stage:string|null;biological_age:number|null;
  career_experience:number|null;generated_talent:boolean;debut_week_index:number|null;
  popularity:number|null;recognition:number|null;
- momentum:number|null;morale:number|null;in_ring_quality:number|null;
+ momentum:number|null;overness:number;gimmick_reception:number;
+ morale:number|null;in_ring_quality:number|null;
  match_craft:number|null;presentation:number|null;stamina:number|null;
  safety:number|null;fatigue:number|null;wear:number|null;
  portable_gimmick_id:string|null;default_alignment:string|null;
@@ -56,7 +57,11 @@ const authorised=async(tx:SqlRows,s:ProfileScope)=>{
 const personSql=String.raw`
  SELECT p.person_id,p.name,p.status,p.booking_division,p.career_stage,
   p.biological_age,p.career_experience,p.generated_talent,p.debut_week_index,
-  p.popularity,p.recognition,p.momentum,p.morale,p.in_ring_quality,
+  p.popularity,p.recognition,p.momentum,
+  COALESCE(p.overness,COALESCE(p.popularity,50)*0.55+
+    COALESCE(p.momentum,50)*0.45) AS overness,
+  COALESCE(p.gimmick_reception,50) AS gimmick_reception,
+  p.morale,p.in_ring_quality,
   p.match_craft,p.presentation,p.stamina,p.safety,p.fatigue,p.wear,
   p.portable_gimmick_id,p.default_alignment,
   coalesce(aligned.alignment,p.default_alignment) AS alignment,
@@ -219,6 +224,7 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
     medicalWeeksRemaining:p.medical_clearance_week_index===null?null:
      p.medical_clearance_week_index-auth.currentWeekIndex,
    popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
+   overness:p.overness,gimmickReception:p.gimmick_reception,
    morale:p.morale,inRingQuality:p.in_ring_quality,matchCraft:p.match_craft,
    presentation:p.presentation,stamina:p.stamina,safety:p.safety,
    fatigue:p.fatigue,wear:p.wear,alignment:effectiveWrestlerAlignment(auth.seed,p.person_id,p.default_alignment,p.alignment),

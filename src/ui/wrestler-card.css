@@ -138,3 +138,9 @@
  .ppw-wrestler-card:where(button):not(:disabled):active{transform:scale(.992)}
  .ppw-wrestler-card:where(button):hover{border-color:#78d8ff}
 }
+
+.ppw-wrestler-card .ppw-wrestler-overness{order:3;display:inline-flex;
+ align-self:flex-start;max-width:100%;align-items:center;
+ padding:3px 7px;border:1px solid #75b994;border-radius:6px;
+ color:#b4ffe1;background:#214b46;font-weight:850;font-size:10px;
+ font-variant-numeric:tabular-nums}

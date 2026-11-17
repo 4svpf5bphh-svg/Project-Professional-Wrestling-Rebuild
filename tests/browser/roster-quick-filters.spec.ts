@@ -10,17 +10,17 @@ const people=[
  {personId:"rose",name:"Rose Sinclair",ringName:"Rose Sinclair",
   division:"WOMEN",alignment:"FACE",championships:["Women's World"],
   roleExpectation:"MAIN_EVENT",availability:"YOUR_ROSTER",popularity:88,
-  recognition:87,momentum:79,remainingDates:18,medicalWeeksRemaining:null,
+  recognition:87,momentum:79,overness:83,remainingDates:18,medicalWeeksRemaining:null,
   startsInWeeks:0,weeklyGuarantee:3000,appearanceFee:0},
  {personId:"joe",name:"Samoa Joe",ringName:"Samoa Joe",
   division:"MEN",alignment:"HEEL",championships:[],
   roleExpectation:"FEATURED",availability:"YOUR_ROSTER",popularity:81,
-  recognition:79,momentum:75,remainingDates:0,medicalWeeksRemaining:null,
+  recognition:79,momentum:75,overness:48,remainingDates:0,medicalWeeksRemaining:null,
   startsInWeeks:0,weeklyGuarantee:2000,appearanceFee:0},
  {personId:"mason",name:"Mason Cole",ringName:"Mason Cole",
   division:"MEN",alignment:"FACE",championships:[],
   roleExpectation:"REGULAR",availability:"YOUR_ROSTER",popularity:61,
-  recognition:64,momentum:52,remainingDates:null,medicalWeeksRemaining:2,
+  recognition:64,momentum:52,overness:64,remainingDates:null,medicalWeeksRemaining:2,
   startsInWeeks:0,weeklyGuarantee:1500,appearanceFee:0}
 ];
 for(const width of [320,390])test(`${width}px roster quick chips follow booking-picker semantics without another Neon read`,async({page})=>{
@@ -43,6 +43,8 @@ for(const width of [320,390])test(`${width}px roster quick chips follow booking-
  await page.goto("/#/roster");
  const cards=page.locator(".ppw-directory-list .ppw-wrestler-card.ppw-wrestler-roster");
  await expect(cards).toHaveCount(3);
+ await expect(cards.first().locator(".ppw-wrestler-overness")).toBeVisible();
+ await expect(cards.first().locator(".ppw-wrestler-overness")).toContainText("OVER 83");
  const frame=page.locator(".ppw-directory-filters .ppw-talent-controls");
  await expect(frame.locator(":scope > .ppw-talent-search")).toBeVisible();
  await expect(frame.locator(":scope > .ppw-talent-sort-row")).toBeVisible();

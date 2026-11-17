@@ -167,7 +167,9 @@ test("owned premium calendar event uses the purchased animated poster; rivals do
  await expect(poster.locator(".ppw-ep-title")).toHaveText("Indie Cup");
  await expect(poster.locator(".ppw-ep-main")).toHaveText("TO BE ANNOUNCED");
  await page.getByRole("button",{name:"Across the World"}).click();
- await expect(page.getByText("Rival Night")).toBeVisible();
+ await expect(page.locator(".ppw-dynamic-event-heading").filter({
+  hasText:"Rival Night"
+ })).toBeVisible();
  await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(1);
  expect(methods).toEqual(["calendar"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
@@ -228,6 +230,45 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-calendar-tv-slot").first()).toContainText("Fri 20:00");
   await expect(page.locator(".ppw-calendar-occurrence")).toHaveCount(3);
   expect(calls,"Reading recurring TV weeks must not cause more RPC calls").toEqual(["calendar"]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
+
+for(const width of [320,390]){
+ test("four-week calendar displays contracted TV slots and navigates real shows at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const calls:string[]=[];
+  const weeks=Array.from({length:16},(_,i)=>({year:1,week:5+i,offset:i,
+   shows:[flagship,...(i===6?[cup]:[])]}));
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const method=String(r.request().postDataJSON().method);calls.push(method);
+   if(method!=="calendar")throw Error("Unexpected "+method);
+   return r.fulfill({json:{...calendar(4,80),weeks,
+    broadcastSlot:{offerCode:"BROADCAST_TV",networkName:"Regional Sports",
+     day:5,hour:20,startWeekIndex:0,endWeekIndex:52}}});
+  });
+  await page.goto("/#/calendar");
+  const navigator=page.getByRole("region",{name:"Four-week show calendar"});
+  await expect(navigator).toContainText("Weeks 5–8");
+  await expect(navigator.locator(".ppw-calendar-four-week-tile")).toHaveCount(4);
+  await expect(navigator).toContainText("Fri · 20:00");
+  await navigator.getByRole("button",{name:"Next four weeks"}).click();
+  await expect(navigator).toContainText("Weeks 9–12");
+  await expect(navigator).toContainText("Indie Cup");
+  await navigator.getByRole("button",{name:/View Year 1 Week 11 in the show list/}).click();
+  const item=page.locator('.ppw-calendar-occurrence[data-week="1-11"]');
+  await expect(item).toBeVisible();
+  await expect(item).toContainText("Indie Cup");
+  await expect(item).toContainText("Indie Weekly");
+  await navigator.getByRole("button",{name:"Next four weeks"}).click();
+  await expect(navigator).toContainText("Weeks 13–16");
+  await navigator.getByRole("button",{name:"Previous four weeks"}).click();
+  await expect(navigator).toContainText("Weeks 9–12");
+  await page.getByRole("button",{name:"Across the World"}).click();
+  await expect(page.getByRole("region",{name:"Four-week show calendar"})).toHaveCount(0);
+  expect(calls).toEqual(["calendar"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

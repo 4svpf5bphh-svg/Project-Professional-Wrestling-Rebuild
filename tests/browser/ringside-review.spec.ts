@@ -209,11 +209,11 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
-  await expect(page.locator(".ppw-next-show-choice")).toHaveCount(4);
+  await expect(page.locator(".ppw-next-show-choice")).toHaveCount(3);
   await expect(page.getByRole("button",{name:"Check roster"})).toBeVisible();
   await expect(page.getByRole("button",{name:"View championships"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Review programmes"})).toBeVisible();
-  await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Plan a show"})).toHaveCount(0);
   await expect(page.locator(".ppw-next-show-actions").getByRole("button",{name:"See the recorded moment"})).toHaveCount(3);
   await expect(page.getByRole("button",{name:"Open wrestler dossier"})).toHaveCount(2);
   await expect(page.getByText(/who holds it now before planning/)).toBeVisible();
@@ -239,8 +239,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByText(/4.50 verified stars/)).toBeVisible();
-  await expect(page.getByRole("button",{name:"Plan a show"})).toBeVisible();
-  await page.getByRole("button",{name:"Plan a show"}).click();
+  await expect(page.getByRole("button",{name:"Plan a show"})).toHaveCount(0);
+  await page.getByRole("button",{name:"Open show planner"}).click();
   await expect(page).toHaveURL(/#\/planner$/);
  });
 }
@@ -755,3 +755,65 @@ test("A certified HOT TAG wrestler post opens focused Programmes without booking
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+for(const width of [320,390]){
+ test("Broadcast opening has one show title, then headlines without a duplicate oversized hero at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  const named={...show,showName:"Ascension",broadcastPackage:"MIDNIGHT_FREQUENCY"};
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const q=r.request().postDataJSON() as {method:string};
+   return r.fulfill({json:q.method==="resultsArchive"?
+    {items:[{showId:"omega-night",year:1,week:4,showName:"Ascension",
+     crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}:named});
+  });
+  await page.route("**/api/results-commentary",r=>
+   r.fulfill({json:{status:"unavailable"}}));
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  // Results deliberately start on Play-by-play. Visit Headlines before
+  // inspecting the on-air graphic so a hidden page is never mistaken for
+  // missing artwork; no new result read or alternative rendering path.
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+  await page.getByRole("button",{name:"Return to Headlines"}).click();
+  const opening=page.locator(".ppw-tv-opening-wrap .ppw-tv-frame");
+  await expect(opening).toBeVisible();
+  await expect(opening).toContainText("Ascension");
+  await expect(page.locator(".ppw-result-hero")).toHaveCount(0);
+  await expect(page.locator(".ppw-broadcast-highlights")).toBeVisible();
+  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
+
+for(const width of [320,390]){
+ test("a certified angle earns a separate five-star rating without hiding match stars at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:width===320?720:844});
+  let resultReads=0;
+  const rated={...show,entries:[show.entries[0],
+   {...show.entries[1],segmentRatingStars:3.75}]};
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const m=r.request().postDataJSON().method;
+   if(m==="results")resultReads++;
+   return r.fulfill({json:m==="resultsArchive"?{
+    items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",
+     crowdResponse:84,matchCount:1,angleCount:1}],nextCursor:null}:rated});
+  });
+  await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+  await page.goto("/#/results");
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  const angle=page.locator(".ppw-result-angle");
+  await expect(angle.locator(".ppw-result-angle-grade"))
+   .toHaveText("SEGMENT ★ 3.75 / 5");
+  await expect(page.locator(".ppw-result-match .ppw-result-rating"))
+   .toHaveText("★ 4.50 / 5");
+  await expect(angle).toContainText("74 / 100");
+  expect(resultReads).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

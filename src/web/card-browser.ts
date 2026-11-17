@@ -811,10 +811,10 @@ function programmePort(call:ReturnType<typeof createCardClient>,
     // No hashchange fires for a repeat navigation to the same section.
     const focus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
     const backToProgrammes=()=>{window.location.hash=hostSectionHash("programmes");};
-    const openSelectedCard=(draftId:string)=>{
+    const openSelectedCard=(draftId:string,programmeId?:string)=>{
      mountBookingPage(root,{...scope,showId:draftId},
       ()=>mountPlannerPage(root,scope,backToProgrammes,false,undefined,openSelectedCard),
-      undefined,undefined,focus?.programmeId,focus?.ideaKind);
+      undefined,undefined,programmeId??focus?.programmeId,focus?.ideaKind);
     };
     mountPlannerPage(root,scope,backToProgrammes,!!focus,undefined,openSelectedCard);
    }
@@ -923,17 +923,19 @@ export function mountPersonaPage(root:HTMLElement,scope:Scope,
  */
 export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  openUnfinishedCard=false,initialTarget?:import("../ui/world-calendar.js").CalendarPlanningTarget,
- onOpenBooking?:(draftId:string)=>void){
+ onOpenBooking?:(draftId:string,programmeId?:string)=>void){
  const call=createCardClient(scope);
  const port:PlannerPort={
   load:()=>call("planner"),
   save:input=>call("planShow",input),
+  saveCreativeOutline:input=>call("saveCreativeOutline",input),
   // Resume the same booked date after a broadcaster detour, with fresh
   // contract terms rather than returning the player to World Home.
   openDeals:target=>mountBusinessDesk(root,businessPort(root,scope,call,
    ()=>mountPlannerPage(root,scope,onBack,false,target,onOpenBooking)),"COMMERCIAL"),
-  openCard:draftId=>onOpenBooking?onOpenBooking(draftId):
-   mountBookingPage(root,{...scope,showId:draftId}),
+  openCard:(draftId,programmeId)=>onOpenBooking?onOpenBooking(draftId,programmeId):
+   mountBookingPage(root,{...scope,showId:draftId},
+    undefined,undefined,undefined,programmeId),
   openCalendar:()=>mountCalendarPage(root,scope,
    ()=>mountPlannerPage(root,scope,onBack,false,undefined,onOpenBooking),onOpenBooking)
  };

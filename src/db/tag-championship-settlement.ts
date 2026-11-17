@@ -3,6 +3,7 @@
  * World-locked transaction. No winners or team identities are guessed.
  */
 import type {SqlRows} from "./world-operations.js";
+import {isDecisiveChampionshipFinish} from "../domain/championship-finish.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 export interface BookedTagTitle{
  slotId:string;championshipId:string;
@@ -80,11 +81,11 @@ export async function settleCanonicalTagTitleContests(
   if(winningSide<0)throw new Error("Unrecognised winning tag pair");
   let winner=ids[winningSide];
   const transfer=(!hasChampion||winner!==current.team_id)&&
-    ["CLEAN_PIN","FLASH_PIN","SUBMISSION"].includes(bout.actualFinish);
+    isDecisiveChampionshipFinish(bout.actualFinish);
   if(transfer&&!winner){
-   // The confirmed clean/flash/submission title winner becomes a portable
-   // team *only* on first winning this title. Never create teams for losers,
-   // DQs or protected outcomes. Serialised in the same World transaction.
+   // A verified decisive winner becomes a portable championship team only
+   // on capturing the title. Never create teams for losers, DQs or protected
+   // outcomes. Serialised in the same World transaction.
    const people=booking.sides[winningSide]!.personIds;
    const profiles=await tx.query<{person_id:string;name:string}>(`
     SELECT person_id,name FROM ppw_people WHERE world_id=$1

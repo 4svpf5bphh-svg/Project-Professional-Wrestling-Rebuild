@@ -106,3 +106,80 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 @media(max-width:380px){
  .ppw-planner-day-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+
+/* 53D: compact, one-handed production overview of the real six-week Planner. */
+.ppw-planner-production-board{border:1px solid rgba(112,193,213,.35);
+ border-radius:15px;padding:14px 12px;margin:13px 0 20px;
+ background:linear-gradient(145deg,#123449,#102538);min-width:0}
+.ppw-planner-production-board h2{font-size:21px;color:#fff;margin:4px 0 8px}
+.ppw-planner-board-kicker{font-size:10px;letter-spacing:.12em;color:#96dfe6;font-weight:850}
+.ppw-planner-board-summary{color:#bed9df;font-size:12px;line-height:1.45;margin:6px 0 9px}
+.ppw-planner-board-premium{color:#ffe2aa;border-left:3px solid #d5ac64;
+ padding:7px 10px;background:rgba(183,117,58,.12);border-radius:5px;
+ font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.ppw-planner-board-weeks{display:grid;grid-auto-flow:column;
+ grid-auto-columns:minmax(91px,1fr);gap:7px;overflow-x:auto;overscroll-behavior-inline:contain;
+ scroll-snap-type:x proximity;padding:5px 2px 11px;margin:6px 0;
+ scrollbar-color:#50798a transparent}
+.ppw-planner-board-tile.ppw-planner-button{display:flex;flex-direction:column;
+ gap:5px;align-items:flex-start;text-align:left;min-height:96px;min-width:0;
+ padding:10px 8px;margin:0;border-color:#42687a;
+ scroll-snap-align:start;white-space:normal;overflow-wrap:anywhere}
+.ppw-planner-board-tile strong{font-size:18px;line-height:1;color:#fff}
+.ppw-planner-board-tile small{color:#bdd8df;font-size:11px}
+.ppw-planner-board-state{font-size:11px;font-weight:750;color:#d8f1f3}
+.ppw-planner-board-tile[data-state="SUBMITTED"]{border-color:#65b3a0;background:#17473f}
+.ppw-planner-board-tile[data-state="READY_FOR_LOCK"]{border-color:#dbbd78}
+.ppw-planner-board-tile[data-state="CARD_IN_PROGRESS"],
+.ppw-planner-board-tile[data-state="PARTIALLY_BOOKED"]{border-color:#d1a777}
+.ppw-planner-board-tile[data-premium="true"]{background:#513a2b;border-color:#e2ba76}
+.ppw-planner-week:focus{outline:2px solid #a4e5eb;outline-offset:2px;scroll-margin-top:18px}
+@media(max-width:390px){.ppw-planner-board-weeks{grid-auto-columns:100px}
+ .ppw-planner-production-board{padding:12px 9px}
+ .ppw-planner-board-tile.ppw-planner-button{min-height:94px}}
+
+
+.ppw-planner-stories{margin:15px 0 4px;padding-top:10px;border-top:1px solid rgba(145,203,219,.25)}
+.ppw-planner-stories h3{font-size:16px;margin:2px 0 5px;color:#f0fafc}
+.ppw-planner-story-lane{border:1px solid rgba(125,189,217,.26);
+ border-radius:10px;padding:9px 7px;margin:9px 0;background:rgba(7,22,35,.38);min-width:0}
+.ppw-planner-story-title{display:block;font-size:12px;line-height:1.4;
+ color:#e2f6fb;margin:1px 0 7px;overflow-wrap:anywhere}
+.ppw-planner-story-weeks{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.ppw-planner-story-beat{display:flex;justify-content:center;align-items:center;
+ min-width:0;min-height:37px;padding:3px 1px;text-align:center;line-height:1.15;
+ border-radius:5px;background:#183347;color:#a3b9c7;font-size:9px;
+ overflow-wrap:anywhere}
+.ppw-planner-story-beat[data-has-chapter="true"]{color:#fce5b8;
+ background:#3d3540;border:1px solid #c4a56e}
+.ppw-planner-story-beat[data-submitted="true"]{background:#184940;color:#cffce9;border-color:#7ac4aa}
+
+
+.ppw-planner-outline{margin:12px 0;padding:12px 9px;border-radius:11px;
+ border:1px solid rgba(116,196,203,.35);background:rgba(11,34,44,.65)}
+.ppw-planner-outline h3{margin:2px 0 6px;font-size:16px;color:#f0f8fc}
+.ppw-planner-outline-note{font-size:12px;line-height:1.5;
+ padding:6px 7px;border-left:2px solid #7aafbd;background:rgba(7,21,28,.35);
+ color:#d7e8f0;overflow-wrap:anywhere}
+.ppw-planner-outline-label{display:block;margin:9px 0}
+.ppw-planner-outline-label>span{display:block;font-size:12px;color:#d3e5ec;
+ font-weight:750;margin:0 0 5px}
+.ppw-planner-outline-label textarea{box-sizing:border-box;display:block;
+ width:100%;min-height:61px;resize:vertical;font:inherit;font-size:16px;
+ padding:8px;color:#fff;background:#0b2534;border-radius:8px;
+ border:1px solid #6b8a98}
+.ppw-planner-outline-label textarea:focus-visible{outline:2px solid #a2e8f5;outline-offset:1px}
+
+/* Future storyline chapters use the original Card Editor; submitted chapters
+   and previously certified weeks are evidence, never clickable edit actions. */
+.ppw-planner-story-action.ppw-planner-button{margin:0;padding:3px 1px;
+ min-height:37px;min-width:0;width:100%;border:1px dashed #75b5c7;
+ border-radius:5px;background:#1d4556;cursor:pointer;
+ font-size:9px;line-height:1.15;white-space:normal}
+.ppw-planner-story-action[data-has-chapter="true"]{border-style:solid;border-color:#c4a56e;background:#413b43}
+.ppw-planner-story-beat[data-finale="true"]{border-color:#e7c276;background:#6a4528;color:#fff2cf;font-weight:850}
+.ppw-planner-story-action:focus-visible{outline:2px solid #e9e8bd;outline-offset:2px}
+
+.ppw-planner-story-empty{display:block;margin:-1px 0 7px;color:#b9ced7;
+ font-size:11px;line-height:1.3}

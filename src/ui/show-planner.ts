@@ -1,13 +1,17 @@
 import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
+import type {CreativeWeekOutline} from "../domain/creative-outline.js";
 import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import type {CalendarPlanningTarget} from "./world-calendar.js";
 import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
+import {buildSixWeekProduction,type SixWeekBuild} from "../domain/six-week-production-board.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
- openCard(draftId:string):void;
+ saveCreativeOutline?(input:{requestId:string;expectedRevision:number;
+  notes:CreativeWeekOutline[]}):Promise<unknown>;
+ openCard(draftId:string,programmeId?:string):void;
  openCalendar?():void;
  openDeals?(target?:CalendarPlanningTarget):void;
 }
@@ -23,6 +27,10 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
  // Retain the exact World command identity if the server committed a plan
  // but the mobile connection died before the receipt reached the browser.
  let pendingSave:{fingerprint:string;requestId:string}|null=null;
+ let pendingOutline:{fingerprint:string;requestId:string}|null=null;
+ let pendingStoryProgrammeId:string|null=null;
+ const outlinedNotes=new Map<string,string>();
+ let outlineExpanded=false;
  const button=(label:string,action:()=>void,disabled=false)=>{
   const b=node("button",label,"ppw-planner-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=action;return b;};
@@ -74,6 +82,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    pendingSave={fingerprint,requestId:crypto.randomUUID()};
   const requestId=pendingSave.requestId;
   busy=true;error="";draw();
+  let openAfterSave:{draftId:string;programmeId:string}|null=null;
   try{
    const response=await port.save({requestId,...input});
    const status=response&&typeof response==="object"&&"status" in response?
@@ -92,12 +101,21 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    // requestId can be retried and safely REPLAYED, never creating a second
    // weekly/PPV draft or charging twice.
    const refreshed=await port.load();
-   data=refreshed;editing=null;selectedDraft="";pendingSave=null;error="";
+   if(pendingStoryProgrammeId){
+    const planned=refreshed.weeks.find(w=>w.year===input.year&&w.week===input.week)?.shows.find(show=>show.status==="DRAFT"&&
+      (!input.showSeriesId||show.showSeriesId===input.showSeriesId)&&
+      (!input.draftId||show.draftId===input.draftId));
+    if(planned)openAfterSave={draftId:planned.draftId,programmeId:pendingStoryProgrammeId};
+   }
+   data=refreshed;editing=null;selectedDraft="";pendingSave=null;
+   pendingStoryProgrammeId=null;error="";
   }catch(e){error=e instanceof Error?e.message:"Could not save show";}
-  finally{busy=false;draw();}
+  finally{busy=false;if(!openAfterSave)draw();}
+  if(openAfterSave)port.openCard(openAfterSave.draftId,openAfterSave.programmeId);
  }
- function edit(week:PlannerWeek,draft?:PlannerWeek["shows"][number],seriesId=""){
-  pendingSave=null;
+ function edit(week:PlannerWeek,draft?:PlannerWeek["shows"][number],
+  seriesId="",storyProgrammeId:string|null=null){
+  pendingSave=null;pendingStoryProgrammeId=storyProgrammeId;
   editing=week;selectedDraft=draft?.draftId??"";
   selectedSeriesId=draft?.showSeriesId??seriesId;
   venueId=draft?.venueId??data?.venues.find(v=>v.home)?.venueId??data?.venues[0]?.venueId??"";
@@ -112,6 +130,189 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    Boolean(slot&&index>=slot.startWeekIndex&&index<=slot.endWeekIndex&&slot.day===6);
   day=fixed?slot.day:draft?.day??(premium?(saturdayTv?7:6):5);
   strategy=draft?.ticketStrategy??"STANDARD";draw();
+ }
+ const outlineKey=(year:number,week:number)=>year+"-"+week;
+ function outlineNotes():CreativeWeekOutline[]{
+  if(!data)return [];
+  return data.weeks.flatMap(w=>{
+   const fromServer=data!.creativeOutline?.find(n=>
+    n.year===w.year&&n.week===w.week)?.note??"";
+   const note=(outlinedNotes.get(outlineKey(w.year,w.week))??fromServer).trim();
+   return note?[{year:w.year,week:w.week,note}]:[];
+  });
+ }
+ async function saveOutline(){
+  if(!data||busy||!port.saveCreativeOutline)return;
+  const notes=outlineNotes();
+  const fingerprint=JSON.stringify({revision:data.worldRevision,notes});
+  if(!pendingOutline||pendingOutline.fingerprint!==fingerprint)
+   pendingOutline={fingerprint,requestId:crypto.randomUUID()};
+  const requestId=pendingOutline.requestId;
+  busy=true;error="";draw();
+  try{
+   const outcome=await port.saveCreativeOutline({
+    requestId,expectedRevision:data.worldRevision,notes});
+   const status=outcome&&typeof outcome==="object"&&"status" in outcome?
+    outcome.status:null;
+   if(status==="STALE"){
+    pendingOutline=null;data=await port.load();
+    throw new Error("The World changed. Review your outline and save again.");
+   }
+   if(status!=="APPLIED"&&status!=="REPLAYED")
+    throw new Error("Creative outline was not confirmed. Retry to keep your plan.");
+   data=await port.load();
+   pendingOutline=null;outlinedNotes.clear();outlineExpanded=false;error="";
+  }catch(e){error=e instanceof Error?e.message:"Unable to save creative outline";}
+  finally{busy=false;draw();}
+ }
+ function outlineEditor(){
+  const section=node("section","","ppw-planner-outline");
+  const notes=data?.creativeOutline??[];
+  section.append(node("h3","Booker's creative outline"),
+   node("p","Record what you intend to build. These notes do not book wrestlers, "+
+    "guarantee results or charge appearance fees.","ppw-planner-board-summary"));
+  const toggle=button(outlineExpanded?"Hide outline editor":
+   notes.length?"Edit "+notes.length+" week notes":"Plan future story beats",()=>{
+    outlineExpanded=!outlineExpanded;draw();},busy);
+  section.append(toggle);
+  if(!outlineExpanded){
+   for(const note of notes)section.append(
+    node("p","Week "+note.week+" · "+note.note,"ppw-planner-outline-note"));
+   return section;
+  }
+  for(const week of data?.weeks??[]){
+   const label=node("label","","ppw-planner-outline-label");
+   label.append(node("span","Year "+week.year+" · Week "+week.week+
+    (week.major?" · PPV week":"")));
+   const area=document.createElement("textarea");
+   area.maxLength=240;area.rows=2;area.disabled=busy||!data?.canEdit;
+   area.setAttribute("aria-label","Creative intention for Year "+week.year+
+    " Week "+week.week);
+   const key=outlineKey(week.year,week.week);
+   area.value=outlinedNotes.get(key)??notes.find(n=>
+    n.year===week.year&&n.week===week.week)?.note??"";
+   area.placeholder="e.g. Build tension before the title match";
+   area.oninput=()=>{outlinedNotes.set(key,area.value);pendingOutline=null;};
+   label.append(area);section.append(label);
+  }
+  if(port.saveCreativeOutline)section.append(button(busy?"Saving…":
+   "Save six-week outline",()=>void saveOutline(),busy||!data?.canEdit));
+  return section;
+ }
+ function buildBoard(snapshot:SixWeekBuild){
+  const source=data!;
+  const section=node("section","","ppw-planner-production-board");
+  section.setAttribute("aria-label","Six-week booking and PPV build");
+  section.append(node("span","YOUR NEXT SIX WEEKS","ppw-planner-board-kicker"),
+   node("h2","Production board"));
+  const summary=node("p",
+   snapshot.preparedShows+" prepared for World Lock · "+
+   snapshot.submittedShows+" submitted · "+
+   snapshot.needsActionWeeks+" week"+(snapshot.needsActionWeeks===1?"":"s")+
+   " need booking or confirmation. Prepared drafts stay drafts.",
+   "ppw-planner-board-summary");
+  section.append(summary);
+  if(snapshot.nextPremium){
+   const ppv=snapshot.nextPremium;
+   const event=node("p",
+    "Next PPV: "+ppv.name+" · Year "+ppv.year+" Week "+ppv.week+
+    " · "+(ppv.offset===0?"This week":ppv.offset===1?"Next week":"In "+ppv.offset+" weeks"),
+    "ppw-planner-board-premium");
+   section.append(event);
+  }else{
+   section.append(node("p","No confirmed PPV falls within this booking window. "+
+    "Your annual calendar controls premium event dates.","ppw-planner-board-summary"));
+  }
+  const tiles=node("div","","ppw-planner-board-weeks");
+  tiles.setAttribute("aria-label","Select a booking week");
+  for(const week of snapshot.weeks){
+   const tile=button("",()=>{
+    const target=root.querySelector<HTMLElement>("#ppw-planner-week-"+week.key);
+    if(target){target.scrollIntoView({block:"start"});target.focus({preventScroll:true});}
+   },busy);
+   tile.classList.add("ppw-planner-board-tile");
+   tile.dataset.state=week.state;
+   tile.dataset.premium=String(week.isPremium);
+   tile.setAttribute("aria-label","Year "+week.year+" Week "+week.week+
+    ", "+(week.premiumName?"PPV "+week.premiumName+", ":"")+week.label);
+   tile.replaceChildren(
+    node("strong","W"+week.week),
+    node("small","Y"+week.year+(week.isPremium?" · PPV":" · TV")),
+    node("span",week.label,"ppw-planner-board-state"));
+   tiles.append(tile);
+  }
+  section.append(tiles);
+  if(snapshot.programmes.length){
+   const stories=node("section","","ppw-planner-stories");
+   stories.append(node("h3","Storyline build"),
+    node("p","Active Programmes stay visible even before their next chapter is booked. "+
+     "Only actual linked matches and angles count as chapters; drafts remain provisional.",
+     "ppw-planner-board-summary"));
+   for(const lane of snapshot.programmes){
+    const row=node("div","","ppw-planner-story-lane");
+    row.append(node("strong",lane.name,"ppw-planner-story-title"));
+    if(!lane.chapters.length)row.append(node("small",
+     "No future chapters booked yet","ppw-planner-story-empty"));
+    const weeks=node("div","","ppw-planner-story-weeks");
+    for(const week of snapshot.weeks){
+     const chapter=lane.chapters.find(c=>c.year===week.year&&c.week===week.week);
+     const scheduled=source.weeks.find(w=>w.year===week.year&&w.week===week.week);
+     const editable=scheduled?.canEdit===true&&source.canEdit;
+     const draft=editable?scheduled?.shows.find(show=>
+      show.draftId===chapter?.editableDraftId&&show.status==="DRAFT"&&show.venueId)??(
+       !chapter?scheduled?.shows.find(show=>show.status==="DRAFT"&&show.venueId):undefined):undefined;
+     const missing=editable&&!draft&&!chapter?scheduled?.scheduled.find(event=>
+      !scheduled.shows.some(show=>show.bookingClass===
+       (event.eventType==="MAJOR"?"PREMIUM":"REGULAR"))):undefined;
+     const label=chapter?(chapter.finalePayoff?"Finale":
+      chapter.matches&&chapter.segments?"Match + angle":
+      chapter.matches?"Match":"Angle"):(draft||missing?"Plan":"—");
+     const cell=draft||missing?
+      button(label,()=>{
+       if(draft)port.openCard(draft.draftId,lane.programmeId);
+       else if(scheduled&&missing)edit(scheduled,undefined,missing.seriesId,
+        lane.programmeId);
+      },busy):node("span",label);
+     cell.classList.add("ppw-planner-story-beat");
+     if(draft||missing)cell.classList.add("ppw-planner-story-action");
+     cell.dataset.submitted=String(chapter?.submitted??false);
+     cell.dataset.hasChapter=String(Boolean(chapter));
+     cell.dataset.finale=String(Boolean(chapter?.finalePayoff));
+     cell.title="Year "+week.year+" Week "+week.week+(chapter?
+      (chapter.finalePayoff?" · Planned on-screen payoff":"")+
+      (chapter.submitted?" · Submitted":" · Draft"):" · No chapter booked");
+     if(draft||missing)cell.setAttribute("aria-label",
+      (chapter?"Edit booked storyline chapter":"Book a storyline chapter")+
+      " · "+lane.name+" · Year "+week.year+" Week "+week.week);
+     weeks.append(cell);
+    }
+    row.append(weeks);stories.append(row);
+   }
+   if(snapshot.programmeCount>snapshot.programmes.length)
+    stories.append(node("p","Showing "+snapshot.programmes.length+" of "+
+     snapshot.programmeCount+" active or booked Programmes.","ppw-planner-board-summary"));
+   section.append(stories);
+  }else{
+   section.append(node("p","Create a Programme or book a match or angle linked "+
+    "to an existing storyline to build your next PPV.",
+    "ppw-planner-board-summary"));
+  }
+  section.append(outlineEditor());
+  const pending=source.weeks.find(w=>w.canEdit&&(
+   w.shows.some(show=>show.status==="DRAFT"&&!show.ready)||
+   w.scheduled.some(event=>!w.shows.some(show=>show.bookingClass===
+    (event.eventType==="MAJOR"?"PREMIUM":"REGULAR")))||
+   !w.shows.length&&w.required));
+  if(pending){
+   const draft=pending.shows.find(show=>show.status==="DRAFT"&&!show.ready&&show.venueId);
+   const unplanned=pending.scheduled.find(s=>!pending.shows.some(show=>
+    show.bookingClass===(s.eventType==="MAJOR"?"PREMIUM":"REGULAR")));
+   const action=draft?()=>port.openCard(draft.draftId):()=>edit(pending,undefined,
+    unplanned?.seriesId??pending.scheduled[0]?.seriesId??"");
+   section.append(button(draft?"Continue Week "+pending.week+" card":
+    "Plan Week "+pending.week+" show",action,busy||!source.canEdit||!draft&&!source.venues.length));
+  }
+  return section;
  }
  function draw(){
   activateWorkspaceRoot(root,"ppw-planner");root.replaceChildren();
@@ -130,6 +331,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   root.append(node("p","HOME MARKET  /  "+(home?.marketName??"Not assigned")+
    " · "+(home?"Your promotion\u0027s local audience and venue territory":"See Business for your promotion identity"),
    "ppw-planner-home-market"));
+  const progress=buildSixWeekProduction(data.weeks,data.activeProgrammes??[]);
+  if(!editing)root.append(buildBoard(progress));
   if(editing){
    const form=node("section","","ppw-planner-form");
    form.append(node("h2","Year "+editing.year+" · Week "+editing.week));
@@ -297,14 +500,17 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   }
   for(const week of data.weeks){
    const card=node("section","","ppw-planner-week");
-   const hasDraft=week.shows.some(show=>show.status==="DRAFT"&&!show.ready);
-   const allReady=week.shows.length>0&&week.shows.every(show=>
-    show.ready||show.status==="SUBMITTED");
-   const status=allReady?"READY FOR SHOWTIME":
-    hasDraft?"FINISH YOUR CARD":week.shows.length?"BOOKING IN PROGRESS":
+   card.id="ppw-planner-week-"+week.year+"-"+week.week;
+   card.tabIndex=-1;
+   const state=progress.weeks.find(w=>w.year===week.year&&w.week===week.week)?.state;
+   const status=state==="SUBMITTED"?"SUBMITTED":
+    state==="READY_FOR_LOCK"?"PREPARED FOR WORLD LOCK":
+    state==="CARD_IN_PROGRESS"?"FINISH YOUR CARD":
+    state==="PARTIALLY_BOOKED"?"BOOKING IN PROGRESS":
     week.required?"SHOW NEEDS PLANNING":"NO SHOW PLANNED";
-   card.dataset.bookingState=allReady?"ready":hasDraft?"attention":
-    week.shows.length?"booked":"empty";
+   card.dataset.bookingState=state==="SUBMITTED"||state==="READY_FOR_LOCK"?"ready":
+    state==="CARD_IN_PROGRESS"?"attention":
+    state==="PARTIALLY_BOOKED"?"booked":"empty";
    card.append(node("span",status,"ppw-planner-booking-state"));
    card.append(node("h2","Year "+week.year+" · Week "+week.week),
     node("p",week.major?"Major event week":week.required?"Regular show week":"Optional show week"));
@@ -334,7 +540,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     card.append(node("p",show.showName+" · "+
      (dayName??"Day unassigned")+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
-     (show.ready?" · Confirmed":" · Draft")));
+     (show.status==="SUBMITTED"?" · Submitted":show.ready?" · Prepared for World Lock":" · Draft")));
     const competing=show.venueId&&show.day!==null?
      venuePressureCount(data,week.year,week.week,show.day,show.venueId):0;
     if(competing)card.append(node("p",competing+" other "+

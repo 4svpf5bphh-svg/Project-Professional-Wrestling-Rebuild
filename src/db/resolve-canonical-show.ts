@@ -29,6 +29,9 @@ import {settleWorkingPartnerships} from "./working-relationship-settlement.js";
 import {settleMultiIndividualCareerConsequences} from "./multi-individual-career-settlement.js";
 import {deriveCompletedMatchReportFacts} from "./record-match-report-facts.js";
 import {recordRoadAgentReport} from "./road-agent-report.js";
+import {deriveCertifiedOvernessChanges} from "../domain/certified-overness.js";
+import {settleCertifiedTalentOvernessInTransaction}
+ from "./certified-overness-settlement.js";
 import {settleCertifiedTournamentBouts} from "./tournament-booking.js";
 import {calculateGorillaShow,recordGorillaShow} from "./gorilla-position.js";
 export interface ResolveCanonicalShowInput {
@@ -92,6 +95,38 @@ export async function resolveCanonicalShow(
    await settleCanonicalSinglesCareerConsequences(tx,projection);
    await settleCanonicalTagCareerConsequences(tx,projection);
    await settleMultiIndividualCareerConsequences(tx,projection);
+   // A genuine recorded audience reaction changes performer overness in the
+   // same transaction, AFTER the original career simulation. No fame/momentum
+   // rules are replaced, and an absent promo target never receives credit.
+   const matchStars=new Map(projection.projections.map(x=>
+    [x.slotId,x.score.criticalRatingStars]));
+   const matchLayout=new Map(projection.projections.map(x=>[
+    x.slotId,x.multi?.layout??x.tag?.layout??null] as const));
+   const changeSet=deriveCertifiedOvernessChanges(
+    receipt.matches.map(m=>{
+     const layout=matchLayout.get(m.matchId);
+     const projectionMatch=projection.projections.find(p=>p.slotId===m.matchId);
+     if(!projectionMatch)throw new Error("Certified overness match missing projection");
+     const people=layout?.participants.map(x=>x.personId)??projectionMatch.personIds;
+     const winners=layout?.sides.find(x=>x.sideId===m.actualWinnerSide)
+      ?.participants.map(x=>x.personId)??(m.actualWinnerSide==="A"?
+        [projectionMatch.personIds[0]!]:
+       m.actualWinnerSide==="B"?[projectionMatch.personIds[1]!]:[]);
+     return {slotId:m.matchId,personIds:people,
+      crowdResponse:m.crowdResponse,ratingStars:matchStars.get(m.matchId)??0,
+      ...(winners.length?{winnerIds:winners}:{})};
+    }),
+    receipt.segments.map(s=>{
+     const booked=segments.find(x=>x.segment.slotId===s.slotId)?.segment;
+     if(!booked)throw new Error("Certified overness segment missing booking");
+     return {slotId:s.slotId,actorIds:booked.actorIds,
+      targetIds:booked.targetIds,targetPresence:
+       booked.targetPresence??(
+        ["PROMO","INTERVIEW","CHALLENGE"].includes(booked.kind)?"MENTIONED":"ON_SCREEN"),
+      crowdResponse:s.crowdResponse,ratingStars:s.ratingStars??2.5};
+    })
+   );
+   await settleCertifiedTalentOvernessInTransaction(tx,input.worldId,changeSet);
    await settleWorkingPartnerships(tx,{
     ...input,matches:projection.projections.flatMap(p=>{
      const sides=p.tag?.layout.sides;

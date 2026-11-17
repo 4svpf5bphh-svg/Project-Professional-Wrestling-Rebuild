@@ -4,7 +4,7 @@ import {BACKSTAGE_LABELS,type BackstageDecision}
 import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  saveAnnualPremiumAsActor,
- plannerAsActor,planShowAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
+ plannerAsActor,planShowAsActor,saveCreativeOutlineAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,signCommercialDealAsActor,
  requestBroadcastDayAsActor,
  spendingPlanAsActor,
@@ -256,6 +256,17 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    worldId,promotionId,requestId,expectedRevision,year:p.year as number,
    events:p.events as import("../domain/annual-premium-plan.js").AnnualPremiumEvent[]
   });
+ }
+ if(method==="saveCreativeOutline"){
+  if(!Array.isArray(p.notes)||p.notes.length>7||
+   p.notes.some(n=>!n||typeof n!=="object"||Array.isArray(n)||
+    !Number.isSafeInteger((n as {year?:unknown}).year)||
+    !Number.isSafeInteger((n as {week?:unknown}).week)||
+    typeof (n as {note?:unknown}).note!=="string"))
+   throw new Error("Invalid creative outline");
+  return saveCreativeOutlineAsActor(context,{worldId,promotionId,
+   requestId,expectedRevision,notes:p.notes as
+    import("../domain/creative-outline.js").CreativeWeekOutline[]});
  }
  if(method==="planShow"){
   if(!Number.isSafeInteger(p.year)||!Number.isSafeInteger(p.week)||
