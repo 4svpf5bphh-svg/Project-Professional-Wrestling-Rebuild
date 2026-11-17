@@ -236,12 +236,31 @@ function wrestlerMisattributesSurrender(post:string,source:PostShowVoiceBrief):b
  return /\bI\s+quit\b(?!\s+(?:match|bout|stipulation))|\bI (?:surrendered|tapped out|got pinned)\b/i
   .test(remaining);
 }
+/** The displayed author may never write in another certified opponent's
+ * first-person identity. Keep this guard for old cached posts as well as new
+ * Groq content: an accepted writer field cannot switch personId or persona. */
+function wrestlerClaimsOpponentIdentity(post:string,source:PostShowVoiceBrief):boolean{
+ const voice=source.wrestler;
+ if(!voice)return false;
+ for(const name of voice.opponentNames){
+  if(!name.trim()||name.trim().toLocaleLowerCase()===
+   voice.displayName.trim().toLocaleLowerCase())continue;
+  const escaped=[...name.trim()].map(ch=>
+   "\\\\^$.*+?()[]{}|".includes(ch)?"\\\\"+ch:ch).join("");
+  const claimed=new RegExp(
+   "\\\\b(?:I['’]?m|I\\\\s+am|my\\\\s+name\\\\s+is|this\\\\s+is)\\\\s+"+
+   escaped+"(?=$|[\\\\s,.!?;:])","iu");
+  if(claimed.test(post))return true;
+ }
+ return false;
+}
 export type WrestlerVoiceReason=
  "NO_SOURCE"|"NO_VERIFIED_EVENT"|"SELF_SURRENDER"|"FALSE_LOSS"|
- "NO_FIRST_PERSON"|"DUPLICATE"|"BLOCKED_PROSE"|"UNCLASSIFIED";
+ "WRONG_SPEAKER"|"NO_FIRST_PERSON"|"DUPLICATE"|"BLOCKED_PROSE"|"UNCLASSIFIED";
 function wrestlerIssue(post:string,source:PostShowVoiceBrief,
  preserveHistoricStyle=false):WrestlerVoiceReason|null{
  if(!source.wrestler)return "NO_SOURCE";
+ if(wrestlerClaimsOpponentIdentity(post,source))return "WRONG_SPEAKER";
  if(!preserveHistoricStyle&&!wrestlerEventSpecific(post,source))
   return "NO_VERIFIED_EVENT";
  if(wrestlerMisattributesSurrender(post,source))return "SELF_SURRENDER";
