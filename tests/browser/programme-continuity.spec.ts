@@ -144,6 +144,10 @@ test("iPhone plans and removes a real match or angle payoff without auto-ending 
  await expect(page.locator(".ppw-programme-upcoming-compact")).toContainText("Armageddon");
  await page.getByRole("button",{name:/^Payoff/}).click();
  await expect(page.getByText(/Choose a specific booked match or angle/)).toBeVisible();
+ // The general final chapter is now the safe default. Specific confrontation
+ // payoffs are still freely bookable when that scene was actually authored.
+ await page.getByRole("combobox",{name:"Choose rivalry payoff"})
+  .selectOption("FINAL_CONFRONTATION");
  await page.getByRole("button",{name:"Plan on-screen finale"}).click();
  await expect(page.getByText(/Finale planned · Armageddon/)).toBeVisible();
  await expect(page.getByText(/only the certified event can end this rivalry/i)).toBeVisible();
