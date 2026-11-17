@@ -738,3 +738,8 @@
 @media(max-width:390px){
  .ppw-results .ppw-segment-temperature{font-size:9px;min-height:24px;padding:4px 6px}
 }
+
+/* TV's true opening plays on Full Show. Editorial Headlines need only a
+   compact show identity, never another oversized broadcast hero. */
+.ppw-results .ppw-headlines-show-name{font-size:clamp(15px,4vw,21px);
+ color:#f6e7cf;line-height:1.25;margin:2px 0 12px;letter-spacing:.02em}

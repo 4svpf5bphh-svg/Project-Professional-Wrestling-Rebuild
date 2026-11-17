@@ -564,7 +564,8 @@ test("Home contract wire dismisses one resolved offer without suppressing show o
  await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
- await page.locator(".ppw-home-action-with-dismiss").getByRole("button",{name:"Dismiss"}).click();
+ // Resolved notices belong to Recent Changes, not to the urgent tasks stack.
+ await page.getByRole("button",{name:"Dismiss Alice's contract update"}).click();
  await expect(page.getByText("Alice has signed")).toHaveCount(0);
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();

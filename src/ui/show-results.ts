@@ -687,7 +687,11 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  }
  // Headlines stay a lightweight chapter. The actual branded opening belongs
  // at the start of the full broadcast, which is the default results screen.
- headlines.append(header,...(featured.length?[highlights]:[]));
+ if(televisionOpening){
+  headlines.append(node("h2","ppw-headlines-show-name",
+   show.showName??"The completed show"));
+ }else headlines.append(header);
+ if(featured.length)headlines.append(highlights);
  const full=node("section","ppw-results-page");full.dataset.page="full";
  if(premiumOpening)full.append(premiumOpening);
  else if(televisionOpening)full.append(televisionOpening);

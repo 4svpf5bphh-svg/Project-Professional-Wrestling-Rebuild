@@ -780,6 +780,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"Return to Headlines"}).click();
   await expect(opening).toBeHidden();
   await expect(page.locator(".ppw-result-hero")).toHaveCount(0);
+  await expect(page.locator(".ppw-headlines-show-name")).toHaveText("Ascension");
   await expect(page.locator(".ppw-broadcast-highlights")).toBeVisible();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(opening).toBeVisible();
