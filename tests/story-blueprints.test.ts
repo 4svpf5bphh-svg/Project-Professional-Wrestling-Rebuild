@@ -37,6 +37,9 @@ test("sixteen distinct flexible story blueprints reuse the original playable ang
    assert.ok(angle.scene&&isAngleScene(angle.scene,angle.kind));
    assert.equal(angle.scene?.purpose,beat.purpose);
    assert.ok(angle.creativeBeat?.kind===angle.kind);
+   if(beat.kind==="VIDEO_PACKAGE")
+    assert.equal(angle.videoPurpose,"WRESTLER_HYPE",
+     "Do not invent an established feud in a generic Story Blueprint video");
   }
  }
  assert.equal(ids.size,48);

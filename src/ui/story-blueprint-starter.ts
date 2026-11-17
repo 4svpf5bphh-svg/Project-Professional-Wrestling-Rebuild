@@ -23,6 +23,7 @@ export function storyBlueprintAngleStarter(slotId:string,beat:StoryBlueprintBeat
  if(!isAngleScene(scene,beat.kind)||!initial.creativeBeat||
   !isSegmentCreativeBeat(initial.creativeBeat,beat.kind))
   throw new Error("The existing angle engine cannot book this suggestion");
- return {...initial,programmeId,scene,
-  ...(beat.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{})};
+ // An unlinked title pursuit, comeback or personal change is not a feud recap.
+ // Preserve the original neutral video purpose unless the manager changes it.
+ return {...initial,programmeId,scene};
 }
