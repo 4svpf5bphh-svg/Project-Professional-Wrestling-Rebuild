@@ -229,8 +229,17 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
    "APPLIED","The owner may move an unfinished finale back to the booked PPV");
   assert.equal((await saveCardEditorAsActor(context,{...scope,
    showId:"tv-7",requestId:"remove-tentative-chapter",
-   expectedRevision:await revision(),matches:[],segments:[],
-   runningOrder:[]})).status,"APPLIED");
+   expectedRevision:await revision(),
+   matches:[{slotId:"main",payload:{matchType:"SINGLES",
+    family:"INDIVIDUAL",
+    sides:[{sideId:"A",participants:[{personId:people[2]!,
+     contractId:contracts[2]!}]},{sideId:"B",
+     participants:[{personId:people[3]!,contractId:contracts[3]!}]}],
+    participants:[{personId:people[2]!,contractId:contracts[2]!},
+     {personId:people[3]!,contractId:contracts[3]!}],
+    scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",
+    intent:"COMPETITIVE",plannedLengthMinutes:15}}],
+   segments:[],runningOrder:["main"]})).status,"APPLIED");
   const restored=(await readProgrammeWorkspace(db.pool,scope)).programmes
    .find(p=>p.programmeId===programmeId)!;
   assert.equal(restored.finale?.showId,"spring-riot");
