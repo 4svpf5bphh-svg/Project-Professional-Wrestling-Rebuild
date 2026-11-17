@@ -8,7 +8,7 @@ import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
 import {programmeIdentity,validateProgrammeSides,type ProgrammeRef,type ProgrammeSides}
  from "../domain/programme-lifecycle.js";
-import {eligibleProgrammePayoffs,type ProgrammePayoff}
+import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
  from "../domain/programme-finales.js";
 export type {ProgrammePayoff} from "../domain/programme-finales.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
@@ -535,8 +535,7 @@ export async function chooseProgrammeFinale(pool:TransactionPool,input:Programme
  if(!valid(input.programmeId))throw new Error("Invalid rivalry");
  const clear=input.showId===null&&input.slotId===null&&input.payoff===null;
  if(!clear&&(!valid(input.showId)||!valid(input.slotId)||
-   !["DECISIVE_MATCH","TITLE_SHOWDOWN","STIPULATION_SHOWDOWN",
-     "BETRAYAL","RECONCILIATION","FINAL_CONFRONTATION"].includes(input.payoff??"")))
+   !Object.hasOwn(PROGRAMME_PAYOFFS,input.payoff??"")))
   throw new Error("Select a valid booked finale");
  return applyWorldCommand(pool,{
   worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,

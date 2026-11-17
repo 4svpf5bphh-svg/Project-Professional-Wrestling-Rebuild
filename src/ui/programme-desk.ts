@@ -362,14 +362,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       label:"Championship showdown"}]:[]),
      ...(chapter.stipulationMatch?[{value:"STIPULATION_SHOWDOWN" as const,
       label:"Final stipulation match"}]:[])];
-    if(["TURN","ATTACK","STABLE_EXIT"].includes(chapter.segmentKind??""))
-     return [{value:"BETRAYAL",label:"Betrayal / final attack"}];
-    if(chapter.segmentKind==="STABLE_RECONCILIATION")
-     return [{value:"RECONCILIATION",label:"Reconciliation"}];
-    if(["CONFRONTATION","CHALLENGE","CONTRACT_SIGNING","INTERRUPTION"]
-     .includes(chapter.segmentKind??""))
-     return [{value:"FINAL_CONFRONTATION",label:"Final confrontation"}];
-    return [];
+    // The same canonical eligibility drives the Card Editor, Programme Desk
+    // and final show certification; the booker need not force an attack.
+    return eligibleProgrammePayoffs("SEGMENT",{kind:chapter.segmentKind})
+     .map(value=>({value,label:PROGRAMME_PAYOFFS[value]}));
    };
    const eligible=planned.filter(chapter=>variants(chapter).length>0);
    const existing=p.finale;
@@ -440,7 +436,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       "Finale planned. Only the certified event can end this rivalry.");
     },working));
    }else if(view.canEdit)payoffPanel.append(element("p","ppw-muted",
-    "No eligible finale booked. Add a match, confrontation, attack, turn or reconciliation to your card first."));
+    "No finale chapter booked yet. Link any real match or angle to this storyline and save its card first."));
    if(view.canEdit&&existing?.resolvedWeekIndex===null)
     payoffPanel.append(button("Remove planned finale",()=>{
      void run(()=>port.planFinale({requestId:crypto.randomUUID(),
