@@ -6,8 +6,15 @@ for(const width of [320,390]){
  test("Story Blueprint books a native editable angle with actual Programme at "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:844});
   const joe={personId:"joe",contractId:"joe-deal"};
+  const riddle={personId:"riddle",contractId:"riddle-deal"};
+  const match={matchType:"SINGLES",family:"INDIVIDUAL",
+   participants:[joe,riddle],
+   sides:[{sideId:"A",participants:[joe]},{sideId:"B",participants:[riddle]}],
+   scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",
+   intent:"COMPETITIVE",plannedLengthMinutes:18};
   let revision=8;
   let saved:Record<string,unknown>|null=null;
+  let savedSlotId:string|null=null;
   const calls:string[]=[];
   const session={worldId:"world",playerId:"booker",csrfToken:"csrf",
    overview:{world:{revision:8,name:"Genesis",year:1,week:6,phase:"OPEN",
@@ -31,11 +38,15 @@ for(const width of [320,390]){
    worldRevision:revision,day:5,venueId:"arena",showName:"Ascension",
    promotionName:"CWA",venueName:"Arena",marketName:"Home",
    bookingClass:"REGULAR",ticketStrategy:"STANDARD",
-   championships:[],programmes:[story],programmeLinks:[],
+   championships:[],programmes:[story],programmeLinks:savedSlotId?
+    [{slotId:savedSlotId,programmeId:"joe-riddle"}]:[],
    selectedPeople:[{personId:"joe",name:"Samoa Joe",division:"MEN",
-    contractId:"joe-deal",alignment:"FACE"}],
-   slots:saved?[{slotId:"blueprint-scene",kind:"SEGMENT",position:0,
-    payload:saved}]:[]
+    contractId:"joe-deal",alignment:"FACE"},
+    {personId:"riddle",name:"Matt Riddle",division:"MEN",
+     contractId:"riddle-deal",alignment:"HEEL"}],
+   slots:[{slotId:"bout",kind:"MATCH",position:0,payload:match},
+    ...(saved&&savedSlotId?[{slotId:savedSlotId,kind:"SEGMENT",
+     position:1,payload:saved}]:[])]
   });
   await page.route("**/api/session",r=>r.fulfill({json:session}));
   await page.route("**/api/card",r=>{
@@ -45,6 +56,8 @@ for(const width of [320,390]){
     const segments=body.segments as {slotId:string;payload:Record<string,unknown>}[];
     expect(segments).toHaveLength(1);
     saved=segments[0]!.payload;
+    savedSlotId=segments[0]!.slotId;
+    expect((body.matches as unknown[])).toHaveLength(1);
     expect(saved.kind).toBe("INTERVIEW");
     expect(saved.actorIds).toEqual(["joe"]);
     expect(saved.scene).toMatchObject({purpose:"REVEAL_MOTIVATION"});
@@ -52,6 +65,7 @@ for(const width of [320,390]){
     revision++;
     return r.fulfill({json:{status:"APPLIED",result:{performers:1}}});
    }
+   if(method==="kpWorkspace")return r.fulfill({json:{entitlements:[]}});
    if(method==="planner")return r.fulfill({json:planner});
    if(method==="load")return r.fulfill({json:load()});
    if(method==="talent")return r.fulfill({json:{talent:[{
@@ -76,8 +90,9 @@ for(const width of [320,390]){
   await dialog.getByRole("button",{name:/Show signs of frustration/}).click();
   await expect(dialog.getByRole("button",{name:"Next · Script outcome"})).toBeVisible();
   await dialog.getByRole("button",{name:"+ Add performer"}).click();
-  await page.getByRole("dialog",{name:"Choose wrestler"})
-   .locator(".ppw-wrestler-card").first().click();
+  const chooser=page.getByRole("dialog",{name:"Choose wrestler"});
+  await chooser.getByRole("button",{name:"Samoa Joe"}).click();
+  await chooser.locator(".ppw-wrestler-card").first().click();
   dialog=page.getByRole("dialog",{name:"Edit angle"});
   await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
   await expect(dialog.locator(
