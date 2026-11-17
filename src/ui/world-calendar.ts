@@ -1,6 +1,4 @@
 import {eventDesign} from "./broadcast-identity.js";
-import {createAnimatedEventPoster} from "./animated-event-poster.js";
-import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
@@ -43,9 +41,8 @@ const label=(role:ShowRole)=>role==="FLAGSHIP"?"A show · Flagship":
  role==="PREMIUM"?"Premium PPV":"Special / PPV";
 export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>void){
  let data:Awaited<ReturnType<CalendarPort["load"]>>|null=null;
- let editing:ShowSeries|null=null,busy=false,error="",expanded=false;
+ let editing:ShowSeries|null=null,busy=false,error="";
  let mode:"mine"|"world"="mine",ppvOnly=false,manageExpanded=false;
- let fourWeekBlock=0;
  let pendingChange:{fingerprint:string;requestId:string}|null=null;
  let yearChosen:number|null=null,yearActiveWeek:number|null=null;
  const yearlyDrafts=new Map<number,AnnualPremiumEvent[]>();
@@ -198,7 +195,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  function yearData(){
   if(!data?.annual)return null;
   if(yearChosen===null||!data.annual.years.some(x=>x.year===yearChosen))
-   yearChosen=data.week===1?data.year:data.year+1;
+   yearChosen=data.year;
   return data.annual.years.find(x=>x.year===yearChosen)??null;
  }
  function yearEvents(year:number):AnnualPremiumEvent[]{
@@ -261,13 +258,18 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   if(!data?.annual)return null;
   const annual=data.annual,chosen=yearData()!;
   const rootSection=node("section","","ppw-calendar-panel ppw-calendar-year-plan");
-  rootSection.append(node("span","THE YEAR AHEAD","ppw-calendar-schedule-kicker"),
-   node("h2","Plan your PPVs"));
+  rootSection.append(node("span","TV + PREMIUM EVENTS","ppw-calendar-schedule-kicker"),
+   node("h2","Year "+chosen.year+" · Full calendar"));
   const summary=node("p",
    data.promotionName+" · "+annual.tier+" · "+
    annual.policy.minimum+"–"+annual.policy.maximum+
    " major events per 52-week year","ppw-calendar-year-subtitle");
   rootSection.append(summary);
+  rootSection.append(node("p",
+   chosen.year===data.year?
+    "CURRENT WORLD YEAR · Actual TV recurrence and this year's events":
+    "FUTURE YEAR · PPV changes affect Year "+chosen.year+" only",
+   "ppw-calendar-year-context"));
   const years=node("div","","ppw-calendar-year-toggle");
   for(const row of annual.years){
    const choose=button("Year "+row.year,()=>{
@@ -313,12 +315,17 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     date.setAttribute("aria-pressed",String(picked));
     date.setAttribute("aria-label","Year "+chosen.year+" week "+week+
      (showName?" — "+showName:" — available"));
-    if(showName)date.append(node("small",showName));
+    if(showName)date.append(node("small",showName,
+     "ppw-calendar-year-major"));
     const tv=data!.broadcastSlot,idx=weekIndex(chosen.year,week);
-    if(tv&&idx>=tv.startWeekIndex&&idx<=tv.endWeekIndex)
-     date.append(node("small","TV · "+
-      ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][tv.day-1],
+    const dueTv=data!.series.filter(s=>s.eventType==="REGULAR"&&
+     seriesDue(s,idx));
+    for(const regular of dueTv.slice(0,2)){
+     const validSlot=tv&&idx>=tv.startWeekIndex&&idx<=tv.endWeekIndex;
+     date.append(node("small",regular.name+
+      (validSlot?" · "+["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][tv.day-1]:""),
       "ppw-calendar-ppv-week-tv"));
+    }
     grid.append(date);
    }
    part.append(grid);quarters.append(part);
@@ -422,17 +429,12 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  function ownTile(s:ShowSeries,year:number,week:number,
   due:readonly ShowSeries[],owner?:string){
   const card=eventTile(s.name,s.role,s.eventType,owner);
-  const chosenArtwork=s.eventType==="MAJOR"?
-   createAnimatedEventPoster({style:s.posterStyle??data?.eventPosterStyle,
-    eventName:s.name,promotionName:owner??data?.promotionName??"",compact:true}):
-   createBroadcastPackageFrame({style:data?.broadcastPackage,kind:"OPEN",
-    show:s.name,promotion:owner??data?.promotionName??"",compact:true});
-  if(chosenArtwork){
-   chosenArtwork.classList.add("ppw-calendar-owned-poster");
-   card.dataset.hasArtwork="true";
-   card.querySelector(".ppw-calendar-artwork-shell")?.replaceWith(chosenArtwork);
-   card.dataset.animatedPoster=String(s.eventType==="MAJOR");
-  }
+  // The annual calendar is a compact agenda; art remains on show/results.
+  card.classList.add("ppw-calendar-event-compact");
+  card.querySelector(".ppw-calendar-artwork-shell")?.remove();
+  card.querySelector(".ppw-calendar-event-emblem")?.remove();
+  card.querySelector(".ppw-calendar-owner-mark")?.remove();
+  card.prepend(node("strong",s.name,"ppw-calendar-compact-title"));
   const slot=data?.broadcastSlot,index=weekIndex(year,week);
   if(s.eventType==="REGULAR"&&slot&&index>=slot.startWeekIndex&&index<=slot.endWeekIndex)
    card.append(node("span",slot.networkName+" · "+
@@ -462,79 +464,6 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     })));
   }
   return card;
- }
-
- /** Browse the existing certified 52-week schedule in month-like four-week
-  * windows. No invented Gregorian dates, second booking ledger, or Neon read. */
- function fourWeekNavigator():HTMLElement|null{
-  if(!data)return null;
-  const source=mode==="mine"?data.weeks.slice(0,52).map(w=>({
-   year:w.year,week:w.week,offset:w.offset,
-   events:w.shows.map(e=>({name:e.name,eventType:e.eventType}))
-  })):(data.worldWeeks??[]).map(w=>({
-   year:w.year,week:w.week,offset:w.offset,
-   events:w.events.map(e=>({name:e.name,eventType:e.eventType}))
-  }));
-  if(!source.length)return null;
-  const total=Math.ceil(source.length/4);
-  fourWeekBlock=Math.max(0,Math.min(fourWeekBlock,total-1));
-  const slice=source.slice(fourWeekBlock*4,fourWeekBlock*4+4);
-  const first=slice[0]!,last=slice[slice.length-1]!;
-  const panel=node("section","","ppw-calendar-four-week");
-  panel.setAttribute("aria-label","Four-week show calendar");
-  const heading=node("div","","ppw-calendar-four-week-header");
-  const labels=node("div","","ppw-calendar-four-week-title");
-  labels.append(node("small","FOUR-WEEK OVERVIEW","ppw-calendar-schedule-kicker"),
-   node("h3",first.year===last.year?
-    "Year "+first.year+" · Weeks "+first.week+"–"+last.week:
-    "Y"+first.year+" W"+first.week+" – Y"+last.year+" W"+last.week));
-  const controls=node("div","","ppw-calendar-four-week-controls");
-  const prev=button("Previous four weeks",()=>{fourWeekBlock--;render();},fourWeekBlock===0);
-  const next=button("Next four weeks",()=>{fourWeekBlock++;render();},fourWeekBlock===total-1);
-  controls.append(prev,next);heading.append(labels,controls);panel.append(heading);
-  const grid=node("div","","ppw-calendar-four-week-grid");
-  grid.setAttribute("role","group");grid.setAttribute("aria-label","Select a show week");
-  const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  for(const w of slice){
-   const visible=ppvOnly?w.events.filter(e=>e.eventType==="MAJOR"):w.events;
-   const key=w.year+"-"+w.week;
-   const tile=button("",()=>{
-    if(mode==="mine"&&!ppvOnly&&w.offset>=12)expanded=true;
-    render();
-    const target=root.querySelector<HTMLElement>(
-     '.ppw-calendar-occurrence[data-week="'+key+'"]');
-    target?.scrollIntoView({behavior:window.matchMedia(
-     "(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
-   },!visible.length);
-   tile.classList.add("ppw-calendar-four-week-tile");
-   tile.dataset.week=key;
-   tile.dataset.current=String(weekIndex(w.year,w.week)===
-    weekIndex(data.year,data.week));
-   tile.dataset.major=String(visible.some(e=>e.eventType==="MAJOR"));
-   tile.setAttribute("aria-label","View Year "+w.year+" Week "+w.week+
-    " in the show list: "+(visible.length?visible.map(e=>e.name).join(", "):"no events"));
-   tile.append(node("strong","W"+String(w.week).padStart(2,"0")),
-    node("small","YEAR "+w.year,"ppw-calendar-four-week-year"));
-   for(const event of visible.slice(0,2)){
-    const line=node("span",event.name,"ppw-calendar-four-week-event");
-    line.dataset.major=String(event.eventType==="MAJOR");tile.append(line);
-    const slot=data.broadcastSlot,idx=weekIndex(w.year,w.week);
-    if(mode==="mine"&&event.eventType==="REGULAR"&&slot&&
-     idx>=slot.startWeekIndex&&idx<=slot.endWeekIndex)
-     tile.append(node("small",days[slot.day-1]+" · "+
-      String(slot.hour).padStart(2,"0")+":00","ppw-calendar-four-week-day"));
-   }
-   if(visible.length>2)
-    tile.append(node("small","+"+(visible.length-2)+" more",
-     "ppw-calendar-four-week-more"));
-   if(!visible.length)
-    tile.append(node("span","No shows announced","ppw-calendar-four-week-empty"));
-   grid.append(tile);
-  }
-  panel.append(grid,node("small",
-   "Select a week for its existing booking details. TV broadcast days are fixed by contract.",
-   "ppw-calendar-four-week-help"));
-  return panel;
  }
 
  function render(){
@@ -592,7 +521,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const tabs=node("div","","ppw-calendar-view-tabs");
   tabs.setAttribute("role","group");tabs.setAttribute("aria-label","Calendar view");
   for(const [value,title] of [["mine","My shows"],["world","Across the World"]] as const){
-   const option=button(title,()=>{mode=value;fourWeekBlock=0;render();});
+   const option=button(title,()=>{mode=value;render();});
    option.setAttribute("aria-pressed",String(mode===value));tabs.append(option);
   }
   upcoming.append(tabs);
@@ -600,10 +529,14 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    const tv=data.broadcastSlot,current=weekIndex(data.year,data.week);
    if(tv.endWeekIndex>=current){
     const line=node("div","","ppw-calendar-network-term");
-    line.append(node("strong","WEEKLY TELEVISION · "+tv.networkName),
+    const regular=data.series.find(s=>s.role==="FLAGSHIP"&&s.active);
+    const cadence=regular?.cadenceWeeks===1?"WEEKLY":
+     regular?.cadenceWeeks===2?"ALTERNATE-WEEK":
+     "EVERY "+(regular?.cadenceWeeks??"?")+" WEEKS";
+    line.append(node("strong",cadence+" TELEVISION · "+tv.networkName),
      node("span",["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][tv.day-1]+
       " · "+String(tv.hour).padStart(2,"0")+":00 · Fixed by your contract"),
-     node("small","Future episodes appear automatically while the agreement is active. Plan their venues and cards closer to each week."));
+     node("small","Only due broadcasts appear on the calendar. Your contracted day and time stay fixed."));
     upcoming.append(line);
    }
   }
@@ -614,10 +547,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     option.setAttribute("aria-pressed",String(ppvOnly===selected));filters.append(option);
    }
    upcoming.append(filters);
-   const navigator=fourWeekNavigator();
-   if(navigator)upcoming.append(navigator);
    let rendered=0;
-   for(const w of (ppvOnly?data.weeks:data.weeks.slice(0,expanded?52:12))){
+   for(const w of data.weeks.slice(0,6)){
     const shows=ppvOnly?w.shows.filter(s=>s.eventType==="MAJOR"):w.shows;
     if(!shows.length)continue;
     const article=node("article","","ppw-calendar-occurrence"+
@@ -634,9 +565,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     "No premium events or specials are announced in the current calendar year.":
     "No upcoming events are scheduled. Manage recurring events to add a show.",
     "ppw-calendar-empty"));
-   if(!ppvOnly)upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week year",()=>{
-    expanded=!expanded;render();
-   }));
+
   }else{
    upcoming.append(node("p","See what rival promotions have announced. Their venues and future match cards remain under wraps."));
    const filters=node("div","","ppw-calendar-type-tabs");
