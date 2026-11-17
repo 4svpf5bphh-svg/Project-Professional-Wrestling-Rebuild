@@ -175,6 +175,16 @@ test("stipulation drama briefs put a concrete escalation near the verified match
   assert.match(rule.dramaticBeats,finish);
   assert.ok(rule.dramaticBeats.length<360,"Keep the free Groq prompt economical");
  }
+ // A cage submission remains a submission: never let the prompt turn
+ // it into a pin, or describe a tap-out as an official three-count.
+ const cage=getWrestlingBenchmark("steel-cage")!.show;
+ const submission={...cage,entries:cage.entries.map(entry=>({
+  ...entry,outcome:"SUBMISSION",summary:"Mason Holt made Isaiah King submit inside the cage."
+ }))};
+ const submissionNote=ringsideBrief(submission).slots[0]!.match!.stipulationRules!;
+ assert.match(submissionNote.dramaticBeats,/certified submission inside the cage/);
+ assert.doesNotMatch(submissionNote.dramaticBeats,/certified pin/);
+ assert.match(submissionNote.dramaticBeats,/No three-count or cage escape/);
  const generic=getWrestlingBenchmark("singles-technical")!.show;
  assert.equal(ringsideBrief(generic).slots[0]!.match!.stipulationRules,undefined);
 });
