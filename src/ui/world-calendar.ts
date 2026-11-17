@@ -319,9 +319,9 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     const dueTv=data!.series.filter(s=>s.eventType==="REGULAR"&&
      seriesDue(s,idx));
     date.dataset.hasTelevision=String(dueTv.length>0);
+    const appearances=[showName,...dueTv.map(x=>x.name)].filter(Boolean);
     date.setAttribute("aria-label","Year "+chosen.year+" week "+week+" — "+
-     [showName,...dueTv.map(x=>x.name)].filter(Boolean).join(" + ")||
-     "No event due");
+     (appearances.length?appearances.join(" + "):"no shows due"));
     for(const regular of dueTv.slice(0,2)){
      const validSlot=tv&&idx>=tv.startWeekIndex&&idx<=tv.endWeekIndex;
      date.append(node("small",regular.name+
@@ -582,8 +582,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     upcoming.append(article);rendered++;
    }
    if(!rendered)upcoming.append(node("p",ppvOnly?
-    "No premium events or specials are announced in the current calendar year.":
-    "No upcoming events are scheduled. Manage recurring events to add a show.",
+    "No PPVs or specials are due in the next six weeks.":
+    "No shows are due in the next six weeks.",
     "ppw-calendar-empty"));
 
   }else{
@@ -594,8 +594,6 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     option.setAttribute("aria-pressed",String(ppvOnly===selected));filters.append(option);
    }
    upcoming.append(filters);
-   const navigator=fourWeekNavigator();
-   if(navigator)upcoming.append(navigator);
    let rendered=0;
    for(const w of data.worldWeeks??[]){
     const visible=ppvOnly?w.events.filter(e=>e.eventType==="MAJOR"):w.events;
