@@ -336,7 +336,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
      return selected.map(x=>({showId:x.draft_id,slotId:x.slot_id,
       kind:x.kind,segmentKind:x.segment_kind,
       titleMatch:x.title_match,stipulationMatch:x.stipulation_match,
-      premium:x.booking_class==="PREMIUM",
+      ...(x.booking_class==="PREMIUM"?{premium:true}:{}),
       year:x.year,week:x.week,
       showName:x.show_name??"Scheduled show",status:x.status}));
     })(),
