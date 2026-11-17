@@ -246,10 +246,10 @@ function wrestlerClaimsOpponentIdentity(post:string,source:PostShowVoiceBrief):b
   if(!name.trim()||name.trim().toLocaleLowerCase()===
    voice.displayName.trim().toLocaleLowerCase())continue;
   const escaped=[...name.trim()].map(ch=>
-   "\\\\^$.*+?()[]{}|".includes(ch)?"\\\\"+ch:ch).join("");
+   "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
   const claimed=new RegExp(
-   "\\\\b(?:I['’]?m|I\\\\s+am|my\\\\s+name\\\\s+is|this\\\\s+is)\\\\s+"+
-   escaped+"(?=$|[\\\\s,.!?;:])","iu");
+   "\\b(?:I['’]?m|I\\s+am|my\\s+name\\s+is|this\\s+is)\\s+"+
+   escaped+"(?=$|[\\s,.!?;:])","iu");
   if(claimed.test(post))return true;
  }
  return false;
