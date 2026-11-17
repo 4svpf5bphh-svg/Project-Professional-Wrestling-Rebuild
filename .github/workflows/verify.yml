@@ -726,6 +726,10 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0150_wrestler_overness_and_gimmick_reception.sql
+      - name: Verify wrestler metric migration is safe to rerun after a held release
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0150_wrestler_overness_and_gimmick_reception.sql
       - name: Verify overness migration is additive and leaves original talent untouched
         env:
           PGPASSWORD: ppw_test
