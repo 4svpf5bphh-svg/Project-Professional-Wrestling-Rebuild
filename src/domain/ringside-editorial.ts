@@ -18,7 +18,7 @@ const STIPULATION_NOTES:Partial<Readonly<Record<MatchStipulation,{
   texture:"An uncompromising fight that may spill outside and use ringside objects, but invent no decisive weapon or medical fallout."},
  STEEL_CAGE:{win:"Pinfall or submission inside the cage; escape is NOT a winning method.",
   texture:"Steel mesh looming over the ring, bodies pressed against the wall, rattling panels and restricted space. No invented outsiders.",
-  storyBeats:"Make the enclosure change the wrestling: cramped movement, a plausible brush or impact against the steel, then a weary closing stretch ending in the certified pin inside the cage. Do not claim escaping won."},
+  storyBeats:"Make the enclosure change the wrestling: cramped movement, a plausible brush or impact against the steel, then a weary closing stretch ending in the certified legal finish inside the cage. Do not claim escaping won."},
  LADDER:{win:"Climb a ladder and retrieve the suspended prize; a pin cannot win.",
   texture:"Ladders erected and toppled, interrupted climbs, precarious reaches. Do not invent serious falls or injuries."},
  TABLES:{win:"Send the opponent through a table; no three-count.",
@@ -233,6 +233,13 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
   assertReferencedPromoTargetStayedOffScreen(source,prose);
+  // A declared turn against a rival is not proof the two were partners.
+  // A saved betrayal direction is necessary for on-air ally history.
+  if(source.type==="SEGMENT"&&source.segmentKind==="TURN"&&
+   !["BETRAY_PARTNER","ATTACK_ALLY","REFUSE_HELP"].includes(
+    source.segmentContext?.turnPresentation??"")&&
+   /\b(?:long[- ]?time|former|once[- ]trusted|old)\s+(?:tag[- ]team\s+)?(?:partner|ally|friend|stablemate)\b|\b(?:partnership|friendship|tag[- ]team|alliance(?:['’]s)?|stablemate)\b[^.!?]{0,45}\b(?:split|broken|ripped|betray(?:al|ed)|banner)\b/i.test(prose))
+   throw new Error("Ringside invented a partnership or alliance for a turn");
   if(!hadInjury&&/\b(?:suffered (?:a |an )?(?:serious |career-ending )?injury|was stretchered out|taken to hospital|injured (?:his|her|their) (?:knee|shoulder|neck|arm|leg)|left (?:the show|the arena) injured)\b/i.test(prose))
    throw new Error("Invented medical fallout");
   if(!hadInterference&&/\b(?:outside interference|run-in (?:decided|cost|secured)|(?:manager|referee) (?:interfered|attacked)|(?:third party|outsider) interfered)\b/i.test(prose))
@@ -270,8 +277,10 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
      "VERBAL_SURRENDER","FIRST_BLOOD","CASKET_CLOSE"].includes(finish)&&
     /\b(?:won by (?:pinfall|submission)|pinned (?:him|her|them) for (?:the )?win|tapped out for (?:the )?win|three-count (?:secured|decided|won))\b/i.test(prose))
     throw new Error("Stipulation result replaced by an invalid finish");
-   if(["CLEAN_PIN","FLASH_PIN"].includes(finish)&&
-    /\b(?:decisive|winning|match[- ]ending|finish(?:ing)?)\s+(?:submission|tap[- ]out)\b|\b(?:submission|tap[- ]out)\b[^.!?;]{0,75}\b(?:forc(?:e|ed|ing)|caus(?:e|ed|ing)|result(?:s|ed|ing)? in|produced?|deliver(?:s|ed|ing)?|sealed)\b[^.!?;]{0,35}\b(?:a\s+)?(?:clean\s+)?(?:pin(?:fall)?|three[- ]count)\b/i.test(prose))
+   if(["CLEAN_PIN","FLASH_PIN"].includes(finish)&&(
+    /\b(?:decisive|winning|match[- ]ending|finish(?:ing)?)\s+(?:submission|tap[- ]out)\b|\b(?:submission|tap[- ]out)\b[^.!?;]{0,75}\b(?:forc(?:e|ed|ing)|caus(?:e|ed|ing)|result(?:s|ed|ing)? in|produced?|deliver(?:s|ed|ing)?|sealed)\b[^.!?;]{0,35}\b(?:a\s+)?(?:clean\s+)?(?:pin(?:fall)?|three[- ]count)\b/i.test(prose)||
+    /\b(?:forc(?:e|ed|ing)|made)\b[^.!?;]{0,80}\b(?:tap(?:ped)?[- ]out|submit(?:ted)?)\b[^.!?;]{0,80}\b(?:pin(?:fall)?|three[- ]count)\b/i.test(prose)||
+    /\b(?:tap[- ]out|submission)\b[^.!?;]{0,55}\b(?:doubled as|counted as|became|was)\b[^.!?;]{0,40}\b(?:official\s+)?(?:pin(?:fall)?|three[- ]count)\b/i.test(prose)))
     throw new Error("A submission cannot itself secure the recorded pinfall");
    if(stipulated.startsWith("Steel Cage")&&
     /\b(?:cage(?:'s|’s)?|steel\s+cage)(?:\s+(?:had|has|with|beneath|under|above|its|the))?\s+(?:(?:low|closed|lowered|solid)\s+)?(?:roof|ceiling)\b|\b(?:cage(?:'s|’s)?\s+)?(?:low|lowered)\s+ceiling\b/i.test(prose))
