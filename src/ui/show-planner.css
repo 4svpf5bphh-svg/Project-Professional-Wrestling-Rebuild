@@ -180,3 +180,6 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 .ppw-planner-story-action[data-has-chapter="true"]{border-style:solid;border-color:#c4a56e;background:#413b43}
 .ppw-planner-story-beat[data-finale="true"]{border-color:#e7c276;background:#6a4528;color:#fff2cf;font-weight:850}
 .ppw-planner-story-action:focus-visible{outline:2px solid #e9e8bd;outline-offset:2px}
+
+.ppw-planner-story-empty{display:block;margin:-1px 0 7px;color:#b9ced7;
+ font-size:11px;line-height:1.3}
