@@ -169,6 +169,7 @@ for(const width of [320,390]){
    name:"Edit booked storyline chapter · Joe vs Místico · Year 1 Week 1"
   }).click();
   await expect(page).toHaveURL(/#\/card$/);
+  expect(await page.evaluate(()=>history.state?.ppwBooking?.programmeId)).toBe("feud");
   expect(loaded).toEqual(["card-1"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
