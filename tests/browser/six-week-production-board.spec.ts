@@ -70,3 +70,49 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+test("manager saves a seven-week PPV outline once, and it survives reload without phantom bookings",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let revision=6,stored:Array<{year:number;week:number;note:string}>=[];
+ const calls:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const req=route.request().postDataJSON() as {
+   method:string;notes?:typeof stored;expectedRevision?:number;
+  };
+  calls.push(req.method);
+  if(req.method==="planner")return route.fulfill({json:{
+   ...planner(),worldRevision:revision,creativeOutline:stored
+  }});
+  if(req.method==="saveCreativeOutline"){
+   expect(req.expectedRevision).toBe(revision);
+   stored=req.notes??[];revision++;
+   return route.fulfill({json:{status:"APPLIED",revision}});
+  }
+  throw Error("Unexpected method "+req.method);
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Plan future story beats"}).click();
+ await page.getByLabel("Creative intention for Year 1 Week 3")
+  .fill("Joe questions the champion");
+ await page.getByLabel("Creative intention for Year 1 Week 6")
+  .fill("Slow turn payoff at Spring Riot");
+ // Typed thoughts are only plans: no new booking or fees.
+ expect(calls).toEqual(["planner"]);
+ await page.getByRole("button",{name:"Save six-week outline"}).click();
+ await expect(page.locator(".ppw-planner-outline")).toContainText("Joe questions the champion");
+ await expect(page.locator(".ppw-planner-outline")).toContainText("Slow turn payoff");
+ expect(stored).toHaveLength(2);
+ await page.reload();
+ await expect(page.locator(".ppw-planner-outline")).toContainText("Spring Riot");
+ await expect(page.locator(".ppw-planner-board-tile[data-state='UNBOOKED']")).toHaveCount(4);
+ await page.getByRole("button",{name:"Edit 2 week notes"}).click();
+ await page.getByLabel("Creative intention for Year 1 Week 3").fill("");
+ await page.getByRole("button",{name:"Save six-week outline"}).click();
+ await expect(page.locator(".ppw-planner-outline")).not.toContainText("Joe questions the champion");
+ expect(stored).toEqual([{year:1,week:6,note:"Slow turn payoff at Spring Riot"}]);
+ expect(calls.filter(x=>x==="saveCreativeOutline")).toHaveLength(2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
