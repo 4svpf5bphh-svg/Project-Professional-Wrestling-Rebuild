@@ -175,3 +175,52 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+test("unbooked active feud survives seven-week overview and enters new card with story focus",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const data:ReturnType<typeof planner>&{
+  activeProgrammes?:{programmeId:string;name:string}[]} = planner();
+ data.activeProgrammes=[{programmeId:"feud-unbooked",name:"Joe vs Místico"}];
+ const methods:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const q=r.request().postDataJSON() as {method:string;showId?:string};
+  methods.push(q.method);
+  if(q.method==="planner")return r.fulfill({json:data});
+  if(q.method==="planShow"){
+   const week=data.weeks[3]!;
+   week.shows=[{...show(4,"DRAFT",false),draftId:"new-story-card",
+    slots:0}];
+   return r.fulfill({json:{status:"APPLIED"}});
+  }
+  if(q.method==="load")return r.fulfill({json:{
+   showId:q.showId,year:1,week:4,worldRevision:7,canEdit:true,
+   ready:false,showName:"CWA Weekly",promotionName:"CWA",
+   day:5,venueId:"hall",venueName:"Hall",marketName:"Home",
+   bookingClass:"REGULAR",ticketStrategy:"STANDARD",
+   championships:[],programmes:[],programmeLinks:[],
+   selectedPeople:[],slots:[]
+  }});
+  throw Error("Unexpected "+q.method);
+ });
+ await page.goto("/#/planner");
+ const lanes=page.locator(".ppw-planner-stories");
+ await expect(lanes).toContainText("Joe vs Místico");
+ await expect(lanes.locator(".ppw-planner-story-beat[data-has-chapter='true']"))
+  .toHaveCount(0);
+ await lanes.getByRole("button",{
+  name:"Book a storyline chapter · Joe vs Místico · Year 1 Week 4"
+ }).click();
+ await expect(page.getByRole("button",{name:"Save show"})).toBeVisible();
+ await page.getByRole("button",{name:"Save show"}).click();
+ await expect(page).toHaveURL(/#\/card$/);
+ expect(await page.evaluate(()=>history.state?.ppwBooking?.programmeId))
+  .toBe("feud-unbooked");
+ expect(await page.evaluate(()=>history.state?.ppwBooking?.showId))
+  .toBe("new-story-card");
+ expect(methods.filter(x=>x==="planShow")).toHaveLength(1);
+ expect(methods.filter(x=>x==="planner")).toHaveLength(2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
