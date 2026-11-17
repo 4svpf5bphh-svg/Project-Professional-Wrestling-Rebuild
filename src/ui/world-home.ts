@@ -29,8 +29,6 @@ const el=(tag:string,cls="",label="")=>{
  const node=document.createElement(tag);node.className=cls;
  node.textContent=label;return node;
 };
-const amount=(n:number)=>new Intl.NumberFormat("en-GB",{
- style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
 export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
  let progressedFrom:{year:number;week:number}|null=null;
@@ -247,9 +245,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    // PPW's living inbox is a primary management destination, not a drawer link.
    // This uses the existing single scoped Home overview request.
    const newMail=promotion.attention?.backstageUnreadCount??0;
+   const decisionsWaiting=promotion.attention?.pendingBackstage===true;
    const backstageAction=control(newMail>0?"BACKSTAGE · "+newMail+" NEW":"BACKSTAGE",
-    newMail>0?"Wrestlers, staff and network partners are waiting for you.":
-     "Messages, staff advice, network feedback and talent opportunities.",
+    decisionsWaiting?"An open wrestler request needs your decision. Review messages and staff advice.":
+    newMail>0?"New messages from your wrestlers, staff and network partners.":
+     "Wrestlers, staff, broadcasters and talent opportunities.",
     newMail>0?port.openUnreadBackstage??port.backstage:port.backstage,"✉");
    backstageAction.classList.add("ppw-home-backstage-action");
    backstageAction.setAttribute("aria-label",newMail>0?
@@ -259,22 +259,31 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     String(newMail>99?"99+":newMail)));
    dashboard.append(backstageAction);
    const last=promotion.latestShow;
-   const resultsAction=control(last?"LATEST RESULT · "+last.showName:"RESULTS ARCHIVE",
-    last?"Year "+last.year+" · Week "+last.week+" · Read the broadcast recap":
-     "Your certified show history, title changes and match finishes.",port.results,"★");
+
+   const resultsAction=control(last?"LATEST CERTIFIED SHOW · "+last.showName:"RESULTS ARCHIVE",
+    last?"Year "+last.year+" · Week "+last.week+" · Read the full broadcast":
+     "Certified matches, segments and results.",port.results,"★");
    resultsAction.classList.add("ppw-home-result-action");
+   if(last){
+    resultsAction.dataset.certified="true";
+    if(typeof last.crowdResponse==="number"&&Number.isFinite(last.crowdResponse))
+     resultsAction.append(el("span","ppw-home-certified-score",
+      Math.round(last.crowdResponse)+"/100 · CROWD"));
+    const broadcastMark=createPromotionLogo(brand.key,90);
+    if(broadcastMark){
+     broadcastMark.classList.add("ppw-home-result-mark");
+     broadcastMark.alt="";
+     resultsAction.append(broadcastMark);
+    }
+   }
    dashboard.append(resultsAction);
-   const standing=promotion.standing;
-   dashboard.append(control(standing?"WORLD RANK · #"+standing.position+" / "+standing.total:
-    "WORLD RANK · Standings",
-    "See where your promotion stands by broadcast reach.",port.industry,"◆"));
    root.append(dashboard);
    // An officially reviewed or provisional same-scale circuit rival exists
    // even without TV. Compare only certified data, never fictional airtime.
    const competition=promotion.competition;
    const circuit=el("section","ppw-home-competition");
    circuit.setAttribute("aria-label","Your current promotional competition");
-   circuit.append(el("span","ppw-home-brand","YOUR COMPETITION"));
+   circuit.append(el("span","ppw-home-brand","RATINGS WAR / YOUR CIRCUIT"));
    if(competition){
     const rival=el("h3","",competition.name);
     const circuitKind=competition.humanManaged?"HUMAN MANAGER":"AI PROMOTION";
@@ -343,16 +352,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    // A controller must claim a promotion before private Industry views open.
    return;
   }
-  const stats=el("section","ppw-home-finances");
-  for(const [label,note] of [
-   ["CASH",amount(promotion.cash)],
-   ["DEBT",amount(promotion.debt)],
-   ["LAST WEEK",promotion.lastWeeklyNet===null?"Not settled":amount(promotion.lastWeeklyNet)]
-  ] as const){
-   const tile=el("div","ppw-home-stat");
-   tile.append(el("span","",label),el("strong","",note));stats.append(tile);
-  }
-  root.append(stats);
   // News belongs to its dedicated department. Home shows the next card,
   // actual player decisions and recent consequences, not a duplicate feed.
   const brief=el("section","ppw-home-brief");
@@ -432,14 +431,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    items.push({title:"Contracts approaching expiry",detail:
     "Additional wrestler contracts approach expiry. Review all expiring agreements.",
     action:port.contractsExpiring??port.contracts,icon:"◈",level:"important"});
-  // Accepted offers are actionable NOW, not buried under the end-of-week wire.
-  for(const accepted of (attention?.offerResults??[])
-   .filter(x=>x.status==="ACCEPTED").slice(0,3)){
-   items.unshift({title:accepted.name+" has signed",
-    detail:"Agreement accepted. Check dates and booking availability in Contracts.",
-    action:port.contracts,icon:"✓",level:"priority",noticeId:accepted.id,
-    personId:accepted.personId,personName:accepted.name});
-  }
   if(promotion.financialDistress&&promotion.financialDistress!=="HEALTHY")
    items.push({title:"Financial pressure",detail:
     "Current financial outlook: "+promotion.financialDistress+". Review commitments and runway.",
@@ -464,11 +455,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }else brief.append(entry);
   }
   // Immediate decisions are above passive links; no additional reads.
-  if(items.length)root.insertBefore(brief,stats);
+  if(items.length)root.insertBefore(brief,root.querySelector(".ppw-home-dashboard"));
   // Secondary news is one compact inbox; accepted offers already have their
   // own primary action and acknowledgement above the dashboard.
   const inboxBody=el("div","ppw-home-inbox-body");
-  const results=(attention?.offerResults??[]).filter(x=>x.status!=="ACCEPTED");
+  const results=attention?.offerResults??[];
   if(results.length){
    const wire=el("section","ppw-home-wire");
    wire.append(el("span","ppw-home-brand","THE CONTRACT WIRE"),
@@ -714,7 +705,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    inbox.setAttribute("aria-label","Recent decisions and changes");
    inbox.append(el("header","ppw-home-updates-head",
     "RECENT CHANGES · "+resolvedCount),inboxBody);
-   root.insertBefore(inbox,stats);
+   root.append(inbox);
   }
   if(port.dismissAttentionBatch&&resolvedCount>1){
    const clear=el("button","ppw-home-clear-resolved",

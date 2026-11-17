@@ -601,20 +601,20 @@ for(const width of [320,390]){
   await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
-  // Completed results now open directly in the full broadcast. The optional
-  // show branding remains available on the Headlines page.
+  // The purchased programme's true identity opens the full broadcast rather
+  // than being hidden on an optional Headlines page.
   const opening=page.locator(".ppw-tv-opening-wrap");
-  await expect(opening).toBeHidden();
+  await expect(opening).toBeVisible();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await page.getByRole("button",{name:"Return to Headlines"}).click();
-  await expect(opening).toBeVisible();
+  await expect(opening).toBeHidden();
   await expect(opening.locator(".ppw-tv-frame")).toHaveAttribute("data-broadcast-package","prizefight");
   await expect(opening.locator(".ppw-tv-title")).toHaveText("Dynamite");
   await expect(opening.locator(".ppw-tv-promotion")).toHaveText("AEW");
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await expect(opening.getByRole("button",{name:"Skip opening"})).toHaveCount(0);
   await page.getByRole("button",{name:"Read the Full Show"}).click();
-  await expect(opening).toBeHidden();
+  await expect(opening).toBeVisible();
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-result-entry").first()).toContainText("Kenny Omega");
@@ -790,7 +790,7 @@ for(const width of [320,390]){
 }
 
 for(const width of [320,390]){
- test("a certified angle earns a separate five-star rating without hiding match stars at "+width+"px",async({page})=>{
+ test("a certified angle shows its earned temperature and original score at "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:width===320?720:844});
   let resultReads=0;
   const rated={...show,entries:[show.entries[0],
@@ -808,7 +808,11 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Read ringside report/}).click();
   const angle=page.locator(".ppw-result-angle");
   await expect(angle.locator(".ppw-result-angle-grade"))
-   .toHaveText("SEGMENT ★ 3.75 / 5");
+   .toHaveText("ANGLE · HOT");
+  await expect(angle.locator(".ppw-result-angle-grade"))
+   .toHaveAttribute("title","Certified segment execution · 3.75 / 5");
+  await expect(angle.locator(".ppw-segment-score-detail"))
+   .toContainText("3.75 / 5");
   await expect(page.locator(".ppw-result-match .ppw-result-rating"))
    .toHaveText("★ 4.50 / 5");
   await expect(angle).toContainText("74 / 100");

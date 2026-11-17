@@ -4,7 +4,7 @@
 import type {ShowResultEntry} from "../db/show-results-view.js";
 export interface BreakdownItem{
  slotId:string;position:number;kind:"MATCH"|"ANGLE";headline:string;
- participants:string;winner:string|null;stars:number|null;crowd:number;
+ participants:string;winner:string|null;stars:number|null;segmentStars:number|null;crowd:number;
  minutes:number|null;finish:string;keyMoments:string[];
 }
 const words=(value:string)=>value.replaceAll("_"," ").toLowerCase()
@@ -28,7 +28,9 @@ export function projectShowBreakdown(entries:readonly ShowResultEntry[]):Breakdo
    headline:entry.headline,participants,
    winner:match&&entry.matchContext?.winnerNames.length?
     entry.matchContext.winnerNames.join(" & "):null,
-   stars:typeof fallout?.ratingStars==="number"?fallout.ratingStars:null,
+   stars:match&&typeof fallout?.ratingStars==="number"?fallout.ratingStars:null,
+   segmentStars:!match&&typeof entry.segmentRatingStars==="number"?
+    entry.segmentRatingStars:null,
    crowd:entry.crowdResponse,
    minutes:typeof fallout?.actualMinutes==="number"?fallout.actualMinutes:null,
    finish:words(entry.outcome),keyMoments};

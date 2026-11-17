@@ -363,6 +363,12 @@ export function mountPersonaDesk(root:HTMLElement,
   finally{loading=false;render();}
  }
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
+ const worldNeedsReply=(mail:WorldMail)=>
+  (mail.canRespond===true&&!mail.networkResponse)||
+  (mail.canStaffRespond===true&&!mail.staffResponse)||
+  (mail.canDisagree===true&&!mail.disagreementResponse)||
+  (mail.canPartnerRespond===true&&!mail.partnerResponse)||
+  (mail.canFreeAgentRespond===true&&!mail.freeAgentResponse);
  function render(){
   const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
   const previousDocumentScroll=window.scrollY;
@@ -382,9 +388,10 @@ export function mountPersonaDesk(root:HTMLElement,
     head.append(control);
    }
   if(pane==="INBOX")head.append(el("h1","","Messages"));
-  else head.append(el("span","ppw-eyebrow","CONTACTS"),
-   el("h1","","Contact details"),
-   el("p","ppw-muted","Private career conversations and character history."));
+  else if(pane==="PROFILE")head.append(el("span","ppw-eyebrow","BACKSTAGE / ROSTER"),
+   el("h1","","People"),
+   el("p","ppw-muted","Characters, conversations and career history."));
+  else head.append(el("h1","","Conversation"));
   if(pane!=="THREAD"&&pane!=="WORLD_THREAD")root.append(head);
   else if(onBack){
    // From a dossier, leave the conversation without relying on a hidden
@@ -664,10 +671,11 @@ export function mountPersonaDesk(root:HTMLElement,
       item.subject.startsWith("Creative after the staff review")||
       item.subject.startsWith("The staff disagreement")))||
     (inboxFilter==="UNREAD"&&!item.read)||
-    (inboxFilter==="ACTIVE"&&!item.read))){
+    (inboxFilter==="ACTIVE"&&worldNeedsReply(item)))){
     const item=button("",()=>void openWorldMail(mail.id));
     item.classList.add("ppw-backstage-contact","ppw-backstage-world-contact");
     if(!mail.read)item.classList.add("ppw-backstage-unread");
+    if(worldNeedsReply(mail))item.dataset.needsDecision="true";
     const avatar=el("span","ppw-backstage-avatar",
      mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
      mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
@@ -677,6 +685,7 @@ export function mountPersonaDesk(root:HTMLElement,
      "W"+(mail.createdWeekIndex%52+1)));
     copy.append(top,el("span","ppw-backstage-contact-preview",mail.subject));
     item.append(avatar,copy);
+    if(worldNeedsReply(mail))item.append(el("span","ppw-messenger-awaiting","REPLY"));
     if(!mail.read)item.append(el("span","ppw-backstage-unread-dot",""));
     entries.append(item);count++;
    }

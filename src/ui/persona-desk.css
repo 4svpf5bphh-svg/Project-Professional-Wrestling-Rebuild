@@ -546,3 +546,22 @@ html[data-ppw-screen="backstage"] #game .ppw-messenger-thread{
  #game .ppw-messenger-profile .ppw-persona-options{
   grid-template-columns:minmax(0,1fr)!important}
 }
+
+/* A read message can still need a managerial decision. Keep real requests
+   recognisable beside unread-only conversations on 320/390px iPhones. */
+.ppw-messenger-inbox .ppw-backstage-world-contact[data-needs-decision="true"]{
+ border-left:3px solid #3a89d7!important}
+.ppw-messenger-inbox .ppw-backstage-world-contact .ppw-messenger-awaiting{
+ flex:0 0 auto;align-self:center;white-space:nowrap;
+ font-size:9px;font-weight:900;letter-spacing:.05em;
+ padding:5px 6px;border-radius:7px;background:#dceaff;color:#1c518d}
+.ppw-messenger .ppw-backstage-world-actions .ppw-persona-button{
+ min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.4;
+ padding:12px!important;min-height:46px!important}
+.ppw-messenger-profile .ppw-persona-header h1{margin-bottom:3px}
+@media(max-width:390px){
+ .ppw-messenger-inbox .ppw-backstage-world-contact{gap:8px!important;
+  min-width:0;padding:10px 8px!important}
+ .ppw-messenger-inbox .ppw-backstage-world-contact .ppw-backstage-contact-copy{
+  min-width:0;overflow:hidden}
+}
