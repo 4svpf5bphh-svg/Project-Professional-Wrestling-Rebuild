@@ -161,6 +161,7 @@ export async function readContractDesk(
   const awaitingRenewalOfferIds=new Set(pendingOffers
    .map(o=>o.source_contract_id).filter((id):id is string=>id!==null));
   const decidedOffers=offers.filter(o=>o.status!=="PENDING").slice(0,8);
+  const awaitingSameTermsIds=new Set(renewals.map(r=>r.contract_id));
   const byContract=new Map(contracts.map(c=>[c.contract_id,c]));
   const roster=contracts.map(c=>{
    const entry=contractDeskEntry({
@@ -169,7 +170,8 @@ export async function readContractDesk(
     expiresWeekIndex:c.expires_week_index,startWeekIndex:c.start_week_index,currentWeekIndex});
    // A signed next term removes expiry work; an outstanding offer removes
    // the duplicate "renew now" alarm but cannot pretend a contract is signed.
-   const pendingTerms=awaitingRenewalOfferIds.has(c.contract_id);
+   const pendingTerms=awaitingRenewalOfferIds.has(c.contract_id)||
+    awaitingSameTermsIds.has(c.contract_id);
    return c.renewal_secured?{...entry,expiringSoon:false,
     needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:
     pendingTerms?{...entry,expiringSoon:false,
