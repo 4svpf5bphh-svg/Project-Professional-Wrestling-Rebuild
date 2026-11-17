@@ -74,6 +74,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
  let search="",focusApplied=false;
  let amounts=new Map<string,{dates:number;payment:number}>();
  const expandedRenewals=new Set<string>();
+ // Native <details> state must survive negotiation, save and World revision
+ // refresh, otherwise the manager is thrown back to the roster each time.
+ const openContracts=new Set<string>();
  let pending=new Map<string,string>();
  const editable=()=>view?.canEdit===true&&!working;
  const request=(key:string)=>{let id=pending.get(key);if(!id){id=crypto.randomUUID();pending.set(key,id);}return id;};
@@ -89,6 +92,13 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     (result as {status:unknown}).status==="STALE")
     throw new Error("The deadline or contract terms have changed. Review the latest details before trying again.");
    view=await port.load();notice=ok;clear(key);
+   if(key.startsWith("negotiated:")){
+    const contractId=key.slice("negotiated:".length);
+    const selected=view.roster.find(c=>c.contractId===contractId);
+    openContracts.add(contractId);
+    expandedRenewals.delete(contractId);
+    deskTab="ROSTER";filter="ALL";search=selected?.name??search;
+   }
   }catch(e){error=e instanceof Error?e.message:"Contract action could not be completed";}
   finally{working=false;render();}
  }
@@ -329,7 +339,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    for(const c of visible){
     const card=document.createElement("details");
     card.className="ppw-contract-card"+(c.needsAttention?" ppw-contract-urgent":"");
-    if(focusedPersonId===c.personId)card.open=true;
+    card.open=openContracts.has(c.contractId);
+    card.addEventListener("toggle",()=>{
+     if(!card.isConnected)return;
+     if(card.open)openContracts.add(c.contractId);
+     else openContracts.delete(c.contractId);
+    });
     const summary=document.createElement("summary");
     const chips=el("div","ppw-contract-heading");
     chips.append(el("strong","",c.name),
@@ -338,8 +353,14 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       c.weeksRemaining+" weeks left"));
     if(c.renewalArranged)
      chips.append(el("small","ppw-contract-pending-label","NEXT TERM AGREED"));
-    else if(c.pendingNegotiation||c.pendingRenewal)
-     chips.append(el("small","ppw-contract-pending-label","NEGOTIATING"));
+    else if(c.pendingRenewalOffer)
+     chips.append(el("small","ppw-contract-pending-label",
+      "OFFER SENT · AWAITING REPLY"));
+    else if(c.pendingRenewal)
+     chips.append(el("small","ppw-contract-pending-label",
+      "RENEWAL SENT · AWAITING REPLY"));
+    else if(c.pendingNegotiation)
+     chips.append(el("small","ppw-contract-pending-label","DATES REQUESTED"));
     else if(c.reason==="NO_DATES")
      chips.append(el("small","ppw-contract-danger","NO DATES"));
     else if(c.expiringSoon)
@@ -430,7 +451,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      const toggle=btn(open?"Close renewal terms":"Negotiate a new package",()=>{
       if(open)expandedRenewals.delete(c.contractId);
       else expandedRenewals.add(c.contractId);
-      render();
+      openContracts.add(c.contractId);
+      paint();
      },!editable());
      toggle.className+=" ppw-contract-renewal-toggle";
      body.append(toggle);
@@ -632,7 +654,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    view=await port.load();error="";
    if(!focusApplied&&focusedPersonId){
     const person=view.roster.find(x=>x.personId===focusedPersonId);
-    if(person){deskTab="ROSTER";filter="ALL";search=person.name;}
+    if(person){deskTab="ROSTER";filter="ALL";search=person.name;
+     openContracts.add(person.contractId);}
    }
    focusApplied=true;
   }
