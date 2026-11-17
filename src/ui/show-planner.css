@@ -106,3 +106,35 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 @media(max-width:380px){
  .ppw-planner-day-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+
+/* 53D: compact, one-handed production overview of the real six-week Planner. */
+.ppw-planner-production-board{border:1px solid rgba(112,193,213,.35);
+ border-radius:15px;padding:14px 12px;margin:13px 0 20px;
+ background:linear-gradient(145deg,#123449,#102538);min-width:0}
+.ppw-planner-production-board h2{font-size:21px;color:#fff;margin:4px 0 8px}
+.ppw-planner-board-kicker{font-size:10px;letter-spacing:.12em;color:#96dfe6;font-weight:850}
+.ppw-planner-board-summary{color:#bed9df;font-size:12px;line-height:1.45;margin:6px 0 9px}
+.ppw-planner-board-premium{color:#ffe2aa;border-left:3px solid #d5ac64;
+ padding:7px 10px;background:rgba(183,117,58,.12);border-radius:5px;
+ font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.ppw-planner-board-weeks{display:grid;grid-auto-flow:column;
+ grid-auto-columns:minmax(91px,1fr);gap:7px;overflow-x:auto;overscroll-behavior-inline:contain;
+ scroll-snap-type:x proximity;padding:5px 2px 11px;margin:6px 0;
+ scrollbar-color:#50798a transparent}
+.ppw-planner-board-tile.ppw-planner-button{display:flex;flex-direction:column;
+ gap:5px;align-items:flex-start;text-align:left;min-height:96px;min-width:0;
+ padding:10px 8px;margin:0;border-color:#42687a;
+ scroll-snap-align:start;white-space:normal;overflow-wrap:anywhere}
+.ppw-planner-board-tile strong{font-size:18px;line-height:1;color:#fff}
+.ppw-planner-board-tile small{color:#bdd8df;font-size:11px}
+.ppw-planner-board-state{font-size:11px;font-weight:750;color:#d8f1f3}
+.ppw-planner-board-tile[data-state="SUBMITTED"]{border-color:#65b3a0;background:#17473f}
+.ppw-planner-board-tile[data-state="READY_TO_SUBMIT"]{border-color:#dbbd78}
+.ppw-planner-board-tile[data-state="CARD_IN_PROGRESS"],
+.ppw-planner-board-tile[data-state="PARTIALLY_BOOKED"]{border-color:#d1a777}
+.ppw-planner-board-tile[data-premium="true"]{background:#513a2b;border-color:#e2ba76}
+.ppw-planner-week:focus{outline:2px solid #a4e5eb;outline-offset:2px;scroll-margin-top:18px}
+@media(max-width:390px){.ppw-planner-board-weeks{grid-auto-columns:100px}
+ .ppw-planner-production-board{padding:12px 9px}
+ .ppw-planner-board-tile.ppw-planner-button{min-height:94px}}
