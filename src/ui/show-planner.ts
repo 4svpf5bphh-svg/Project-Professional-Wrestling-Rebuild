@@ -30,7 +30,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
  let pendingOutline:{fingerprint:string;requestId:string}|null=null;
  let pendingStoryProgrammeId:string|null=null;
  const outlinedNotes=new Map<string,string>();
- let outlineExpanded=false;
+ let outlineExpanded=false,outlineWeekKey:string|null=null;
  const button=(label:string,action:()=>void,disabled=false)=>{
   const b=node("button",label,"ppw-planner-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=action;return b;};
@@ -168,9 +168,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
  function outlineEditor(){
   const section=node("section","","ppw-planner-outline");
   const notes=data?.creativeOutline??[];
-  section.append(node("h3","Booker's creative outline"),
-   node("p","Record what you intend to build. These notes do not book wrestlers, "+
-    "guarantee results or charge appearance fees.","ppw-planner-board-summary"));
+  section.append(node("h3","Story notes"));
   const toggle=button(outlineExpanded?"Hide outline editor":
    notes.length?"Edit "+notes.length+" week notes":"Plan future story beats",()=>{
     outlineExpanded=!outlineExpanded;draw();},busy);
@@ -180,18 +178,34 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     node("p","Week "+note.week+" · "+note.note,"ppw-planner-outline-note"));
    return section;
   }
-  for(const week of data?.weeks??[]){
-   const label=node("label","","ppw-planner-outline-label");
-   label.append(node("span","Year "+week.year+" · Week "+week.week+
-    (week.major?" · PPV week":"")));
-   const area=document.createElement("textarea");
-   area.maxLength=240;area.rows=2;area.disabled=busy||!data?.canEdit;
-   area.setAttribute("aria-label","Creative intention for Year "+week.year+
-    " Week "+week.week);
+  const weeks=data?.weeks??[];
+  const active=weeks.find(w=>outlineKey(w.year,w.week)===outlineWeekKey)??weeks[0];
+  const choices=node("div","","ppw-planner-outline-weeks");
+  choices.setAttribute("role","group");
+  choices.setAttribute("aria-label","Choose a week to plan");
+  for(const week of weeks){
    const key=outlineKey(week.year,week.week);
+   const pick=button("W"+week.week+(week.major?" · PPV":""),()=>{
+    outlineWeekKey=key;draw();},busy);
+   pick.setAttribute("aria-label","Creative outline for Year "+week.year+
+    " Week "+week.week);
+   pick.setAttribute("aria-pressed",String(active?.year===week.year&&
+    active?.week===week.week));
+   choices.append(pick);
+  }
+  section.append(choices);
+  if(active){
+   const label=node("label","","ppw-planner-outline-label");
+   label.append(node("span","Year "+active.year+" · Week "+active.week+
+    (active.major?" · PPV week":"")));
+   const area=document.createElement("textarea");
+   area.maxLength=240;area.rows=3;area.disabled=busy||!data?.canEdit;
+   area.setAttribute("aria-label","Creative intention for Year "+active.year+
+    " Week "+active.week);
+   const key=outlineKey(active.year,active.week);
    area.value=outlinedNotes.get(key)??notes.find(n=>
-    n.year===week.year&&n.week===week.week)?.note??"";
-   area.placeholder="e.g. Build tension before the title match";
+    n.year===active.year&&n.week===active.week)?.note??"";
+   area.placeholder="What should this week achieve for your story?";
    area.oninput=()=>{outlinedNotes.set(key,area.value);pendingOutline=null;};
    label.append(area);section.append(label);
   }
