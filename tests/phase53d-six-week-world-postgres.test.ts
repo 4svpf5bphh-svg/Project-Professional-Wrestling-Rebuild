@@ -68,9 +68,9 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
    for(let week=1;week<=6;week++){
     const showId="tv-"+week;
     await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,
-     promotion_id,year,week,status,show_day,venue_id,booking_class,event_type,
+     promotion_id,year,week,status,show_day,venue_id,market_id,booking_class,event_type,
      show_name,show_series_id,event_importance)
-     VALUES($1,$2,$3,1,$4,$6,5,$5,'REGULAR','REGULAR',
+     VALUES($1,$2,$3,1,$4,$6,5,$5,'home','REGULAR','REGULAR',
      'CWA Weekly','flagship',70)`,[worldId,showId,promotionId,week,venueId,
      [1,3,5].includes(week)?"DRAFT":"SUBMITTED"]);
     if(![1,3,5].includes(week))await tx.query(`
@@ -83,9 +83,9 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
       plannedLengthMinutes:15,plannedFinish:"CLEAN_PIN"})]);
    }
    await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,
-    year,week,status,show_day,venue_id,booking_class,event_type,show_name,
+    year,week,status,show_day,venue_id,market_id,booking_class,event_type,show_name,
     show_series_id,event_importance)
-    VALUES($1,'spring-riot',$2,1,6,'DRAFT',7,$3,'PREMIUM','MAJOR',
+    VALUES($1,'spring-riot',$2,1,6,'DRAFT',7,$3,'home','PREMIUM','MAJOR',
      'Spring Riot','ppv',90)`,[worldId,promotionId,venueId]);
   });
 
