@@ -102,8 +102,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    // weekly/PPV draft or charging twice.
    const refreshed=await port.load();
    if(pendingStoryProgrammeId){
-    const planned=refreshed.weeks.find(w=>w.year===input.year&&w.week===input.week)?.
-     shows.find(show=>show.status==="DRAFT"&&
+    const planned=refreshed.weeks.find(w=>w.year===input.year&&w.week===input.week)?.shows.find(show=>show.status==="DRAFT"&&
       (!input.showSeriesId||show.showSeriesId===input.showSeriesId)&&
       (!input.draftId||show.draftId===input.draftId));
     if(planned)openAfterSave={draftId:planned.draftId,programmeId:pendingStoryProgrammeId};
