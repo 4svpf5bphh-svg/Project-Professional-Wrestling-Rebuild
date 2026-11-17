@@ -4,6 +4,7 @@ import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import type {CalendarPlanningTarget} from "./world-calendar.js";
 import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
+import {buildSixWeekProduction} from "../domain/six-week-production-board.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
@@ -113,6 +114,63 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   day=fixed?slot.day:draft?.day??(premium?(saturdayTv?7:6):5);
   strategy=draft?.ticketStrategy??"STANDARD";draw();
  }
+ function buildBoard(){
+  const source=data!;
+  const snapshot=buildSixWeekProduction(source.weeks);
+  const section=node("section","","ppw-planner-production-board");
+  section.setAttribute("aria-label","Six-week booking and PPV build");
+  section.append(node("span","YOUR NEXT SIX WEEKS","ppw-planner-board-kicker"),
+   node("h2","Production board"));
+  const summary=node("p",
+   snapshot.submittedShows+" submitted show"+(snapshot.submittedShows===1?"":"s")+
+   " · "+snapshot.unsubmittedWeeks+" week"+(snapshot.unsubmittedWeeks===1?"":"s")+
+   " still to review. Drafts are not submitted.",
+   "ppw-planner-board-summary");
+  section.append(summary);
+  if(snapshot.nextPremium){
+   const ppv=snapshot.nextPremium;
+   const event=node("p",
+    "Next PPV: "+ppv.name+" · Year "+ppv.year+" Week "+ppv.week+
+    " · "+(ppv.offset===0?"This week":ppv.offset===1?"Next week":"In "+ppv.offset+" weeks"),
+    "ppw-planner-board-premium");
+   section.append(event);
+  }else{
+   section.append(node("p","No confirmed PPV falls within this booking window. "+
+    "Your annual calendar controls premium event dates.","ppw-planner-board-summary"));
+  }
+  const tiles=node("div","","ppw-planner-board-weeks");
+  tiles.setAttribute("aria-label","Select a booking week");
+  for(const week of snapshot.weeks){
+   const tile=button("",()=>{
+    const target=root.querySelector<HTMLElement>("#ppw-planner-week-"+week.key);
+    if(target){target.scrollIntoView({block:"start"});target.focus({preventScroll:true});}
+   },busy);
+   tile.classList.add("ppw-planner-board-tile");
+   tile.dataset.state=week.state;
+   tile.dataset.premium=String(week.isPremium);
+   tile.setAttribute("aria-label","Year "+week.year+" Week "+week.week+
+    ", "+(week.premiumName?"PPV "+week.premiumName+", ":"")+week.label);
+   tile.replaceChildren(
+    node("strong","W"+week.week),
+    node("small","Y"+week.year+(week.isPremium?" · PPV":" · TV")),
+    node("span",week.label,"ppw-planner-board-state"));
+   tiles.append(tile);
+  }
+  section.append(tiles);
+  const pending=source.weeks.find(w=>w.canEdit&&(
+   w.shows.some(show=>show.status==="DRAFT")||
+   !w.shows.length&&w.scheduled.length>0));
+  if(pending){
+   const draft=pending.shows.find(show=>show.status==="DRAFT"&&show.venueId);
+   const unplanned=pending.scheduled.find(s=>!pending.shows.some(show=>
+    show.bookingClass===(s.eventType==="MAJOR"?"PREMIUM":"REGULAR")));
+   const action=draft?()=>port.openCard(draft.draftId):()=>edit(pending,undefined,
+    unplanned?.seriesId??pending.scheduled[0]?.seriesId??"");
+   section.append(button(draft?"Continue Week "+pending.week+" card":
+    "Plan Week "+pending.week+" show",action,busy||!source.canEdit||!draft&&!source.venues.length));
+  }
+  return section;
+ }
  function draw(){
   activateWorkspaceRoot(root,"ppw-planner");root.replaceChildren();
   const header=node("header","","ppw-planner-header");
@@ -130,6 +188,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   root.append(node("p","HOME MARKET  /  "+(home?.marketName??"Not assigned")+
    " · "+(home?"Your promotion\u0027s local audience and venue territory":"See Business for your promotion identity"),
    "ppw-planner-home-market"));
+  if(!editing)root.append(buildBoard());
   if(editing){
    const form=node("section","","ppw-planner-form");
    form.append(node("h2","Year "+editing.year+" · Week "+editing.week));
@@ -297,10 +356,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   }
   for(const week of data.weeks){
    const card=node("section","","ppw-planner-week");
+   card.id="ppw-planner-week-"+week.year+"-"+week.week;
+   card.tabIndex=-1;
    const hasDraft=week.shows.some(show=>show.status==="DRAFT"&&!show.ready);
    const allReady=week.shows.length>0&&week.shows.every(show=>
     show.ready||show.status==="SUBMITTED");
-   const status=allReady?"READY FOR SHOWTIME":
+   const status=allReady?(week.shows.every(show=>show.status==="SUBMITTED")?"SUBMITTED":"READY TO SUBMIT"):
     hasDraft?"FINISH YOUR CARD":week.shows.length?"BOOKING IN PROGRESS":
     week.required?"SHOW NEEDS PLANNING":"NO SHOW PLANNED";
    card.dataset.bookingState=allReady?"ready":hasDraft?"attention":
@@ -334,7 +395,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     card.append(node("p",show.showName+" · "+
      (dayName??"Day unassigned")+" · "+(show.venueName??"Venue not chosen")+" · "+
      (show.marketName??"Market not chosen")+" · "+show.slots+" card slots"+
-     (show.ready?" · Confirmed":" · Draft")));
+     (show.status==="SUBMITTED"?" · Submitted":show.ready?" · Ready to submit":" · Draft")));
     const competing=show.venueId&&show.day!==null?
      venuePressureCount(data,week.year,week.week,show.day,show.venueId):0;
     if(competing)card.append(node("p",competing+" other "+
