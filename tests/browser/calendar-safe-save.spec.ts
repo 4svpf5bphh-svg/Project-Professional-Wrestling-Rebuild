@@ -258,7 +258,7 @@ for(const width of [320,390]){
   await expect(both).toContainText("Indie Cup");
   await expect(both).toContainText("Indie Weekly");
   await both.click();
-  await expect(page.locator(".ppw-calendar-year-picker")).toContainText("Week 11");
+  await expect(page.locator(".ppw-calendar-year-picker")).toContainText("WEEK 11");
   await expect(page.locator(".ppw-calendar-year-picker")).toContainText("Indie Cup");
   await expect(page.locator(".ppw-calendar-event-compact")).toHaveCount(3);
   // The agenda lists only the next six weeks; W11 remains reachable
