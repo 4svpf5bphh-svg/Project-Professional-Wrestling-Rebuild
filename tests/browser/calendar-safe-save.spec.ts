@@ -140,15 +140,15 @@ test("Calendar prioritises announced fixtures, and empty premium view explains i
   .toBeLessThanOrEqual(1);
 });
 
-test("owned premium calendar event uses the purchased animated poster; rivals do not",async({page})=>{
+test("owned PPV and television use compact calendar rows; authentic show art stays on show/results",async({page})=>{
  await page.setViewportSize({width:320,height:720});
  const methods:string[]=[];
- await page.route("**/api/session",route=>route.fulfill({json:session}));
- await page.route("**/api/card",route=>{
-  const input=route.request().postDataJSON() as {method:string};
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const input=r.request().postDataJSON() as {method:string};
   methods.push(input.method);
   if(input.method!=="calendar")throw Error("Unexpected call "+input.method);
-  return route.fulfill({json:{
+  return r.fulfill({json:{
    ...calendar(4,80),eventPosterStyle:"ECLIPSE",
    weeks:[{year:1,week:11,offset:6,shows:[cup]}],
    worldWeeks:[{year:1,week:11,offset:6,events:[
@@ -161,22 +161,18 @@ test("owned premium calendar event uses the purchased animated poster; rivals do
  });
  await page.goto("/#/calendar");
  await page.getByRole("button",{name:"PPVs & specials"}).click();
- const poster=page.locator(".ppw-calendar-owned-poster");
- await expect(poster).toHaveCount(1);
- await expect(poster).toHaveAttribute("data-poster","eclipse");
- await expect(poster.locator(".ppw-ep-title")).toHaveText("Indie Cup");
- await expect(poster.locator(".ppw-ep-main")).toHaveText("TO BE ANNOUNCED");
+ const compact=page.locator(".ppw-calendar-event-compact");
+ await expect(compact).toHaveCount(1);
+ await expect(compact.first()).toContainText("Indie Cup");
+ await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(0);
  await page.getByRole("button",{name:"Across the World"}).click();
- await expect(page.locator(".ppw-dynamic-event-heading").filter({
-  hasText:"Rival Night"
- })).toBeVisible();
- await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(1);
+ await expect(page.getByText("Rival Night").first()).toBeVisible();
+ await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(0);
  expect(methods).toEqual(["calendar"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
-
-test("applied weekly TV graphics fill the calendar card instead of collapsing into a 49px label",async({page})=>{
+test("applied weekly TV package stays in actual results, not a giant repeated planner poster",async({page})=>{
  await page.setViewportSize({width:320,height:740});
  await page.route("**/api/session",r=>r.fulfill({json:session}));
  await page.route("**/api/card",r=>r.fulfill({json:{
@@ -184,24 +180,14 @@ test("applied weekly TV graphics fill the calendar card instead of collapsing in
   weeks:[{year:1,week:5,offset:0,shows:[flagship]}],worldWeeks:[]
  }}));
  await page.goto("/#/calendar");
- const tile=page.locator(".ppw-calendar-event[data-has-artwork=true]").first();
+ const tile=page.locator(".ppw-calendar-event-compact").first();
  await expect(tile).toBeVisible();
- const graphic=tile.locator(".ppw-calendar-owned-poster.ppw-tv-frame");
- await expect(graphic).toBeVisible();
- await expect(graphic.locator(".ppw-tv-title")).toHaveText("Indie Weekly");
- const sizes=await page.evaluate(()=>{
-  const tile=document.querySelector(".ppw-calendar-event[data-has-artwork=true]")!;
-  const poster=tile.querySelector(".ppw-calendar-owned-poster")!;
-  const title=poster.querySelector(".ppw-tv-title")!;
-  return {tile:tile.getBoundingClientRect().width,
-   poster:poster.getBoundingClientRect().width,
-   title:title.getBoundingClientRect().width,
-   writingMode:getComputedStyle(title).writingMode};
- });
- expect(sizes.tile).toBeGreaterThan(220);
- expect(sizes.poster/sizes.tile).toBeGreaterThan(.85);
- expect(sizes.title).toBeGreaterThan(100);
- expect(sizes.writingMode).toBe("horizontal-tb");
+ await expect(tile.locator(".ppw-calendar-compact-title")).toHaveText("Indie Weekly");
+ await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(0);
+ const size=await tile.evaluate(e=>({width:e.getBoundingClientRect().width,
+  height:e.getBoundingClientRect().height}));
+ expect(size.width).toBeGreaterThan(200);
+ expect(size.height).toBeLessThan(230);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -236,38 +222,46 @@ for(const width of [320,390]){
 }
 
 for(const width of [320,390]){
- test("four-week calendar displays contracted TV slots and navigates real shows at "+width+"px",async({page})=>{
+ test("unified year calendar shows only due alternate-week TV with PPVs at "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:width===320?720:844});
   const calls:string[]=[];
-  const weeks=Array.from({length:16},(_,i)=>({year:1,week:5+i,offset:i,
-   shows:[flagship,...(i===6?[cup]:[])]}));
+  const alternate={...flagship,cadenceWeeks:2,anchorWeek:0};
+  const weeks=Array.from({length:16},(_,i)=>{
+   const week=5+i;
+   const due=(week-1)%2===0;
+   return {year:1,week,offset:i,shows:[
+    ...(due?[alternate]:[]),...(week===11?[cup]:[])
+   ]};
+  });
   await page.route("**/api/session",r=>r.fulfill({json:session}));
   await page.route("**/api/card",r=>{
-   const method=String(r.request().postDataJSON().method);calls.push(method);
+   const method=String(r.request().postDataJSON().method);
+   calls.push(method);
    if(method!=="calendar")throw Error("Unexpected "+method);
-   return r.fulfill({json:{...calendar(4,80),weeks,
+   return r.fulfill({json:{...calendar(4,80),series:[alternate,cup],weeks,
+    annual:{tier:"LOCAL",policyStartYear:1,
+     policy:{minimum:2,maximum:4,recommended:3,minGap:8},
+     years:[{year:1,confirmed:true,events:[{seriesId:"cup",week:11}],suggested:[]},
+      {year:2,confirmed:false,events:[],suggested:[]}]},
     broadcastSlot:{offerCode:"BROADCAST_TV",networkName:"Regional Sports",
      day:5,hour:20,startWeekIndex:0,endWeekIndex:52}}});
   });
   await page.goto("/#/calendar");
-  const navigator=page.getByRole("region",{name:"Four-week show calendar"});
-  await expect(navigator).toContainText("Weeks 5–8");
-  await expect(navigator.locator(".ppw-calendar-four-week-tile")).toHaveCount(4);
-  await expect(navigator).toContainText("Fri · 20:00");
-  await navigator.getByRole("button",{name:"Next four weeks"}).click();
-  await expect(navigator).toContainText("Weeks 9–12");
-  await expect(navigator).toContainText("Indie Cup");
-  await navigator.getByRole("button",{name:/View Year 1 Week 11 in the show list/}).click();
-  const item=page.locator('.ppw-calendar-occurrence[data-week="1-11"]');
-  await expect(item).toBeVisible();
-  await expect(item).toContainText("Indie Cup");
-  await expect(item).toContainText("Indie Weekly");
-  await navigator.getByRole("button",{name:"Next four weeks"}).click();
-  await expect(navigator).toContainText("Weeks 13–16");
-  await navigator.getByRole("button",{name:"Previous four weeks"}).click();
-  await expect(navigator).toContainText("Weeks 9–12");
-  await page.getByRole("button",{name:"Across the World"}).click();
-  await expect(page.getByRole("region",{name:"Four-week show calendar"})).toHaveCount(0);
+  await expect(page.locator(".ppw-calendar-four-week")).toHaveCount(0);
+  await expect(page.locator(".ppw-calendar-week-button")).toHaveCount(52);
+  const tvWeek=page.getByRole("button",{name:"Year 1 week 5 — Indie Weekly"});
+  await expect(tvWeek).toContainText("Indie Weekly");
+  await expect(tvWeek).toContainText("Fri");
+  const noTv=page.getByRole("button",{name:"Year 1 week 6 — no shows due"});
+  await expect(noTv).not.toContainText("Indie Weekly");
+  const both=page.getByRole("button",{name:"Year 1 week 11 — Indie Cup + Indie Weekly"});
+  await expect(both).toContainText("Indie Cup");
+  await expect(both).toContainText("Indie Weekly");
+  await both.click();
+  await expect(page.locator(".ppw-calendar-year-picker")).toContainText("Week 11");
+  await expect(page.locator(".ppw-calendar-year-picker")).toContainText("Indie Cup");
+  await expect(page.locator(".ppw-calendar-event-compact")).toHaveCount(4);
+  await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(0);
   expect(calls).toEqual(["calendar"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
