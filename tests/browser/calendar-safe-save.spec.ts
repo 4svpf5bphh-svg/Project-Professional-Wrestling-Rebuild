@@ -260,7 +260,9 @@ for(const width of [320,390]){
   await both.click();
   await expect(page.locator(".ppw-calendar-year-picker")).toContainText("Week 11");
   await expect(page.locator(".ppw-calendar-year-picker")).toContainText("Indie Cup");
-  await expect(page.locator(".ppw-calendar-event-compact")).toHaveCount(4);
+  await expect(page.locator(".ppw-calendar-event-compact")).toHaveCount(3);
+  // The agenda lists only the next six weeks; W11 remains reachable
+  // through the true annual PPV/TV grid without another query.
   await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(0);
   expect(calls).toEqual(["calendar"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
