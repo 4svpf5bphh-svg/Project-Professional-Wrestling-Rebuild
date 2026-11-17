@@ -167,7 +167,9 @@ test("owned premium calendar event uses the purchased animated poster; rivals do
  await expect(poster.locator(".ppw-ep-title")).toHaveText("Indie Cup");
  await expect(poster.locator(".ppw-ep-main")).toHaveText("TO BE ANNOUNCED");
  await page.getByRole("button",{name:"Across the World"}).click();
- await expect(page.getByText("Rival Night")).toBeVisible();
+ await expect(page.locator(".ppw-dynamic-event-heading").filter({
+  hasText:"Rival Night"
+ })).toBeVisible();
  await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(1);
  expect(methods).toEqual(["calendar"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

@@ -1356,8 +1356,12 @@ test("Calendar shows only owned booked venues and opens the correct six-week PPV
  await expect(page.getByRole("button",{name:"Open this card"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this show"})).toHaveCount(2);
  await page.getByRole("button",{name:"Across the World"}).click();
- await expect(page.getByText("WrestleMania")).toBeVisible();
- await expect(page.getByText("Raw")).toBeVisible();
+ await expect(page.locator(".ppw-dynamic-event-heading").filter({
+  hasText:"WrestleMania"
+ })).toBeVisible();
+ await expect(page.locator(".ppw-dynamic-event-heading").filter({
+  hasText:"Raw"
+ })).toBeVisible();
  await expect(page.getByText("AEW Arena")).toHaveCount(0);
  await page.getByRole("button",{name:"PPVs & specials"}).click();
  await expect(page.getByText("Raw")).toHaveCount(0);
