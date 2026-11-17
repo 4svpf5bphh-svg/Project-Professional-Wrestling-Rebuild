@@ -220,8 +220,9 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    " until medically cleared. Booking is unavailable until recovery."));
  const grid=el("div","ppw-profile-statgrid");
   for(const [label,number] of [
-   ["Popularity",view.popularity],["Recognition",view.recognition],
-   ["Momentum",view.momentum],["In-ring",view.inRingQuality],
+   ["Overness",view.overness],["Popularity",view.popularity],
+   ["Recognition",view.recognition],["Momentum",view.momentum],
+   ["In-ring",view.inRingQuality],
    ["Match craft",view.matchCraft],["Presentation",view.presentation],
    ["Stamina",view.stamina],["Safety",view.safety],
    ["Morale",view.morale],["Fatigue",view.fatigue],["Wear",view.wear]
@@ -229,6 +230,11 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   attrs.append(grid);sections("OVERVIEW",attrs);
   const character=section("Character & repertoire",
    "Their character follows them between promotions. Any change needs the wrestler's approval.");
+  character.append(el("p","ppw-profile-info",
+   "Gimmick reception · "+Math.round(view.gimmickReception)+"/100 "+
+   (view.gimmickReception>=75?"· Getting over":
+    view.gimmickReception>=55?"· Connecting":
+    view.gimmickReception>=45?"· Still unproven":"· Crowd not buying it")));
   character.append(el("p","ppw-profile-info",
    "Character · "+wrestlerLabel(view.persona.gimmickId)+"  /  "+
    "Style · "+wrestlerLabel(view.persona.primaryStyle)+

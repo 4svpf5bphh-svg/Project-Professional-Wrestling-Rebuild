@@ -9,7 +9,7 @@ import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {worldTalentManagers} from "../domain/world-staff.js";
 export type DirectoryView="ROSTER"|"MARKET";
-export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"FEE_LOW"|"FEE_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
+export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"OVERNESS"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"FEE_LOW"|"FEE_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
 export type DirectoryDivision="ALL"|"MEN"|"WOMEN";
 export type MarketAvailability="ALL"|"APPROACHABLE"|"FREE_AGENT"|"NON_EXCLUSIVE";
 export type DirectoryRole="ALL"|"MAIN_EVENT"|"UPPER_CARD"|"FEATURED"|"REGULAR"|"DEVELOPMENTAL"|"SPECIAL_ATTRACTION";
@@ -18,7 +18,7 @@ export type DirectoryInterest="ALL"|"OPEN_PLUS"|"INTERESTED_PLUS";
 export interface DirectoryFilter{
  view:DirectoryView;search?:string;division?:DirectoryDivision;
  availability?:MarketAvailability;role?:DirectoryRole;contract?:DirectoryContract;
- interest?:DirectoryInterest;sort?:DirectorySort;minPopularity?:number;
+ interest?:DirectoryInterest;sort?:DirectorySort;minPopularity?:number;minOverness?:number;
  minRecognition?:number;minMomentum?:number;minInRing?:number;minCraft?:number;minPresentation?:number;
  offset?:number;limit?:number;
 }
@@ -26,7 +26,7 @@ type PersonRow={
  person_id:string;name:string;booking_division:string|null;
  in_ring_quality:number|null;gid:string|null;
  default_alignment:string|null;active_alignment:string|null;
- popularity:number|null;recognition:number|null;momentum:number|null;
+ popularity:number|null;recognition:number|null;momentum:number|null;overness:number|null;
  match_craft:number|null;presentation:number|null;morale:number|null;
  career_stage:string|null;it:number|null;
  contract_id:string|null;aff:string|null;
@@ -48,12 +48,12 @@ export function validateDirectoryFilter(f:DirectoryFilter){
   !["ALL","MAIN_EVENT","UPPER_CARD","FEATURED","REGULAR","DEVELOPMENTAL","SPECIAL_ATTRACTION"].includes(f.role??"ALL")||
   !["ALL","EXCLUSIVE","LIMITED_NON_EXCLUSIVE"].includes(f.contract??"ALL")||
   !["ALL","OPEN_PLUS","INTERESTED_PLUS"].includes(f.interest??"ALL")||
-  !["ROLE","NAME","POPULARITY","RECOGNITION","MOMENTUM","VALUE","PAY_LOW","PAY_HIGH","FEE_LOW","FEE_HIGH","DATES_LOW","DATES_HIGH","EXPIRY","INTEREST"].includes(f.sort??"NAME")||
+  !["ROLE","NAME","POPULARITY","RECOGNITION","MOMENTUM","OVERNESS","VALUE","PAY_LOW","PAY_HIGH","FEE_LOW","FEE_HIGH","DATES_LOW","DATES_HIGH","EXPIRY","INTEREST"].includes(f.sort??"NAME")||
   !Number.isSafeInteger(f.offset??0)||(f.offset??0)<0||(f.offset??0)>1000||
   !Number.isSafeInteger(f.limit??25)||(f.limit??25)<1||(f.limit??25)>40||
   typeof (f.search??"")!=="string"||(f.search??"").length>70)
    throw new Error("Invalid wrestler directory filters");
- for(const n of [f.minPopularity,f.minRecognition,f.minMomentum,f.minInRing,f.minCraft,f.minPresentation])
+ for(const n of [f.minPopularity,f.minOverness,f.minRecognition,f.minMomentum,f.minInRing,f.minCraft,f.minPresentation])
   if(n!==undefined&&(!Number.isSafeInteger(n)||n<0||n>100))
    throw new Error("Invalid talent attribute threshold");
  return {...f,search:(f.search??"").trim(),division:f.division??"ALL",
@@ -71,6 +71,8 @@ const sortSql:Record<DirectorySort,string>={
  NAME:"p.name ASC,p.person_id ASC",
  POPULARITY:"p.popularity DESC NULLS LAST,p.name ASC,p.person_id ASC",
  MOMENTUM:"p.momentum DESC NULLS LAST,p.name ASC,p.person_id ASC",
+ OVERNESS:"COALESCE(p.overness,COALESCE(p.popularity,50)*0.55+"+
+   "COALESCE(p.momentum,50)*0.45) DESC,p.name ASC,p.person_id ASC",
  VALUE:"mv.estimated_value ASC NULLS LAST,p.name ASC,p.person_id ASC",
  PAY_LOW:"mine.weekly_guarantee ASC NULLS LAST,p.name ASC,p.person_id ASC",
  PAY_HIGH:"mine.weekly_guarantee DESC NULLS LAST,p.name ASC,p.person_id ASC",
@@ -155,7 +157,9 @@ export async function readWrestlerDirectory(
   // duplicate market tile. Correlated lookups are world+person indexed.
   const rows=await tx.query<PersonRow>(`
    SELECT p.person_id,p.name,p.booking_division,p.popularity,p.recognition,
-    p.momentum,p.match_craft,p.presentation,p.morale,p.career_stage,
+    p.momentum,COALESCE(p.overness,COALESCE(p.popularity,50)*0.55+
+     COALESCE(p.momentum,50)*0.45) AS overness,
+    p.match_craft,p.presentation,p.morale,p.career_stage,
     p.in_ring_quality,p.portable_gimmick_id AS gid,p.default_alignment,
     aligned.alignment AS active_alignment,
     interest.score AS it,
@@ -242,6 +246,8 @@ export async function readWrestlerDirectory(
     AND ($9::integer IS NULL OR p.match_craft >= $9)
     AND ($10::integer IS NULL OR p.presentation >= $10)
     AND ($17::integer IS NULL OR p.in_ring_quality >= $17)
+    AND ($18::integer IS NULL OR COALESCE(p.overness,
+     COALESCE(p.popularity,50)*0.55+COALESCE(p.momentum,50)*0.45)>=$18)
     AND ($14::text='ALL' OR mine.role_expectation=$14)
     AND ($15::text='ALL' OR mine.family=$15)
     AND ($16::text='ALL' OR ($16='OPEN_PLUS' AND
@@ -258,7 +264,7 @@ export async function readWrestlerDirectory(
    [who.worldId,who.promotionId,now,f.division,f.search,
     f.minPopularity??null,f.minRecognition??null,f.minMomentum??null,
     f.minCraft??null,f.minPresentation??null,f.availability,f.limit+1,f.offset,
-   f.role,f.contract,f.interest,f.minInRing??null]);
+   f.role,f.contract,f.interest,f.minInRing??null,f.minOverness??null]);
   const hasMore=rows.length>f.limit;
   return {year:auth[0]!.year,week:auth[0]!.week,
    currentWeekIndex:now,worldRevision:Number(auth[0]!.revision),
@@ -293,6 +299,7 @@ export async function readWrestlerDirectory(
     alignment:effectiveWrestlerAlignment(auth[0]!.seed,p.person_id,p.default_alignment,p.active_alignment),
     inRingQuality:p.in_ring_quality,
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
+    overness:p.overness,
     matchCraft:p.match_craft,presentation:p.presentation,morale:p.morale,
     careerStage:p.career_stage,contractId:p.contract_id,family:p.family,
     ...(p.aff?{affiliatedViaParent:true,contractOwnerName:p.aff}:{}),

@@ -474,7 +474,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   ] as const:[
    ["INTEREST","Interest: strongest"],["NAME","Name"],
    ["POPULARITY","Popularity"],["RECOGNITION","Recognition"],
-   ["MOMENTUM","Momentum"],["VALUE","Value: lowest"]
+   ["MOMENTUM","Momentum"],["OVERNESS","Overness"],["VALUE","Value: lowest"]
   ] as const;
   const sortRow=el("div","ppw-directory-sort-row");
   sortRow.append(selection("Sort by",sortOptions,
@@ -488,7 +488,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    Number(filter.role!=="ALL")+Number(filter.contract!=="ALL"):
    Number(filter.availability!=="ALL")+Number(filter.interest!=="ALL");
   const attributeCount=[
-   filter.minPopularity,filter.minRecognition,filter.minMomentum,
+   filter.minPopularity,filter.minOverness,filter.minRecognition,filter.minMomentum,
    filter.minInRing,filter.minCraft,filter.minPresentation
   ].filter(x=>typeof x==="number"&&x>0).length;
   const refinements=document.createElement("details");
@@ -539,7 +539,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   advanced.append(attributeSummary);
   const thresholds=el("div","ppw-directory-thresholds");
   for(const [key,label] of [
-   ["minPopularity","Min popularity"],["minRecognition","Min recognition"],
+   ["minPopularity","Min popularity"],["minOverness","Min overness"],
+   ["minRecognition","Min recognition"],
    ["minMomentum","Min momentum"],["minInRing","Min in-ring"],
    ["minCraft","Min match craft"],["minPresentation","Min presentation"]
   ] as const)numbers(thresholds,label,filter[key]??0,0,100,n=>{
@@ -552,7 +553,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const clear=btn("Clear filters",()=>{
    filter={...filter,search:"",division:"ALL",role:"ALL",contract:"ALL",
     availability:"ALL",interest:"ALL",sort:filter.view==="ROSTER"?"NAME":"INTEREST",
-    minPopularity:undefined,minRecognition:undefined,minMomentum:undefined,
+    minPopularity:undefined,minOverness:undefined,
+    minRecognition:undefined,minMomentum:undefined,
     minInRing:undefined,minCraft:undefined,minPresentation:undefined,offset:0};
    quickChips.clear();
    filtersExpanded=false;attributesExpanded=false;void load();
