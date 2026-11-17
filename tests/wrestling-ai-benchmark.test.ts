@@ -182,6 +182,7 @@ test("stipulation drama briefs put a concrete escalation near the verified match
   ...entry,outcome:"SUBMISSION",summary:"Mason Holt made Isaiah King submit inside the cage."
  }))};
  const submissionNote=ringsideBrief(submission).slots[0]!.match!.stipulationRules!;
+ assert.ok(submissionNote.dramaticBeats);
  assert.match(submissionNote.dramaticBeats,/certified submission inside the cage/);
  assert.doesNotMatch(submissionNote.dramaticBeats,/certified pin/);
  assert.match(submissionNote.dramaticBeats,/No three-count or cage escape/);
