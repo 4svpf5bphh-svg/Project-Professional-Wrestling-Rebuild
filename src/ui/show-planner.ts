@@ -157,6 +157,38 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    tiles.append(tile);
   }
   section.append(tiles);
+  if(snapshot.programmes.length){
+   const stories=node("section","","ppw-planner-stories");
+   stories.append(node("h3","Booked storyline build"),
+    node("p","Only matches and angles already linked to Programmes appear here. "+
+     "Draft chapters are still provisional.","ppw-planner-board-summary"));
+   for(const lane of snapshot.programmes){
+    const row=node("div","","ppw-planner-story-lane");
+    row.append(node("strong",lane.name,"ppw-planner-story-title"));
+    const weeks=node("div","","ppw-planner-story-weeks");
+    for(const week of snapshot.weeks){
+     const chapter=lane.chapters.find(c=>c.year===week.year&&c.week===week.week);
+     const cell=node("span",chapter?
+      (chapter.matches&&chapter.segments?"Match + angle":
+       chapter.matches?"Match":"Angle"):"—",
+      "ppw-planner-story-beat");
+     cell.dataset.submitted=String(chapter?.submitted??false);
+     cell.dataset.hasChapter=String(Boolean(chapter));
+     cell.title="Year "+week.year+" Week "+week.week+(chapter?
+      (chapter.submitted?" · Submitted":" · Draft"):" · No chapter booked");
+     weeks.append(cell);
+    }
+    row.append(weeks);stories.append(row);
+   }
+   if(snapshot.programmeCount>snapshot.programmes.length)
+    stories.append(node("p","Showing "+snapshot.programmes.length+" of "+
+     snapshot.programmeCount+" connected Programmes.","ppw-planner-board-summary"));
+   section.append(stories);
+  }else{
+   section.append(node("p","Booked Programme chapters will appear here once "+
+    "you link matches or angles to a storyline in the Card Editor.",
+    "ppw-planner-board-summary"));
+  }
   const pending=source.weeks.find(w=>w.canEdit&&(
    w.shows.some(show=>show.status==="DRAFT")||
    !w.shows.length&&w.scheduled.length>0));
