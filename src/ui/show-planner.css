@@ -154,3 +154,19 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 .ppw-planner-story-beat[data-has-chapter="true"]{color:#fce5b8;
  background:#3d3540;border:1px solid #c4a56e}
 .ppw-planner-story-beat[data-submitted="true"]{background:#184940;color:#cffce9;border-color:#7ac4aa}
+
+
+.ppw-planner-outline{margin:12px 0;padding:12px 9px;border-radius:11px;
+ border:1px solid rgba(116,196,203,.35);background:rgba(11,34,44,.65)}
+.ppw-planner-outline h3{margin:2px 0 6px;font-size:16px;color:#f0f8fc}
+.ppw-planner-outline-note{font-size:12px;line-height:1.5;
+ padding:6px 7px;border-left:2px solid #7aafbd;background:rgba(7,21,28,.35);
+ color:#d7e8f0;overflow-wrap:anywhere}
+.ppw-planner-outline-label{display:block;margin:9px 0}
+.ppw-planner-outline-label>span{display:block;font-size:12px;color:#d3e5ec;
+ font-weight:750;margin:0 0 5px}
+.ppw-planner-outline-label textarea{box-sizing:border-box;display:block;
+ width:100%;min-height:61px;resize:vertical;font:inherit;font-size:16px;
+ padding:8px;color:#fff;background:#0b2534;border-radius:8px;
+ border:1px solid #6b8a98}
+.ppw-planner-outline-label textarea:focus-visible{outline:2px solid #a2e8f5;outline-offset:1px}
