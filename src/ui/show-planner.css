@@ -130,7 +130,7 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 .ppw-planner-board-tile small{color:#bdd8df;font-size:11px}
 .ppw-planner-board-state{font-size:11px;font-weight:750;color:#d8f1f3}
 .ppw-planner-board-tile[data-state="SUBMITTED"]{border-color:#65b3a0;background:#17473f}
-.ppw-planner-board-tile[data-state="READY_TO_SUBMIT"]{border-color:#dbbd78}
+.ppw-planner-board-tile[data-state="READY_FOR_LOCK"]{border-color:#dbbd78}
 .ppw-planner-board-tile[data-state="CARD_IN_PROGRESS"],
 .ppw-planner-board-tile[data-state="PARTIALLY_BOOKED"]{border-color:#d1a777}
 .ppw-planner-board-tile[data-premium="true"]{background:#513a2b;border-color:#e2ba76}
