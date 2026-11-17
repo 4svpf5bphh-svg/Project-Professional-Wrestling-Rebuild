@@ -784,7 +784,10 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-broadcast-highlights")).toBeVisible();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
   await expect(opening).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
+  // The real broadcaster graphic owns the show title in Full Show.
+  // Do not require a redundant h1 alongside its verified OPEN frame.
+  await expect(opening.locator(".ppw-tv-title")).toHaveText("Ascension");
+  await expect(page.locator(".ppw-headlines-show-name")).toBeHidden();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
