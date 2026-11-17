@@ -171,7 +171,7 @@ test("iPhone Week 3 without a show edits, reorders and saves Week 4's confirmed-
  await expect(page.locator(".ppw-match-broadcast")).toHaveCount(0);
 });
 
-test("the Planner uses real booked premium event names with selected poster without extra reads",async({page})=>{
+test("the Planner uses real booked PPV names without repeating full poster assets or reads",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -189,11 +189,9 @@ test("the Planner uses real booked premium event names with selected poster with
   return route.fulfill({json:{...data,eventPosterStyle:"AFTERSHOCK"}});
  });
  await page.goto("/#/planner");
- const poster=page.locator(".ppw-event-poster");
- await expect(poster).toHaveCount(1);
- await expect(poster).toHaveAttribute("data-poster","aftershock");
- await expect(poster.locator(".ppw-ep-title")).toHaveText("Midnight Ascension");
- await expect(poster.locator(".ppw-ep-main")).toHaveText("TO BE ANNOUNCED");
+ await expect(page.locator(".ppw-event-poster")).toHaveCount(0);
+ await expect(page.locator(".ppw-planner-week-show-name")).toHaveText("Midnight Ascension");
+ await expect(page.locator(".ppw-planner-week")).toContainText("Midnight Ascension");
  expect(methods).toEqual(["planner"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
