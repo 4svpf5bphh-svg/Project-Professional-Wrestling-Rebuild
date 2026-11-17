@@ -193,3 +193,16 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
  background:#162b3b;border-color:#35546a;opacity:.78}
 .ppw-planner-board-week[data-state="NO_SHOW_DUE"] .ppw-planner-board-state{
  color:#abc2cf}
+
+
+.ppw-planner-outline-weeks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:6px;margin:12px 0}
+.ppw-planner-outline-weeks>.ppw-planner-button{
+ min-width:0;margin:0;padding:9px 3px;min-height:45px;font-size:.8rem;
+ font-weight:800;white-space:normal;overflow-wrap:anywhere;
+ border:1px solid #567e91;background:#20394e}
+.ppw-planner-outline-weeks>.ppw-planner-button[aria-pressed="true"]{
+ border-color:#e7b5e9;background:#6c4388;color:white}
+.ppw-planner-outline-weeks>.ppw-planner-button:focus-visible{
+ outline:2px solid #9feaf1;outline-offset:2px}
+.ppw-planner-outline-label{display:block;margin:12px 0}
