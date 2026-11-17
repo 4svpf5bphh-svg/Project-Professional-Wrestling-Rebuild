@@ -170,3 +170,13 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
  padding:8px;color:#fff;background:#0b2534;border-radius:8px;
  border:1px solid #6b8a98}
 .ppw-planner-outline-label textarea:focus-visible{outline:2px solid #a2e8f5;outline-offset:1px}
+
+/* Future storyline chapters use the original Card Editor; submitted chapters
+   and previously certified weeks are evidence, never clickable edit actions. */
+.ppw-planner-story-action.ppw-planner-button{margin:0;padding:3px 1px;
+ min-height:37px;min-width:0;width:100%;border:1px dashed #75b5c7;
+ border-radius:5px;background:#1d4556;cursor:pointer;
+ font-size:9px;line-height:1.15;white-space:normal}
+.ppw-planner-story-action[data-has-chapter="true"]{border-style:solid;border-color:#c4a56e;background:#413b43}
+.ppw-planner-story-beat[data-finale="true"]{border-color:#e7c276;background:#6a4528;color:#fff2cf;font-weight:850}
+.ppw-planner-story-action:focus-visible{outline:2px solid #e9e8bd;outline-offset:2px}
