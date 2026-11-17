@@ -735,6 +735,14 @@ jobs:
           END
           $$;
           SQL
+      - name: Apply bounded promotion creative outlines for six-week booking
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0151_promotion_creative_outline.sql
+      - name: Prove creative outline migration is idempotent
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0151_promotion_creative_outline.sql
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test
