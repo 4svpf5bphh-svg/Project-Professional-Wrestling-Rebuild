@@ -5,7 +5,7 @@
 import type {PlannerWeek,ActiveProgrammeOutline} from "../db/planner-workspace.js";
 
 export type BuildWeekState=
- "UNBOOKED"|"CARD_IN_PROGRESS"|"READY_FOR_LOCK"|"SUBMITTED"|"PARTIALLY_BOOKED";
+ "NO_SHOW_DUE"|"UNBOOKED"|"CARD_IN_PROGRESS"|"READY_FOR_LOCK"|"SUBMITTED"|"PARTIALLY_BOOKED";
 
 export interface BuildWeek{
  year:number;week:number;offset:number;key:string;
@@ -42,7 +42,8 @@ export function buildSixWeekProduction(weeks:readonly PlannerWeek[],
   const prepared=drafts.filter(s=>s.ready).length;
   const incomplete=drafts.some(s=>!s.ready);
   let state:BuildWeekState;
-  if(!w.shows.length)state="UNBOOKED";
+  if(!w.shows.length&&!w.scheduled.length)state="NO_SHOW_DUE";
+  else if(!w.shows.length)state="UNBOOKED";
   else if(missing)state="PARTIALLY_BOOKED";
   else if(incomplete)state=prepared||submitted?"PARTIALLY_BOOKED":"CARD_IN_PROGRESS";
   else if(drafts.length)state="READY_FOR_LOCK";
@@ -51,7 +52,8 @@ export function buildSixWeekProduction(weeks:readonly PlannerWeek[],
   const announced=w.scheduled.find(s=>s.eventType==="MAJOR");
   return {
    year:w.year,week:w.week,offset:w.offset,key:key(w.year,w.week),
-   state,label:state==="UNBOOKED"?"Not booked":
+   state,label:state==="NO_SHOW_DUE"?"No show due":
+    state==="UNBOOKED"?"Not booked":
     state==="CARD_IN_PROGRESS"?"Finish card":
     state==="READY_FOR_LOCK"?"Prepared for lock":
     state==="SUBMITTED"?"Submitted":"Review cards",
@@ -102,9 +104,10 @@ export function buildSixWeekProduction(weeks:readonly PlannerWeek[],
   submittedShows:mapped.reduce((sum,w)=>sum+w.submittedCount,0),
   preparedShows:mapped.reduce((sum,w)=>sum+w.preparedCount,0),
   needsActionWeeks:mapped.filter(w=>w.state!=="SUBMITTED"&&
-   w.state!=="READY_FOR_LOCK").length,
+   w.state!=="READY_FOR_LOCK"&&w.state!=="NO_SHOW_DUE").length,
   scheduledShows:mapped.reduce((sum,w)=>sum+
    Math.max(w.showCount,new Set(w.eventNames).size),0),
-  unsubmittedWeeks:mapped.filter(w=>w.state!=="SUBMITTED").length
+  unsubmittedWeeks:mapped.filter(w=>w.state!=="SUBMITTED"&&
+   w.state!=="NO_SHOW_DUE").length
  };
 }
