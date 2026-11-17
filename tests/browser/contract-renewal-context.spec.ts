@@ -74,7 +74,7 @@ for(const width of [320,390]){
   expect(submitted).toHaveLength(1);
   expect(submitted[0]?.sourceContractId).toBe("riddle-current");
   expect(submitted[0]?.expectedRevision).toBe(8);
-  expect(reads).toBe(2,"Return to the same contract with one actual refresh");
+  expect(reads).toBe(2); // One refresh; no extra Neon read to restore context
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
