@@ -71,6 +71,8 @@ export async function readCanonicalSegmentContextsInTransaction(
    const segment=buildBookedSegmentPayload({slotId:slot.slot_id,position:slot.position,
     kind:p.kind as AuthoredSegment["kind"],actorIds,targetIds,
     outcome:p.outcome as AuthoredSegment["outcome"],
+    ...(p.targetPresence===undefined?{}:{
+     targetPresence:p.targetPresence as AuthoredSegment["targetPresence"]}),
     ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]}),
     ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
     ...(p.scene===undefined?{}:{scene:p.scene as AngleScene}),
@@ -111,8 +113,11 @@ export async function readCanonicalSegmentContextsInTransaction(
    group.push(link);linked.set(link.slot_id,group);
   }
   const people=await tx.query<{person_id:string;name:string;popularity:number|null;
-   presentation:number|null;momentum:number|null}>(
-   "SELECT person_id,name,popularity,presentation,momentum FROM ppw_people WHERE world_id=$1 AND person_id=ANY($2::text[])",
+   presentation:number|null;momentum:number|null;overness:number|null}>(
+   "SELECT person_id,name,popularity,presentation,momentum,"+
+    "COALESCE(overness,COALESCE(popularity,50)*0.55+"+
+    "COALESCE(momentum,50)*0.45) AS overness FROM ppw_people "+
+    "WHERE world_id=$1 AND person_id=ANY($2::text[])",
    [scope.worldId,[...allIds]]);
   if(people.length!==allIds.size)throw new Error("Missing canonical segment performer");
   const byId=new Map(people.map(p=>[p.person_id,p]));
@@ -123,7 +128,7 @@ export async function readCanonicalSegmentContextsInTransaction(
     if(p.popularity===null||p.presentation===null||p.momentum===null)
      throw new Error("Missing segment performer scoring context");
     return {personId:id,name:p.name,popularity:p.popularity,
-     presentation:p.presentation,momentum:p.momentum};
+     presentation:p.presentation,momentum:p.momentum,overness:p.overness??50};
    }),
    // Unknown historical heat remains neutral; known active heat and
    // repetition are not silently discarded.

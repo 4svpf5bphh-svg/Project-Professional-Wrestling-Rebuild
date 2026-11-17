@@ -5,6 +5,8 @@
 import {validateAuthoredSegments,type AuthoredSegment} from "./show-segments.js";
 export interface SegmentPerformerContext {
  personId:string;name?:string;popularity:number;presentation:number;momentum:number;
+ /** Live crowd connection; legacy input without it uses popularity. */
+ overness?:number;
 }
 export interface SegmentCrowdContext {
  segment:AuthoredSegment;performers:readonly SegmentPerformerContext[];
@@ -37,7 +39,7 @@ export function evaluateAuthoredSegmentCrowd(
    performers.length===0||performers.length>40||
    new Set(performers.map(p=>p.personId)).size!==performers.length||
    performers.some(p=>!p.personId||
-    [p.popularity,p.presentation,p.momentum].some(n=>
+    [p.popularity,p.presentation,p.momentum,p.overness??p.popularity].some(n=>
      !Number.isFinite(n)||n<0||n>100)))
    throw new Error("Invalid segment crowd context");
   // A named target in a solo PROMO may be mentioned, not present on camera.
@@ -48,7 +50,8 @@ export function evaluateAuthoredSegmentCrowd(
    throw new Error("Missing segment participant");
   const featured=performers.filter(p=>ids.includes(p.personId));
   const performer=featured.reduce((n,p)=>n+
-   p.popularity*0.45+p.presentation*0.4+p.momentum*0.15,0)/featured.length;
+   p.popularity*0.22+(p.overness??p.popularity)*0.23+
+   p.presentation*0.4+p.momentum*0.15,0)/featured.length;
   const storyline=(storylineHeat-50)*0.14;
   // A live arrival is scripted by the booker. Its presentation and chosen
   // purpose shape reception, but never replace the arrival or invent a rival.
