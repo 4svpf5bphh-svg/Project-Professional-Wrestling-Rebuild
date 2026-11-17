@@ -21,7 +21,10 @@ export function validateCreativeOutline(
   if(!Number.isSafeInteger(year)||!Number.isSafeInteger(week)||
    (year as number)<1||(week as number)<1||(week as number)>52||
    typeof note!=="string"||note.length<1||note.length>240||
-   note.trim()!==note||/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/u.test(note))
+   note.trim()!==note||[...note].some(ch=>{
+    const code=ch.charCodeAt(0);
+    return code<32&&code!==9&&code!==10;
+   }))
    throw new Error("Invalid creative outline week or note");
   const index=((year as number)-1)*52+(week as number)-1;
   if(index<start||index>start+6||seen.has(index))
