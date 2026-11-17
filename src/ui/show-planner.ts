@@ -252,6 +252,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    for(const lane of snapshot.programmes){
     const row=node("div","","ppw-planner-story-lane");
     row.append(node("strong",lane.name,"ppw-planner-story-title"));
+    if(!lane.chapters.length)row.append(node("small",
+     "No future chapters booked yet","ppw-planner-story-empty"));
     const weeks=node("div","","ppw-planner-story-weeks");
     for(const week of snapshot.weeks){
      const chapter=lane.chapters.find(c=>c.year===week.year&&c.week===week.week);
@@ -265,7 +267,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
        (event.eventType==="MAJOR"?"PREMIUM":"REGULAR"))):undefined;
      const label=chapter?(chapter.finalePayoff?"Finale":
       chapter.matches&&chapter.segments?"Match + angle":
-      chapter.matches?"Match":"Angle"):"—";
+      chapter.matches?"Match":"Angle"):(draft||missing?"Plan":"—");
      const cell=draft||missing?
       button(label,()=>{
        if(draft)port.openCard(draft.draftId,lane.programmeId);
@@ -289,7 +291,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    }
    if(snapshot.programmeCount>snapshot.programmes.length)
     stories.append(node("p","Showing "+snapshot.programmes.length+" of "+
-     snapshot.programmeCount+" connected Programmes.","ppw-planner-board-summary"));
+     snapshot.programmeCount+" active or booked Programmes.","ppw-planner-board-summary"));
    section.append(stories);
   }else{
    section.append(node("p","Create a Programme or book a match or angle linked "+
