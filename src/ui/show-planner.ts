@@ -5,7 +5,7 @@ import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import type {CalendarPlanningTarget} from "./world-calendar.js";
 import {venuePressureCount,freeVenueDays} from "./planner-venue-pressure.js";
-import {buildSixWeekProduction} from "../domain/six-week-production-board.js";
+import {buildSixWeekProduction,type SixWeekBuild} from "../domain/six-week-production-board.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
@@ -188,9 +188,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    "Save six-week outline",()=>void saveOutline(),busy||!data?.canEdit));
   return section;
  }
- function buildBoard(){
+ function buildBoard(snapshot:SixWeekBuild){
   const source=data!;
-  const snapshot=buildSixWeekProduction(source.weeks);
   const section=node("section","","ppw-planner-production-board");
   section.setAttribute("aria-label","Six-week booking and PPV build");
   section.append(node("span","YOUR NEXT SIX WEEKS","ppw-planner-board-kicker"),
@@ -317,7 +316,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   root.append(node("p","HOME MARKET  /  "+(home?.marketName??"Not assigned")+
    " · "+(home?"Your promotion\u0027s local audience and venue territory":"See Business for your promotion identity"),
    "ppw-planner-home-market"));
-  if(!editing)root.append(buildBoard());
+  const progress=buildSixWeekProduction(data.weeks);
+  if(!editing)root.append(buildBoard(progress));
   if(editing){
    const form=node("section","","ppw-planner-form");
    form.append(node("h2","Year "+editing.year+" · Week "+editing.week));
@@ -487,14 +487,15 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    const card=node("section","","ppw-planner-week");
    card.id="ppw-planner-week-"+week.year+"-"+week.week;
    card.tabIndex=-1;
-   const hasDraft=week.shows.some(show=>show.status==="DRAFT"&&!show.ready);
-   const allReady=week.shows.length>0&&week.shows.every(show=>
-    show.ready||show.status==="SUBMITTED");
-   const status=allReady?(week.shows.every(show=>show.status==="SUBMITTED")?"SUBMITTED":"PREPARED FOR WORLD LOCK"):
-    hasDraft?"FINISH YOUR CARD":week.shows.length?"BOOKING IN PROGRESS":
+   const state=progress.weeks.find(w=>w.year===week.year&&w.week===week.week)?.state;
+   const status=state==="SUBMITTED"?"SUBMITTED":
+    state==="READY_FOR_LOCK"?"PREPARED FOR WORLD LOCK":
+    state==="CARD_IN_PROGRESS"?"FINISH YOUR CARD":
+    state==="PARTIALLY_BOOKED"?"BOOKING IN PROGRESS":
     week.required?"SHOW NEEDS PLANNING":"NO SHOW PLANNED";
-   card.dataset.bookingState=allReady?"ready":hasDraft?"attention":
-    week.shows.length?"booked":"empty";
+   card.dataset.bookingState=state==="SUBMITTED"||state==="READY_FOR_LOCK"?"ready":
+    state==="CARD_IN_PROGRESS"?"attention":
+    state==="PARTIALLY_BOOKED"?"booked":"empty";
    card.append(node("span",status,"ppw-planner-booking-state"));
    card.append(node("h2","Year "+week.year+" · Week "+week.week),
     node("p",week.major?"Major event week":week.required?"Regular show week":"Optional show week"));
