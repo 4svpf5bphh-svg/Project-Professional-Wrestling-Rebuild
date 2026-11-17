@@ -1432,3 +1432,47 @@ body>.ppw-card-edit-shade .ppw-guide-format-tile{
  body>.ppw-card-edit-shade .ppw-guide-format-tile{
   min-height:44px;padding:7px 4px;font-size:12px}
 }
+
+
+/* Story Blueprint choices are native original-card editing controls:
+   deliberate mobile tap targets, no small dropdown or added network call. */
+.ppw-story-blueprint-panel{display:grid;gap:12px;margin-bottom:16px;padding:14px;
+ border:1px solid #57788e;border-radius:15px;
+ background:linear-gradient(130deg,#142738,#251e3d);color:#e9f3ff}
+.ppw-story-blueprint-heading{display:flex;align-items:center;
+ justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ppw-story-blueprint-heading>strong{font-size:1.05rem}
+.ppw-story-blueprint-toggle{border:1px solid #8abccc;border-radius:10px;
+ padding:11px 13px;background:#223548;color:#e7f9ff;font-weight:750;cursor:pointer}
+.ppw-story-blueprint-families,.ppw-story-blueprint-link-chips{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ppw-story-blueprint-family,.ppw-story-blueprint-link{
+ border:1px solid #59748a;border-radius:9px;min-height:43px;
+ background:#1b3042;color:#f2f6ff;font-weight:700;padding:9px;
+ line-height:1.25;white-space:normal;overflow-wrap:anywhere;text-align:center}
+.ppw-story-blueprint-family[aria-pressed="true"],
+.ppw-story-blueprint-link[aria-pressed="true"]{
+ border-color:#edbde9;background:#6a3f8b;color:white}
+.ppw-story-blueprint-options,.ppw-story-blueprint-beats{display:grid;gap:8px}
+.ppw-story-blueprint-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ppw-story-blueprint-option,.ppw-story-blueprint-beat{
+ display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;
+ gap:5px;padding:12px;border:1px solid #64849c;border-radius:11px;
+ background:#1c3148;color:#f8f3ff;text-align:left;cursor:pointer;
+ min-height:72px;white-space:normal}
+.ppw-story-blueprint-option[aria-pressed="true"]{
+ border-color:#efc2f4;background:#563b79;box-shadow:inset 0 0 0 1px #e6a7ff}
+.ppw-story-blueprint-option small,.ppw-story-blueprint-beat small{
+ font-size:.79rem;color:#c2d7e7;line-height:1.35}
+.ppw-story-blueprint-intention{margin:0;font-size:.86rem;color:#d4e5ed}
+.ppw-story-blueprint-links{display:grid;gap:7px}
+.ppw-story-blueprint-links>strong,.ppw-story-blueprint-beats>strong{
+ font-size:.82rem;letter-spacing:.03em;color:#a7e3ed}
+.ppw-story-blueprint-beat{min-height:64px;border-color:#b78ad3;
+ background:#2d2b4b}
+.ppw-story-blueprint-panel button:focus-visible{outline:3px solid #a2e6eb;outline-offset:2px}
+@media(max-width:370px){
+ .ppw-story-blueprint-panel{padding:10px;gap:10px}
+ .ppw-story-blueprint-options{grid-template-columns:1fr}
+ .ppw-story-blueprint-link-chips{grid-template-columns:1fr}
+}
