@@ -116,3 +116,61 @@ test("manager saves a seven-week PPV outline once, and it survives reload withou
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+
+for(const width of [320,390]){
+ test("actual Programme timeline opens draft chapters, not submitted cards, at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:844});
+  const loaded:string[]=[];
+  const chapter={programmeId:"feud",name:"Joe vs Místico",matches:1,segments:1};
+  const data=planner();
+  const weeks=data.weeks;
+  weeks[0]!.shows[0]={...weeks[0]!.shows[0]!,programmeChapters:[chapter]} as never;
+  weeks[2]!.shows=[{...show(3,"SUBMITTED",true),programmeChapters:[chapter]} as never];
+  weeks[5]!.shows=[{
+   ...show(6,"DRAFT",true),draftId:"ppv-draft",
+   bookingClass:"PREMIUM",eventType:"MAJOR",showSeriesId:"ppv",
+   showName:"Spring Riot",
+   programmeChapters:[{...chapter,finalePayoff:"DECISIVE_MATCH"}]
+  } as never];
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const q=r.request().postDataJSON() as {method:string;showId?:string};
+   if(q.method==="planner")return r.fulfill({json:data});
+   if(q.method==="load"){
+    loaded.push(q.showId??"");
+    return r.fulfill({json:{
+     showId:q.showId,year:1,week:1,worldRevision:6,canEdit:true,
+     ready:false,showName:"CWA Weekly",promotionName:"CWA",
+     day:5,venueId:"hall",venueName:"Hall",marketName:"Home",
+     bookingClass:"REGULAR",ticketStrategy:"STANDARD",
+     championships:[],programmes:[],programmeLinks:[],
+     selectedPeople:[],slots:[]
+    }});
+   }
+   throw Error("Unexpected "+q.method);
+  });
+  await page.goto("/#/planner");
+  const board=page.locator(".ppw-planner-stories");
+  await expect(board).toContainText("Joe vs Místico");
+  const finale=board.locator(".ppw-planner-story-beat[data-finale='true']");
+  await expect(finale).toHaveCount(1);
+  await expect(finale).toHaveText("Finale");
+  await expect(board.getByRole("button",{
+   name:/Edit booked storyline chapter · Joe vs Místico · Year 1 Week 3/
+  })).toHaveCount(0);
+  // A missing chapter does not create a simulated angle: it opens genuine planning.
+  await board.getByRole("button",{
+   name:"Book a storyline chapter · Joe vs Místico · Year 1 Week 4"
+  }).click();
+  await expect(page.getByRole("button",{name:"Save show"})).toBeVisible();
+  await page.getByRole("button",{name:"Cancel"}).click();
+  await board.getByRole("button",{
+   name:"Edit booked storyline chapter · Joe vs Místico · Year 1 Week 1"
+  }).click();
+  await expect(page).toHaveURL(/#\\/card$/);
+  expect(loaded).toEqual(["card-1"]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
