@@ -1398,7 +1398,8 @@ test("iPhone venue choices show rival interest and save without repeated Planner
   venues:[venue("arena","Main Arena"),venue("hall","Town Hall")],
   venuePressure:[{year:1,week:5,day:5,venueId:"arena",otherPromotions:2}],
   weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
-   shows:[],scheduled:[]}]
+   shows:[],scheduled:[{seriesId:"tv",name:"weekly show",role:"FLAGSHIP",
+    eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:70,active:true}]}]
  };
  await page.route("**/api/session",async route=>route.fulfill({json:current}));
  await page.route("**/api/card",async route=>{
