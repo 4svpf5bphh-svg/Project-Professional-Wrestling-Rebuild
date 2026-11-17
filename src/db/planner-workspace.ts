@@ -39,7 +39,8 @@ export interface PlannerVenue {
  home:boolean;
 }
 export interface PlannedShow {
- programmeChapters?:{programmeId:string;name:string;matches:number;segments:number}[];
+ programmeChapters?:{programmeId:string;name:string;matches:number;
+  segments:number;finalePayoff:string|null}[];
  draftId:string;year:number;week:number;status:string;eventType:PlannedEventType;
  day:number|null;marketId:string|null;venueId:string|null;
  marketName:string|null;venueName:string|null;ticketStrategy:TicketStrategy|null;
@@ -127,7 +128,8 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
    -- Reuse the existing indexed draft query: no fifth Planner SQL roundtrip.
    (SELECT coalesce(jsonb_agg(jsonb_build_object(
      'programmeId',chapter.programme_id,'name',coalesce(names.name,'Programme'),
-     'matches',chapter.matches,'segments',chapter.segments)
+     'matches',chapter.matches,'segments',chapter.segments,
+     'finalePayoff',plannedFinale.payoff)
      ORDER BY chapter.programme_id),'[]'::jsonb)
     FROM (
      SELECT a.programme_id,
@@ -153,6 +155,22 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
      WHERE refs.world_id=d.world_id AND refs.promotion_id=d.promotion_id
        AND refs.programme_id=chapter.programme_id
     ) names ON true
+    -- A PPV payoff is an explicit, still-linked author decision, not a
+    -- predicted winner. Once its card slot is removed, stop advertising it.
+    LEFT JOIN LATERAL (
+     SELECT f.payoff
+     FROM ppw_programme_finales f
+     WHERE f.world_id=d.world_id AND f.promotion_id=d.promotion_id
+       AND f.programme_id=chapter.programme_id AND f.show_id=d.draft_id
+       AND f.resolved_week_index IS NULL
+       AND EXISTS (
+        SELECT 1 FROM ppw_programme_match_activities linked
+        WHERE linked.world_id=f.world_id AND linked.promotion_id=f.promotion_id
+          AND linked.programme_id=f.programme_id
+          AND linked.draft_id=f.show_id AND linked.slot_id=f.slot_id
+       )
+     LIMIT 1
+    ) plannedFinale ON true
    ) AS programme_chapters,
    (SELECT count(*)::integer FROM ppw_card_slots c
     WHERE c.world_id=d.world_id AND c.draft_id=d.draft_id) AS slots
@@ -298,10 +316,12 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
      bookingClass:d.booking_class,showSeriesId:d.show_series_id,
      programmeChapters:Array.isArray(d.programme_chapters)?d.programme_chapters.filter(
-      (chapter):chapter is {programmeId:string;name:string;matches:number;segments:number}=>
+      (chapter):chapter is {programmeId:string;name:string;matches:number;
+       segments:number;finalePayoff:string|null}=>
        chapter!==null&&typeof chapter==="object"&&
        typeof chapter.programmeId==="string"&&typeof chapter.name==="string"&&
-       Number.isInteger(chapter.matches)&&Number.isInteger(chapter.segments)).slice(0,12):[],
+       Number.isInteger(chapter.matches)&&Number.isInteger(chapter.segments)&&
+       (chapter.finalePayoff===null||typeof chapter.finalePayoff==="string")).slice(0,12):[],
       posterStyle:scheduled.find(x=>x.seriesId===d.show_series_id)?.posterStyle??null,
      showName:d.show_name??scheduled.find(x=>x.seriesId===d.show_series_id)?.name??
       (d.booking_class==="PREMIUM"?"Premium event":"Weekly show"),
