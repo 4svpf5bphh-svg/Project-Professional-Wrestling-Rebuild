@@ -138,3 +138,19 @@ border-radius:10px;background:#10202d;color:#fff;border:1px solid #688995;paddin
 @media(max-width:390px){.ppw-planner-board-weeks{grid-auto-columns:100px}
  .ppw-planner-production-board{padding:12px 9px}
  .ppw-planner-board-tile.ppw-planner-button{min-height:94px}}
+
+
+.ppw-planner-stories{margin:15px 0 4px;padding-top:10px;border-top:1px solid rgba(145,203,219,.25)}
+.ppw-planner-stories h3{font-size:16px;margin:2px 0 5px;color:#f0fafc}
+.ppw-planner-story-lane{border:1px solid rgba(125,189,217,.26);
+ border-radius:10px;padding:9px 7px;margin:9px 0;background:rgba(7,22,35,.38);min-width:0}
+.ppw-planner-story-title{display:block;font-size:12px;line-height:1.4;
+ color:#e2f6fb;margin:1px 0 7px;overflow-wrap:anywhere}
+.ppw-planner-story-weeks{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.ppw-planner-story-beat{display:flex;justify-content:center;align-items:center;
+ min-width:0;min-height:37px;padding:3px 1px;text-align:center;line-height:1.15;
+ border-radius:5px;background:#183347;color:#a3b9c7;font-size:9px;
+ overflow-wrap:anywhere}
+.ppw-planner-story-beat[data-has-chapter="true"]{color:#fce5b8;
+ background:#3d3540;border:1px solid #c4a56e}
+.ppw-planner-story-beat[data-submitted="true"]{background:#184940;color:#cffce9;border-color:#7ac4aa}
