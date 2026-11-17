@@ -827,6 +827,9 @@ function programmePort(call:ReturnType<typeof createCardClient>,
    call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
   end:({requestId,expectedRevision,programmeId})=>
    call("endProgramme",{requestId,expectedRevision,programmeId}),
+  saveCreativeIntent:({requestId,expectedRevision,programmeId,creativeIntent})=>
+   call("saveProgrammeCreativeIntent",{requestId,expectedRevision,
+    programmeId,creativeIntent}),
   planFinale:({requestId,expectedRevision,programmeId,showId,slotId,payoff})=>
    call("planProgrammeFinale",{requestId,expectedRevision,programmeId,
     targetShowId:showId,targetSlotId:slotId,payoff}),

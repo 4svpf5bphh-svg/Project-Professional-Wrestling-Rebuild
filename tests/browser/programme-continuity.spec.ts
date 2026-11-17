@@ -300,3 +300,41 @@ test("programme audience connection never invents a trend from two chapters on t
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+for(const width of [320,390]){
+ test("Story Blueprint intention is explicitly authored, saved and reopened at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:844});
+  let persisted:unknown=null;
+  const methods:string[]=[];
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const call=r.request().postDataJSON() as Record<string,unknown>;
+   methods.push(String(call.method));
+   if(call.method==="saveProgrammeCreativeIntent"){
+    expect(call.programmeId).toBe("joe-riddle");
+    expect((call.creativeIntent as {blueprintId:string}).blueprintId).toBe("BETRAYAL");
+    persisted=call.creativeIntent;
+    return r.fulfill({json:{status:"APPLIED",revision:5,result:{programmeId:"joe-riddle"}}});
+   }
+   return r.fulfill({json:{year:1,week:9,worldRevision:persisted?5:4,canEdit:true,
+    people:[],teams:[],championships:[],
+    programmes:[{...programme,creativeIntent:persisted}]}});
+  });
+  await page.goto("/#/programmes");
+  await page.locator(".ppw-story-blueprint-picker summary").click();
+  await page.getByRole("button",{name:"Impending Betrayal"}).click();
+  await expect(page.locator(".ppw-story-current-blueprint")).toHaveText("Impending Betrayal");
+  await page.getByRole("textbox",{name:"Where is this heading? (optional)"})
+   .fill("An earned confrontation at the next PPV");
+  await expect(page.getByRole("button",{name:"Save story direction"})).toBeVisible();
+  await page.getByRole("button",{name:"Save story direction"}).click();
+  await expect(page.getByText("Story direction saved. Book real matches and angles to develop it.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator(".ppw-story-current-blueprint")).toHaveText("Impending Betrayal");
+  await expect(page.getByRole("textbox",{name:"Where is this heading? (optional)"}))
+   .toHaveValue("An earned confrontation at the next PPV");
+  expect(methods.filter(x=>x==="saveProgrammeCreativeIntent")).toHaveLength(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}

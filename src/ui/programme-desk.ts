@@ -4,6 +4,9 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
  */
 import type {readProgrammeWorkspace,ProgrammeDirectionChoice,ProgrammePayoff} from "../db/programme-workspace.js";
 import {readProgrammeContinuity} from "../domain/programme-continuity.js";
+import {STORY_BLUEPRINTS,type BlueprintFamily} from "../domain/story-blueprints.js";
+import {defaultProgrammeCreativeIntent,type ProgrammeCreativeIntent}
+ from "../domain/programme-creative-intent.js";
 import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS}
  from "../domain/programme-finales.js";
 import type {ProgrammeRef} from "../domain/programme-lifecycle.js";
@@ -22,6 +25,8 @@ export interface ProgrammeDeskPort{
  start(input:{requestId:string;expectedRevision:number;
   sideA:ProgrammeRef[];sideB:ProgrammeRef[];championshipId:string|null}):Promise<unknown>;
  end(input:{requestId:string;expectedRevision:number;programmeId:string}):Promise<unknown>;
+ saveCreativeIntent(input:{requestId:string;expectedRevision:number;
+  programmeId:string;creativeIntent:ProgrammeCreativeIntent|null}):Promise<unknown>;
  planFinale(input:{requestId:string;expectedRevision:number;programmeId:string;
   showId:string|null;slotId:string|null;payoff:ProgrammePayoff|null}):Promise<unknown>;
  chooseDirection(input:{requestId:string;expectedRevision:number;programmeId:string;
@@ -52,6 +57,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
  let archiveView=false;
  let creationOpen=false,focusResolved=false,focusWarning="";
  const adviceOpen=new Set<string>();
+ const storyDrafts=new Map<string,ProgrammeCreativeIntent>();
+ const storyPickerOpen=new Set<string>();
  const finaleChoices=new Map<string,{slotKey:string;payoff:ProgrammePayoff}>();
  const standing=new Map<string,{matchType:"SINGLES"|"TAG";
   permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}>();
@@ -343,6 +350,86 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     scheduled?"Review booked chapter":(p.medicalHolds??[]).length?
      "Review safe next steps":"Book next chapter",()=>port.openPlanner?.(p.programmeId)));
    creativeLane.append(glance);
+   // Story direction is optional manager-authored context. No choice here can
+   // set alignment, create an alliance, book a match or alter history.
+   const story=element("section","ppw-programme-creative-intent");
+   story.append(element("span","ppw-programme-eyebrow","YOUR STORY DIRECTION"),
+    element("h3","","What is this story really about?"),
+    element("p","ppw-muted","Pick a familiar wrestling story, then make it your own. Only booked and certified moments change the World."));
+   const draft=storyDrafts.get(p.programmeId)??{
+    ...(p.creativeIntent??defaultProgrammeCreativeIntent())};
+   storyDrafts.set(p.programmeId,draft);
+   const currentBlueprint=STORY_BLUEPRINTS.find(b=>b.id===draft.blueprintId);
+   story.append(element("strong","ppw-story-current-blueprint",
+    currentBlueprint?.name??"Custom story"));
+   if(view.canEdit){
+    const picker=document.createElement("details");
+    picker.className="ppw-story-blueprint-picker";
+    picker.open=storyPickerOpen.has(p.programmeId);
+    picker.ontoggle=()=>{
+     if(!picker.isConnected)return;
+     if(picker.open)storyPickerOpen.add(p.programmeId);
+     else storyPickerOpen.delete(p.programmeId);
+    };
+    picker.append(element("summary","","Choose or change story blueprint"));
+    const choices=element("div","ppw-story-blueprint-choices");
+    const families:[BlueprintFamily,string][]=[
+     ["RISE","Rise"],["FALL","Fall"],["RELATIONSHIPS","Relationships"],
+     ["CONFLICT","Conflict"]];
+    const custom=button("Custom story",()=>{
+     draft.blueprintId="CUSTOM";render();},working);
+    custom.className="ppw-story-blueprint-option";
+    custom.setAttribute("aria-pressed",String(draft.blueprintId==="CUSTOM"));
+    choices.append(custom);
+    for(const [family,name] of families){
+     choices.append(element("span","ppw-story-family",name));
+     for(const blueprint of STORY_BLUEPRINTS.filter(b=>b.family===family)){
+      const choice=button(blueprint.name,()=>{
+       draft.blueprintId=blueprint.id;
+       draft.motivation=blueprint.motivation;
+       draft.audienceGoal=blueprint.desiredFeeling;
+       render();
+      },working);
+      choice.className="ppw-story-blueprint-option";
+      choice.setAttribute("aria-pressed",String(draft.blueprintId===blueprint.id));
+      choices.append(choice);
+     }
+    }
+    picker.append(choices);story.append(picker);
+   }
+   const storyField=(label:string,key:"motivation"|"audienceGoal"|"destination",
+    placeholder:string)=>{
+    const field=element("label","ppw-story-creative-field");
+    field.append(element("span","",label));
+    const input=document.createElement("textarea");
+    input.maxLength=180;input.rows=2;input.value=draft[key];
+    input.placeholder=placeholder;input.disabled=!view!.canEdit;
+    input.setAttribute("aria-label",label);
+    input.oninput=()=>{draft[key]=input.value;};
+    field.append(input);return field;
+   };
+   story.append(storyField("Why does this matter?","motivation",
+    "A challenge, insecurity, a betrayal waiting to happen…"),
+    storyField("What should fans feel?","audienceGoal",
+     "Sympathy, anticipation, outrage, respect…"),
+    storyField("Where is this heading? (optional)","destination",
+     "An event, confrontation, turning point…"));
+   if(view.canEdit){
+    story.append(button(working?"Saving direction…":"Save story direction",()=>{
+     void run(()=>port.saveCreativeIntent({requestId:crypto.randomUUID(),
+      expectedRevision:view!.worldRevision,programmeId:p.programmeId,
+      creativeIntent:{...draft}}),
+      "Story direction saved. Book real matches and angles to develop it.");
+    },working));
+    if(p.creativeIntent)story.append(button("Clear story direction",()=>{
+     storyDrafts.delete(p.programmeId);
+     void run(()=>port.saveCreativeIntent({requestId:crypto.randomUUID(),
+      expectedRevision:view!.worldRevision,programmeId:p.programmeId,creativeIntent:null}),
+      "Story direction cleared. Booked and certified history stays intact.");
+    },working));
+   }else story.append(element("p","ppw-muted",
+    "Creative changes reopen with the next booking window."));
+   creativeLane.append(story);
    const record=element("div","ppw-programme-record");
    for(const [caption,n] of [
     [p.sideA.map(x=>x.name).join(" & ")+" WINS",p.sideAWins],

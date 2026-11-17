@@ -624,3 +624,34 @@
 .ppw-programme-crowd-trend[data-direction=cooling]{
  border-left:3px solid #f8a69e}
 .ppw-programme-crowd-trend[data-direction=cooling] span{color:#ffcbcb}
+
+/* Optional blueprint choices/editable motivation in the existing Programme. */
+.ppw-programme-creative-intent{min-width:0;display:grid;gap:10px;
+ padding:13px;background:linear-gradient(135deg,#1b2d44,#191f39);
+ border:1px solid #5f7e9d;border-radius:13px}
+.ppw-programme-creative-intent h3{margin:0;color:#f8f2df;font-size:18px;line-height:1.3}
+.ppw-programme-creative-intent p{margin:0;font-size:12px;line-height:1.45}
+.ppw-story-current-blueprint{font-size:13px;color:#ade9f9}
+.ppw-story-blueprint-picker{min-width:0;border:1px solid #547b96;border-radius:11px;
+ padding:8px;background:#11283e}
+.ppw-story-blueprint-picker>summary{cursor:pointer;min-height:42px;
+ display:flex;align-items:center;font-size:13px;font-weight:800;color:#e9f7ff}
+.ppw-story-blueprint-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;min-width:0}
+.ppw-story-family{grid-column:1/-1;font-size:10px;letter-spacing:.12em;
+ text-transform:uppercase;font-weight:850;color:#95c8e7;margin-top:6px}
+.ppw-story-blueprint-option{min-width:0;min-height:44px;padding:10px 7px;
+ border-radius:9px;border:1px solid #51758e;background:#173b55;color:#f0f8fc;
+ font:750 12px/1.35 system-ui;white-space:normal;overflow-wrap:anywhere}
+.ppw-story-blueprint-option[aria-pressed=true]{background:#3e4e83;
+ border:2px solid #e9bb81;color:#fff}
+.ppw-story-creative-field{display:grid;gap:5px;min-width:0;
+ color:#d5edf9;font-size:12px;font-weight:800}
+.ppw-story-creative-field textarea{width:100%;max-width:100%;min-width:0;
+ box-sizing:border-box;min-height:76px;resize:vertical;padding:10px;
+ font:400 16px/1.35 system-ui;border-radius:10px;background:#edf4fa;
+ color:#142c46;border:1px solid #8caecb}
+.ppw-story-creative-field textarea:focus-visible,
+.ppw-story-blueprint-option:focus-visible{outline:3px solid #efc381;outline-offset:2px}
+@media(max-width:355px){.ppw-programme-creative-intent{padding:10px}
+ .ppw-story-blueprint-choices{grid-template-columns:minmax(0,1fr)}}

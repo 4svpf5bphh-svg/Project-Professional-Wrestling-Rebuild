@@ -10,6 +10,8 @@ import {programmeIdentity,validateProgrammeSides,type ProgrammeRef,type Programm
  from "../domain/programme-lifecycle.js";
 import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
  from "../domain/programme-finales.js";
+import {parseProgrammeCreativeIntent,type ProgrammeCreativeIntent}
+ from "../domain/programme-creative-intent.js";
 export type {ProgrammePayoff} from "../domain/programme-finales.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
 export type ProgrammeCommandInput=Scope&{requestId:string;expectedRevision:number};
@@ -17,6 +19,8 @@ export type StartProgrammeInput=ProgrammeCommandInput&ProgrammeSides&{championsh
 export type EndProgrammeInput=ProgrammeCommandInput&{programmeId:string};
 export type ProgrammeFinaleInput=ProgrammeCommandInput&{programmeId:string;
  showId:string|null;slotId:string|null;payoff:ProgrammePayoff|null};
+export type ProgrammeCreativeIntentInput=ProgrammeCommandInput&{
+ programmeId:string;creativeIntent:ProgrammeCreativeIntent|null};
 export type ProgrammeDirectionChoice="PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND";
 export type ProgrammeDirectionInput=ProgrammeCommandInput&{
  programmeId:string;showId:string;slotId:string;choice:ProgrammeDirectionChoice;
@@ -44,7 +48,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   const rows=await tx.query<{programme_id:string;status:string;heat:number|null;
    repetition:number;activity_count:number;match_count:number;segment_count:number;
    side_a_wins:number;side_b_wins:number;draws:number;
-   championship_id:string|null;started_week_index:number|null;
+   championship_id:string|null;creative_intent:unknown;started_week_index:number|null;
    ended_week_index:number|null;direction_choice:ProgrammeDirectionChoice|null;
    direction_show_id:string|null;direction_slot_id:string|null;
    direction_week_index:number|null;
@@ -54,7 +58,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    origin_recorded_week_index:number|null;origin_previous_matches:number|null;
    wrestler_changes:{personId:string;name:string;beforePopularity:number|null;
     beforeMomentum:number|null;afterPopularity:number|null;afterMomentum:number|null}[]}>([
-   "SELECT programme.programme_id,programme.status,programme.heat,programme.repetition,programme.championship_id,",
+   "SELECT programme.programme_id,programme.status,programme.heat,programme.repetition,programme.championship_id,programme.creative_intent,",
    "started_week_index,ended_week_index,activity_count,match_count,",
    "segment_count,side_a_wins,side_b_wins,draws,",
    "direction.choice AS direction_choice,direction.show_id AS direction_show_id,",
@@ -287,6 +291,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     matchCount:p.match_count,segmentCount:p.segment_count,
     sideAWins:p.side_a_wins,sideBWins:p.side_b_wins,draws:p.draws,
     championshipId:p.championship_id,
+    creativeIntent:parseProgrammeCreativeIntent(p.creative_intent),
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
     wrestlerChanges:p.status==="COMPLETED"?p.wrestler_changes:[],
     wrestlerOrigin:p.origin_request_id&&p.origin_person_id&&p.origin_opponent_id&&
@@ -373,6 +378,38 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    teams:teamOptions.map(t=>({kind:"TEAM" as const,refId:t.team_id,name:t.name,
     memberIds:t.person_ids})),
   };
+ });
+}
+/** This same bounded World command records story intention without an extra
+ * storyline table, Groq call, or a fabricated match/relationship effect.
+ */
+export async function saveProgrammeCreativeIntent(pool:TransactionPool,
+ input:ProgrammeCreativeIntentInput){
+ if(!valid(input.programmeId))throw new Error("Invalid programme ID");
+ const intent=parseProgrammeCreativeIntent(input.creativeIntent);
+ return applyWorldCommand(pool,{
+  worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
+  expectedRevision:input.expectedRevision,commandType:"PROGRAMME_CREATIVE_INTENT",
+  requiresOpenWeek:true,
+  execute:async tx=>{
+   const auth=await assertPromotion(tx,input);
+   if(!auth.booking_open)throw new Error("Programme creative window closed");
+   const changed=await tx.query<{programme_id:string}>([
+    "UPDATE ppw_programmes SET creative_intent=$4::jsonb",
+    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=$3",
+    "AND status='ACTIVE' RETURNING programme_id"
+   ].join(" "),[input.worldId,input.promotionId,input.programmeId,
+    intent===null?null:JSON.stringify(intent)]);
+   if(changed.length!==1)throw new Error("Choose an active Programme owned by your promotion");
+   await tx.query([
+    "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
+    "VALUES($1,$2,$3,'PROGRAMME_CREATIVE_INTENT_SAVED',",
+    "jsonb_build_object('promotionId',$4::text,'programmeId',$5::text,",
+    "'blueprintId',$6::text))"
+   ].join(" "),[input.worldId,auth.year,auth.week,input.promotionId,
+    input.programmeId,intent?.blueprintId??null]);
+   return {programmeId:input.programmeId,creativeIntent:intent};
+  }
  });
 }
 export async function startProgramme(pool:TransactionPool,input:StartProgrammeInput){

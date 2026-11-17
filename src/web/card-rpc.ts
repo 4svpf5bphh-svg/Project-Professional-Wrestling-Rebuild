@@ -15,7 +15,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
- programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeFinaleAsActor,programmeDirectionAsActor,standingCreativeAgreementAsActor,
+ programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeFinaleAsActor,programmeDirectionAsActor,programmeCreativeIntentAsActor,standingCreativeAgreementAsActor,
  completedShowAsActor,completedShowArchiveAsActor,publicCompletedShowAsActor,championshipsAsActor,createChampionshipAsActor,tournamentsAsActor,createTournamentAsActor,cancelTournamentAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
@@ -444,6 +444,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return startProgrammeAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,sideA:p.sideA,sideB:p.sideB,
    championshipId:p.championshipId as string|null|undefined});
+ }
+ if(method==="saveProgrammeCreativeIntent"){
+  const payload=p.creativeIntent;
+  if(payload!==null&&(!payload||typeof payload!=="object"||Array.isArray(payload)))
+   throw new Error("Invalid Programme creative direction");
+  return programmeCreativeIntentAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,programmeId:id("programmeId"),
+   creativeIntent:payload as import("../domain/programme-creative-intent.js").ProgrammeCreativeIntent|null});
  }
  if(method==="standingProgrammeConsent"){
   if(!["SINGLES","TAG"].includes(String(p.matchType))||

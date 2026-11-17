@@ -36,7 +36,9 @@ import {readStableWorkspace,readActiveStableChoices,
  type CreateStableInput,type ChangeStableInput,type DisbandStableInput}
  from "../db/stable-workspace.js";
 import {readProgrammeWorkspace,startProgramme,endProgramme,chooseProgrammeDirection,chooseProgrammeFinale,
- type StartProgrammeInput,type EndProgrammeInput,type ProgrammeDirectionInput,type ProgrammeFinaleInput} from "../db/programme-workspace.js";
+ saveProgrammeCreativeIntent,
+ type StartProgrammeInput,type EndProgrammeInput,type ProgrammeDirectionInput,type ProgrammeFinaleInput,
+ type ProgrammeCreativeIntentInput} from "../db/programme-workspace.js";
 import { joinWorld } from "../db/membership-operations.js";
 import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
@@ -672,6 +674,13 @@ export async function programmeFinaleAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");
  return chooseProgrammeFinale(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+export async function programmeCreativeIntentAsActor(context:WorldApiContext,
+ input:Omit<ProgrammeCreativeIntentInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return saveProgrammeCreativeIntent(context.pool,{...input,playerId:context.actor.playerId});
 }
 
 export async function programmeDirectionAsActor(context:WorldApiContext,
