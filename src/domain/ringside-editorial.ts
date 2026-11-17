@@ -54,6 +54,22 @@ export function ringsideStipulationNote(format:string){
   plausibleAction:note.texture,
   ...(note.storyBeats?{dramaticBeats:note.storyBeats}:{})}:null;
 }
+/** The cage permits pin and submission, but only the certified finish wins.
+ * Bind its closing narrative to the actual result rather than letting Groq
+ * invent a simultaneous tap-out/three-count (seen in real playtests).
+ * This is prompt shaping from an existing result; it costs zero SQL/AI calls.
+ */
+function verifiedStipulationNote(format:string,finish:string){
+ const note=ringsideStipulationNote(format);
+ if(!note||note.stipulation!=="STEEL_CAGE"||!note.dramaticBeats)return note;
+ const method=/(?:^|_)PIN(?:$|_)/.test(finish)?"certified pin":
+  finish==="SUBMISSION"?"certified submission":null;
+ return method?{...note,dramaticBeats:note.dramaticBeats.replace(
+  "certified legal finish",method)+
+  (method==="certified pin"?
+   " No tap-out or surrender counts as the finish.":
+   " No three-count or cage escape counts as the finish.")}:note;
+}
 
 export interface RingsideCopy{
  showHeadline:string;opening:string;closing:string;
@@ -424,8 +440,8 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
     }}:{}),
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
     titleContested:e.matchContext.championshipContested,
-    ...(ringsideStipulationNote(e.matchContext.format)?{
-     stipulationRules:ringsideStipulationNote(e.matchContext.format)}:{})}}:{}),
+    ...(verifiedStipulationNote(e.matchContext.format,e.outcome)?{
+     stipulationRules:verifiedStipulationNote(e.matchContext.format,e.outcome)}:{})}}:{}),
    ...(e.segmentContext?{angle:e.segmentContext}:{}),
    ...(e.segmentKind?{kind:e.segmentKind}:{}),
    ...(e.fallout?{fallout:{
