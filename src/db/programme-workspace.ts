@@ -248,7 +248,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "AND s.draft_id=a.draft_id AND s.slot_id=a.slot_id AND s.kind=a.kind",
    "WHERE a.world_id=$1 AND a.promotion_id=$2",
    "AND a.programme_id=ANY($3::text[])",
-   "AND (d.year-1)*52+d.week-1 BETWEEN $4 AND $4+5",
+   "AND (d.year-1)*52+d.week-1 BETWEEN $4 AND $4+6",
    "AND d.status IN ('DRAFT','SUBMITTED')",
    "ORDER BY d.year,d.week,a.programme_id,a.slot_id LIMIT 301) upcoming",
    "UNION ALL",
@@ -551,8 +551,8 @@ export async function chooseProgrammeFinale(pool:TransactionPool,input:Programme
      input.showId,input.slotId]);
     if(linked.length!==1)throw new Error("Book this match or angle on the card first");
     const slot=linked[0]!,scheduled=(slot.year-1)*52+slot.week-1;
-    if(scheduled<currentWeek||scheduled>currentWeek+5)
-     throw new Error("Choose a booked chapter within the six-week planner");
+    if(scheduled<currentWeek||scheduled>currentWeek+6)
+     throw new Error("Choose a booked chapter in the current week or next six weeks");
     if(!eligibleProgrammePayoffs(slot.kind,slot.payload).includes(input.payoff!))
      throw new Error("The saved match or angle doesn't support this payoff");
     const saved=await tx.query<{programme_id:string}>([
