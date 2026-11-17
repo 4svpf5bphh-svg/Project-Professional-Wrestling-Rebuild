@@ -77,8 +77,8 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-calendar-artwork-shell")).toHaveCount(0);
   const heights=await cards.evaluateAll(nodes=>
    nodes.map(n=>n.getBoundingClientRect().height));
-  expect(heights.every(h=>h>=35&&h<200)).toBe(true,
-   "A compact seven-day agenda must not render giant repeated posters");
+  expect(heights.every(h=>h>=35&&h<200),
+   "A compact seven-day agenda must not render giant repeated posters").toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await testInfo.attach("event-calendar-"+width,{
    body:await page.screenshot({fullPage:true}),contentType:"image/png"});
