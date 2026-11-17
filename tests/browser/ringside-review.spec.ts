@@ -771,17 +771,18 @@ for(const width of [320,390]){
    r.fulfill({json:{status:"unavailable"}}));
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
-  // Results deliberately start on Play-by-play. Visit Headlines before
-  // inspecting the on-air graphic so a hidden page is never mistaken for
-  // missing artwork; no new result read or alternative rendering path.
-  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await page.getByRole("button",{name:"Return to Headlines"}).click();
+  // Play-by-play must open with the real certified broadcaster's package.
+  // Headlines may then focus on editorial stories without duplicating it.
   const opening=page.locator(".ppw-tv-opening-wrap .ppw-tv-frame");
   await expect(opening).toBeVisible();
   await expect(opening).toContainText("Ascension");
+  await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+  await page.getByRole("button",{name:"Return to Headlines"}).click();
+  await expect(opening).toBeHidden();
   await expect(page.locator(".ppw-result-hero")).toHaveCount(0);
   await expect(page.locator(".ppw-broadcast-highlights")).toBeVisible();
   await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await expect(opening).toBeVisible();
   await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

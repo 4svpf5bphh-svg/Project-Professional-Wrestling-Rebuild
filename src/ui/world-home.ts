@@ -470,7 +470,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
      "ppw-home-wire-accepted":"ppw-home-wire-declined"),
       item.status==="ACCEPTED"?"ACCEPTED":"DECLINED"),
      el("strong","",item.name+(item.status==="ACCEPTED"?
-      " accepted the offer":" declined the offer")),
+      " has signed":" declined the offer")),
      el("p","",item.status==="ACCEPTED"?
       "The terms have been agreed. Review your current contracts and upcoming dates.":
       "The agreement did not go ahead. You can review the terms before approaching them again."));

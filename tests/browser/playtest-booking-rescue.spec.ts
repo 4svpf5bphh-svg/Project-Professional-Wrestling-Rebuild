@@ -61,7 +61,7 @@ test("ordinary manager never sees a shared World booking extension control",asyn
  await expect(page.getByRole("button",{name:"Keep booking open for 5 years"})).toHaveCount(0);
 });
 
-test("iPhone cash remains on one line without overflow at 320px",async({page})=>{
+test("iPhone keeps finances in their dedicated desk and Home fits 320px",async({page})=>{
  await page.setViewportSize({width:320,height:700});
  const t=Date.now()/1000;
  const overview={world:{revision:9,name:"Genesis",year:1,week:2,
@@ -73,16 +73,11 @@ test("iPhone cash remains on one line without overflow at 320px",async({page})=>
   overview,availablePromotions:[],canManualAdvance:true}}));
  await page.route("**/api/card",r=>r.fulfill({json:overview}));
  await page.goto("/#/home");
- const tile=page.locator(".ppw-home-stat").first();
- const value=tile.locator("strong");
- await expect(value).toContainText("5,950,966");
- const info=await value.evaluate(element=>{
-  const style=getComputedStyle(element);
-  const rect=element.getBoundingClientRect();
-  return {nowrap:style.whiteSpace==="nowrap",fits:element.scrollWidth<=rect.width+1,
-   bodyOverflow:document.documentElement.scrollWidth>innerWidth+1};
- });
- expect(info.nowrap).toBe(true);
- expect(info.fits).toBe(true);
- expect(info.bodyOverflow).toBe(false);
+ // The owner-approved home hierarchy no longer duplicates financial balances.
+ // Verify that even a large cash figure does not force horizontal scrolling.
+ await expect(page.locator(".ppw-home-finances,.ppw-home-stat")).toHaveCount(0);
+ await expect(page.getByText("5,950,966")).toHaveCount(0);
+ await expect(page.getByRole("heading",{name:"Crown Wrestling"})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
 });
