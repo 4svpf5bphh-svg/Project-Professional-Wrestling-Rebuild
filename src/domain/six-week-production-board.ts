@@ -14,9 +14,14 @@ export interface BuildWeek{
  draftCount:number;submittedCount:number;showCount:number;
 }
 
+export interface ProgrammeBuildLane{
+ programmeId:string;name:string;
+ chapters:{year:number;week:number;matches:number;segments:number;submitted:boolean}[];
+}
 export interface SixWeekBuild{
  weeks:BuildWeek[];
  nextPremium:{year:number;week:number;offset:number;name:string}|null;
+ programmes:ProgrammeBuildLane[];programmeCount:number;
  submittedShows:number;scheduledShows:number;unsubmittedWeeks:number;
 }
 
@@ -52,8 +57,29 @@ export function buildSixWeekProduction(weeks:readonly PlannerWeek[]):SixWeekBuil
   };
  });
  const next=mapped.find(w=>w.premiumName!==null);
+ // Show actual player-authored programme links, not a forecast of future angles.
+ // Multiple acts of one Programme in a week are combined, and drafts retain
+ // their provisional status until the canonical card has been submitted.
+ const laneMap=new Map<string,ProgrammeBuildLane>();
+ for(const week of ordered)for(const show of week.shows){
+  for(const chapter of show.programmeChapters??[]){
+   let lane=laneMap.get(chapter.programmeId);
+   if(!lane){
+    lane={programmeId:chapter.programmeId,name:chapter.name,chapters:[]};
+    laneMap.set(chapter.programmeId,lane);
+   }
+   const existing=lane.chapters.find(c=>c.year===week.year&&c.week===week.week);
+   if(existing){
+    existing.matches+=chapter.matches;existing.segments+=chapter.segments;
+    existing.submitted=existing.submitted&&show.status==="SUBMITTED";
+   }else lane.chapters.push({year:week.year,week:week.week,
+    matches:chapter.matches,segments:chapter.segments,
+    submitted:show.status==="SUBMITTED"});
+  }
+ }
  return {
-  weeks:mapped,
+  weeks:mapped,programmes:[...laneMap.values()].slice(0,8),
+  programmeCount:laneMap.size,
   nextPremium:next&&next.premiumName?{
    year:next.year,week:next.week,offset:next.offset,name:next.premiumName
   }:null,
