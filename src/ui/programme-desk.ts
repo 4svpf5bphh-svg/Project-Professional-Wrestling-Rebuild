@@ -34,7 +34,8 @@ export interface ProgrammeDeskPort{
  standingConsent(input:{requestId:string;expectedRevision:number;programmeId:string;
   personId:string;matchType:"SINGLES"|"TAG";
   permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}):Promise<unknown>;
- openPlanner?(programmeId?:string,ideaKind?:ProgrammeAngleIdea["kind"]):void;
+ openPlanner?(programmeId?:string,ideaKind?:ProgrammeAngleIdea["kind"],
+  blueprintBeat?:{blueprintId:string;beatId:string}):void;
  openResults?(showId:string):void;
  openArchive?():void;
  openWrestler?(personId:string):void;
@@ -568,6 +569,24 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    }
    const advice=element("section","ppw-programme-story-actions");
    advice.append(element("h3","","Next chapter"));
+   // Each saved Blueprint proposes optional real booking scenes, in any
+   // order. These are not results, relationship flags or automatic turns.
+   const savedBlueprint=STORY_BLUEPRINTS.find(x=>
+    x.id===p.creativeIntent?.blueprintId);
+   if(savedBlueprint){
+    const beats=element("section","ppw-programme-next-beats");
+    beats.append(element("h4","","From your story · "+savedBlueprint.name),
+     element("p","ppw-muted","Choose any beat to begin an editable angle. Nothing is booked until you finish and save the card."));
+    for(const beat of savedBlueprint.beats){
+     const action=button(beat.title,()=>port.openPlanner?.(p.programmeId,undefined,
+      {blueprintId:savedBlueprint.id,beatId:beat.id}),
+      working||!view.canEdit||!port.openPlanner);
+     action.className="ppw-programme-beat-action";
+     action.append(element("small","",beat.intention));
+     beats.append(action);
+    }
+    advice.append(beats);
+   }
    if(p.plannedActivity?.length)
     advice.append(element("p","ppw-programme-booked-short",
      "Already booked · "+p.plannedActivity[0]!.showName));

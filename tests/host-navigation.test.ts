@@ -121,3 +121,20 @@ test("Programme to booking focus survives iPhone history navigation without cros
   programmeId:"joe-riddle",ideaKind:"X".repeat(100)}));
  assert.equal("#/card".includes("joe-riddle"),false);
 });
+
+test("a saved Story Blueprint beat survives only the owner's scoped private card history",()=>{
+ const focus={programmeId:"joe-riddle",
+  blueprintBeat:{blueprintId:"SLOW_BURN_VILLAIN",beatId:"resent"}};
+ const state=bookingHistoryState("world","cwa","ascension",focus);
+ assert.deepEqual(readBookingProgrammeFocus(state,"world","cwa"),focus);
+ assert.equal(readBookingProgrammeFocus(state,"world","rival"),null);
+ assert.equal(readBookingProgrammeFocus(state,"other-world","cwa"),null);
+ assert.equal("#/card".includes(focus.blueprintBeat.beatId),false);
+ assert.throws(()=>bookingHistoryState("world","cwa","ascension",{
+  programmeId:"joe-riddle",blueprintBeat:{blueprintId:"",beatId:"resent"}}));
+ assert.throws(()=>bookingHistoryState("world","cwa","ascension",{
+  programmeId:"joe-riddle",blueprintBeat:{blueprintId:"SLOW_BURN_VILLAIN",beatId:"x".repeat(81)}}));
+ const forged={ppwBooking:{...state.ppwBooking,
+  blueprintBeat:{blueprintId:"SLOW_BURN_VILLAIN",beatId:null}}};
+ assert.equal(readBookingProgrammeFocus(forged,"world","cwa"),null);
+});

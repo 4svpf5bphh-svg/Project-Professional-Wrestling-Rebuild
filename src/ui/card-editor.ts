@@ -48,7 +48,7 @@ import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from
 import {isQuickBookField} from "./quick-book.js";
 import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter}
  from "./programme-booking-starter.js";
-import {STORY_BLUEPRINTS,storyBlueprintFamily,type BlueprintFamily}
+import {STORY_BLUEPRINTS,storyBlueprint,storyBlueprintFamily,type BlueprintFamily}
  from "../domain/story-blueprints.js";
 import {storyBlueprintAngleStarter} from "./story-blueprint-starter.js";
 import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
@@ -62,6 +62,7 @@ export interface CardEditorPort{
  /** Transient on-page focus from the Programme Desk, not a saved game command. */
  focusProgrammeId?:string;
  focusProgrammeIdeaKind?:ProgrammeAngleIdea["kind"];
+ focusBlueprintBeat?:{blueprintId:string;beatId:string};
  /** One-shot dossier route. Must re-check signed rights for the selected show. */
  focusWrestler?:{personId:string;name:string};
  focusTitleChallenge?:{championshipId:string;holderId:string;holderName:string;
@@ -429,7 +430,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(!initialProgrammeFocusDone){
     initialProgrammeFocusDone=true;
     const selected=view.programmes.find(p=>p.programmeId===port.focusProgrammeId);
-    if(selected&&view.canEdit&&port.focusProgrammeIdeaKind){
+    const blueprint=port.focusBlueprintBeat?
+     storyBlueprint(port.focusBlueprintBeat.blueprintId):undefined;
+    const beat=blueprint?.beats.find(x=>
+     x.id===port.focusBlueprintBeat?.beatId);
+    if(selected&&view.canEdit&&blueprint&&beat){
+     // Existing original segment rules still validate this catalogue beat.
+     // Only begin a local wizard; cast and World revision remain authoritative.
+     const slotId="angle-"+crypto.randomUUID();
+     segments.set(slotId,storyBlueprintAngleStarter(slotId,beat,selected.programmeId));
+     blueprintFamilies.set(slotId,blueprint.family);
+     blueprintChoices.set(slotId,blueprint.id);
+     slotBookingSteps.set(slotId,"CAST");
+     order.push(slotId);expanded=slotId;startWizard(slotId);
+    }else if(selected&&view.canEdit&&port.focusProgrammeIdeaKind){
      const recommended=recommendProgrammeAngles(selected).find(idea=>
       idea.kind===port.focusProgrammeIdeaKind);
      if(recommended){

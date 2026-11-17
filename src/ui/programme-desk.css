@@ -655,3 +655,19 @@
 .ppw-story-blueprint-option:focus-visible{outline:3px solid #efc381;outline-offset:2px}
 @media(max-width:355px){.ppw-programme-creative-intent{padding:10px}
  .ppw-story-blueprint-choices{grid-template-columns:minmax(0,1fr)}}
+
+/* Saved story beats are optional routes into the canonical card editor. */
+.ppw-programme-next-beats{display:grid;gap:8px;min-width:0;
+ margin:10px 0 4px;padding:12px;border:1px solid #7a7097;
+ border-radius:12px;background:linear-gradient(125deg,#202b4a,#302641)}
+.ppw-programme-next-beats h4{font:850 14px/1.35 system-ui;margin:0;color:#fff1d4}
+.ppw-programme-next-beats p{font-size:11px;line-height:1.4;margin:0}
+.ppw-programme-next-beats .ppw-programme-beat-action{display:grid;
+ grid-template-columns:minmax(0,1fr);gap:4px;width:100%;min-height:52px;
+ text-align:left;white-space:normal;overflow-wrap:anywhere;
+ padding:10px 12px;border:1px solid #9175ac;border-radius:9px;
+ background:#354271;color:#fff2e4;font:850 13px/1.3 system-ui}
+.ppw-programme-next-beats .ppw-programme-beat-action small{
+ font:500 11px/1.3 system-ui;color:#d9e2f5;white-space:normal}
+.ppw-programme-next-beats .ppw-programme-beat-action:focus-visible{
+ outline:3px solid #efc381;outline-offset:2px}
