@@ -30,6 +30,10 @@ test("iPhone Programmes reads certified winners and recognises completed rematch
      nextAngleWeekIndex:8}}]}});
  });
  await page.goto("/#/programmes");
+ const trend=page.locator(".ppw-programme-crowd-trend");
+ await expect(trend).toContainText("Crowd connection · 72/100");
+ await expect(trend).toContainText("Cooling · -9 vs previous recorded week");
+ await expect(trend).toHaveAttribute("data-direction","cooling");
  await page.getByRole("button",{name:"History",exact:true}).click();
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText("Matt Riddle won");
  await expect(page.locator(".ppw-programme-history-timeline")).toContainText(/On-screen angle/i);
@@ -264,6 +268,31 @@ test("a wrestler dossier opens their own active feud rather than the first unrel
  await expect(page.locator(".ppw-programme-card")).toContainText("Samoa Joe");
  await expect(page.locator(".ppw-programme-card")).not.toContainText("Other Wrestler");
  expect(calls).toEqual(["wrestlerDirectory","wrestlerProfile","programmes"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
+
+test("programme audience connection never invents a trend from two chapters on the same night",async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ let reads=0;
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  reads++;
+  return r.fulfill({json:{year:1,week:9,worldRevision:4,canEdit:true,
+   people:[],teams:[],championships:[],programmes:[{...programme,
+    recentActivity:[
+     {showId:"week-eight",slotId:"angle1",kind:"SEGMENT",
+      weekIndex:8,crowdResponse:82,winnerSide:null},
+     {showId:"week-eight",slotId:"angle2",kind:"SEGMENT",
+      weekIndex:8,crowdResponse:62,winnerSide:null}
+    ]}]}});
+ });
+ await page.goto("/#/programmes");
+ const trend=page.locator(".ppw-programme-crowd-trend");
+ await expect(trend).toHaveAttribute("data-direction","first");
+ await expect(trend).toContainText("Crowd connection · 72/100");
+ await expect(trend).toContainText("More weeks needed for a trend");
+ expect(reads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
