@@ -1,5 +1,6 @@
 import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {PlannerView,PlannerWeek,PlanWeekInput} from "../db/planner-workspace.js";
+import type {CreativeWeekOutline} from "../domain/creative-outline.js";
 import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import type {CalendarPlanningTarget} from "./world-calendar.js";
@@ -8,6 +9,8 @@ import {buildSixWeekProduction} from "../domain/six-week-production-board.js";
 export interface PlannerPort {
  load():Promise<PlannerView>;
  save(input:Omit<PlanWeekInput,"worldId"|"promotionId"|"playerId">):Promise<unknown>;
+ saveCreativeOutline?(input:{requestId:string;expectedRevision:number;
+  notes:CreativeWeekOutline[]}):Promise<unknown>;
  openCard(draftId:string):void;
  openCalendar?():void;
  openDeals?(target?:CalendarPlanningTarget):void;
@@ -24,6 +27,9 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
  // Retain the exact World command identity if the server committed a plan
  // but the mobile connection died before the receipt reached the browser.
  let pendingSave:{fingerprint:string;requestId:string}|null=null;
+ let pendingOutline:{fingerprint:string;requestId:string}|null=null;
+ const outlinedNotes=new Map<string,string>();
+ let outlineExpanded=false;
  const button=(label:string,action:()=>void,disabled=false)=>{
   const b=node("button",label,"ppw-planner-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=action;return b;};
@@ -114,6 +120,74 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   day=fixed?slot.day:draft?.day??(premium?(saturdayTv?7:6):5);
   strategy=draft?.ticketStrategy??"STANDARD";draw();
  }
+ const outlineKey=(year:number,week:number)=>year+"-"+week;
+ function outlineNotes():CreativeWeekOutline[]{
+  if(!data)return [];
+  return data.weeks.flatMap(w=>{
+   const fromServer=data!.creativeOutline?.find(n=>
+    n.year===w.year&&n.week===w.week)?.note??"";
+   const note=(outlinedNotes.get(outlineKey(w.year,w.week))??fromServer).trim();
+   return note?[{year:w.year,week:w.week,note}]:[];
+  });
+ }
+ async function saveOutline(){
+  if(!data||busy||!port.saveCreativeOutline)return;
+  const notes=outlineNotes();
+  const fingerprint=JSON.stringify({revision:data.worldRevision,notes});
+  if(!pendingOutline||pendingOutline.fingerprint!==fingerprint)
+   pendingOutline={fingerprint,requestId:crypto.randomUUID()};
+  const requestId=pendingOutline.requestId;
+  busy=true;error="";draw();
+  try{
+   const outcome=await port.saveCreativeOutline({
+    requestId,expectedRevision:data.worldRevision,notes});
+   const status=outcome&&typeof outcome==="object"&&"status" in outcome?
+    outcome.status:null;
+   if(status==="STALE"){
+    pendingOutline=null;data=await port.load();
+    throw new Error("The World changed. Review your outline and save again.");
+   }
+   if(status!=="APPLIED"&&status!=="REPLAYED")
+    throw new Error("Creative outline was not confirmed. Retry to keep your plan.");
+   data=await port.load();
+   pendingOutline=null;outlinedNotes.clear();outlineExpanded=false;error="";
+  }catch(e){error=e instanceof Error?e.message:"Unable to save creative outline";}
+  finally{busy=false;draw();}
+ }
+ function outlineEditor(){
+  const section=node("section","","ppw-planner-outline");
+  const notes=data?.creativeOutline??[];
+  section.append(node("h3","Booker's creative outline"),
+   node("p","Record what you intend to build. These notes do not book wrestlers, "+
+    "guarantee results or charge appearance fees.","ppw-planner-board-summary"));
+  const toggle=button(outlineExpanded?"Hide outline editor":
+   notes.length?"Edit "+notes.length+" week notes":"Plan future story beats",()=>{
+    outlineExpanded=!outlineExpanded;draw();},busy);
+  section.append(toggle);
+  if(!outlineExpanded){
+   for(const note of notes)section.append(
+    node("p","Week "+note.week+" · "+note.note,"ppw-planner-outline-note"));
+   return section;
+  }
+  for(const week of data?.weeks??[]){
+   const label=node("label","","ppw-planner-outline-label");
+   label.append(node("span","Year "+week.year+" · Week "+week.week+
+    (week.major?" · PPV week":"")));
+   const area=document.createElement("textarea");
+   area.maxLength=240;area.rows=2;area.disabled=busy||!data?.canEdit;
+   area.setAttribute("aria-label","Creative intention for Year "+week.year+
+    " Week "+week.week);
+   const key=outlineKey(week.year,week.week);
+   area.value=outlinedNotes.get(key)??notes.find(n=>
+    n.year===week.year&&n.week===week.week)?.note??"";
+   area.placeholder="e.g. Build tension before the title match";
+   area.oninput=()=>{outlinedNotes.set(key,area.value);pendingOutline=null;};
+   label.append(area);section.append(label);
+  }
+  if(port.saveCreativeOutline)section.append(button(busy?"Saving…":
+   "Save six-week outline",()=>void saveOutline(),busy||!data?.canEdit));
+  return section;
+ }
  function buildBoard(){
   const source=data!;
   const snapshot=buildSixWeekProduction(source.weeks);
@@ -189,6 +263,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     "you link matches or angles to a storyline in the Card Editor.",
     "ppw-planner-board-summary"));
   }
+  section.append(outlineEditor());
   const pending=source.weeks.find(w=>w.canEdit&&(
    w.shows.some(show=>show.status==="DRAFT")||
    !w.shows.length&&w.scheduled.length>0));
