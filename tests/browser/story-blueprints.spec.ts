@@ -89,7 +89,7 @@ for(const width of [320,390]){
    .getByRole("button",{name:"Samoa Joe vs Matt Riddle"}).click();
   await dialog.getByRole("button",{name:/Show signs of frustration/}).click();
   await expect(dialog.getByRole("button",{name:"Next · Script outcome"})).toBeVisible();
-  await dialog.getByRole("button",{name:"+ Add performer"}).click();
+  await dialog.getByRole("button",{name:"+ Add speaker"}).click();
   const chooser=page.getByRole("dialog",{name:"Choose wrestler"});
   await chooser.getByRole("button",{name:"Samoa Joe"}).click();
   await chooser.locator(".ppw-wrestler-card").first().click();
