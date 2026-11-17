@@ -2,7 +2,7 @@
  * Event identity comes from confirmed recurring/annual dates; card readiness
  * never treats a draft as a submitted show or a planned PPV as an actual result.
  */
-import type {PlannerWeek} from "../db/planner-workspace.js";
+import type {PlannerWeek,ActiveProgrammeOutline} from "../db/planner-workspace.js";
 
 export type BuildWeekState=
  "UNBOOKED"|"CARD_IN_PROGRESS"|"READY_FOR_LOCK"|"SUBMITTED"|"PARTIALLY_BOOKED";
@@ -30,7 +30,8 @@ export interface SixWeekBuild{
 const key=(year:number,week:number)=>year+"-"+week;
 
 /** A show with a ready fingerprint is still a draft until it is submitted. */
-export function buildSixWeekProduction(weeks:readonly PlannerWeek[]):SixWeekBuild{
+export function buildSixWeekProduction(weeks:readonly PlannerWeek[],
+ activeProgrammes:readonly ActiveProgrammeOutline[]=[]):SixWeekBuild{
  const ordered=[...weeks].sort((a,b)=>a.offset-b.offset);
  const mapped:BuildWeek[]=ordered.map(w=>{
   const expected=new Set(w.scheduled.map(s=>s.eventType==="MAJOR"?"PREMIUM":"REGULAR"));
@@ -85,6 +86,12 @@ export function buildSixWeekProduction(weeks:readonly PlannerWeek[]):SixWeekBuil
     editableDraftId:show.status==="DRAFT"?show.draftId:null,
     finalePayoff:chapter.finalePayoff??null});
   }
+ }
+ // A real, active feud without any advance booking remains visible as a
+ // planning gap. It has no invented match, angle, or promised outcome.
+ for(const programme of activeProgrammes){
+  if(laneMap.has(programme.programmeId))continue;
+  laneMap.set(programme.programmeId,{...programme,chapters:[]});
  }
  return {
   weeks:mapped,programmes:[...laneMap.values()].slice(0,8),
