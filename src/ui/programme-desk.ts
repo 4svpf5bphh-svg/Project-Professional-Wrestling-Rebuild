@@ -5,6 +5,7 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {readProgrammeWorkspace,ProgrammeDirectionChoice,ProgrammePayoff} from "../db/programme-workspace.js";
 import {readProgrammeContinuity} from "../domain/programme-continuity.js";
 import {STORY_BLUEPRINTS,type BlueprintFamily} from "../domain/story-blueprints.js";
+import {STORY_FOLLOW_UPS,storyFollowUpBrief} from "../domain/programme-story-follow-up.js";
 import {defaultProgrammeCreativeIntent,type ProgrammeCreativeIntent}
  from "../domain/programme-creative-intent.js";
 import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS}
@@ -52,7 +53,7 @@ const button=(title:string,click:()=>void,disabled=false)=>{
  x.type="button";x.disabled=disabled;x.onclick=click;return x;
 };
 export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
- onBack?:()=>void,focusPersonId?:string,focusOpponentId?:string){
+ onBack?:()=>void,focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string){
  let view:ProgrammeView|null=null,working=false,error="",success="";
 
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
@@ -196,7 +197,15 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   const active=view.programmes.filter(p=>p.status==="ACTIVE");
   // A dossier route selects the wrestler's real feud, including team
   // participation, rather than displaying the first unrelated programme.
-  if(focusPersonId&&!focusResolved){
+  if(focusProgrammeId&&!focusResolved){
+    focusResolved=true;
+    const actual=view.programmes.find(p=>p.programmeId===focusProgrammeId);
+    if(actual?.status==="ACTIVE"){
+     selectedProgrammeId=actual.programmeId;activeLane="STORY";
+    }else if(actual){
+     selectedArchiveId=actual.programmeId;archiveView=true;
+    }else focusWarning="That storyline is no longer available in your company.";
+   }else if(focusPersonId&&!focusResolved){
    focusResolved=true;
    const available=(id:string)=>view!.people.some(p=>
     p.kind==="PERSON"&&p.refId===id);
@@ -241,7 +250,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      "FROM "+wrestler.toUpperCase()+"'S WRESTLER DOSSIER"));
    if(focusWarning)list.append(element("p","ppw-alert ppw-error",focusWarning));
   }
-  const rivalryOnly=active.every(p=>storyKind(p)==="RIVALRY");
+  if(focusWarning&&!focusPersonId)list.append(element("p","ppw-alert ppw-error",focusWarning));
+   const rivalryOnly=active.every(p=>storyKind(p)==="RIVALRY");
   list.append(element("h2","",(rivalryOnly?"Active rivalries":"Active stories")+
    " · "+active.length));
   if(!active.some(p=>p.programmeId===selectedProgrammeId))
@@ -383,7 +393,21 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(port.openPlanner&&view.canEdit)glance.append(button(
     scheduled?"Review booked chapter":(p.medicalHolds??[]).length?
      "Review safe next steps":"Book next chapter",()=>port.openPlanner?.(p.programmeId)));
-   creativeLane.append(glance);
+   const chosen=p.creativeIntent?.followUp;
+    if(chosen&&storyKind(p)!=="RIVALRY"){
+     const brief=storyFollowUpBrief(chosen.choice,
+      storyKind(p) as "SOLO"|"RELATIONSHIP"|"FACTION");
+     const note=element("section","ppw-programme-story-follow-up");
+     note.dataset.storyChoice=chosen.choice.toLowerCase();
+     note.append(element("small","ppw-programme-eyebrow","BACKSTAGE · YOUR NEXT CHAPTER"),
+      element("strong","",STORY_FOLLOW_UPS[chosen.choice].label),
+      element("p","",brief.direction),
+      element("small","","Based on certified Year "+
+       (Math.floor(chosen.sourceWeekIndex/52)+1)+" · Week "+
+       (chosen.sourceWeekIndex%52+1)+". This is direction, not a booked event."));
+     glance.append(note);
+    }
+    creativeLane.append(glance);
    // Story direction is optional manager-authored context. No choice here can
    // set alignment, create an alliance, book a match or alter history.
    const story=element("section","ppw-programme-creative-intent");
@@ -609,6 +633,13 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    }
    const advice=element("section","ppw-programme-story-actions");
    advice.append(element("h3","","Next chapter"));
+    if(p.creativeIntent?.followUp&&storyKind(p)!=="RIVALRY"){
+     const follow=p.creativeIntent.followUp;
+     const brief=storyFollowUpBrief(follow.choice,
+      storyKind(p) as "SOLO"|"RELATIONSHIP"|"FACTION");
+     advice.append(element("p","ppw-programme-story-cue",
+      "YOUR BACKSTAGE DECISION · "+brief.next));
+    }
    // Each saved Blueprint proposes optional real booking scenes, in any
    // order. These are not results, relationship flags or automatic turns.
    const savedBlueprint=STORY_BLUEPRINTS.find(x=>

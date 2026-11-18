@@ -718,3 +718,13 @@
 .ppw-programme-archive-duel:has(.ppw-programme-story-type){
  grid-template-columns:minmax(0,1fr)!important}
 @media(max-width:355px){.ppw-programme-format-choices{grid-template-columns:minmax(0,1fr)}}
+
+/* Author-approved follow-up is a creative cue, never a result badge. */
+.ppw-programme-story-follow-up{display:grid;gap:6px;min-width:0;
+ margin:12px 0;padding:12px;border:1px solid #547d97;border-radius:11px;
+ background:rgba(22,50,77,.66);color:#eff7ff}
+.ppw-programme-story-follow-up strong{font-size:14px;line-height:1.35}
+.ppw-programme-story-follow-up p{margin:0;line-height:1.45;overflow-wrap:anywhere}
+.ppw-programme-story-follow-up small{line-height:1.45;color:#cbdfec}
+.ppw-programme-story-cue{padding:10px 12px;border-left:3px solid #d7ba7d;
+ border-radius:4px;background:rgba(29,51,72,.6);line-height:1.5}

@@ -61,7 +61,7 @@ export function cardActionDomain(method:string):
  return "general";
 }
 export type DeskErrorCode="KP_BALANCE"|"ALREADY_OWNED"|"ART_PENDING"|"LEGEND_LOCKED"|
- "RENEWAL_ARRANGED"|"RENEWAL_MANUAL"|"CONTRACT_EXPIRED";
+ "RENEWAL_ARRANGED"|"RENEWAL_MANUAL"|"CONTRACT_EXPIRED"|"STORY_CHANGED";
 export function deskErrorCode(message:string,method:string):DeskErrorCode|null{
  const domain=cardActionDomain(method);
  if(domain==="contracts"){
@@ -70,6 +70,7 @@ export function deskErrorCode(message:string,method:string):DeskErrorCode|null{
   if(/contract already expired/i.test(message))return "CONTRACT_EXPIRED";
   return null;
  }
+ if(method==="chooseBackstageStoryFollowUp"&&/story chapter can no longer|already received a reply|storyline has already/i.test(message))return "STORY_CHANGED";
  if(domain!=="kayfabe"&&domain!=="legends")return null;
  if(/not enough Kayfabe Points/i.test(message))return "KP_BALANCE";
  if(/already own.*(?:card|style)|already own this legend/i.test(message))return "ALREADY_OWNED";
@@ -85,7 +86,8 @@ export function deskErrorMessage(code:unknown):string|null{
   LEGEND_LOCKED:"This legend has not entered the shared World yet. Check the Vault clues.",
   RENEWAL_ARRANGED:"A renewal is already accepted. Reload Contracts to see the next agreement.",
   RENEWAL_MANUAL:"These renewal terms need a negotiated offer. Review the duration and payment before submitting.",
-  CONTRACT_EXPIRED:"This agreement has expired. Review the wrestler’s availability in the Talent Market."
+  CONTRACT_EXPIRED:"This agreement has expired. Review the wrestler’s availability in the Talent Market.",
+  STORY_CHANGED:"That chapter is no longer awaiting a decision. Reopen Backstage to review the latest story."
  };
  return typeof code==="string"&&Object.prototype.hasOwnProperty.call(map,code)?
   map[code as DeskErrorCode]:null;

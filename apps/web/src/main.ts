@@ -4,7 +4,7 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,mountTournamentsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
- consumeBackstageRivalryFocus,
+ consumeBackstageRivalryFocus,consumeBackstageStoryFocus,
  consumeBookingFocus,clearBookingFocus,consumeProgrammeBookingFocus,
  consumeTitleChallengeFocus,clearTitleChallengeFocus,
  type ProgrammeBookingFocus}
@@ -406,8 +406,10 @@ function renderSection(){
   case "programmes":{
    const dossierFocus=consumeProgrammeFocus();
    const pitchFocus=consumeBackstageRivalryFocus(scope.worldId,scope.promotionId);
+   const storyFocus=consumeBackstageStoryFocus(scope.worldId,scope.promotionId);
    mountProgrammePage(view,scope,
-    pitchFocus?.personId??dossierFocus??undefined,pitchFocus?.opponentId);
+    pitchFocus?.personId??dossierFocus??undefined,pitchFocus?.opponentId,
+    storyFocus?.programmeId);
    break;
   }
   case "championships":void mountChampionshipsPage(view,scope,back,"MINE");break;

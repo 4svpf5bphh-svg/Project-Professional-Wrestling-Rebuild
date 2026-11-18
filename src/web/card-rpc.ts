@@ -11,7 +11,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,achievementsWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
- portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,respondStaffDisagreementAsActor,respondBackstageFreeAgentAsActor,respondPartnerMediationAsActor,backstageArchiveAsActor,
+ portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,chooseBackstageStoryFollowUpAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,respondStaffDisagreementAsActor,respondBackstageFreeAgentAsActor,respondPartnerMediationAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
@@ -123,6 +123,15 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return replyToBroadcasterAsActor(context,{worldId,promotionId,mailId:id("mailId"),
    requestId:id("requestId"),expectedRevision:p.expectedRevision as number,
    decision:p.decision});
+ }
+ if(method==="chooseBackstageStoryFollowUp"){
+  if(!["BUILD_ON_REACTION","CHANGE_PRESENTATION","SLOW_BURN"].includes(String(p.choice)))
+   throw new Error("Invalid story follow-up choice");
+  if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
+   throw new Error("Invalid World revision");
+  return chooseBackstageStoryFollowUpAsActor(context,{worldId,promotionId,
+   mailId:id("mailId"),requestId:id("requestId"),expectedRevision:p.expectedRevision as number,
+   choice:p.choice as import("../domain/programme-story-follow-up.js").StoryFollowUpChoice});
  }
  if(method==="respondBackstageStaff"){
   if(p.decision!=="COMMIT"&&p.decision!=="DEFER")

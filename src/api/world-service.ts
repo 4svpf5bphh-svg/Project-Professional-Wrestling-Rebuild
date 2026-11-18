@@ -23,6 +23,8 @@ import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
 import {markBackstageThreadRead} from "../db/backstage-conversations.js";
 import {markWorldMailRead} from "../db/backstage-world-mail.js";
+import {chooseBackstageStoryFollowUp,type BackstageStoryFollowUpInput}
+ from "../db/backstage-story-follow-up.js";
 import {replyToBroadcaster,type NetworkReplyInput} from "../db/backstage-network-replies.js";
 import {respondToStaffMail,type StaffReplyInput} from "../db/backstage-staff-replies.js";
 import {respondToStaffDisagreement,type DisagreementInput} from "../db/backstage-staff-disagreements.js";
@@ -822,6 +824,15 @@ export async function replyToBroadcasterAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.mailId,"message");
  return replyToBroadcaster(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Certified character-story reply; actor and revision are server-owned. */
+export async function chooseBackstageStoryFollowUpAsActor(context:WorldApiContext,
+ input:Omit<BackstageStoryFollowUpInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return chooseBackstageStoryFollowUp(context.pool,{...input,
+  playerId:context.actor.playerId});
 }
 
 /** Authenticated staff promise on a genuine current personnel concern. */

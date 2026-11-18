@@ -565,3 +565,15 @@ html[data-ppw-screen="backstage"] #game .ppw-messenger-thread{
  .ppw-messenger-inbox .ppw-backstage-world-contact .ppw-backstage-contact-copy{
   min-width:0;overflow:hidden}
 }
+
+/* A certified chapter can receive one explicit, optional creative decision.
+   The three controls wrap cleanly inside the single mobile phone thread. */
+.ppw-messenger .ppw-backstage-story-options{display:grid;gap:8px;
+ flex:1 1 100%;min-width:0;width:100%;margin:8px 0 12px}
+.ppw-backstage-story-options>strong{font-size:13px;font-weight:850;color:inherit}
+.ppw-backstage-story-options>p{margin:0 0 3px;font-size:12px;line-height:1.4}
+.ppw-messenger .ppw-backstage-story-options .ppw-backstage-story-choice{
+ display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+ text-align:left;width:100%;min-width:0;white-space:normal}
+.ppw-backstage-story-choice small{display:block;white-space:normal;
+ overflow-wrap:anywhere;line-height:1.4;opacity:.86;font-weight:500}

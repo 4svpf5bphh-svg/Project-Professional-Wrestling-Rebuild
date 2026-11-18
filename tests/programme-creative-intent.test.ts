@@ -18,3 +18,17 @@ test("rejects fabricated story IDs, malformed payloads and oversized text",()=>{
   {blueprintId:"CUSTOM",motivation:"",audienceGoal:2,destination:""},
   [],"some text",{}])assert.throws(()=>parseProgrammeCreativeIntent(value));
 });
+
+test("an authored response to a certified chapter survives edits without inventing a booking",()=>{
+ const original={blueprintId:"UNDERDOG",motivation:"Earn respect",
+  audienceGoal:"Sympathy",destination:"The Lottery",
+  followUp:{choice:"CHANGE_PRESENTATION",sourceShowId:"actual-show",
+   sourceSlotId:"real-scene",sourceWeekIndex:12}};
+ assert.deepEqual(parseProgrammeCreativeIntent(original),original);
+ for(const wrong of [
+  {...original,followUp:{...original.followUp,choice:"FORCE_BETRAYAL"}},
+  {...original,followUp:{...original.followUp,sourceWeekIndex:-1}},
+  {...original,followUp:{...original.followUp,sourceShowId:""}},
+  {...original,followUp:{...original.followUp,sourceSlotId:"x".repeat(201)}}
+ ])assert.throws(()=>parseProgrammeCreativeIntent(wrong));
+});

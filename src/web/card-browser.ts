@@ -67,6 +67,21 @@ let pendingProgrammeFocusPersonId:string|null=null;
 type BackstageRivalryFocus={worldId:string;promotionId:string;
  personId:string;opponentId:string};
 let pendingBackstageRivalryFocus:BackstageRivalryFocus|null=null;
+/** An earned story reply opens exactly the Programme that produced it.
+ * One-use and promotion-scoped; no public hash identity and no new query.
+ */
+let pendingBackstageStoryFocus:{worldId:string;promotionId:string;programmeId:string}|null=null;
+export function queueBackstageStoryFocus(focus:{
+ worldId:string;promotionId:string;programmeId:string}){
+ if(![focus.worldId,focus.promotionId,focus.programmeId].every(x=>
+  typeof x==="string"&&x.length>0&&x.length<=200))return;
+ pendingBackstageStoryFocus=focus;
+}
+export function consumeBackstageStoryFocus(worldId:string,promotionId:string){
+ const focus=pendingBackstageStoryFocus;
+ pendingBackstageStoryFocus=null;
+ return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?focus:null;
+}
 /** A single private route handoff to the *existing* recruitment editor.
  * No wrestler ID in a public hash or localStorage; consume only for the
  * exact World and promotion. Server verifies person and offer eligibility.
@@ -859,14 +874,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  };
 }
 export function mountProgrammePage(root:HTMLElement,scope:Scope,
- focusPersonId?:string,focusOpponentId?:string){
+ focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string){
  const call=createCardClient(scope);
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
   ()=>mountProgrammePage(root,scope,focusPersonId));};
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
   ()=>{void mountResultsArchivePage(root,scope,
    ()=>mountProgrammePage(root,scope,focusPersonId));}),
-  undefined,focusPersonId,focusOpponentId);
+  undefined,focusPersonId,focusOpponentId,focusProgrammeId);
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>,
@@ -906,6 +921,12 @@ function personaPort(call:ReturnType<typeof createCardClient>,
   load:personId=>call("backstage",personId?{personId}:{inboxOnly:true}),
   markRead:personId=>call("markBackstageRead",{personId}),
   markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),
+  chooseStoryFollowUp:input=>call("chooseBackstageStoryFollowUp",input),
+  openStoryProgramme:programmeId=>{
+   queueBackstageStoryFocus({worldId:scope.worldId,
+    promotionId:scope.promotionId,programmeId});
+   window.location.hash=hostSectionHash("programmes");
+  },
   respondNetwork:input=>call("respondBackstageNetwork",input),
   respondStaff:input=>call("respondBackstageStaff",input),
   respondDisagreement:input=>call("respondBackstageDisagreement",input),

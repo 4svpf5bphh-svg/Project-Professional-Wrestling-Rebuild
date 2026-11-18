@@ -4,6 +4,7 @@
  * No new Neon reads, AI calls, or other persistent state.
  */
 import type {SegmentKind} from "../simulation/legacy/show-segments.js";
+import type {StoryFollowUp} from "./programme-story-follow-up.js";
 import type {AngleScene} from "./angle-scene.js";
 import {SEGMENT_BOOKING_RULES} from "./segment-booking.js";
 export interface ProgrammeAngleContext{
@@ -13,6 +14,7 @@ export interface ProgrammeAngleContext{
  recentActivity?:readonly {kind:string}[];
  lastChapter?:{kind:string;segmentKind:string|null;
   sceneLocation?:string|null;scenePurpose?:string|null}|null;
+ creativeIntent?:{followUp?:StoryFollowUp}|null;
  latestFollowUp?:{choice:"PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND";
   laterMatchRecorded?:boolean;laterAngleRecorded?:boolean;
   nextMatchWeekIndex?:number|null;nextAngleWeekIndex?:number|null}|null;
@@ -51,6 +53,37 @@ const idea=(kind:SegmentKind,title:string,reason:string,minutes=5):ProgrammeAngl
  * No turn, feud, victory, stable membership or relationship is presumed.
  */
 function nonRivalProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea[]{
+ // Explicit manager response to an actual certified scene has priority.
+ const choice=p.creativeIntent?.followUp?.choice;
+ if(choice==="CHANGE_PRESENTATION"){
+  const subject=p.programmeFormat==="SOLO"?"the character":
+   p.programmeFormat==="RELATIONSHIP"?"the relationship":"the faction";
+  return [
+   idea("VIDEO_PACKAGE","Reframe the story",
+    "Introduce a different view of "+subject+" using certified scenes, without rewriting the past.",3),
+   idea("INTERVIEW","Hear a new perspective",
+    "Choose a real cast member to explain their motive. No loyalty change or turn is assumed.",6),
+   idea("PROMO","State a new direction",
+    "The booker writes what the character wants; no outcome or future match is decided.")];
+ }
+ if(choice==="SLOW_BURN")return [
+  idea("VIDEO_PACKAGE","Let the moment sink in",
+   "Recap what actually aired. Holding back escalation cannot create a new event.",3),
+  idea("INTERVIEW","Plant a quieter question",
+   "Let the selected character hint at the next chapter, not claim it already happened.",6),
+  idea("PROMO","Tease a long-term goal",
+   "Name an ambition without promising a turn, alliance, title or result.")];
+ if(choice==="BUILD_ON_REACTION"){
+  const subject=p.programmeFormat==="SOLO"?"the wrestler":
+   p.programmeFormat==="RELATIONSHIP"?"these characters":"the group's real cast";
+  return [
+   idea("PROMO","Give the reaction a purpose",
+    "Let "+subject+" set a fresh goal following the verified scene; no win or deal is granted."),
+   idea("INTERVIEW","Respond to the audience",
+    "Use genuine cast and certified events; change the beat rather than repeating a scene.",6),
+   idea("VIDEO_PACKAGE","Show what connected",
+    "Recap the performed chapter. The next outcome remains the booker's choice.",3)];
+ }
  const started=(p.activityCount??0)>0;
  if(p.programmeFormat==="SOLO")return started?[
   idea("INTERVIEW","React to their latest chapter",

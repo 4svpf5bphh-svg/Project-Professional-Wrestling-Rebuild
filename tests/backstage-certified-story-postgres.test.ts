@@ -8,6 +8,7 @@ import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readWorldMail,markWorldMailRead} from "../src/db/backstage-world-mail.js";
 import {worldStaff} from "../src/domain/world-staff.js";
+import {chooseBackstageStoryFollowUp} from "../src/db/backstage-story-follow-up.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("solo, relationship and faction reactions require certified linked cast, respect ownership, and keep read receipts",
@@ -142,6 +143,62 @@ test("solo, relationship and faction reactions require certified linked cast, re
   assert.ok(staff.every(m=>m.sender===creative.name));
   assert.ok(messages.every(m=>m.action==="PROGRAMMES"&&!m.canStaffRespond));
   assert.ok(messages.every(m=>!m.read));
+  const solo=wrestlers.find(m=>m.storyProgrammeId===chapters[0]!.programmeId)!;
+  const creativeOnSolo=staff.find(m=>m.storyProgrammeId===solo.storyProgrammeId)!;
+  const finale=wrestlers.find(m=>m.storyProgrammeId===chapters[2]!.programmeId)!;
+  assert.equal(solo.storySource?.sourceShowId,showId);
+  assert.equal(solo.storySource?.sourceSlotId,"scene-0");
+  assert.equal(solo.storySource?.crowdResponse,78);
+  assert.equal(solo.storySource?.programmeFormat,"SOLO");
+  assert.equal(solo.canChooseStoryFollowUp,true);
+  assert.equal(creativeOnSolo.canChooseStoryFollowUp,true);
+  assert.equal(finale.canChooseStoryFollowUp,undefined,
+   "An already completed storyline cannot schedule a follow-up");
+  await assert.rejects(chooseBackstageStoryFollowUp(db.pool,{
+   ...scope,mailId:"backstage-world:"+"f".repeat(32),
+   choice:"SLOW_BURN",requestId:"fake-"+suffix,expectedRevision:2}),
+   /can no longer receive/,"A forged mail ID is never a creative command");
+  const request={...scope,mailId:solo.id,choice:"CHANGE_PRESENTATION" as const,
+   requestId:"reply-"+suffix,expectedRevision:2};
+  const decided=await chooseBackstageStoryFollowUp(db.pool,request);
+  assert.equal(decided.status,"APPLIED");
+  assert.equal(decided.status==="APPLIED"?decided.result.programmeId:"",solo.storyProgrammeId);
+  assert.equal((await chooseBackstageStoryFollowUp(db.pool,request)).status,"REPLAYED",
+   "A network retry cannot produce a second choice or another World revision");
+  const stored=await withWorldTransaction(db.pool,tx=>tx.query<{
+   creative_intent:{blueprintId:string;followUp:{choice:string;sourceShowId:string;
+    sourceSlotId:string;sourceWeekIndex:number}}}>(
+    "SELECT creative_intent FROM ppw_programmes WHERE world_id=$1"+
+    " AND promotion_id=$2 AND programme_id=$3",
+    [worldId,promotionId,chapters[0]!.programmeId]));
+  assert.equal(stored[0]!.creative_intent.blueprintId,"CUSTOM");
+  assert.deepEqual(stored[0]!.creative_intent.followUp,{
+   choice:"CHANGE_PRESENTATION",sourceShowId:showId,sourceSlotId:"scene-0",
+   sourceWeekIndex:0});
+  const confirmed=(await unread()).filter(m=>m.storyProgrammeId===solo.storyProgrammeId);
+  assert.equal(confirmed.length,2);
+  assert.ok(confirmed.every(m=>m.storyFollowUp==="CHANGE_PRESENTATION"&&
+   !m.canChooseStoryFollowUp),
+   "Wrestler and Creative both reflect one durable Programme decision");
+  await assert.rejects(chooseBackstageStoryFollowUp(db.pool,{
+   ...scope,mailId:solo.id,choice:"SLOW_BURN",
+   requestId:"other-choice-"+suffix,expectedRevision:3}),
+   /can no longer receive/);
+  await assert.rejects(chooseBackstageStoryFollowUp(db.pool,{
+   ...scope,mailId:finale.id,choice:"BUILD_ON_REACTION",
+   requestId:"closed-story-"+suffix,expectedRevision:3}),
+   /can no longer receive/);
+  await assert.rejects(chooseBackstageStoryFollowUp(db.pool,{
+   ...scope,promotionId:rivalId,mailId:solo.id,choice:"SLOW_BURN",
+   requestId:"rival-"+suffix,expectedRevision:3}));
+  const proof=await withWorldTransaction(db.pool,tx=>tx.query<{count:string}>(
+   "SELECT count(*)::text AS count FROM ppw_ledger_events WHERE world_id=$1"+
+   " AND event_type='BACKSTAGE_STORY_FOLLOW_UP_CHOSEN'",[worldId]));
+  assert.equal(proof[0]!.count,"1","Exactly one audit event, not a booking");
+  const originalSlots=await withWorldTransaction(db.pool,tx=>tx.query<{count:string}>(
+   "SELECT count(*)::text AS count FROM ppw_card_slots WHERE world_id=$1",
+   [worldId]));
+  assert.equal(originalSlots[0]!.count,"3","No new match, angle or paid appearance was booked");
   const first=wrestlers[0]!;
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:first.id}),{readCount:1});
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:first.id}),{readCount:0});

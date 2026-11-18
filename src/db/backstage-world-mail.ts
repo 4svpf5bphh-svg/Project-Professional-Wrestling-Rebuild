@@ -11,12 +11,18 @@ import {staffDebateVoices,type StaffDebateVoices} from "../domain/backstage-staf
 import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
 import {PARTNER_MEDIATION_CANDIDATES_SQL} from "./backstage-partner-replies.js";
 import {COMMERCIAL_COMPANIES} from "../domain/commercial-offers.js";
+import {validStoryFollowUpChoice,type StoryFollowUpChoice}
+ from "../domain/programme-story-follow-up.js";
 export type WorldMailKind="NETWORK"|"STAFF"|"SCOUT"|"FREE_AGENT"|"LOCKER_ROOM";
 export type WorldMailAction="COMMERCIALS"|"CONTRACTS"|"PROGRAMMES"|"STAFF"|"MARKET";
 export interface WorldMail{
  id:string;kind:WorldMailKind;sender:string;subject:string;body:string;
  action:WorldMailAction;createdWeekIndex:number;read:boolean;
  canRespond?:boolean;contentConcern?:boolean;storyChapter?:boolean;
+ storyProgrammeId?:string;storySource?:{
+  sourceShowId:string;sourceSlotId:string;sourceWeekIndex:number;
+  crowdResponse:number;programmeFormat:"SOLO"|"RELATIONSHIP"|"FACTION"};
+ canChooseStoryFollowUp?:boolean;storyFollowUp?:StoryFollowUpChoice;
  canStaffRespond?:boolean;staffResponse?:{decision:"COMMIT"|"DEFER";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  networkResponse?:{decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
@@ -39,7 +45,11 @@ interface MailRow extends Record<string,unknown>{
  id:string;kind:WorldMailKind;sender_key:string;subject:string;
  body:string;action:WorldMailAction;created_week_index:number;
  read:boolean;seed:string;target_person_id:string|null;sender_name:string|null;
- story_chapter?:boolean;
+ story_chapter?:boolean;story_programme_id?:string|null;
+ story_show_id?:string|null;story_slot_id?:string|null;
+ story_week_index?:number|null;story_crowd_response?:number|null;
+ story_format?:"SOLO"|"RELATIONSHIP"|"FACTION"|null;
+ can_story_follow_up?:boolean;story_follow_up_choice?:string|null;
  can_reply:boolean;content_concern:boolean;can_staff_reply:boolean;
  staff_reply_decision:string|null;staff_reply_status:string|null;
  staff_reply_due_week_index:number|null;
@@ -609,6 +619,17 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  c.created_week_index,c.seed,c.target_person_id,c.sender_name,
  (receipt.attention_id IS NOT NULL) AS read,
  (c.evidence LIKE 'story-scene:%' OR c.evidence LIKE 'story-staff:%') AS story_chapter,
+ story.programme_id AS story_programme_id,story.show_id AS story_show_id,
+ story.slot_id AS story_slot_id,story.week_index AS story_week_index,
+ story.crowd_response AS story_crowd_response,
+ story.programme_format AS story_format,
+ (story.status='ACTIVE' AND story.finale_delivered=false AND NOT (
+  coalesce(story.follow_up->>'sourceShowId','')=story.show_id
+  AND coalesce(story.follow_up->>'sourceSlotId','')=story.slot_id
+ )) AS can_story_follow_up,
+ CASE WHEN story.follow_up->>'sourceShowId'=story.show_id AND
+  story.follow_up->>'sourceSlotId'=story.slot_id THEN
+  story.follow_up->>'choice' ELSE NULL END AS story_follow_up_choice,
  reply.decision AS reply_decision,reply.status AS reply_status,
  reply.due_week_index AS reply_due_week_index,
  staff_reply.decision AS staff_reply_decision,
@@ -690,6 +711,20 @@ LEFT JOIN LATERAL (
   AND bid.submitted_week_index>=agent_reply.responded_week_index
  ORDER BY bid.submitted_week_index DESC,bid.offer_id DESC LIMIT 1
 ) agent_offer ON true
+/* Resolve Programme identity from the SAME THREE certified stories.
+ * Do not parse IDs out of concatenated evidence strings. */
+LEFT JOIN LATERAL (
+ SELECT s.programme_id,s.show_id,s.slot_id,s.week_index,
+  s.crowd_response,p.programme_format,p.status,s.finale_delivered,
+  p.creative_intent->'followUp' AS follow_up
+ FROM story_scene s JOIN ppw_programmes p ON p.world_id=$1
+  AND p.promotion_id=$2 AND p.programme_id=s.programme_id
+ WHERE c.evidence='story-scene:'||s.programme_id||':'||
+   s.show_id||':'||s.slot_id||':'||s.sender_key
+  OR c.evidence='story-staff:'||s.programme_id||':'||
+   s.show_id||':'||s.slot_id||':'||c.sender_key
+ LIMIT 1
+) story ON c.evidence LIKE 'story-%'
 LEFT JOIN ppw_player_attention_dismissals receipt ON receipt.world_id=$1
  AND receipt.promotion_id=$2 AND receipt.player_id=$3
  AND receipt.attention_id=c.id
@@ -743,6 +778,14 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
    staffProfiles.get(r.sender_name):undefined;
   const debate=doctor?.role==="MEDICAL"&&writer?.role==="CREATIVE"?
    staffDebateVoices(doctor,writer):undefined;
+  if(r.story_chapter===true&&(
+   !r.story_programme_id||!r.story_show_id||!r.story_slot_id||
+   !Number.isSafeInteger(r.story_week_index)||r.story_week_index!<0||
+   !Number.isFinite(r.story_crowd_response)||
+   r.story_crowd_response!<0||r.story_crowd_response!>100||
+   !["SOLO","RELATIONSHIP","FACTION"].includes(r.story_format??"")||
+   (r.story_follow_up_choice!=null&&!validStoryFollowUpChoice(r.story_follow_up_choice))))
+   throw Error("Invalid certified story correspondence source");
   const network=r.kind==="NETWORK"?COMMERCIAL_COMPANIES[r.sender_key]?.name:null;
   if(r.staff_reply_decision!=null&&(!["COMMIT","DEFER"].includes(r.staff_reply_decision)||
    !["PENDING","ACKNOWLEDGED","KEPT","BROKEN","EXCUSED"].includes(r.staff_reply_status??"")||
@@ -757,7 +800,15 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
     network??catalogue.get(r.sender_key)??(r.kind==="NETWORK"?"Your broadcaster":"Staff Office"),
    subject:r.subject,body:r.body,action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
-    ...(r.story_chapter===true?{storyChapter:true}:{}),
+    ...(r.story_chapter===true?{
+     storyChapter:true,storyProgrammeId:r.story_programme_id!,
+     storySource:{sourceShowId:r.story_show_id!,sourceSlotId:r.story_slot_id!,
+      sourceWeekIndex:r.story_week_index!,crowdResponse:r.story_crowd_response!,
+      programmeFormat:r.story_format!},
+     ...(r.can_story_follow_up===true?{canChooseStoryFollowUp:true}:{}),
+     ...(r.story_follow_up_choice!=null?{
+      storyFollowUp:r.story_follow_up_choice as StoryFollowUpChoice}:{})
+    }:{}),
    ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
    ...(r.kind==="LOCKER_ROOM"&&r.staff_review===true?{staffReview:true}:{}),
    ...(r.kind==="LOCKER_ROOM"&&r.can_partner_reply===true?{canPartnerRespond:true}:{}),

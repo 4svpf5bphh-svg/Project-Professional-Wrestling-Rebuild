@@ -74,3 +74,27 @@ test("solo, mentor and faction stories suggest castable scenes without inventing
  const original=recommendProgrammeAngles({...base,programmeFormat:"RIVALRY",activityCount:0});
  assert.deepEqual(original,old,"Rivalry recommendations remain identical");
 });
+
+test("a chosen certified-story follow-up changes the actual next booking starters",()=>{
+ const format="FACTION" as const;
+ const ideas=(choice:"BUILD_ON_REACTION"|"CHANGE_PRESENTATION"|"SLOW_BURN")=>
+  recommendProgrammeAngles({...base,programmeFormat:format,activityCount:2,
+   creativeIntent:{followUp:{choice,sourceShowId:"certified-show",
+    sourceSlotId:"performed-scene",sourceWeekIndex:6}}});
+ assert.deepEqual(ideas("BUILD_ON_REACTION").map(x=>x.kind),
+  ["PROMO","INTERVIEW","VIDEO_PACKAGE"]);
+ assert.deepEqual(ideas("CHANGE_PRESENTATION").map(x=>x.kind),
+  ["VIDEO_PACKAGE","INTERVIEW","PROMO"]);
+ assert.deepEqual(ideas("SLOW_BURN").map(x=>x.kind),
+  ["VIDEO_PACKAGE","INTERVIEW","PROMO"]);
+ for(const choice of ["BUILD_ON_REACTION","CHANGE_PRESENTATION","SLOW_BURN"] as const){
+  for(const suggestion of ideas(choice)){
+   assert.ok(SEGMENT_BOOKING_RULES[suggestion.kind]);
+   assert.doesNotMatch(suggestion.reason,/already betrayed|automatically|will win|confirmed split/i);
+  }
+ }
+ // Original rivalries cannot be steered by non-rival creative replies.
+ assert.deepEqual(recommendProgrammeAngles({...base,programmeFormat:"RIVALRY",
+  creativeIntent:{followUp:{choice:"SLOW_BURN",sourceShowId:"s",
+   sourceSlotId:"x",sourceWeekIndex:2}}}),recommendProgrammeAngles({...base,programmeFormat:"RIVALRY"}));
+});
