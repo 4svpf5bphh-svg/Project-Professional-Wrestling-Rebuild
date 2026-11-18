@@ -575,14 +575,61 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     x.id===p.creativeIntent?.blueprintId);
    if(savedBlueprint){
     const beats=element("section","ppw-programme-next-beats");
-    beats.append(element("h4","","From your story · "+savedBlueprint.name),
-     element("p","ppw-muted","Choose any beat to begin an editable angle. Nothing is booked until you finish and save the card."));
-    for(const beat of savedBlueprint.beats){
-     const action=button(beat.title,()=>port.openPlanner?.(p.programmeId,undefined,
-      {blueprintId:savedBlueprint.id,beatId:beat.id}),
-      working||!view.canEdit||!port.openPlanner);
+    const progress=p.blueprintProgress?.blueprintId===savedBlueprint.id?
+     p.blueprintProgress:null;
+    beats.append(element("h4","","From your story · "+savedBlueprint.name));
+    if(progress){
+     beats.append(element("p","ppw-story-beat-tally",
+      progress.played+" performed · "+progress.booked+" booked · "+
+      progress.available+" still to explore"));
+     if(progress.played===savedBlueprint.beats.length)
+      beats.append(element("p","ppw-story-beat-message",
+       "Every scene has happened on screen. Consider a payoff, a twist, or a new direction. The ending stays yours."));
+     else if(progress.played||progress.booked)
+      beats.append(element("p","ppw-story-beat-message",
+       "Your next suggestion follows actual show history. You can still choose any angle or change its purpose."));
+     else beats.append(element("p","ppw-muted",
+      "Select any beat to start an editable scene. A saved draft is not a performed chapter."));
+    }else beats.append(element("p","ppw-muted",
+     "Choose any beat to begin an editable angle. Nothing is booked until you finish and save the card."));
+    const ordered=[...savedBlueprint.beats].sort((a,b)=>{
+     const rank=(id:string)=>{
+      const state=progress?.beats.find(x=>x.beatId===id)?.status;
+      return state==="AVAILABLE"?0:state==="BOOKED"?1:2;
+     };
+     return rank(a.id)-rank(b.id);
+    });
+    for(const beat of ordered){
+     const proof=progress?.beats.find(x=>x.beatId===beat.id);
+     const status=proof?.status??"AVAILABLE";
+     const isBooked=status==="BOOKED";
+     const action=button(beat.title,()=>{
+      if(isBooked)port.openPlanner?.(p.programmeId);
+      else port.openPlanner?.(p.programmeId,undefined,
+       {blueprintId:savedBlueprint.id,beatId:beat.id});
+     },working||!view.canEdit||!port.openPlanner);
      action.className="ppw-programme-beat-action";
+     action.dataset.beatStatus=status.toLowerCase();
+     action.dataset.beatId=beat.id;
+     const state=element("span","ppw-programme-beat-state",
+      status==="PLAYED"?"PERFORMED":
+      status==="BOOKED"?"ON THE CARD":
+      progress?.suggestedBeatId===beat.id?"SUGGESTED NEXT":"AVAILABLE");
+     action.prepend(state);
      action.append(element("small","",beat.intention));
+     if(status==="PLAYED"&&proof?.playedWeekIndex!==null&&
+      proof?.playedWeekIndex!==undefined){
+      const year=Math.floor(proof.playedWeekIndex/52)+1;
+      const week=proof.playedWeekIndex%52+1;
+      action.append(element("small","ppw-programme-beat-proof",
+       "Performed Y"+year+" W"+week+
+       (proof.crowdResponse!==null?" · Crowd "+Math.round(proof.crowdResponse!)+"/100":"")+
+       " · You can revisit with a new scene"));
+     }
+     if(isBooked&&proof?.bookedAt)action.append(element("small","ppw-programme-beat-proof",
+      (proof.bookedAt.submitted?"Submitted":"Draft")+" · "+
+      proof.bookedAt.showName+" · Y"+proof.bookedAt.year+
+      " W"+proof.bookedAt.week+" · Open existing plan"));
      beats.append(action);
     }
     advice.append(beats);

@@ -671,3 +671,20 @@
  font:500 11px/1.3 system-ui;color:#d9e2f5;white-space:normal}
 .ppw-programme-next-beats .ppw-programme-beat-action:focus-visible{
  outline:3px solid #efc381;outline-offset:2px}
+
+/* Earned Blueprint beats: distinguish a saved intention, booked card and
+   performed on-air fact without implying an automatic character change. */
+.ppw-programme-next-beats .ppw-story-beat-tally{font-weight:850;color:#b7f1e3}
+.ppw-programme-next-beats .ppw-story-beat-message{color:#d4e9f8;font-size:11px}
+.ppw-programme-next-beats .ppw-programme-beat-state{
+ font:850 10px/1.3 system-ui;letter-spacing:.09em;color:#e3f3ff}
+.ppw-programme-next-beats .ppw-programme-beat-proof{
+ color:#d7f7ec;font-size:11px;line-height:1.4}
+.ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="booked"]{
+ background:#224d59;border-color:#7dbab5}
+.ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="booked"] .ppw-programme-beat-state{
+ color:#aaf4df}
+.ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="played"]{
+ background:#252e45;border-color:#6b8799}
+.ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="played"] .ppw-programme-beat-state{
+ color:#adcfde}

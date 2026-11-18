@@ -12,6 +12,9 @@ import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
  from "../domain/programme-finales.js";
 import {parseProgrammeCreativeIntent,type ProgrammeCreativeIntent}
  from "../domain/programme-creative-intent.js";
+import {STORY_BLUEPRINTS} from "../domain/story-blueprints.js";
+import {readProgrammeBlueprintProgress}
+ from "../domain/programme-blueprint-progress.js";
 export type {ProgrammePayoff} from "../domain/programme-finales.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
 export type ProgrammeCommandInput=Scope&{requestId:string;expectedRevision:number};
@@ -197,7 +200,8 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    scene_intensity:string|null;scene_visual:string|null;angle_outcome:string|null;
    turn_alignment:string|null;stable_decision:string|null};
   type Planned={programme_id:string;draft_id:string;slot_id:string;kind:"MATCH"|"SEGMENT";
-   segment_kind:string|null;title_match:boolean;stipulation_match:boolean;
+   segment_kind:string|null;scene_purpose:string|null;
+   title_match:boolean;stipulation_match:boolean;
    year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED";
    booking_class:"REGULAR"|"PREMIUM"};
   type Finale={programme_id:string;show_id:string;slot_id:string;
@@ -207,8 +211,20 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   type Agreement={programme_id:string;person_id:string;approved:boolean;
    score:number;decided_week_index:number;expires_week_index:number;
    match_type:string;permitted_outcome:string};
+  // Only selected saved blueprints are transmitted. Custom storylines need
+  // no extra SQL result rows, and no separate database read is introduced.
+  const selectedBlueprints=new Set(rows.flatMap(p=>{
+   const intent=parseProgrammeCreativeIntent(p.creative_intent);
+   return intent&&intent.blueprintId!=="CUSTOM"?[intent.blueprintId]:[];
+  }));
+  const beatSpecs=STORY_BLUEPRINTS.filter(b=>selectedBlueprints.has(b.id))
+   .flatMap(b=>b.beats.map(beat=>({blueprint_id:b.id,beat_id:beat.id,
+    segment_kind:beat.kind,scene_purpose:beat.purpose})));
+  type BlueprintFact={programme_id:string;beat_id:string;
+   week_index:number|null;crowd_response:number|null};
   const combined=programmes.length?await tx.query<{
-   source:"ACTIVITY"|"AGREEMENT"|"PLANNED"|"FINALE";details:Recent|Agreement|Planned|Finale
+   source:"ACTIVITY"|"AGREEMENT"|"PLANNED"|"FINALE"|"BLUEPRINT";
+   details:Recent|Agreement|Planned|Finale|BlueprintFact
   }>([
    "SELECT 'ACTIVITY'::text AS source,to_jsonb(activity) AS details FROM (",
    "SELECT recent.programme_id,recent.show_id,recent.slot_id,recent.kind,",
@@ -241,6 +257,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "SELECT 'PLANNED'::text AS source,to_jsonb(upcoming) AS details FROM (",
    "SELECT a.programme_id,a.draft_id,a.slot_id,a.kind,d.year,d.week,",
    "CASE WHEN a.kind='SEGMENT' THEN s.payload->>'kind' ELSE NULL END AS segment_kind,",
+   "CASE WHEN a.kind='SEGMENT' THEN s.payload->'scene'->>'purpose' ELSE NULL END AS scene_purpose,",
    "CASE WHEN a.kind='MATCH' THEN",
    "NULLIF(s.payload->>'championshipId','') IS NOT NULL ELSE false END AS title_match,",
    "CASE WHEN a.kind='MATCH' THEN",
@@ -262,8 +279,33 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "resolved_week_index,resolved_crowd_response,resolved_winner_side",
    "FROM ppw_programme_finales",
    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
-   "ORDER BY programme_id LIMIT 101) f"
-  ].join(" "),[scope.worldId,scope.promotionId,programmes,currentWeek]):[];
+   "ORDER BY programme_id LIMIT 101) f",
+   "UNION ALL",
+   // A proposed, interrupted or refused chapter cannot count: the settled
+   // programme history only contains completed HAPPENS segments.
+   "SELECT 'BLUEPRINT'::text AS source,to_jsonb(proof) AS details FROM (",
+   "SELECT p.programme_id,spec.beat_id,seen.week_index,seen.crowd_response",
+   "FROM ppw_programmes p",
+   "JOIN LATERAL jsonb_to_recordset($5::jsonb) AS spec(",
+   "blueprint_id text,beat_id text,segment_kind text,scene_purpose text)",
+   "ON p.creative_intent->>'blueprintId'=spec.blueprint_id",
+   "LEFT JOIN LATERAL (",
+   "SELECT a.week_index,a.crowd_response",
+   "FROM ppw_programme_resolved_activities a",
+   "JOIN ppw_card_slots scene ON scene.world_id=a.world_id",
+   "AND scene.draft_id=a.show_id AND scene.slot_id=a.slot_id",
+   "AND scene.kind='SEGMENT'",
+   "WHERE a.world_id=$1 AND a.promotion_id=$2",
+   "AND a.programme_id=p.programme_id AND a.kind='SEGMENT'",
+   "AND scene.payload->>'kind'=spec.segment_kind",
+   "AND scene.payload->'scene'->>'purpose'=spec.scene_purpose",
+   "ORDER BY a.week_index,a.show_id,a.slot_id LIMIT 1",
+   ") seen ON true",
+   "WHERE p.world_id=$1 AND p.promotion_id=$2",
+   "AND p.programme_id=ANY($3::text[])",
+   "ORDER BY p.programme_id,spec.beat_id LIMIT 301) proof"
+  ].join(" "),[scope.worldId,scope.promotionId,programmes,currentWeek,
+   JSON.stringify(beatSpecs)]):[];
   const recent=combined.filter(x=>x.source==="ACTIVITY")
    .map(x=>x.details as Recent);
   const agreements=combined.filter(x=>x.source==="AGREEMENT")
@@ -272,6 +314,9 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    .map(x=>x.details as Planned);
   const finales=combined.filter(x=>x.source==="FINALE")
    .map(x=>x.details as Finale);
+  const blueprintFacts=combined.filter(x=>x.source==="BLUEPRINT")
+   .map(x=>x.details as BlueprintFact);
+  if(blueprintFacts.length>300)throw new Error("Programme blueprint evidence exceeds bound");
   if(recent.length>500)throw new Error("Programme history view limit exceeded");
   if(agreements.length>300)throw new Error("Too many rivalry agreements");
   if(planned.length>300)throw new Error("Too many planned rivalry chapters");
@@ -292,6 +337,19 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     sideAWins:p.side_a_wins,sideBWins:p.side_b_wins,draws:p.draws,
     championshipId:p.championship_id,
     creativeIntent:parseProgrammeCreativeIntent(p.creative_intent),
+    blueprintProgress:(()=>{
+     const intent=parseProgrammeCreativeIntent(p.creative_intent);
+     const blueprint=STORY_BLUEPRINTS.find(b=>b.id===intent?.blueprintId);
+     return blueprint?readProgrammeBlueprintProgress(blueprint,
+      blueprintFacts.filter(x=>x.programme_id===p.programme_id).map(x=>({
+       beatId:x.beat_id,weekIndex:x.week_index,crowdResponse:x.crowd_response
+      })),
+      planned.filter(x=>x.programme_id===p.programme_id).map(x=>({
+       kind:x.kind,segmentKind:x.segment_kind,scenePurpose:x.scene_purpose,
+       year:x.year,week:x.week,showName:x.show_name??"Scheduled show",
+       status:x.status
+      }))):null;
+    })(),
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
     wrestlerChanges:p.status==="COMPLETED"?p.wrestler_changes:[],
     wrestlerOrigin:p.origin_request_id&&p.origin_person_id&&p.origin_opponent_id&&
@@ -339,7 +397,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
      selected.sort((a,b)=>a.year-b.year||a.week-b.week||
       a.draft_id.localeCompare(b.draft_id)||a.slot_id.localeCompare(b.slot_id));
      return selected.map(x=>({showId:x.draft_id,slotId:x.slot_id,
-      kind:x.kind,segmentKind:x.segment_kind,
+      kind:x.kind,segmentKind:x.segment_kind,scenePurpose:x.scene_purpose,
       titleMatch:x.title_match,stipulationMatch:x.stipulation_match,
       ...(x.booking_class==="PREMIUM"?{premium:true}:{}),
       year:x.year,week:x.week,
