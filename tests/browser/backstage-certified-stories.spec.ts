@@ -54,8 +54,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"Storylines"}).click();
   await expect(page.locator('.ppw-backstage-world-contact[data-story-chapter="true"]'))
    .toHaveCount(2);
-  await expect(page.locator(".ppw-backstage-contact")).toHaveCount(2,
-   "The dedicated story lane excludes ordinary wrestler conversations and staff warnings");
+  await expect(page.locator(".ppw-backstage-contact")).toHaveCount(2);
   await page.getByRole("button",{name:/About that chapter we put on air/}).click();
   const wrestler=page.getByLabel("Message from Character One");
   await expect(wrestler).toContainText("The Lottery");
