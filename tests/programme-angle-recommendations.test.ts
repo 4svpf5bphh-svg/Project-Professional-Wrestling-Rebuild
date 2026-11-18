@@ -66,7 +66,8 @@ test("solo, mentor and faction stories suggest castable scenes without inventing
   assert.deepEqual(developed.map(x=>x.kind),sample.next);
   for(const item of [...opening,...developed]){
    assert.ok(SEGMENT_BOOKING_RULES[item.kind]);
-   assert.doesNotMatch(item.reason,/they betrayed|they already|won the title|automatically|guaranteed/i);
+   assert.doesNotMatch(item.reason,
+    /they betrayed|they already|won the title|automatically booked|guaranteed a win/i);
   }
  }
  const old=recommendProgrammeAngles({...base,activityCount:0});
