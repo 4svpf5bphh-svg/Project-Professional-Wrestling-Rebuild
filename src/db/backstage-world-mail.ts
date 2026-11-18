@@ -3,6 +3,7 @@
  * materialised weekly message row. One bounded SQL read for the full inbox.
  */
 import type {SqlRows} from "./world-operations.js";
+import {STORY_REACTION_CTES} from "./backstage-story-reactions.js";
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {worldStaff,type WorldStaffMember} from "../domain/world-staff.js";
@@ -15,7 +16,7 @@ export type WorldMailAction="COMMERCIALS"|"CONTRACTS"|"PROGRAMMES"|"STAFF"|"MARK
 export interface WorldMail{
  id:string;kind:WorldMailKind;sender:string;subject:string;body:string;
  action:WorldMailAction;createdWeekIndex:number;read:boolean;
- canRespond?:boolean;contentConcern?:boolean;
+ canRespond?:boolean;contentConcern?:boolean;storyChapter?:boolean;
  canStaffRespond?:boolean;staffResponse?:{decision:"COMMIT"|"DEFER";
   status:"PENDING"|"ACKNOWLEDGED"|"KEPT"|"BROKEN"|"EXCUSED";dueWeekIndex:number};
  networkResponse?:{decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
@@ -38,6 +39,7 @@ interface MailRow extends Record<string,unknown>{
  id:string;kind:WorldMailKind;sender_key:string;subject:string;
  body:string;action:WorldMailAction;created_week_index:number;
  read:boolean;seed:string;target_person_id:string|null;sender_name:string|null;
+ story_chapter?:boolean;
  can_reply:boolean;content_concern:boolean;can_staff_reply:boolean;
  staff_reply_decision:string|null;staff_reply_status:string|null;
  staff_reply_due_week_index:number|null;
@@ -583,7 +585,7 @@ WITH owner AS MATERIALIZED (
   AND greatest(r.responded_week_index+1,bid.submitted_week_index+1)
    BETWEEN greatest(0,o.now-12) AND o.now
  ORDER BY bid.submitted_week_index DESC,bid.offer_id DESC LIMIT 2
-), message AS (
+), ${STORY_REACTION_CTES}, message AS (
  SELECT * FROM network UNION ALL SELECT * FROM content_notice
  UNION ALL SELECT * FROM network_followup UNION ALL SELECT * FROM staff
  UNION ALL SELECT * FROM staff_followup
@@ -595,6 +597,7 @@ WITH owner AS MATERIALIZED (
  UNION ALL SELECT * FROM partner_mediation UNION ALL SELECT * FROM partner_mediation_setback
  UNION ALL SELECT * FROM partner_mediation_followup
  UNION ALL SELECT * FROM recruitment_result
+ UNION ALL SELECT * FROM story_wrestler UNION ALL SELECT * FROM story_creative
 ), candidate AS (
  SELECT 'backstage-world:'||md5(message.evidence) AS id,
   message.evidence,message.kind,message.sender_key,message.subject,message.body,
@@ -605,6 +608,7 @@ WITH owner AS MATERIALIZED (
 SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  c.created_week_index,c.seed,c.target_person_id,c.sender_name,
  (receipt.attention_id IS NOT NULL) AS read,
+ (c.evidence LIKE 'story-scene:%' OR c.evidence LIKE 'story-staff:%') AS story_chapter,
  reply.decision AS reply_decision,reply.status AS reply_status,
  reply.due_week_index AS reply_due_week_index,
  staff_reply.decision AS staff_reply_decision,
@@ -753,6 +757,7 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
     network??catalogue.get(r.sender_key)??(r.kind==="NETWORK"?"Your broadcaster":"Staff Office"),
    subject:r.subject,body:r.body,action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
+    ...(r.story_chapter===true?{storyChapter:true}:{}),
    ...(r.kind==="NETWORK"&&r.can_reply===true?{canRespond:true}:{}),
    ...(r.kind==="LOCKER_ROOM"&&r.staff_review===true?{staffReview:true}:{}),
    ...(r.kind==="LOCKER_ROOM"&&r.can_partner_reply===true?{canPartnerRespond:true}:{}),

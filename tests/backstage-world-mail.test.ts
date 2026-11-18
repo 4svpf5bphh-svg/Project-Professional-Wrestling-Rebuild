@@ -14,6 +14,11 @@ test("World mail projection contains only genuine controlled certified sources",
  assert.match(WORLD_MAIL_SQL,/n.certainty='CONFIRMED'/);
  assert.match(WORLD_MAIL_SQL,/n.story_key LIKE 'broadcast:network:%'/);
  assert.match(WORLD_MAIL_SQL,/ppw_staff_employments e/);
+ assert.match(WORLD_MAIL_SQL,/ppw_programme_resolved_activities a/);
+ assert.match(WORLD_MAIL_SQL,/finished.authored_outcome='HAPPENS'/);
+ assert.match(WORLD_MAIL_SQL,/a.kind='SEGMENT'/);
+ assert.match(WORLD_MAIL_SQL,/slot.payload->'participants' @>/);
+ assert.match(WORLD_MAIL_SQL,/programme_format IN \('SOLO','RELATIONSHIP','FACTION'\)/);
  assert.match(WORLD_MAIL_SQL,/e.status='ACTIVE'/);
  assert.match(WORLD_MAIL_SQL,/NOT EXISTS\(/);
  assert.match(WORLD_MAIL_SQL,/ppw_player_attention_dismissals/);
@@ -34,7 +39,10 @@ test("World mail projection contains only genuine controlled certified sources",
    action:"STAFF",created_week_index:18,read:true,seed:"123"},
   {id:id("c"),kind:"FREE_AGENT",sender_key:"p-1",sender_name:"Available Prospect",
    target_person_id:"p-1",subject:"Could we talk?",body:"I saw your show",
-   action:"MARKET",created_week_index:18,read:false,seed:"123"}
+   action:"MARKET",created_week_index:18,read:false,seed:"123"},
+  {id:id("d"),kind:"LOCKER_ROOM",sender_key:"p-2",sender_name:"Character Name",
+   target_person_id:"p-2",subject:"About that chapter",body:"On-screen story",
+   action:"PROGRAMMES",created_week_index:18,read:false,seed:"123",story_chapter:true}
  ];
  let queries=0;
  const tx={query:async(sql:string,params:readonly unknown[])=>{
@@ -52,6 +60,9 @@ test("World mail projection contains only genuine controlled certified sources",
  assert.equal(inbox[1]?.action,"STAFF");
  assert.equal(inbox[2]?.sender,"Available Prospect");
  assert.equal(inbox[2]?.targetPersonId,"p-1");
+ assert.equal(inbox[3]?.sender,"Character Name");
+ assert.equal(inbox[3]?.storyChapter,true);
+ assert.equal(inbox[3]?.action,"PROGRAMMES");
 });
 test("World mail rejects invalid source IDs and oversized results",async()=>{
  const query=async()=>[{id:"fake",kind:"NETWORK",sender_key:"BROADCAST_GROWTH",

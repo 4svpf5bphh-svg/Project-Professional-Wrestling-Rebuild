@@ -75,7 +75,7 @@ export function mountPersonaDesk(root:HTMLElement,
  let pendingStaff:{mailId:string;decision:"COMMIT"|"DEFER";
   requestId:string;expectedRevision:number}|null=null;
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
-  "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"|"DISAGREEMENTS"|"LOCKER_ROOM"=initialInboxFilter;
+  "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"|"DISAGREEMENTS"|"LOCKER_ROOM"|"STORIES"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
  let scrollToLatest=false;
@@ -421,7 +421,7 @@ export function mountPersonaDesk(root:HTMLElement,
    back.classList.add("ppw-backstage-phone-back");
    const avatar=el("span","ppw-backstage-phone-avatar",
     mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
-    mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
+    mail.kind==="FREE_AGENT"?"FA":mail.storyChapter?"SR":mail.kind==="LOCKER_ROOM"?"LR":"ST");
    const identity=el("span","ppw-backstage-phone-identity");
    identity.append(el("strong","",mail.sender),
     el("small","",mail.kind==="NETWORK"?"Broadcast partner":
@@ -449,6 +449,7 @@ export function mountPersonaDesk(root:HTMLElement,
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
      mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
      mail.kind==="FREE_AGENT"?"No contract or appearance has been agreed.":
+     mail.storyChapter?"From an actual completed Programme chapter and verified audience response; no off-screen character consequence has been assumed.":
      mail.kind==="LOCKER_ROOM"&&mail.staffReview?
       "From your earlier staff decision and a completed review of real workload or programme progress.":
      mail.kind==="LOCKER_ROOM"?"From actual teammate match history and an answered mediation request.":
@@ -633,11 +634,11 @@ export function mountPersonaDesk(root:HTMLElement,
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
     ["ACTIVE","Requests"],["WRESTLERS","Wrestlers"],["STAFF","Staff"],
     ["NETWORK","Networks"],["SCOUT","Scouting"],
-    ["FREE_AGENT","Free agents"],["DISAGREEMENTS","Staff disagreements"],
+    ["FREE_AGENT","Free agents"],["STORIES","Storylines"],["DISAGREEMENTS","Staff disagreements"],
     ["LOCKER_ROOM","Locker room"],["HISTORY","History"],["ARCHIVED","Archived"]] as const){
     const b=button(label,()=>{
      inboxFilter=filter;
-     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS"].includes(filter)){
+     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS","STORIES"].includes(filter)){
       void load();return;
      }
      render();
@@ -662,6 +663,7 @@ export function mountPersonaDesk(root:HTMLElement,
    let count=0;
    for(const mail of [...(view.worldMessages??[])].filter(item=>
     inboxFilter==="ALL"||inboxFilter===item.kind||
+     (inboxFilter==="STORIES"&&item.storyChapter===true)||
     (inboxFilter==="DISAGREEMENTS"&&
      (item.canDisagree||!!item.disagreementResponse||
       item.subject.startsWith("Our staff review")||
@@ -676,9 +678,10 @@ export function mountPersonaDesk(root:HTMLElement,
     item.classList.add("ppw-backstage-contact","ppw-backstage-world-contact");
     if(!mail.read)item.classList.add("ppw-backstage-unread");
     if(worldNeedsReply(mail))item.dataset.needsDecision="true";
+     if(mail.storyChapter)item.dataset.storyChapter="true";
     const avatar=el("span","ppw-backstage-avatar",
      mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
-     mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
+     mail.kind==="FREE_AGENT"?"FA":mail.storyChapter?"SR":mail.kind==="LOCKER_ROOM"?"LR":"ST");
     const copy=el("span","ppw-backstage-contact-copy");
     const top=el("span","ppw-backstage-contact-top");
     top.append(el("strong","",mail.sender),el("small","ppw-backstage-contact-stamp",
