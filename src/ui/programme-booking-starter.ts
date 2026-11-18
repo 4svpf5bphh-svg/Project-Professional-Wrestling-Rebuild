@@ -65,7 +65,8 @@ export function programmeAngleIdeaStarter(p:FeudCast,slotId:string,
  idea:ProgrammeAngleIdea):EditorSegment{
  const initial=newEditorSegment(slotId,idea.kind);
  const defaultScene=initialAngleScene(idea.kind);
- const purpose=idea.purpose;
+ const purpose=p.programmeFormat&&p.programmeFormat!=="RIVALRY"&&
+  idea.kind==="VIDEO_PACKAGE"?"BUILD_CHARACTER":idea.purpose;
  const location=idea.location;
  return {...initial,programmeId:p.programmeId,durationMinutes:idea.minutes,
   ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:

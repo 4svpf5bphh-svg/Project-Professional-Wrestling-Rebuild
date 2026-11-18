@@ -13,7 +13,8 @@ import {reserveBookedTournamentBouts}
 import {readBookedInterference} from "../simulation/legacy/match-interference.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
 import {inferProgrammeMatchLinks,validateProgrammeAngleLinks,
- validateNonRivalMatchLinks} from "../domain/programme-match-links.js";
+ validateNonRivalMatchLinks,mergeProgrammeMatchLinks}
+ from "../domain/programme-match-links.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
@@ -982,7 +983,8 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
       tournament:Boolean(m.payload.tournamentId)}];
     }),programmePeople.map(p=>({programmeId:p.programme_id,
      personId:p.person_id,side:p.side,programmeFormat:p.programme_format})));
-    const programmeMatchLinks=[...automaticMatchLinks,...explicitMatchLinks];
+    const programmeMatchLinks=mergeProgrammeMatchLinks(
+     automaticMatchLinks,explicitMatchLinks);
    // Clear stale programme references and shift slot positions in one SQL
    // round trip, keeping the established 15-query booking transfer budget.
    await tx.query([

@@ -66,7 +66,9 @@ for(const width of [320,390]){
   await expect(dialog.getByText("CAST YOUR STORY")).toBeVisible();
   await expect(dialog.getByRole("button",{name:"Samoa Joe leads"})).toBeVisible();
   await dialog.getByRole("button",{name:"Samoa Joe leads"}).click();
-  await expect(dialog.getByText(/Samoa Joe/).first()).toBeVisible();
+  // The authenticated save below verifies the actual Joe actor ID.
+  // Avoid matching a hidden <option> label in the optional Storyline selector.
+  await expect(dialog.getByRole("button",{name:"Next · Script outcome"})).toBeEnabled();
   await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
   await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
   await dialog.getByRole("button",{name:"Complete angle"}).click();

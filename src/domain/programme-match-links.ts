@@ -9,7 +9,7 @@ export function inferProgrammeMatchLinks(
  matches:readonly ProgrammeMatchInput[],
  participants:readonly ProgrammePersonSide[],
 ):ProgrammeMatchLink[]{
- if(matches.length>100||participants.length>400)throw new Error("Programme link input too large");
+ if(matches.length>100||participants.length>600)throw new Error("Programme link input too large");
  const story=new Map<string,{A:Set<string>;B:Set<string>}>();
  for(const person of participants){
   if(!person.programmeId||!person.personId||!["A","B"].includes(person.side))
@@ -45,7 +45,7 @@ export function validateProgrammeAngleLinks(
  angles:readonly {slotId:string;programmeId:string;personIds:readonly string[]}[],
  members:readonly ProgrammePersonSide[],
 ):void{
- if(angles.length>100||members.length>400)
+ if(angles.length>100||members.length>600)
   throw new Error("Programme angle input too large");
  const byProgramme=new Map<string,Set<string>>();
  for(const member of members){
@@ -90,4 +90,18 @@ export function validateNonRivalMatchLinks(
   links.push({slotId:match.slotId,programmeId:match.programmeId});
  }
  return links;
+}
+
+/** Preserve the original automatic rival-match links by default. When a
+ * manager explicitly associates the same real bout to a non-rival journey,
+ * their saved choice takes precedence for that bout only. This prevents an
+ * ambiguous two-Programme read-back without rewriting unrelated rivalries.
+ */
+export function mergeProgrammeMatchLinks(
+ automatic:readonly ProgrammeMatchLink[],explicit:readonly ProgrammeMatchLink[],
+):ProgrammeMatchLink[]{
+ const selected=new Set(explicit.map(x=>x.slotId));
+ if(selected.size!==explicit.length)
+  throw new Error("A match cannot have multiple selected storylines");
+ return [...automatic.filter(x=>!selected.has(x.slotId)),...explicit];
 }

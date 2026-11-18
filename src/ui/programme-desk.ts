@@ -184,7 +184,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   if(onBack)header.append(button("← Back to card",onBack));
   if(port.openArchive)header.append(button("Past results",port.openArchive));
   header.append(element("span","ppw-eyebrow","CREATIVE / STORYLINES"),
-   element("h1","",selectedArchiveId?"Rivalry retrospective":
+   element("h1","",selectedArchiveId?(
+    view?.programmes.some(p=>p.programmeId===selectedArchiveId&&
+     (p.programmeFormat??"RIVALRY")!=="RIVALRY")?
+     "Story retrospective":"Rivalry retrospective"):
     archiveView?"Past stories":"Programmes"));
   root.append(header);
   if(error)root.append(element("p","ppw-alert ppw-error",error));
@@ -502,13 +505,14 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      element("p","ppw-muted",
       existing.payoff.replaceAll("_"," ").toLowerCase()+
       (existing.resolvedWeekIndex===null?
-       " · This rivalry remains active until the booked scene is certified.":
-       " · Certified and included in your rivalry history.")));
+       (storyKind(p)==="RIVALRY"?" · This rivalry":" · This story")+
+        " remains active until the booked scene is certified.":
+       " · Certified and included in your story history.")));
     if(existing.resolvedWeekIndex===null&&!chosen)
      payoffPanel.append(element("p","ppw-programme-finale-warning",
       "The selected chapter is no longer booked in your next six weeks. Choose another, or remove this finale plan."));
    }else payoffPanel.append(element("p","ppw-muted",
-    "Choose a specific booked match or angle to end this rivalry on screen. A plan alone never closes the feud."));
+    "Choose a specific booked match or angle to end this story on screen. A plan alone cannot finish it."));
    if(view.canEdit&&eligible.length){
     const available=eligible.map(x=>({chapter:x,key:x.showId+"::"+x.slotId}));
     const defaultChapter=available.find(x=>x.chapter.showId===existing?.showId&&
@@ -980,7 +984,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     const review=element("div","ppw-programme-feud-review");
     const graphic=element("strong","ppw-programme-feud-stars","★".repeat(stars)+"☆".repeat(5-stars));
     graphic.setAttribute("aria-label",stars+" out of five stars");
-    review.append(graphic,element("span","",stars+"/5 · Grade "+rating.grade),element("small","",rating.verdict));
+    review.append(graphic,element("span","",stars+"/5 · Grade "+rating.grade),element("small","",storyKind(p)==="RIVALRY"?rating.verdict:
+      rating.verdict.replaceAll("feud","story").replaceAll("rivalry","story")));
     archive.append(review);
     if((p.wrestlerChanges?.length??0)>0){
      const impact=element("div","ppw-programme-impact");

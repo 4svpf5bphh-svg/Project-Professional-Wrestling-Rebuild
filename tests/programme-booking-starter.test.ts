@@ -112,6 +112,8 @@ test("solo story cast selects one actually signed character without inventing a 
   recommendProgrammeAngles({heat:40,repetition:0,programmeFormat:"SOLO"})
    .find(x=>x.kind==="VIDEO_PACKAGE")!);
  assert.equal(recap.videoPurpose,"WRESTLER_HYPE");
+ assert.equal(recap.scene?.purpose,"BUILD_CHARACTER",
+  "A solo-character recap must not be described as feud footage");
  assert.equal(programmeAngleIdeaStarter(p,"old-recap",
   recommendProgrammeAngles({heat:82,repetition:0})
    .find(x=>x.kind==="VIDEO_PACKAGE")!).videoPurpose,"FEUD_RECAP");

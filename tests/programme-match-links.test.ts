@@ -66,3 +66,17 @@ test("non-rival matches link only by explicit booker choice and a real cast memb
   slotId:"tourney",programmeId:"solo",personIds:["a","champion"],
   tournament:true}],actors),/Tournament/);
 });
+
+test("an explicit non-rival story takes priority on just its booked match",async()=>{
+ const {mergeProgrammeMatchLinks}=await import("../src/domain/programme-match-links.js");
+ const auto=[{slotId:"main",programmeId:"rivalry"},
+  {slotId:"opener",programmeId:"old-rivalry"}];
+ const chosen=[{slotId:"main",programmeId:"solo"}];
+ assert.deepEqual(mergeProgrammeMatchLinks(auto,chosen),[
+  {slotId:"opener",programmeId:"old-rivalry"},
+  {slotId:"main",programmeId:"solo"}
+ ]);
+ assert.deepEqual(mergeProgrammeMatchLinks(auto,[]),auto,
+  "Original automatic rivalry links must survive if no journey was selected");
+ assert.throws(()=>mergeProgrammeMatchLinks(auto,[...chosen,...chosen]),/multiple selected/);
+});
