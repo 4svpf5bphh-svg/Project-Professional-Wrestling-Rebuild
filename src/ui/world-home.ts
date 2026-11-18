@@ -112,7 +112,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
  async function clearResolvedUpdates(){
   if(!port.dismissAttentionBatch||clearing||dismissing.size)return;
   const attention=overview?.promotion?.attention;
-  const keys=[...(attention?.offerResults??[]),...(attention?.dateDecisions??[]),...(attention?.backstageResults??[]),
+  const keys=[...(attention?.offerResults??[]),...(attention?.dateDecisions??[]),
    ...(attention?.businessUpdates??[]).filter(x=>x.kind!=="COMMERCIAL_EXPIRED"&&
     (overview?((overview.world.year-x.year)*52+overview.world.week-x.week)<=2:true)),
    ...(attention?.titleNews??[]),
@@ -126,7 +126,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    if(attention){
     attention.offerResults=attention.offerResults?.filter(x=>!cleared.has(x.id));
     attention.dateDecisions=attention.dateDecisions?.filter(x=>!cleared.has(x.id));
-    attention.backstageResults=attention.backstageResults?.filter(x=>!cleared.has(x.id));
+
     attention.businessUpdates=attention.businessUpdates?.filter(x=>!cleared.has(x.id));
     attention.titleNews=attention.titleNews?.filter(x=>!cleared.has(x.id));
     attention.injuryNews=attention.injuryNews?.filter(x=>!cleared.has(x.id));
@@ -485,40 +485,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }
    inboxBody.append(wire);
   }
-  const resolved=attention?.backstageResults??[];
-  if(resolved.length){
-   const wire=el("section","ppw-home-wire");
-   wire.append(el("span","ppw-home-brand","THE LOCKER ROOM"),
-    el("h3","","Promises settled"));
-   for(const item of resolved){
-    const kept=item.status==="FULFILLED";
-    const entry=el("article","ppw-home-wire-item");
-    entry.append(el("span","ppw-home-wire-status "+(kept?
-     "ppw-home-wire-accepted":"ppw-home-wire-declined"),kept?"KEPT":"BROKEN"),
-     el("strong","",item.name+(kept?" saw your promise kept":" was left waiting")),
-     el("p","",kept?
-      "Your commitment was honoured. Catch up with the wrestler in the locker room.":
-      "A promise went unfulfilled. Speak with the wrestler about what comes next."));
-    const actions=el("div","ppw-home-wire-actions");
-    const open=el("button","ppw-home-wire-button","Open Backstage") as HTMLButtonElement;
-    open.type="button";open.onclick=()=>port.openBackstageThread?
-     port.openBackstageThread(item.personId,false):port.backstage();
-    actions.append(open);
-    if(port.openWrestler){
-     const person=el("button","ppw-home-wire-button","View "+item.name) as HTMLButtonElement;
-     person.type="button";person.onclick=()=>port.openWrestler?.(item.personId);
-     actions.append(person);
-    }
-    if(port.dismissAttention){
-     const dismiss=el("button","ppw-home-wire-dismiss","Dismiss update") as HTMLButtonElement;
-     dismiss.type="button";dismiss.disabled=clearing||dismissing.has(item.id);
-     dismiss.setAttribute("aria-label","Dismiss "+item.name+"'s locker room update");
-     dismiss.onclick=()=>void dismissNews(item.id);actions.append(dismiss);
-    }
-    entry.append(actions);wire.append(entry);
-   }
-   inboxBody.append(wire);
-  }
+  // The Backstage hub owns wrestler/staff messages and settled outcomes;
+  // never duplicate these as Home notifications.
   // Expired agreements are auditable in Commercials, but they are NOT
   // current attention. Show only recent non-commercial business changes.
   const businessUpdates=(attention?.businessUpdates??[]).filter(item=>
