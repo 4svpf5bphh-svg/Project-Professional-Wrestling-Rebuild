@@ -688,3 +688,14 @@
  background:#252e45;border-color:#6b8799}
 .ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="played"] .ppw-programme-beat-state{
  color:#adcfde}
+
+/* Evidence-first creative cues are guidance, never certified events. */
+.ppw-programme-next-beats .ppw-story-beat-cue{
+ margin:0;padding:9px 0 7px;border-bottom:1px solid #647692;
+ color:#deecfc;font:650 11px/1.45 system-ui;overflow-wrap:anywhere}
+.ppw-programme-next-beats[data-cue-signal=medical] .ppw-story-beat-cue{
+ color:#ffdfa7}
+.ppw-programme-next-beats[data-cue-signal=cooling] .ppw-story-beat-cue{
+ color:#d9e7f4}
+.ppw-programme-next-beats .ppw-programme-beat-action:has(.ppw-programme-beat-state){
+ min-width:0}

@@ -16,6 +16,8 @@ import {suggestProgrammeAdvice} from "./programme-staff-advice.js";
 import {recommendProgrammeAngles,type ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
 import {describeProgrammeChapter} from "./programme-chapter-summary.js";
 import {readProgrammeCrowdTrend} from "../domain/programme-crowd-trend.js";
+import {recommendProgrammeBlueprintBeat}
+ from "../domain/programme-blueprint-advice.js";
 import {describeWrestlerStory} from "../domain/programme-story-spine.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {wrestlerInitials} from "./wrestler-card.js";
@@ -579,6 +581,17 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     const progress=p.blueprintProgress?.blueprintId===savedBlueprint.id?
      p.blueprintProgress:null;
     beats.append(element("h4","","From your story · "+savedBlueprint.name));
+    const cue=progress?recommendProgrammeBlueprintBeat({
+     blueprint:savedBlueprint,progress,heat:p.heat,repetition:p.repetition,
+     crowdTrend,medicalHolds:(p.medicalHolds??[]).length,
+     latestChapter:p.recentActivity[0]??null,
+     latestFollowUp:p.latestFollowUp
+    }):null;
+    if(cue){
+     beats.dataset.cueSignal=cue.signal.toLowerCase();
+     beats.append(element("p","ppw-story-beat-cue",
+      "CREATIVE CUE · "+cue.reason));
+    }
     if(progress){
      beats.append(element("p","ppw-story-beat-tally",
       progress.played+" performed · "+progress.booked+" booked · "+
@@ -588,7 +601,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
        "Every scene has happened on screen. Consider a payoff, a twist, or a new direction. The ending stays yours."));
      else if(progress.played||progress.booked)
       beats.append(element("p","ppw-story-beat-message",
-       "Your next suggestion follows actual show history. You can still choose any angle or change its purpose."));
+       "These are optional story directions, not a required order. The next scene stays your choice."));
      else beats.append(element("p","ppw-muted",
       "Select any beat to start an editable scene. A saved draft is not a performed chapter."));
     }else beats.append(element("p","ppw-muted",
@@ -596,7 +609,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     const ordered=[...savedBlueprint.beats].sort((a,b)=>{
      const rank=(id:string)=>{
       const state=progress?.beats.find(x=>x.beatId===id)?.status;
-      return state==="AVAILABLE"?0:state==="BOOKED"?1:2;
+      if(state==="AVAILABLE"&&cue?.beatId===id)return 0;
+      return state==="AVAILABLE"?1:state==="BOOKED"?2:3;
      };
      return rank(a.id)-rank(b.id);
     });
@@ -617,7 +631,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      const state=element("span","ppw-programme-beat-state",
       status==="PLAYED"?"PERFORMED":
       status==="BOOKED"?"ON THE CARD":
-      progress?.suggestedBeatId===beat.id?"SUGGESTED NEXT":"AVAILABLE");
+      cue?.beatId===beat.id?"SUGGESTED NEXT":"AVAILABLE");
      action.prepend(state);
      action.append(element("small","",beat.intention));
      if(status==="PLAYED"&&proof?.playedWeekIndex!==null&&
