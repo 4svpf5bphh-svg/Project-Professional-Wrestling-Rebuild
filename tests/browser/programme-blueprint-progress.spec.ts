@@ -66,8 +66,9 @@ for(const width of [320,390]){
   expect(calls).toEqual(["programmes"]);
   await booked.click();
   await expect(page).toHaveURL(/#\/planner$/);
-  expect(calls,"A booked beat must open the existing plan, not duplicate the angle")
-   .toEqual(["programmes","planner"]);
+  await expect.poll(()=>calls,{
+   message:"A booked beat must reopen the existing planner, not create a duplicate angle"
+  }).toEqual(["programmes","planner"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
