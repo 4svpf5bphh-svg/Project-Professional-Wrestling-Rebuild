@@ -3,7 +3,7 @@ import {BACKSTAGE_LABELS,type BackstageDecision}
  from "../domain/backstage-conversations.js";
 import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
- saveAnnualPremiumAsActor,
+ saveAnnualPremiumAsActor,renameBookedPremiumAsActor,
  plannerAsActor,planShowAsActor,saveCreativeOutlineAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,signCommercialDealAsActor,
  requestBroadcastDayAsActor,
@@ -256,6 +256,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    worldId,promotionId,requestId,expectedRevision,year:p.year as number,
    events:p.events as import("../domain/annual-premium-plan.js").AnnualPremiumEvent[]
   });
+ }
+ if(method==="renameBookedPremium"){
+  if(!Number.isSafeInteger(p.year)||!Number.isSafeInteger(p.week)||
+   typeof p.name!=="string"||!p.name.trim()||p.name.trim().length>80)
+   throw new Error("Invalid booked premium rename");
+  return renameBookedPremiumAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,draftId:id("draftId"),year:p.year as number,
+   week:p.week as number,name:p.name as string});
  }
  if(method==="saveCreativeOutline"){
   if(!Array.isArray(p.notes)||p.notes.length>7||

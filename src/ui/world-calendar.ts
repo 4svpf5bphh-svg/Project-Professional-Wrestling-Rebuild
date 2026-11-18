@@ -6,7 +6,8 @@ import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
 import {validateAnnualPremiumEvents,type AnnualPremiumEvent,
  type PremiumPolicy} from "../domain/annual-premium-plan.js";
 import type {StandingTier} from "../domain/annual-promotion-standing.js";
-import type {CalendarBooking} from "../db/calendar-workspace.js";
+import type {CalendarBooking,PremiumCalendarEdition}
+ from "../db/calendar-workspace.js";
 import {calendarBookingForSeries,calendarBookingLocation,calendarBookingState}
  from "./calendar-booked-show.js";
 import {calendarSeriesPreview,setSeriesCadence,SERIES_CADENCES}
@@ -21,7 +22,7 @@ export interface CalendarPort{
  canEdit:boolean;eventPosterStyle?:string|null;broadcastPackage?:string|null;series:ShowSeries[];
  broadcastSlot?:{offerCode:string;networkName:string;day:number;hour:number;
   startWeekIndex:number;endWeekIndex:number}|null;
- bookings?:CalendarBooking[];
+ bookings?:CalendarBooking[];premiumEditions?:PremiumCalendarEdition[];
  annual?:{tier:StandingTier;policyStartYear?:number;policy:PremiumPolicy;years:{
   year:number;confirmed:boolean;events:AnnualPremiumEvent[];
   suggested:AnnualPremiumEvent[]}[]};
@@ -33,6 +34,8 @@ export interface CalendarPort{
  archive(input:{requestId:string;expectedRevision:number;seriesId:string}):Promise<unknown>;
  saveAnnual?(input:{requestId:string;expectedRevision:number;
   year:number;events:AnnualPremiumEvent[]}):Promise<unknown>;
+ renameBooked?(input:{requestId:string;expectedRevision:number;draftId:string;
+  year:number;week:number;name:string}):Promise<unknown>;
 }
 const node=(tag:string,text="",css="")=>{
  const el=document.createElement(tag);el.textContent=text;el.className=css;return el;};
@@ -47,6 +50,11 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  let yearChosen:number|null=null,yearActiveWeek:number|null=null;
  const yearlyDrafts=new Map<number,AnnualPremiumEvent[]>();
  let pendingYear:{fingerprint:string;requestId:string}|null=null;
+ let pendingRename:{fingerprint:string;requestId:string}|null=null;
+ const renamedDrafts=new Map<string,string>();
+ const premiumEdition=(year:number,week:number)=>
+  (data?.premiumEditions??[]).find(x=>x.year===year&&x.week===week)??null;
+ const draftKey=(draft:PremiumCalendarEdition)=>draft.draftId;
  function button(name:string,click:()=>void,disabled=false){
   const b=node("button",name,"ppw-calendar-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=click;return b;
@@ -204,6 +212,10 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   return yearlyDrafts.get(year)??(yearRow.confirmed?yearRow.events:yearRow.suggested);
  }
  function changeYearEvent(year:number,week:number,seriesId:string|null){
+  if(premiumEdition(year,week)){
+   error="A booked or certified PPV has a protected identity. Select it to review the actual title.";
+   render();return;
+  }
   const previous=yearEvents(year).find(x=>x.week===week&&x.seriesId===seriesId);
   const without=yearEvents(year).filter(x=>x.week!==week);
   if(seriesId)without.push(previous?{...previous}:{week,seriesId});
@@ -214,6 +226,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   pendingYear=null;render();
  }
  function renameYearEvent(year:number,week:number,name:string){
+  if(premiumEdition(year,week))return;
   const current=yearEvents(year).find(x=>x.week===week);
   if(!current||!data)return;
   const seriesName=data.series.find(s=>s.seriesId===current.seriesId)?.name??"";
@@ -222,6 +235,32 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    {...e,name:trimmed&&trimmed!==seriesName?trimmed:undefined}:e);
   yearlyDrafts.set(year,revised);
   pendingYear=null;
+ }
+ async function renameBookedPremium(booking:PremiumCalendarEdition){
+  if(!data||busy||!port.renameBooked)return;
+  const name=(renamedDrafts.get(draftKey(booking))??booking.showName).trim();
+  if(!name||name.length>80){error="Enter a PPV title up to 80 characters";render();return;}
+  const input={expectedRevision:data.worldRevision,draftId:booking.draftId,
+   year:booking.year,week:booking.week,name};
+  const fingerprint=JSON.stringify(input);
+  if(!pendingRename||pendingRename.fingerprint!==fingerprint)
+   pendingRename={fingerprint,requestId:crypto.randomUUID()};
+  const requestId=pendingRename.requestId;
+  busy=true;error="";render();
+  try{
+   const result=await port.renameBooked({...input,requestId});
+   const status=result&&typeof result==="object"&&"status" in result?
+    String(result.status):"";
+   if(status==="STALE"){
+    data=await port.load();pendingRename=null;
+    throw new Error("The World changed. Review the booked title before renaming.");
+   }
+   if(status!=="APPLIED"&&status!=="REPLAYED")
+    throw new Error("The booked PPV was not renamed. Check the card and retry.");
+   data=await port.load();renamedDrafts.delete(draftKey(booking));
+   yearlyDrafts.delete(booking.year);pendingRename=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Could not rename the booked PPV";}
+  finally{busy=false;render();}
  }
  async function confirmAnnual(){
   const selected=yearData(),annual=data?.annual;
@@ -304,17 +343,26 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    const grid=node("div","","ppw-calendar-week-grid");
    for(let i=1;i<=13;i++){
     const week=quarter*13+i,edition=dated.get(week);
-    const show=edition?series.get(edition.seriesId):null;
-    const showName=edition?.name??show?.name;
+    const booked=premiumEdition(chosen.year,week);
+    const show=edition?series.get(edition.seriesId):
+     booked?series.get(booked.showSeriesId??""):null;
+    // The actual saved draft/certified title outranks the calendar preview.
+    const showName=booked?.showName??edition?.name??show?.name;
     const picked=week===yearActiveWeek;
     const date=button("W"+String(week).padStart(2,"0"),()=>{
      yearActiveWeek=week;render();
     },busy);
     date.classList.add("ppw-calendar-week-button");
-    date.dataset.hasEvent=String(!!show);
+    date.dataset.hasEvent=String(!!showName);
+    date.dataset.booked=String(!!booked);
+    if(booked)date.dataset.status=booked.certified?"CERTIFIED":
+     booked.status==="SUBMITTED"?"SUBMITTED":"DRAFT";
     date.setAttribute("aria-pressed",String(picked));
     if(showName)date.append(node("small",showName,
      "ppw-calendar-year-major"));
+    if(booked)date.append(node("small",booked.certified?"CERTIFIED":
+     booked.status==="SUBMITTED"?"SUBMITTED":"BOOKED",
+     "ppw-calendar-year-edition-state"));
     const tv=data!.broadcastSlot,idx=weekIndex(chosen.year,week);
     const dueTv=data!.series.filter(s=>s.eventType==="REGULAR"&&
      seriesDue(s,idx));
@@ -333,7 +381,9 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    part.append(grid);quarters.append(part);
   }
   rootSection.append(quarters);
-  if(yearActiveWeek!==null&&canEdit){
+  const selectedBooking=yearActiveWeek===null?null:
+   premiumEdition(chosen.year,yearActiveWeek);
+  if(yearActiveWeek!==null&&canEdit&&!selectedBooking){
    const picker=node("section","","ppw-calendar-year-picker");
    picker.append(node("strong","YEAR "+chosen.year+" · WEEK "+yearActiveWeek),
     node("p","Pick an event for this week. Nothing is booked until you confirm."));
@@ -381,18 +431,50 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    }
    rootSection.append(picker);
   }
-  if(yearActiveWeek!==null&&!canEdit){
+  if(yearActiveWeek!==null&&(!canEdit||selectedBooking)){
    const week=yearActiveWeek,index=weekIndex(chosen.year,week);
    const due=data.series.filter(s=>s.eventType==="REGULAR"&&seriesDue(s,index));
    const premium=dated.get(week);
-   const premiumName=premium?.name??data.series.find(s=>
+   const plannedName=premium?.name??data.series.find(s=>
     s.seriesId===premium?.seriesId)?.name;
+   const premiumName=selectedBooking?.showName??plannedName;
    const detail=node("section","","ppw-calendar-year-picker");
    detail.append(node("strong","Year "+chosen.year+" · Week "+week));
    for(const tv of due)detail.append(node("p",
     tv.name+" · "+(tv.cadenceWeeks===1?"weekly":
      tv.cadenceWeeks===2?"alternate-week":"every "+tv.cadenceWeeks+" weeks")+" TV"));
    if(premiumName)detail.append(node("p","PPV / special · "+premiumName));
+   if(selectedBooking){
+    detail.append(node("strong",selectedBooking.certified?"CERTIFIED SHOW":
+     selectedBooking.status==="SUBMITTED"?"SUBMITTED CARD":
+     selectedBooking.ready?"CARD READY":"EDITABLE BOOKED DRAFT"));
+    if(plannedName&&plannedName!==selectedBooking.showName)
+     detail.append(node("p",
+      "The annual title says “"+plannedName+"”, but the actual booked show remains “"+
+      selectedBooking.showName+"”. It will not be renamed automatically.",
+      "ppw-calendar-year-name-warning"));
+    const offset=index-weekIndex(data.year,data.week);
+    const renamable=!!port.renameBooked&&data.canEdit&&
+     selectedBooking.status==="DRAFT"&&!selectedBooking.ready&&
+     !selectedBooking.certified&&offset>=0&&offset<=6;
+    if(renamable){
+     const named=node("label","","ppw-calendar-year-edition");
+     named.append(node("span","Rename booked PPV"));
+     const name=document.createElement("input");
+     name.type="text";name.maxLength=80;
+     name.setAttribute("aria-label","Rename booked PPV");
+     name.value=renamedDrafts.get(draftKey(selectedBooking))??selectedBooking.showName;
+     name.oninput=()=>{renamedDrafts.set(draftKey(selectedBooking),name.value);
+      pendingRename=null;};
+     named.append(name);detail.append(named,
+      button("Save booked PPV title",()=>void renameBookedPremium(selectedBooking)));
+     detail.append(node("small",
+      "Explicit rename updates this unsubmitted card and its confirmed annual edition together. Matches and booking rules stay unchanged.",
+      "ppw-calendar-year-footer"));
+    }else detail.append(node("small",
+     "Submitted, certified or ready cards keep their actual title. Editable drafts can only be renamed in the six-week booking window.",
+     "ppw-calendar-year-footer"));
+   }
    if(!due.length&&!premiumName)detail.append(node("p","No show due this week"));
    if(lockedCurrent)detail.append(node("small",
     "Current-year commitments are locked. Select Year "+(data.year+1)+
@@ -451,19 +533,21 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  }
  function ownTile(s:ShowSeries,year:number,week:number,
   due:readonly ShowSeries[],owner?:string){
-  const card=eventTile(s.name,s.role,s.eventType,owner);
+  const booking=calendarBookingForSeries(s,year,week,due,data?.bookings??[]);
+  const actualName=booking?.showName??
+   (s.eventType==="MAJOR"?premiumEdition(year,week)?.showName:null)??s.name;
+  const card=eventTile(actualName,s.role,s.eventType,owner);
   // The annual calendar is a compact agenda; art remains on show/results.
   card.classList.add("ppw-calendar-event-compact");
   card.querySelector(".ppw-calendar-artwork-shell")?.remove();
   card.querySelector(".ppw-calendar-event-emblem")?.remove();
   card.querySelector(".ppw-calendar-owner-mark")?.remove();
-  card.prepend(node("strong",s.name,"ppw-calendar-compact-title"));
+  card.prepend(node("strong",actualName,"ppw-calendar-compact-title"));
   const slot=data?.broadcastSlot,index=weekIndex(year,week);
   if(s.eventType==="REGULAR"&&slot&&index>=slot.startWeekIndex&&index<=slot.endWeekIndex)
    card.append(node("span",slot.networkName+" · "+
     ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][slot.day-1]+" "+
     String(slot.hour).padStart(2,"0")+":00","ppw-calendar-tv-slot"));
-  const booking=calendarBookingForSeries(s,year,week,due,data?.bookings??[]);
   const offset=weekIndex(year,week)-weekIndex(data!.year,data!.week);
   const near=offset>=0&&offset<6;
   if(booking){

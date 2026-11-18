@@ -181,3 +181,87 @@ export async function saveAnnualPremiumPlan(pool:TransactionPool,input:AnnualPre
     band:premiumPolicy(auth.tier)};
   }});
 }
+
+/** A separate, explicit owner action to rename an ALREADY BOOKED, unready PPV.
+ * The annual edition and the exact draft change atomically. Certified,
+ * submitted and lock-ready cards always retain their original identity.
+ * Old live Worlds without annual plans may rename the future draft alone;
+ * that cannot rewrite the grandfathered calendar or a recurring series.
+ */
+export interface RenameBookedPremiumInput extends AnnualPremiumScope{
+ requestId:string;expectedRevision:number;draftId:string;
+ year:number;week:number;name:string;
+}
+export async function renameBookedPremiumEdition(pool:TransactionPool,
+ input:RenameBookedPremiumInput){
+ if(![input.worldId,input.promotionId,input.playerId,input.requestId,
+  input.draftId].every(validId)||!validYears(input.year)||
+  !Number.isSafeInteger(input.week)||input.week<1||input.week>52||
+  typeof input.name!=="string"||!input.name.trim()||
+  input.name.trim().length>80)
+  throw new Error("Choose an existing editable PPV and a title up to 80 characters");
+ const name=input.name.trim();
+ return applyWorldCommand(pool,{
+  worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
+  expectedRevision:input.expectedRevision,
+  commandType:"RENAME_BOOKED_PREMIUM_EDITION",requiresOpenWeek:true,
+  execute:async tx=>{
+   const auth=await ownerSnapshot(tx,input);
+   if(!auth.booking_open)throw new Error("PPV booking is closed at World Lock");
+   const target=weekIndex(input.year,input.week),now=weekIndex(auth.year,auth.week);
+   if(target<now||target>now+6)
+    throw new Error("A booked PPV can only be renamed in the current six-week window");
+   const cards=await tx.query<{draft_id:string;show_series_id:string|null;
+    show_name:string|null;status:string;ready:boolean;certified:boolean}>(`
+    SELECT d.draft_id,d.show_series_id,d.show_name,d.status,
+     (d.lock_ready_fingerprint IS NOT NULL) AS ready,
+     EXISTS(SELECT 1 FROM ppw_completed_shows done
+      WHERE done.world_id=d.world_id AND done.show_id=d.draft_id) AS certified
+    FROM ppw_booking_drafts d
+    WHERE d.world_id=$1 AND d.promotion_id=$2 AND d.draft_id=$3
+     AND d.year=$4 AND d.week=$5 AND d.booking_class='PREMIUM'
+    FOR UPDATE OF d`,[input.worldId,input.promotionId,input.draftId,
+     input.year,input.week]);
+   const draft=cards[0];
+   if(cards.length!==1||!draft||draft.status!=="DRAFT"||
+    draft.ready||draft.certified)
+    throw new Error("A submitted, certified or card-ready PPV cannot be renamed");
+   const rows=await tx.query<{series_id:string;name:string;event_type:string}>(`
+    SELECT series_id,name,event_type FROM ppw_show_series
+    WHERE world_id=$1 AND promotion_id=$2 AND active AND series_id=$3
+    LIMIT 1`,[input.worldId,input.promotionId,draft.show_series_id]);
+   const fallback=defaults(auth.name,auth.cadence,auth.interval??4)
+    .find(x=>x.seriesId===draft.show_series_id);
+   const seriesName=rows[0]?.name??fallback?.name;
+   const type=rows[0]?.event_type??fallback?.eventType;
+   if(type!==undefined&&type!=="MAJOR")
+    throw new Error("The booked show is not a premium event");
+   if(["WWE","AEW"].includes(auth.name.trim().toUpperCase())&&
+    name!==seriesName)
+    throw new Error("Official annual event names cannot be rewritten");
+   const plans=await readAnnualPremiumPlans(tx,input.worldId,
+    input.promotionId,input.year,input.year);
+   if(plans.length){
+    const events=plans[0]!.events;
+    const match=events.find(e=>e.week===input.week&&
+     (draft.show_series_id===null||e.seriesId===draft.show_series_id));
+    if(!match)throw new Error("This booking is not on the saved annual PPV calendar");
+    const renamed=events.map(e=>e===match?{...e,
+     name:name===seriesName?undefined:name}:e);
+    await tx.query(`
+     UPDATE ppw_annual_premium_plans SET events=$4::jsonb
+     WHERE world_id=$1 AND promotion_id=$2 AND year=$3`,
+     [input.worldId,input.promotionId,input.year,JSON.stringify(renamed)]);
+   }else if(input.year>=auth.premium_plan_start_year){
+    throw new Error("Confirm the annual PPV calendar before renaming its booked event");
+   }
+   await tx.query(`
+    UPDATE ppw_booking_drafts SET show_name=$4,revision=revision+1
+    WHERE world_id=$1 AND promotion_id=$2 AND draft_id=$3
+    AND status='DRAFT' AND lock_ready_fingerprint IS NULL`,
+    [input.worldId,input.promotionId,input.draftId,name]);
+   return {draftId:input.draftId,year:input.year,week:input.week,
+    previousName:draft.show_name,newName:name};
+  }
+ });
+}

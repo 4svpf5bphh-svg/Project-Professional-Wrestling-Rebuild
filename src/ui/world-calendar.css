@@ -342,3 +342,19 @@
  grid-column:auto;justify-self:auto;flex:1 1 auto;min-height:40px;
  margin:0;white-space:normal}
 .ppw-calendar-event-compact:after{display:none}
+
+/* The real booked/certified PPV name takes priority over the annual draft.
+   Do not advertise a proposed name as if the card was silently rewritten. */
+.ppw-calendar-week-button[data-booked="true"]{
+ border-color:#e0bc83!important}
+.ppw-calendar-year-edition-state{font-size:9px!important;letter-spacing:.1em;
+ font-weight:850;color:#ffe1ab!important}
+.ppw-calendar-year-name-warning{padding:9px 10px;
+ border-radius:9px;border:1px solid #a77d52;color:#ffe4ba!important;
+ background:#4a3125;font-size:12px;line-height:1.45}
+.ppw-calendar-year-picker .ppw-calendar-year-edition input{
+ width:100%;max-width:100%;box-sizing:border-box;
+ min-height:44px;font-size:16px}
+@media(max-width:390px){
+ .ppw-calendar-year-name-warning{overflow-wrap:anywhere}
+}
