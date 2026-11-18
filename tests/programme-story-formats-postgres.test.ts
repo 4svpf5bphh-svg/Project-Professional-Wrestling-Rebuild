@@ -148,8 +148,8 @@ test("one owner can create and reopen solo, relationship and five-person faction
   const loaded=await showCardEditorAsActor(context,worldId,promotionId,draftId);
   assert.deepEqual(loaded.matchProgrammeLinks,
    [{slotId:"main",programmeId:solo.result.programmeId}]);
-  assert.equal(loaded.programmes.find(p=>p.programmeId===solo.result.programmeId)?
-   .programmeFormat,"SOLO");
+  assert.equal(loaded.programmes.find(p=>p.programmeId===solo.result.programmeId)
+   ?.programmeFormat,"SOLO");
   // Removing that optional story choice restores automatic original rivalry
   // matching for the identical, still-unchanged canonical bout.
   const resaved=await saveCardEditorAsActor(context,{...scope,showId:draftId,
