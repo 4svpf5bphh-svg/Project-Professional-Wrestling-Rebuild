@@ -179,7 +179,7 @@ for(const width of [320,390]){
   await expect(active).toContainText("Character B");
   await expect(page.locator(".ppw-programme-story-follow-up"))
    .toContainText("Try a different approach");
-  await page.getByRole("button",{name:"Plan"}).click();
+  await page.locator(".ppw-programme-view-tabs").getByRole("button",{name:"Plan",exact:true}).click();
   await expect(page.locator(".ppw-programme-story-cue"))
    .toContainText("YOUR BACKSTAGE DECISION");
   await expect(page.getByRole("button",{name:"Reframe the story"})).toBeVisible();
