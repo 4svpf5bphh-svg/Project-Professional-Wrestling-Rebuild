@@ -251,7 +251,7 @@ test("solo, relationship and faction reactions require certified linked cast, re
   assert.ok(afterRefusal.every(m=>!m.body.includes("Character 1")));
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_player_attention_dismissals","ppw_programme_finales",
+   for(const table of ["ppw_ledger_events","ppw_player_attention_dismissals","ppw_programme_finales",
     "ppw_programme_resolved_activities","ppw_completed_show_segments",
     "ppw_completed_shows","ppw_programme_match_activities","ppw_card_slots",
     "ppw_booking_drafts","ppw_programme_participants","ppw_programme_side_refs",
