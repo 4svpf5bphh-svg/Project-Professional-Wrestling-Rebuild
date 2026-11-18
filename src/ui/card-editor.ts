@@ -374,7 +374,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    for(const slot of view.slots){
     if(slot.kind==="MATCH")
      matches.set(slot.slotId,{...restoreEditorMatch(slot.slotId,slot.payload),
-       programmeId:(view.matchProgrammeLinks??[]).find(x=>x.slotId===slot.slotId)?.programmeId??null});
+       programmeId:(()=>{
+       const linkedId=(view.matchProgrammeLinks??[])
+        .find(x=>x.slotId===slot.slotId)?.programmeId;
+       return view.programmes.find(p=>p.programmeId===linkedId&&
+        (p.programmeFormat??"RIVALRY")!=="RIVALRY")?.programmeId??null;
+      })()});
     else segments.set(slot.slotId,{
      ...restoreEditorSegment(slot.slotId,slot.payload),
      programmeId:view.programmeLinks.find(x=>x.slotId===slot.slotId)?.programmeId??null,
@@ -1878,7 +1883,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const matchPeople=new Set(assignedIds(m));
     const stories=view.programmes.filter(p=>
      (p.programmeFormat??"RIVALRY")!=="RIVALRY"&&
-     p.cast.some(member=>matchPeople.has(member.personId)));
+     (p.cast.some(member=>matchPeople.has(member.personId))||
+      p.programmeId===m.programmeId));
     if(stories.length&&!m.tournamentId)
      controls.append(field("Storyline (optional)",selector(m.programmeId??"",
       [["","None"],...stories.map(p=>[p.programmeId,p.label])],

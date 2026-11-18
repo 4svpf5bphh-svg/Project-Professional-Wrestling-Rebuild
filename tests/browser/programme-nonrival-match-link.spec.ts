@@ -94,3 +94,70 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+test("an automatically linked original rivalry match can be reopened and resaved without an explicit non-rival story",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const a={personId:"alice",contractId:"alice-contract"};
+ const b={personId:"bob",contractId:"bob-contract"};
+ const match={matchType:"SINGLES",family:"INDIVIDUAL",participants:[a,b],
+  sides:[{sideId:"A",participants:[a]},{sideId:"B",participants:[b]}],
+  scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",
+  intent:"COMPETITIVE",plannedLengthMinutes:18};
+ const session={worldId:"world",playerId:"owner",csrfToken:"csrf",
+  overview:{world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
+   nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+   membership:"ACTIVE",promotion:{id:"cwa",name:"CWA",tier:"LOCAL",cash:100000,debt:0}},
+  availablePromotions:[]};
+ let saves=0;
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const data=r.request().postDataJSON() as Record<string,unknown>;
+  if(data.method==="load")return r.fulfill({json:{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,
+   worldRevision:4,day:5,venueId:"arena",showName:"Weekly",
+   promotionName:"CWA",venueName:"Arena",marketName:"Home",
+   bookingClass:"REGULAR",ticketStrategy:"STANDARD",
+   championships:[],programmes:[{programmeId:"alice-bob",
+    programmeFormat:"RIVALRY",label:"Alice vs Bob",heat:50,repetition:0,
+    activityCount:1,segmentCount:0,
+    cast:[{...a,name:"Alice",side:"A",creativeControl:"NONE"},
+     {...b,name:"Bob",side:"B",creativeControl:"NONE"}]}],
+   programmeLinks:[],matchProgrammeLinks:[
+    {slotId:"main",programmeId:"alice-bob"}],
+   selectedPeople:[{...a,name:"Alice",division:"MEN",alignment:"FACE"},
+    {...b,name:"Bob",division:"MEN",alignment:"HEEL"}],
+   slots:[{slotId:"main",kind:"MATCH",position:0,payload:match}]
+  }});
+  if(data.method==="planner")return r.fulfill({json:{
+   worldName:"Genesis",promotionName:"CWA",year:1,week:5,canEdit:true,
+   worldRevision:4,homeMarketId:"home",venues:[],
+   weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
+    scheduled:[],shows:[{draftId:"weekly",year:1,week:5,status:"DRAFT",
+     eventType:"REGULAR",day:5,marketId:"home",venueId:"arena",
+     marketName:"Home",venueName:"Arena",slots:1,bookingClass:"REGULAR",
+     showName:"Weekly"}]}]
+  }});
+  if(data.method==="save"){
+   const matches=data.matches as {programmeId?:string|null;
+    payload:Record<string,unknown>}[];
+   expect(matches).toHaveLength(1);
+   expect(matches[0]?.programmeId).toBeNull();
+   expect(matches[0]?.payload.scriptedWinnerSide).toBe("A");
+   saves++;
+   return r.fulfill({json:{status:"APPLIED",result:{showId:"weekly"}}});
+  }
+  if(data.method==="kpWorkspace")return r.fulfill({json:{entitlements:[]}});
+  throw Error("Unexpected method "+String(data.method));
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.locator(".ppw-card-bar .ppw-expand").first().click();
+ const dialog=page.getByRole("dialog",{name:"Edit match"});
+ await expect(dialog).toBeVisible();
+ await dialog.getByRole("button",{name:"Epic",exact:true}).click();
+ await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
+ await dialog.getByRole("button",{name:"Complete match"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saves).toBe(1);
+});

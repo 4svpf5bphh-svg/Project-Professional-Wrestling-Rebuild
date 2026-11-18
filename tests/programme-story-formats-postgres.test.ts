@@ -104,8 +104,9 @@ test("one owner can create and reopen solo, relationship and five-person faction
   assert.equal(saved.activityCount,0,
    "An editable chapter must not yet count as a certified result");
   assert.equal(saved.blueprintProgress?.played,0);
-  assert.equal(saved.blueprintProgress?.booked,0,
-   "A nonmatching story purpose is not an earned blueprint beat");
+  assert.equal(saved.blueprintProgress?.booked,1,
+   "The real saved interview prepares the matching underdog beat, but cannot earn it until certified");
+  assert.equal(saved.blueprintProgress?.beats[0]?.status,"BOOKED");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_ledger_events","ppw_command_receipts",
@@ -119,6 +120,6 @@ test("one owner can create and reopen solo, relationship and five-person faction
     await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[user]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   });
-
+  db.close();
  }
 });
