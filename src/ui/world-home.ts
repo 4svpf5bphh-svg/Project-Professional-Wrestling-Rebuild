@@ -219,6 +219,10 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   copy.append(detail);
   booking.append(el("span","ppw-home-booking-icon","▣"),copy,
    el("span","ppw-home-booking-arrow","→"));
+  // The banner is an independent action. Its accessible name must not
+  // duplicate the dedicated Check World status button at the lock boundary.
+  if(!bookingOpen)booking.setAttribute("aria-label",
+   deadlineDue?"Review booking deadline":"Review World lock");
   booking.onclick=bookingOpen?port.planner:()=>void load();
   root.append(booking);
   if(bookingOpen&&!longTestWindow)
