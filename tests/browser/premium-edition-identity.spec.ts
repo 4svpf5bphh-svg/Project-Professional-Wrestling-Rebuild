@@ -63,14 +63,14 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-calendar-year-name-warning"))
    .toContainText("Extreme Warfare");
   await expect(page.getByLabel("Rename booked PPV")).toHaveValue("Extreme Warfare");
-  await expect(page.locator('.ppw-calendar-occurrence[data-week="1-33"] .ppw-calendar-compact-title'))
+  await expect(page.locator('.ppw-calendar-occurrence[data-week="1-33"] .ppw-calendar-event-major .ppw-calendar-compact-title'))
    .toHaveText("Extreme Warfare");
   await page.getByLabel("Rename booked PPV").fill("The Lottery");
   await page.getByRole("button",{name:"Save booked PPV title"}).click();
   await expect(page.getByRole("button",{
    name:"Year 1 week 33 — The Lottery + CWA Weekly"})).toBeVisible();
   await expect(page.locator(".ppw-calendar-year-name-warning")).toHaveCount(0);
-  await expect(page.locator('.ppw-calendar-occurrence[data-week="1-33"] .ppw-calendar-compact-title'))
+  await expect(page.locator('.ppw-calendar-occurrence[data-week="1-33"] .ppw-calendar-event-major .ppw-calendar-compact-title'))
    .toHaveText("The Lottery");
   expect(calls).toEqual(["calendar","renameBookedPremium","calendar"]);
   await page.getByRole("button",{name:"Year 2",exact:true}).click();
