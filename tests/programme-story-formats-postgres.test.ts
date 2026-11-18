@@ -119,6 +119,6 @@ test("one owner can create and reopen solo, relationship and five-person faction
     await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[user]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   });
-  await db.pool.end();
+
  }
 });

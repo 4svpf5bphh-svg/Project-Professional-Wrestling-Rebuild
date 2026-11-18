@@ -26,7 +26,7 @@ for(const width of [320,390]){
     const format=String(body.programmeFormat);
     const sideA=body.sideA as {kind:"PERSON";refId:string}[];
     const sideB=body.sideB as {kind:"PERSON";refId:string}[];
-    expect(sideB).toEqual([],"Non-rival stories cannot invent an opposing wrestler");
+    expect(sideB,"Non-rival stories cannot invent an opposing wrestler").toEqual([]);
     if(format==="SOLO")expect(sideA).toHaveLength(1);
     if(format==="RELATIONSHIP")expect(sideA).toHaveLength(2);
     if(format==="FACTION")expect(sideA).toHaveLength(5);
