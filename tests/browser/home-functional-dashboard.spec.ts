@@ -57,6 +57,10 @@ for(const width of [320,390]){
   await expect(notifications).not.toContainText("Joe");
   await expect(notifications).not.toContainText("locker room");
   expect(calls).toEqual(["overview"]);
+  // Screenshot is captured from the real running PPW browser component.
+  // No generated interface art, and all displayed data is fixture-labelled.
+  await page.screenshot({path:"test-results/ppw-home-actual-"+width+".png",
+   fullPage:true,animations:"disabled"});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
