@@ -39,6 +39,18 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   busy=true;draw();let navigated=false;
   try{
    data=await port.load();error="";
+   // A performed Blueprint is different from an already booked one.
+   // Open the EXACT future card verified by this owner-only planner read,
+   // never whichever unfinished broadcast happens to exist this week.
+   if(cardRoutePending&&focusTarget?.draftId){
+    const target=focusTarget;focusTarget=undefined;cardRoutePending=false;
+    const week=data.weeks.find(w=>w.year===target.year&&w.week===target.week);
+    const draft=week?.shows.find(s=>s.draftId===target.draftId);
+    if(draft){
+     navigated=true;port.openCard(draft.draftId);return;
+    }
+    error="That booked story chapter is no longer in your six-week plan. Review the show calendar.";
+   }
    if(focusTarget){
     const target=focusTarget;focusTarget=undefined;
     const week=data.weeks.find(w=>w.year===target.year&&w.week===target.week);

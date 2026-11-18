@@ -9,11 +9,11 @@ test("only proven performed scenes complete exact kind/purpose beats",()=>{
   {beatId:"hint",weekIndex:14,crowdResponse:76.5},
   {beatId:"choice",weekIndex:null,crowdResponse:null}
  ],[
-  {kind:"SEGMENT",segmentKind:"RESCUE",scenePurpose:"EARN_TRUST",
+  {showId:"future-card",slotId:"scene",kind:"SEGMENT",segmentKind:"RESCUE",scenePurpose:"EARN_TRUST",
    year:1,week:19,showName:"CWA Ascension",status:"DRAFT"},
-  {kind:"MATCH",segmentKind:null,scenePurpose:null,
+  {showId:"future-card",slotId:"match",kind:"MATCH",segmentKind:null,scenePurpose:null,
    year:1,week:20,showName:"Extreme Warfare",status:"SUBMITTED"},
-  {kind:"SEGMENT",segmentKind:"TURN",scenePurpose:"EXPLAIN_TURN",
+  {showId:"future-card",slotId:"scene",kind:"SEGMENT",segmentKind:"TURN",scenePurpose:"EXPLAIN_TURN",
    year:1,week:22,showName:"Extreme Warfare",status:"DRAFT"}
  ]);
  assert.deepEqual(progress.beats.map(x=>x.status),["PLAYED","BOOKED","AVAILABLE"]);
@@ -24,13 +24,14 @@ test("only proven performed scenes complete exact kind/purpose beats",()=>{
  assert.deepEqual(progress.beats[0]?.playedWeekIndex,14);
  assert.equal(progress.beats[0]?.crowdResponse,76.5);
  assert.deepEqual(progress.beats[1]?.bookedAt,{
+  draftId:"future-card",slotId:"scene",
   year:1,week:19,showName:"CWA Ascension",submitted:false
  });
 });
 test("a certified performance outranks a still-linked submitted card",()=>{
  const x=readProgrammeBlueprintProgress(betrayal,[
   {beatId:"hint",weekIndex:8,crowdResponse:80}
- ],[{kind:"SEGMENT",segmentKind:"INTERVIEW",scenePurpose:"TEASE_BETRAYAL",
+ ],[{showId:"future-card",slotId:"scene",kind:"SEGMENT",segmentKind:"INTERVIEW",scenePurpose:"TEASE_BETRAYAL",
   year:1,week:9,showName:"CWA Ascension",status:"SUBMITTED"}]);
  assert.equal(x.beats[0]?.status,"PLAYED");
  assert.equal(x.beats[0]?.bookedAt,null);
@@ -40,7 +41,7 @@ test("unsaved suggestions, mismatched purposes and fake results do not earn prog
   {beatId:"hint",weekIndex:null,crowdResponse:null},
   {beatId:"choice",weekIndex:9,crowdResponse:Number.NaN}
  ],[
-  {kind:"SEGMENT",segmentKind:"INTERVIEW",scenePurpose:"BUILD_CHARACTER",
+  {showId:"future-card",slotId:"scene",kind:"SEGMENT",segmentKind:"INTERVIEW",scenePurpose:"BUILD_CHARACTER",
    year:1,week:7,showName:"CWA",status:"DRAFT"}]);
  assert.equal(missing.played,0);
  assert.equal(missing.booked,0);

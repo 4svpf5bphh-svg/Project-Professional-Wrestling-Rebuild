@@ -96,6 +96,7 @@ test("saved Story Blueprint persists, respects owner revision/retry and leaves a
   assert.equal(proven.blueprintProgress?.beats[0]?.playedWeekIndex,0);
   assert.equal(proven.blueprintProgress?.beats[0]?.crowdResponse,77);
   assert.deepEqual(proven.blueprintProgress?.beats[1]?.bookedAt,{
+   draftId:"story-next",slotId:"rescue",
    year:1,week:2,showName:"Scheduled show",submitted:false});
   assert.equal(proven.activityCount,0,
    "A test history fixture cannot fabricate programme scoring");

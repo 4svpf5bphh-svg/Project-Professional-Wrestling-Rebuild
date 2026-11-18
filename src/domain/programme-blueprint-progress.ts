@@ -7,13 +7,15 @@ export interface BlueprintCertifiedEvidence{
  beatId:string;weekIndex:number|null;crowdResponse:number|null;
 }
 export interface BlueprintBookedEvidence{
- kind:string;segmentKind:string|null;scenePurpose?:string|null;
+ showId:string;slotId:string;kind:string;segmentKind:string|null;
+ scenePurpose?:string|null;
  year:number;week:number;showName:string;status:"DRAFT"|"SUBMITTED";
 }
 export interface BlueprintBeatProgress{
  beatId:string;status:"PLAYED"|"BOOKED"|"AVAILABLE";
  playedWeekIndex:number|null;crowdResponse:number|null;
- bookedAt:{year:number;week:number;showName:string;submitted:boolean}|null;
+ bookedAt:{draftId:string;slotId:string;year:number;week:number;
+  showName:string;submitted:boolean}|null;
 }
 export interface ProgrammeBlueprintProgress{
  blueprintId:string;played:number;booked:number;available:number;
@@ -32,10 +34,12 @@ export function readProgrammeBlueprintProgress(blueprint:StoryBlueprint,
    bookedAt:null};
   const booked=planned.find(x=>x.kind==="SEGMENT"&&
    x.segmentKind===beat.kind&&x.scenePurpose===beat.purpose&&
+   x.showId.length>0&&x.slotId.length>0&&
    Number.isSafeInteger(x.year)&&Number.isSafeInteger(x.week));
   if(booked)return {beatId:beat.id,status:"BOOKED" as const,
    playedWeekIndex:null,crowdResponse:null,
-   bookedAt:{year:booked.year,week:booked.week,showName:booked.showName,
+   bookedAt:{draftId:booked.showId,slotId:booked.slotId,
+    year:booked.year,week:booked.week,showName:booked.showName,
     submitted:booked.status==="SUBMITTED"}};
   return {beatId:beat.id,status:"AVAILABLE" as const,
    playedWeekIndex:null,crowdResponse:null,bookedAt:null};

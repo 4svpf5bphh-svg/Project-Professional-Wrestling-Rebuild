@@ -102,13 +102,20 @@ export function consumeBackstageRivalryFocus(worldId:string,promotionId:string){
  */
 export type ProgrammeBookingFocus={worldId:string;promotionId:string;
  programmeId:string;ideaKind?:string;
- blueprintBeat?:{blueprintId:string;beatId:string}};
+ blueprintBeat?:{blueprintId:string;beatId:string};
+ bookedDraft?:{draftId:string;year:number;week:number}};
 let pendingProgrammeBookingFocus:ProgrammeBookingFocus|null=null;
 export function queueProgrammeBookingFocus(focus:ProgrammeBookingFocus){
  if(![focus.worldId,focus.promotionId,focus.programmeId]
   .every(x=>typeof x==="string"&&x.trim().length>0&&x.length<=200))return;
  if(focus.blueprintBeat&&![focus.blueprintBeat.blueprintId,focus.blueprintBeat.beatId]
   .every(x=>typeof x==="string"&&x.trim().length>0&&x.length<=80))return;
+ if(focus.bookedDraft&&(
+  typeof focus.bookedDraft.draftId!=="string"||
+  !focus.bookedDraft.draftId.trim()||focus.bookedDraft.draftId.length>200||
+  !Number.isSafeInteger(focus.bookedDraft.year)||focus.bookedDraft.year<1||
+  !Number.isSafeInteger(focus.bookedDraft.week)||focus.bookedDraft.week<1||
+  focus.bookedDraft.week>52))return;
  pendingProgrammeBookingFocus=focus;
 }
 export function consumeProgrammeBookingFocus(worldId:string,promotionId:string){
@@ -806,14 +813,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  openResults?:(showId:string)=>void,openArchive?:()=>void):ProgrammeDeskPort{
  return {
   load:()=>call("programmes"),openResults,openArchive,
-  openPlanner:(programmeId,ideaKind,blueprintBeat)=>{
+  openPlanner:(programmeId,ideaKind,blueprintBeat,bookedDraft)=>{
    // The authenticated host owns #/planner and #/card history. In contrast
    // to mounting a Planner over #/programmes, a real hash navigation lets
    // iPhone Back/reload, the bottom drawer and selected-card recovery agree.
    // Keep the optional wrestler-created story context off the public URL.
    if(programmeId)queueProgrammeBookingFocus({
     worldId:scope.worldId,promotionId:scope.promotionId,programmeId,ideaKind,
-    blueprintBeat});
+    blueprintBeat,bookedDraft});
    const destination=hostSectionHash("planner");
    if(window.location.hash!==destination)window.location.hash=destination;
    else{

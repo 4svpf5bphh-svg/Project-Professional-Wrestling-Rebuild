@@ -344,7 +344,8 @@ function renderSection(){
   case "planner":{
    const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
    mountPlannerPage(view,scope,back,
-    location.hash===plannerCardHash||!!storyFocus,undefined,
+    location.hash===plannerCardHash||!!storyFocus,
+    storyFocus?.bookedDraft?{...storyFocus.bookedDraft,seriesId:""}:undefined,
     (showId,programmeId)=>openBooking(showId,
      storyFocus&&(!programmeId||storyFocus.programmeId===programmeId)?
       storyFocus:programmeId?{worldId:scope.worldId,

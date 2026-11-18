@@ -35,7 +35,8 @@ export interface ProgrammeDeskPort{
   personId:string;matchType:"SINGLES"|"TAG";
   permittedOutcome:"WIN_ONLY"|"WIN_OR_PROTECTED_LOSS";termWeeks:number}):Promise<unknown>;
  openPlanner?(programmeId?:string,ideaKind?:ProgrammeAngleIdea["kind"],
-  blueprintBeat?:{blueprintId:string;beatId:string}):void;
+  blueprintBeat?:{blueprintId:string;beatId:string},
+  bookedDraft?:{draftId:string;year:number;week:number}):void;
  openResults?(showId:string):void;
  openArchive?():void;
  openWrestler?(personId:string):void;
@@ -604,7 +605,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      const status=proof?.status??"AVAILABLE";
      const isBooked=status==="BOOKED";
      const action=button(beat.title,()=>{
-      if(isBooked)port.openPlanner?.(p.programmeId);
+      if(isBooked)port.openPlanner?.(p.programmeId,undefined,undefined,
+       proof?.bookedAt?{draftId:proof.bookedAt.draftId,
+        year:proof.bookedAt.year,week:proof.bookedAt.week}:undefined);
       else port.openPlanner?.(p.programmeId,undefined,
        {blueprintId:savedBlueprint.id,beatId:beat.id});
      },working||!view.canEdit||!port.openPlanner);
@@ -629,7 +632,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      if(isBooked&&proof?.bookedAt)action.append(element("small","ppw-programme-beat-proof",
       (proof.bookedAt.submitted?"Submitted":"Draft")+" · "+
       proof.bookedAt.showName+" · Y"+proof.bookedAt.year+
-      " W"+proof.bookedAt.week+" · Open existing plan"));
+      " W"+proof.bookedAt.week+" · Open booked show card"));
      beats.append(action);
     }
     advice.append(beats);

@@ -345,6 +345,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
        beatId:x.beat_id,weekIndex:x.week_index,crowdResponse:x.crowd_response
       })),
       planned.filter(x=>x.programme_id===p.programme_id).map(x=>({
+       showId:x.draft_id,slotId:x.slot_id,
        kind:x.kind,segmentKind:x.segment_kind,scenePurpose:x.scene_purpose,
        year:x.year,week:x.week,showName:x.show_name??"Scheduled show",
        status:x.status
