@@ -158,11 +158,14 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    }
   }
   const {minimum,maximum}=PROGRAMME_FORMATS[newFormat];
-  if(values.length>minimum||values.length<maximum)
-   wrap.append(button(values.length===maximum?"− Remove extra":"+ Add another",()=>{
-    if(values.length===maximum)values.pop();else values.push(null);
-    render();
-   },working||!view?.canEdit));
+  // A multi-character story is not forced to use the maximum cast. Players
+  // must be able to ADD or REMOVE at intermediate counts, before saving.
+  if(values.length<maximum)wrap.append(button("+ Add another",()=>{
+   values.push(null);render();
+  },working||!view?.canEdit));
+  if(values.length>minimum)wrap.append(button("− Remove extra",()=>{
+   values.pop();render();
+  },working||!view?.canEdit));
   return wrap;
  }
  function face(name:string,personId:string|null):HTMLElement{
@@ -235,7 +238,9 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      "FROM "+wrestler.toUpperCase()+"'S WRESTLER DOSSIER"));
    if(focusWarning)list.append(element("p","ppw-alert ppw-error",focusWarning));
   }
-  list.append(element("h2","","Active stories · "+active.length));
+  const rivalryOnly=active.every(p=>storyKind(p)==="RIVALRY");
+  list.append(element("h2","",(rivalryOnly?"Active rivalries":"Active stories")+
+   " · "+active.length));
   if(!active.some(p=>p.programmeId===selectedProgrammeId))
    selectedProgrammeId=active[0]?.programmeId??null;
   // One-tap feud navigation, not four complete rivalry dossiers stacked.
@@ -843,7 +848,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    panel.append(tabs,views.find(x=>x.key===activeLane)!.node);
    list.append(panel);
   }
-  if(!active.length)list.append(element("p","ppw-muted","No active stories. Start one below."));
+  if(!active.length)list.append(element("p","ppw-muted",
+   "No active rivalries. Start a story below."));
   if(!archiveView)root.append(list);
   if(view.canEdit&&!archiveView){
    const creation=element("section","ppw-programme-create");
@@ -897,7 +903,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    createDetails.ontoggle=()=>{
     if(createDetails.isConnected)creationOpen=createDetails.open;
    };
-   const title=element("summary","","+ Start a new story");
+   const title=element("summary","","+ Start a new "+
+    (newFormat==="RIVALRY"?"rivalry":"story"));
    // Record the open state before a selection re-renders the creation form.
    // Native details.toggle is asynchronous and may not fire until after the
    // original element has been detached on the first roster selection.

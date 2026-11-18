@@ -1,7 +1,8 @@
 /** Pure field grouping for guided booking. Never alters the booking payload. */
 export type QuickBookKind="MATCH"|"ANGLE";
 const matchFields=new Set([
- "Winner","Stipulation","Finish","Championship","Minutes"
+ "Winner","Stipulation","Finish","Championship","Minutes",
+ "Storyline (optional)"
 ]);
 const angleFields=new Set([
  "Creative direction","Angle type","Angle duration (minutes)",

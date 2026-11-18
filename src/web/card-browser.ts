@@ -837,8 +837,9 @@ function programmePort(call:ReturnType<typeof createCardClient>,
    }
   },
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
-  start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
-   call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
+  start:({requestId,expectedRevision,sideA,sideB,programmeFormat,championshipId})=>
+   call("startProgramme",{requestId,expectedRevision,sideA,sideB,
+    programmeFormat,championshipId}),
   end:({requestId,expectedRevision,programmeId})=>
    call("endProgramme",{requestId,expectedRevision,programmeId}),
   saveCreativeIntent:({requestId,expectedRevision,programmeId,creativeIntent})=>

@@ -1875,7 +1875,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     // A solo/relationship/faction storyline is linked explicitly, never
     // inferred from a wrestler's mere appearance in an unrelated match.
     // The server rechecks active story ownership and actual match cast.
-    const stories=view.programmes.filter(p=>(p.programmeFormat??"RIVALRY")!=="RIVALRY");
+    const matchPeople=new Set(assignedIds(m));
+    const stories=view.programmes.filter(p=>
+     (p.programmeFormat??"RIVALRY")!=="RIVALRY"&&
+     p.cast.some(member=>matchPeople.has(member.personId)));
     if(stories.length&&!m.tournamentId)
      controls.append(field("Storyline (optional)",selector(m.programmeId??"",
       [["","None"],...stories.map(p=>[p.programmeId,p.label])],

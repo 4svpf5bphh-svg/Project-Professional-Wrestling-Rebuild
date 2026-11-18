@@ -59,6 +59,17 @@ for(const width of [320,390]){
   const pick=async(format:string,people:readonly string[])=>{
    await create.getByRole("button",{name:format,exact:false}).first().click();
    const selects=create.getByRole("combobox",{name:"Choose story participant"});
+   if(format==="Relationship"||format==="Faction story"){
+    // An author may remove a third/fourth optional character again instead
+    // of having to fill every available faction slot.
+    const original=await selects.count();
+    await create.getByRole("button",{name:"+ Add another"}).click();
+    await expect(create.getByRole("combobox",{
+     name:"Choose story participant"})).toHaveCount(original+1);
+    await create.getByRole("button",{name:"− Remove extra"}).click();
+    await expect(create.getByRole("combobox",{
+     name:"Choose story participant"})).toHaveCount(original);
+   }
    const current=await selects.count();
    for(let i=current;i<people.length;i++)
     await create.getByRole("button",{name:"+ Add another"}).click();
