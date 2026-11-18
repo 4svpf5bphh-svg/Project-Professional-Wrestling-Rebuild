@@ -76,8 +76,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"Year 2",exact:true}).click();
   await expect(page.getByRole("button",{
    name:"Year 2 week 33 — Future Storm + CWA Weekly"})).toBeVisible();
-  expect(calls).toEqual(["calendar","renameBookedPremium","calendar"],
-   "Viewing another year cannot mutate or refetch the World");
+  expect(calls,"Viewing another year cannot mutate or refetch the World")
+   .toEqual(["calendar","renameBookedPremium","calendar"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });
