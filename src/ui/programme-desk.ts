@@ -479,11 +479,12 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       creativeIntent:{...draft}}),
       "Story direction saved. Book real matches and angles to develop it.");
     },working));
-    if(p.creativeIntent)story.append(button("Clear story direction",()=>{
+    if(p.creativeIntent)story.append(button(p.creativeIntent.followUp?"Clear story notes":"Clear story direction",()=>{
      storyDrafts.delete(p.programmeId);
      void run(()=>port.saveCreativeIntent({requestId:crypto.randomUUID(),
       expectedRevision:view!.worldRevision,programmeId:p.programmeId,creativeIntent:null}),
-      "Story direction cleared. Booked and certified history stays intact.");
+      p.creativeIntent?.followUp?"Story notes cleared; your certified Backstage decision remains on record.":
+       "Story direction cleared. Booked and certified history stays intact.");
     },working));
    }else story.append(element("p","ppw-muted",
     "Creative changes reopen with the next booking window."));

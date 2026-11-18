@@ -11,7 +11,7 @@ export interface ProgrammeAngleContext{
  programmeFormat?:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION";
  heat:number|null;repetition:number;activityCount?:number;segmentCount?:number;
  programmeId?:string;championshipId?:string|null;
- recentActivity?:readonly {kind:string}[];
+ recentActivity?:readonly {kind:string;showId?:string;slotId?:string}[];
  lastChapter?:{kind:string;segmentKind:string|null;
   sceneLocation?:string|null;scenePurpose?:string|null}|null;
  creativeIntent?:{followUp?:StoryFollowUp}|null;
@@ -54,7 +54,14 @@ const idea=(kind:SegmentKind,title:string,reason:string,minutes=5):ProgrammeAngl
  */
 function nonRivalProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea[]{
  // Explicit manager response to an actual certified scene has priority.
- const choice=p.creativeIntent?.followUp?.choice;
+ const saved=p.creativeIntent?.followUp;
+ const latest=p.recentActivity?.[0];
+ // A new certified chapter supersedes the older manager response.
+ // The old choice remains visible in history, but cannot keep hijacking
+ // the next-booking suggestions after the World has genuinely moved on.
+ const choice=saved&&(!latest||!latest.showId||!latest.slotId||
+  (latest.showId===saved.sourceShowId&&latest.slotId===saved.sourceSlotId))?
+  saved.choice:null;
  if(choice==="CHANGE_PRESENTATION"){
   const subject=p.programmeFormat==="SOLO"?"the character":
    p.programmeFormat==="RELATIONSHIP"?"the relationship":"the faction";

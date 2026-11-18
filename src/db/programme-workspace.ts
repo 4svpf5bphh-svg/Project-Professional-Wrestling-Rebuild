@@ -457,12 +457,22 @@ export async function saveProgrammeCreativeIntent(pool:TransactionPool,
   execute:async tx=>{
    const auth=await assertPromotion(tx,input);
    if(!auth.booking_open)throw new Error("Programme creative window closed");
-   const changed=await tx.query<{programme_id:string}>([
-    "UPDATE ppw_programmes SET creative_intent=$4::jsonb",
-    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=$3",
-    "AND status='ACTIVE' RETURNING programme_id"
-   ].join(" "),[input.worldId,input.promotionId,input.programmeId,
-    intent===null?null:JSON.stringify(intent)]);
+   // The client may author story text, but only the certified Backstage
+   // reply command may create/change its evidence-bound follow-up. Preserve
+   // that existing field through edits (including Clear story direction).
+   const userText=intent===null?null:JSON.stringify({
+    blueprintId:intent.blueprintId,motivation:intent.motivation,
+    audienceGoal:intent.audienceGoal,destination:intent.destination});
+   const changed=await tx.query<{programme_id:string;creative_intent:unknown}>([
+    "UPDATE ppw_programmes p SET creative_intent=CASE",
+    "WHEN p.creative_intent ? 'followUp' THEN",
+    "COALESCE($4::jsonb,jsonb_build_object(",
+    "'blueprintId','CUSTOM','motivation','','audienceGoal','','destination',''))",
+    "||jsonb_build_object('followUp',p.creative_intent->'followUp')",
+    "ELSE $4::jsonb END",
+    "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.programme_id=$3",
+    "AND p.status='ACTIVE' RETURNING p.programme_id,p.creative_intent"
+   ].join(" "),[input.worldId,input.promotionId,input.programmeId,userText]);
    if(changed.length!==1)throw new Error("Choose an active Programme owned by your promotion");
    await tx.query([
     "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
@@ -471,7 +481,8 @@ export async function saveProgrammeCreativeIntent(pool:TransactionPool,
     "'blueprintId',$6::text))"
    ].join(" "),[input.worldId,auth.year,auth.week,input.promotionId,
     input.programmeId,intent?.blueprintId??null]);
-   return {programmeId:input.programmeId,creativeIntent:intent};
+   return {programmeId:input.programmeId,
+    creativeIntent:parseProgrammeCreativeIntent(changed[0]!.creative_intent)};
   }
  });
 }

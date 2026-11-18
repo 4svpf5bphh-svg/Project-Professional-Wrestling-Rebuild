@@ -9,6 +9,7 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {readWorldMail,markWorldMailRead} from "../src/db/backstage-world-mail.js";
 import {worldStaff} from "../src/domain/world-staff.js";
 import {chooseBackstageStoryFollowUp} from "../src/db/backstage-story-follow-up.js";
+import {saveProgrammeCreativeIntent} from "../src/db/programme-workspace.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("solo, relationship and faction reactions require certified linked cast, respect ownership, and keep read receipts",
@@ -199,6 +200,39 @@ test("solo, relationship and faction reactions require certified linked cast, re
    "SELECT count(*)::text AS count FROM ppw_card_slots WHERE world_id=$1",
    [worldId]));
   assert.equal(originalSlots[0]!.count,"3","No new match, angle or paid appearance was booked");
+  // Story notes are editable, but the authenticated certified reply is not.
+  // A malicious client cannot inject a fabricated reply through the older
+  // creative-intent RPC or erase the genuine response while clearing text.
+  const edited=await saveProgrammeCreativeIntent(db.pool,{
+   ...scope,programmeId:solo.storyProgrammeId!,requestId:"edit-"+suffix,
+   expectedRevision:3,creativeIntent:{
+    blueprintId:"CUSTOM",motivation:"Refine the character",audienceGoal:"Respect",
+    destination:"Next event",
+    followUp:{choice:"SLOW_BURN",sourceShowId:"forged-show",
+     sourceSlotId:"fake-slot",sourceWeekIndex:0}}});
+  assert.equal(edited.status,"APPLIED");
+  const savedNotes=await withWorldTransaction(db.pool,tx=>tx.query<{
+   creative_intent:{followUp:{choice:string;sourceShowId:string};
+    motivation:string;blueprintId:string}}>(
+   "SELECT creative_intent FROM ppw_programmes WHERE world_id=$1"+
+   " AND promotion_id=$2 AND programme_id=$3",
+   [worldId,promotionId,solo.storyProgrammeId]));
+  assert.equal(savedNotes[0]!.creative_intent.followUp.choice,"CHANGE_PRESENTATION");
+  assert.equal(savedNotes[0]!.creative_intent.followUp.sourceShowId,showId);
+  assert.equal(savedNotes[0]!.creative_intent.motivation,"Refine the character");
+  const cleared=await saveProgrammeCreativeIntent(db.pool,{
+   ...scope,programmeId:solo.storyProgrammeId!,requestId:"clear-"+suffix,
+   expectedRevision:4,creativeIntent:null});
+  assert.equal(cleared.status,"APPLIED");
+  const afterClear=await withWorldTransaction(db.pool,tx=>tx.query<{
+   creative_intent:{followUp:{choice:string};blueprintId:string;motivation:string}}>(
+   "SELECT creative_intent FROM ppw_programmes WHERE world_id=$1"+
+   " AND promotion_id=$2 AND programme_id=$3",
+   [worldId,promotionId,solo.storyProgrammeId]));
+  assert.equal(afterClear[0]!.creative_intent.followUp.choice,"CHANGE_PRESENTATION");
+  assert.equal(afterClear[0]!.creative_intent.blueprintId,"CUSTOM");
+  assert.equal(afterClear[0]!.creative_intent.motivation,"");
+
   const first=wrestlers[0]!;
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:first.id}),{readCount:1});
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:first.id}),{readCount:0});

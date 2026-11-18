@@ -98,3 +98,18 @@ test("a chosen certified-story follow-up changes the actual next booking starter
   creativeIntent:{followUp:{choice:"SLOW_BURN",sourceShowId:"s",
    sourceSlotId:"x",sourceWeekIndex:2}}}),recommendProgrammeAngles({...base,programmeFormat:"RIVALRY"}));
 });
+
+test("a later certified chapter retires an old follow-up recommendation",()=>{
+ const authored={choice:"BUILD_ON_REACTION" as const,
+  sourceShowId:"first",sourceSlotId:"original-angle",sourceWeekIndex:3};
+ const withSource={...base,programmeFormat:"SOLO" as const,activityCount:4,
+  creativeIntent:{followUp:authored}};
+ assert.equal(recommendProgrammeAngles({...withSource,
+  recentActivity:[{kind:"SEGMENT",showId:"first",slotId:"original-angle"}]})[0]?.kind,
+  "PROMO");
+ assert.deepEqual(recommendProgrammeAngles({...withSource,
+  recentActivity:[{kind:"SEGMENT",showId:"second",slotId:"another-angle"}]})
+  .map(x=>x.kind),recommendProgrammeAngles({...base,programmeFormat:"SOLO",
+   activityCount:4,recentActivity:[{kind:"SEGMENT",showId:"second",
+    slotId:"another-angle"}]}).map(x=>x.kind));
+});

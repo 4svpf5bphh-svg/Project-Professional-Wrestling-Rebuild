@@ -179,9 +179,9 @@ for(const width of [320,390]){
   await expect(active).toContainText("Character B");
   await expect(page.locator(".ppw-programme-story-follow-up"))
    .toContainText("Try a different approach");
+  await page.getByRole("button",{name:"Plan"}).click();
   await expect(page.locator(".ppw-programme-story-cue"))
    .toContainText("YOUR BACKSTAGE DECISION");
-  await page.getByRole("button",{name:"Plan"}).click();
   await expect(page.getByRole("button",{name:"Reframe the story"})).toBeVisible();
   expect(calls.filter(x=>x==="chooseBackstageStoryFollowUp")).toHaveLength(1);
   expect(calls.filter(x=>x==="backstage")).toHaveLength(1);
