@@ -40,3 +40,29 @@ test("programme angles require a cast member from the actual rivalry",()=>{
   {slotId:"repeat",programmeId:"rivalry",personIds:["b"]},
  ],people),/repeated angle/);
 });
+
+test("non-rival matches link only by explicit booker choice and a real cast member",async()=>{
+ const {validateNonRivalMatchLinks}=await import("../src/domain/programme-match-links.js");
+ const actors=[
+  {programmeId:"solo",personId:"a",side:"A" as const,programmeFormat:"SOLO" as const},
+  {programmeId:"alliance",personId:"b",side:"A" as const,programmeFormat:"RELATIONSHIP" as const},
+  {programmeId:"alliance",personId:"c",side:"A" as const,programmeFormat:"RELATIONSHIP" as const},
+  ...people.map(x=>({...x,programmeFormat:"RIVALRY" as const}))
+ ];
+ const selected=[{slotId:"title-bout",programmeId:"solo",
+  personIds:["a","champion"],tournament:false}];
+ assert.deepEqual(validateNonRivalMatchLinks(selected,actors),
+  [{slotId:"title-bout",programmeId:"solo"}]);
+ assert.deepEqual(inferProgrammeMatchLinks([
+  {slotId:"title-bout",sideA:["a"],sideB:["champion"]}
+ ],actors),[],"No automatic story association from participation alone");
+ assert.throws(()=>validateNonRivalMatchLinks([{
+  slotId:"other",programmeId:"solo",personIds:["outsider","champion"],
+  tournament:false}],actors),/wrestler from that story/);
+ assert.throws(()=>validateNonRivalMatchLinks([{
+  slotId:"old-rivalry",programmeId:"rivalry",personIds:["a","b"],
+  tournament:false}],actors),/Only non-rival/);
+ assert.throws(()=>validateNonRivalMatchLinks([{
+  slotId:"tourney",programmeId:"solo",personIds:["a","champion"],
+  tournament:true}],actors),/Tournament/);
+});

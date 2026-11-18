@@ -441,16 +441,21 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="disbandStable")return disbandStableAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,stableId:id("stableId")});
  if(method==="startProgramme"){
+  const programmeFormat=p.programmeFormat??"RIVALRY";
+  if(!["RIVALRY","SOLO","RELATIONSHIP","FACTION"].includes(String(programmeFormat)))
+   throw new Error("Invalid programme format");
   const check=(v:unknown):v is {kind:"PERSON"|"TEAM";refId:string}[]=>
-   Array.isArray(v)&&v.length>0&&v.length<=2&&v.every(x=>
+   Array.isArray(v)&&v.length<=5&&v.every(x=>
     x&&typeof x==="object"&&
-    (x.kind==="PERSON"||x.kind==="TEAM")&&typeof x.refId==="string");
+    (x.kind==="PERSON"||x.kind==="TEAM")&&
+    typeof x.refId==="string"&&x.refId.length>0&&x.refId.length<=200);
   if(!check(p.sideA)||!check(p.sideB)||!(
    p.championshipId===undefined||p.championshipId===null||
    typeof p.championshipId==="string"))
-   throw new Error("Invalid programme sides");
+   throw new Error("Invalid programme cast");
   return startProgrammeAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,sideA:p.sideA,sideB:p.sideB,
+   programmeFormat:programmeFormat as import("../domain/programme-lifecycle.js").ProgrammeFormat,
    championshipId:p.championshipId as string|null|undefined});
  }
  if(method==="saveProgrammeCreativeIntent"){

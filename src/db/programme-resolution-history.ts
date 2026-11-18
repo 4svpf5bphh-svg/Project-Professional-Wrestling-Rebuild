@@ -65,9 +65,9 @@ export async function settleCompletedProgrammeHistory(
   programme_id:string;person_id:string;side:"A"|"B"}>([
   "SELECT programme_id,person_id,side FROM ppw_programme_participants",
   "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
-  "ORDER BY programme_id,person_id LIMIT 401"
+  "ORDER BY programme_id,person_id LIMIT 601"
  ].join(" "),[input.worldId,input.promotionId,programmeIds]):[];
- if(programmePeople.length>400)throw new Error("Programme participant projection exceeded");
+ if(programmePeople.length>600)throw new Error("Programme participant projection exceeded");
  const resolvedMatches=new Map(receipt.matches.map(m=>[m.matchId,m]));
  const execution=new Map(input.matches.map(m=>[m.slotId,m.executionQuality]));
  const mainEvent=Math.max(...receipt.matches.map(m=>m.position),-1);

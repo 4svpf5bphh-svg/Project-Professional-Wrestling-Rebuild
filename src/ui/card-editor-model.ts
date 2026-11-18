@@ -21,6 +21,9 @@ export interface EditorMatch{
  elimination:boolean;eliminationOrder:number[];
  /** Existing optional booking metadata must survive an edit. */
  championshipId?:string;tournamentId?:string;tournamentBoutNo?:1|2|3|4|5|6|7;
+ /** The saved association is in ppw_programme_match_activities, never the
+  * canonical result payload; existing matches remain unchanged. */
+ programmeId?:string|null;
  interference?:BookedInterference;style?:unknown;
  cheatingWrestlerId?:string;
  stipulation?:MatchStipulation;

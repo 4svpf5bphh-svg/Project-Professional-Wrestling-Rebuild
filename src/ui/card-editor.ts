@@ -69,7 +69,7 @@ export interface CardEditorPort{
   challengerId:string;challengerName:string};
  talent(search:string,cursor:TalentPage["cursor"]):Promise<TalentPage>;
  save(input:{requestId:string;expectedRevision:number;
-  matches:{slotId:string;payload:unknown}[];
+  matches:{slotId:string;payload:unknown;programmeId?:string|null}[];
   segments:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
  requestCreativeConsent?(input:{requestId:string;expectedRevision:number;
@@ -373,7 +373,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    order=view.slots.map(x=>x.slotId);
    for(const slot of view.slots){
     if(slot.kind==="MATCH")
-     matches.set(slot.slotId,restoreEditorMatch(slot.slotId,slot.payload));
+     matches.set(slot.slotId,{...restoreEditorMatch(slot.slotId,slot.payload),
+       programmeId:(view.matchProgrammeLinks??[]).find(x=>x.slotId===slot.slotId)?.programmeId??null});
     else segments.set(slot.slotId,{
      ...restoreEditorSegment(slot.slotId,slot.payload),
      programmeId:view.programmeLinks.find(x=>x.slotId===slot.slotId)?.programmeId??null,
@@ -664,7 +665,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     catch(e){throw new Error("Slot "+(order.indexOf(s.slotId)+1)+" (angle): "+errorText(e));}
    });
    const payloads=[...matches.values()].map(m=>{
-    try{return {slotId:m.slotId,payload:buildBookedMatch(m)};}
+    try{return {slotId:m.slotId,payload:buildBookedMatch(m),
+       programmeId:m.programmeId??null};}
     catch(e){throw new Error("Slot "+(order.indexOf(m.slotId)+1)+" (match): "+errorText(e));}
    });
    if(!payloads.length)throw new Error("Book at least one match");
@@ -1447,6 +1449,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       facts.append(el("span","","Title match · "+(title?.name??"Championship")));
      }
      if(m.tournamentId)facts.append(el("span","","Tournament bout"));
+      if(m.programmeId){
+       const story=view.programmes.find(p=>p.programmeId===m.programmeId);
+       if(story)facts.append(el("span","","Storyline · "+story.label));
+      }
     }
     if(segment?.programmeId){
      const feud=view.programmes.find(x=>x.programmeId===segment.programmeId);
@@ -1866,6 +1872,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      winnerPicker.append(choice);
     }
     controls.append(winnerPicker);
+    // A solo/relationship/faction storyline is linked explicitly, never
+    // inferred from a wrestler's mere appearance in an unrelated match.
+    // The server rechecks active story ownership and actual match cast.
+    const stories=view.programmes.filter(p=>(p.programmeFormat??"RIVALRY")!=="RIVALRY");
+    if(stories.length&&!m.tournamentId)
+     controls.append(field("Storyline (optional)",selector(m.programmeId??"",
+      [["","None"],...stories.map(p=>[p.programmeId,p.label])],
+      v=>edit(m,{programmeId:v||null}),!mutable())));
     controls.append(field("Intent",selector(m.intent,
      ["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL","HIGH_RISK",
       "STORY","PROTECTIVE","EPIC"].map(x=>[x,nice(x)]),

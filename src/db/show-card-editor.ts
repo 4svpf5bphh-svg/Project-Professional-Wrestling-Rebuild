@@ -12,7 +12,8 @@ import {reserveBookedTournamentBouts}
  from "./tournament-booking.js";
 import {readBookedInterference} from "../simulation/legacy/match-interference.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
-import {inferProgrammeMatchLinks,validateProgrammeAngleLinks} from "../domain/programme-match-links.js";
+import {inferProgrammeMatchLinks,validateProgrammeAngleLinks,
+ validateNonRivalMatchLinks} from "../domain/programme-match-links.js";
 import {buildBookedSegmentPayload} from "../domain/segment-booking.js";
 import type {SegmentKind,SegmentOutcome,VideoPurpose} from "../simulation/legacy/show-segments.js";
 import type {SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
@@ -27,7 +28,7 @@ import {worldStaff} from "../domain/world-staff.js";
 export interface CardEditorIdentity{
  worldId:string;playerId:string;promotionId:string;showId:string;
 }
-export interface EditedMatchSlot{slotId:string;payload:unknown}
+export interface EditedMatchSlot{slotId:string;payload:unknown;programmeId?:string|null}
 export interface EditedSegmentSlot{slotId:string;payload:unknown;
  programmeId?:string|null}
 export interface SaveCardEditorInput extends CardEditorIdentity{
@@ -290,18 +291,26 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
   if(personIds.length>100)throw new Error("Too many show wrestler identities");
   const activeProgrammes=await tx.query<{
    programme_id:string;heat:number|null;repetition:number;
-   activity_count:number;segment_count:number;label:string;follow_up:unknown;
+   activity_count:number;segment_count:number;label:string;
+   programme_format:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION";follow_up:unknown;
    cast:{personId:string;name:string;side:"A"|"B";
     contractId:string|null;appearanceFee:number|null;creativeControl:string|null}[];
    last_chapter:{kind:string;weekIndex:number;segmentKind:string|null;crowd:number;
     sceneLocation:string|null;scenePurpose:string|null}|null}>([
    "SELECT p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count,",
+   "p.programme_format,CASE WHEN p.programme_format='RIVALRY' THEN",
    "COALESCE(string_agg(CASE WHEN r.side='A'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
    "ORDER BY r.position),'Side A') || ' vs ' ||",
    "COALESCE(string_agg(CASE WHEN r.side='B'",
    "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
-   "ORDER BY r.position),'Side B') AS label,",
+   "ORDER BY r.position),'Side B')",
+   "ELSE COALESCE(string_agg(CASE WHEN r.side='A'",
+   "THEN COALESCE(person.name,team.name,r.ref_id) END,' & '",
+   "ORDER BY r.position),'Story cast') || ' · ' ||",
+   "CASE p.programme_format WHEN 'SOLO' THEN 'Solo journey'",
+   "WHEN 'RELATIONSHIP' THEN 'Relationship'",
+   "WHEN 'FACTION' THEN 'Faction story' ELSE 'Story' END END AS label,",
    "(SELECT jsonb_build_object('choice',d.choice,'weekIndex',d.chosen_week_index,",
    "'laterMatchRecorded',EXISTS (SELECT 1 FROM ppw_programme_resolved_activities a",
    "WHERE a.world_id=$1 AND a.promotion_id=$2",
@@ -376,7 +385,7 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "LEFT JOIN ppw_tag_teams team ON team.world_id=r.world_id",
    "AND team.team_id=r.ref_id AND r.ref_kind='TEAM'",
    "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.status='ACTIVE'",
-   "GROUP BY p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count",
+   "GROUP BY p.programme_id,p.heat,p.repetition,p.activity_count,p.segment_count,p.programme_format",
    "ORDER BY p.programme_id LIMIT 101"
    ].join(" "),[id.worldId,id.promotionId,(show.year-1)*52+show.week-1]);
   if(activeProgrammes.length>100)throw new Error("Too many active programmes");
@@ -540,12 +549,15 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
        laterBeatRecorded:direction.laterMatchRecorded===true||
         direction.laterAngleRecorded===true
       }:null;
-    return {programmeId:p.programme_id,label:p.label,heat:p.heat,
+    return {programmeId:p.programme_id,programmeFormat:p.programme_format,
+     label:p.label,heat:p.heat,
      repetition:p.repetition,activityCount:p.activity_count,
      segmentCount:p.segment_count,latestFollowUp,
      cast:p.cast??[],lastChapter:p.last_chapter??null};
    }),
    programmeLinks:links.filter(x=>x.kind==="SEGMENT")
+    .map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
+   matchProgrammeLinks:links.filter(x=>x.kind==="MATCH")
     .map(x=>({slotId:x.slot_id,programmeId:x.programme_id})),
    showId:id.showId,year:show.year,week:show.week,
    worldRevision:Number(show.revision),canEdit:show.booking_open&&show.within_window&&show.status==="DRAFT",
@@ -664,7 +676,10 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
   throw new Error("Card must include 1–100 booked matches/slots");
  const matches=input.matches.map(m=>{
   if(!m||!validId(m.slotId))throw new Error("Invalid match slot ID");
-  return {slotId:m.slotId,payload:normalizeBookableMatch(m.payload)};
+  if(m.programmeId!==undefined&&m.programmeId!==null&&!validId(m.programmeId))
+   throw new Error("Invalid match story link");
+  return {slotId:m.slotId,payload:normalizeBookableMatch(m.payload),
+   programmeId:m.programmeId??null};
  });
  if(input.segments!==undefined&&(!Array.isArray(input.segments)||
   input.segments.length>100))throw new Error("Invalid segment card");
@@ -784,7 +799,10 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
      throw new Error("Both turning wrestlers must belong to the same active tag team");
    }
 
-   const linkedIds=[...new Set(authored?.flatMap(s=>s.programmeId?[s.programmeId]:[])??[])];
+   const linkedIds=[...new Set([
+    ...(authored?.flatMap(s=>s.programmeId?[s.programmeId]:[])??[]),
+    ...matches.flatMap(m=>m.programmeId?[m.programmeId]:[])
+   ])];
    if(linkedIds.length>100)throw new Error("Too many linked programmes");
    if(linkedIds.length){
     const active=await tx.query<{programme_id:string}>(
@@ -923,11 +941,12 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
    // only when its two sides fit exactly one orientation of that feud.
    // Fetch all promotion-owned sides ONCE, never once per wrestler or match.
    const programmePeople=await tx.query<{
-    programme_id:string;person_id:string;side:"A"|"B"}>([
+    programme_id:string;person_id:string;side:"A"|"B";
+    programme_format:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION"}>([
     // The original Programme authority is the side-ref roster, including
     // expanded tag memberships. The legacy participant projection can be
     // absent in imported/rerolled Worlds; don't silently lose match links.
-    "SELECT r.programme_id,r.side,",
+    "SELECT r.programme_id,r.side,p.programme_format,",
     "CASE WHEN r.ref_kind='PERSON' THEN r.ref_id ELSE tm.person_id END AS person_id",
     "FROM ppw_programme_side_refs r",
     "JOIN ppw_programmes p ON p.world_id=r.world_id",
@@ -938,14 +957,14 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     "AND tm.team_id=r.ref_id AND tm.active",
     "WHERE r.world_id=$1 AND r.promotion_id=$2 AND p.status='ACTIVE'",
     "AND (r.ref_kind='PERSON' OR (t.status='ACTIVE' AND tm.person_id IS NOT NULL))",
-    "ORDER BY r.programme_id,person_id LIMIT 401"
+    "ORDER BY r.programme_id,person_id LIMIT 601"
    ].join(" "),[input.worldId,input.promotionId]);
-   if(programmePeople.length>400)throw new Error("Too many active programme members");
+   if(programmePeople.length>600)throw new Error("Too many active programme members");
    if(authored)validateProgrammeAngleLinks(authored.filter(s=>s.programmeId).map(s=>({
     slotId:s.slotId,programmeId:s.programmeId!,
     personIds:s.payload.participants.map(p=>p.personId)
    })),programmePeople.map(p=>({programmeId:p.programme_id,personId:p.person_id,side:p.side})));
-   const programmeMatchLinks=inferProgrammeMatchLinks(matches.flatMap(m=>{
+   const automaticMatchLinks=inferProgrammeMatchLinks(matches.flatMap(m=>{
      // Tournament brackets are independent of unrelated active feuds.
      if(m.payload.tournamentId)return [];
     const layout=readCanonicalMatchLayout(m.payload);
@@ -955,6 +974,15 @@ export async function saveShowCardMatches(pool:TransactionPool,input:SaveCardEdi
     }]:[];
    }),programmePeople.map(p=>({programmeId:p.programme_id,
     personId:p.person_id,side:p.side})));
+    const explicitMatchLinks=validateNonRivalMatchLinks(matches.flatMap(m=>{
+     if(!m.programmeId)return [];
+     const layout=readCanonicalMatchLayout(m.payload);
+     return [{slotId:m.slotId,programmeId:m.programmeId,
+      personIds:layout.sides.flatMap(side=>side.participants.map(p=>p.personId)),
+      tournament:Boolean(m.payload.tournamentId)}];
+    }),programmePeople.map(p=>({programmeId:p.programme_id,
+     personId:p.person_id,side:p.side,programmeFormat:p.programme_format})));
+    const programmeMatchLinks=[...automaticMatchLinks,...explicitMatchLinks];
    // Clear stale programme references and shift slot positions in one SQL
    // round trip, keeping the established 15-query booking transfer budget.
    await tx.query([

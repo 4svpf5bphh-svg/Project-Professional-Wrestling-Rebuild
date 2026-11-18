@@ -6,7 +6,8 @@ import {applyWorldCommand} from "./world-commands.js";
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
-import {programmeIdentity,validateProgrammeSides,type ProgrammeRef,type ProgrammeSides}
+import {programmeIdentity,validateProgrammeSides,type ProgrammeRef,
+ type ProgrammeSides,type ProgrammeFormat}
  from "../domain/programme-lifecycle.js";
 import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
  from "../domain/programme-finales.js";
@@ -18,7 +19,8 @@ import {readProgrammeBlueprintProgress}
 export type {ProgrammePayoff} from "../domain/programme-finales.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
 export type ProgrammeCommandInput=Scope&{requestId:string;expectedRevision:number};
-export type StartProgrammeInput=ProgrammeCommandInput&ProgrammeSides&{championshipId?:string|null};
+export type StartProgrammeInput=ProgrammeCommandInput&ProgrammeSides&{
+ programmeFormat?:ProgrammeFormat;championshipId?:string|null};
 export type EndProgrammeInput=ProgrammeCommandInput&{programmeId:string};
 export type ProgrammeFinaleInput=ProgrammeCommandInput&{programmeId:string;
  showId:string|null;slotId:string|null;payoff:ProgrammePayoff|null};
@@ -48,7 +50,8 @@ async function assertPromotion(tx:SqlRows,scope:Scope):Promise<Auth>{
 export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
  return withSqlClient(pool,async tx=>{
   const auth=await assertPromotion(tx,scope),currentWeek=(auth.year-1)*52+auth.week-1;
-  const rows=await tx.query<{programme_id:string;status:string;heat:number|null;
+  const rows=await tx.query<{programme_id:string;status:string;
+    programme_format:ProgrammeFormat;heat:number|null;
    repetition:number;activity_count:number;match_count:number;segment_count:number;
    side_a_wins:number;side_b_wins:number;draws:number;
    championship_id:string|null;creative_intent:unknown;started_week_index:number|null;
@@ -61,7 +64,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    origin_recorded_week_index:number|null;origin_previous_matches:number|null;
    wrestler_changes:{personId:string;name:string;beforePopularity:number|null;
     beforeMomentum:number|null;afterPopularity:number|null;afterMomentum:number|null}[]}>([
-   "SELECT programme.programme_id,programme.status,programme.heat,programme.repetition,programme.championship_id,programme.creative_intent,",
+   "SELECT programme.programme_id,programme.status,programme.programme_format,programme.heat,programme.repetition,programme.championship_id,programme.creative_intent,",
    "started_week_index,ended_week_index,activity_count,match_count,",
    "segment_count,side_a_wins,side_b_wins,draws,",
    "direction.choice AS direction_choice,direction.show_id AS direction_show_id,",
@@ -148,9 +151,9 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "LEFT JOIN ppw_tag_teams t ON t.world_id=r.world_id",
    "AND t.team_id=r.ref_id AND r.ref_kind='TEAM'",
    "WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.programme_id=ANY($3::text[])",
-   "ORDER BY r.programme_id,r.side,r.position LIMIT 401"
+   "ORDER BY r.programme_id,r.side,r.position LIMIT 601"
   ].join(" "),[scope.worldId,scope.promotionId,programmes,currentWeek]):[];
-  if(refs.length>400)throw new Error("Programme refs exceed bounded capacity");
+  if(refs.length>600)throw new Error("Programme refs exceed bounded capacity");
   // Distinct signed roster: no per-wrestler queries, and zero date balances
   // still count as on-roster if the agreement itself remains in force.
   const roster=await tx.query<{person_id:string;name:string;full_approval:boolean}>([
@@ -331,7 +334,8 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     name:x.ref_kind==="PERSON"?names.get(x.ref_id)??historicPeople.get(x.ref_id)??x.ref_id:
      teamNames.get(x.ref_id)??historicTeams.get(x.ref_id)??x.ref_id,
    }));
-   return {programmeId:p.programme_id,status:p.status,heat:p.heat,
+   return {programmeId:p.programme_id,programmeFormat:p.programme_format,
+     status:p.status,heat:p.heat,
     repetition:p.repetition,activityCount:p.activity_count,
     matchCount:p.match_count,segmentCount:p.segment_count,
     sideAWins:p.side_a_wins,sideBWins:p.side_b_wins,draws:p.draws,
@@ -472,10 +476,11 @@ export async function saveProgrammeCreativeIntent(pool:TransactionPool,
  });
 }
 export async function startProgramme(pool:TransactionPool,input:StartProgrammeInput){
- const sides=validateProgrammeSides(input);
+ const programmeFormat=input.programmeFormat??"RIVALRY";
+ const sides=validateProgrammeSides(input,programmeFormat);
  if(input.championshipId!==undefined&&input.championshipId!==null&&!valid(input.championshipId))
   throw new Error("Invalid programme championship");
- const identity=programmeIdentity(sides);
+ const identity=programmeIdentity(sides,programmeFormat);
  return applyWorldCommand(pool,{
   worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
   expectedRevision:input.expectedRevision,commandType:"START_PROGRAMME",
@@ -532,14 +537,14 @@ export async function startProgramme(pool:TransactionPool,input:StartProgrammeIn
     "WHERE world_id=$1 AND promotion_id=$2",
     "AND status='ACTIVE' AND programme_key=$3"
    ].join(" "),[input.worldId,input.promotionId,identity]);
-   if(duplicate.length)throw new Error("This active rivalry already exists");
+   if(duplicate.length)throw new Error("This active story already exists");
    const programmeId="programme-"+randomUUID();
    await tx.query([
     "INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,",
-    "heat,repetition,started_week_index,championship_id,programme_key)",
-    "VALUES($1,$2,$3,'ACTIVE',NULL,0,$4,$5,$6)"
+    "heat,repetition,started_week_index,championship_id,programme_key,programme_format)",
+    "VALUES($1,$2,$3,'ACTIVE',NULL,0,$4,$5,$6,$7)"
    ].join(" "),[input.worldId,input.promotionId,programmeId,currentWeek,
-    input.championshipId??null,identity]);
+    input.championshipId??null,identity,programmeFormat]);
    const inserted=await tx.query<{ref_id:string}>([
     "INSERT INTO ppw_programme_side_refs(world_id,promotion_id,programme_id,",
     "side,position,ref_kind,ref_id)",
@@ -571,10 +576,11 @@ export async function startProgramme(pool:TransactionPool,input:StartProgrammeIn
     "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
     "VALUES($1,$2,$3,'PROGRAMME_STARTED',",
     "jsonb_build_object('promotionId',$4::text,'programmeId',$5::text,",
-    "'participants',$6::int,'championshipId',$7::text))"
+    "'participants',$6::int,'championshipId',$7::text,'format',$8::text))"
    ].join(" "),[input.worldId,auth.year,auth.week,input.promotionId,
-    programmeId,unique.length,input.championshipId??null]);
-   return {programmeId,status:"ACTIVE" as const,participants:unique.length};
+    programmeId,unique.length,input.championshipId??null,programmeFormat]);
+   return {programmeId,status:"ACTIVE" as const,
+    programmeFormat,participants:unique.length};
   }
  });
 }

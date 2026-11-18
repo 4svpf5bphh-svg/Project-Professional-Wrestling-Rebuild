@@ -14,3 +14,25 @@ test("sides enforce original two-to-four participant rules",()=>{
  assert.throws(()=>validateProgrammeSides({sideA:[a,a],sideB:[b]}),/same participant/);
  assert.throws(()=>validateProgrammeSides({sideA:[a,b,b],sideB:[a]}),/one or two/);
 });
+
+test("non-rival journeys validate exact actor count and preserve rivalry identities",()=>{
+ const c={kind:"PERSON" as const,refId:"c"};
+ const d={kind:"PERSON" as const,refId:"d"};
+ const e={kind:"PERSON" as const,refId:"e"};
+ for(const [format,people] of [
+  ["SOLO",[a]],["RELATIONSHIP",[a,b]],["FACTION",[a,b,c,d,e]]
+ ] as const){
+  const story={sideA:people,sideB:[]};
+  assert.equal(validateProgrammeSides(story,format).sideB.length,0);
+  assert.equal(programmeIdentity(story,format),
+   programmeIdentity({sideA:[...people].reverse(),sideB:[]},format));
+ }
+ assert.notEqual(programmeIdentity({sideA:[a],sideB:[b]}),
+  programmeIdentity({sideA:[a,b],sideB:[]},"RELATIONSHIP"));
+ assert.throws(()=>validateProgrammeSides({sideA:[a],sideB:[b]},"SOLO"),/no opponent/);
+ assert.throws(()=>validateProgrammeSides({sideA:[a,b,c],sideB:[]},"SOLO"),/one wrestler/);
+ assert.throws(()=>validateProgrammeSides({sideA:[a],sideB:[]},"RELATIONSHIP"),/two to four/);
+ assert.throws(()=>validateProgrammeSides({sideA:[a,b],sideB:[]},"FACTION"),/three to five/);
+ assert.throws(()=>validateProgrammeSides({sideA:[{kind:"TEAM",refId:"duo"}],sideB:[]},"SOLO"),/individual/);
+ assert.throws(()=>validateProgrammeSides({sideA:[a,b,b],sideB:[]},"RELATIONSHIP"),/same participant/);
+});
