@@ -693,7 +693,7 @@ export function mountPersonaDesk(root:HTMLElement,
     entries.append(item);count++;
    }
    for(const wrestler of [...view.roster].filter(w=>{
-    if(["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS"].includes(inboxFilter))
+    if(["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS","STORIES"].includes(inboxFilter))
      return false;
     if(inboxFilter==="LOCKER_ROOM")return w.latestIncoming?.kind==="PARTNERSHIP"&&
      !w.latestIncoming.archived;
