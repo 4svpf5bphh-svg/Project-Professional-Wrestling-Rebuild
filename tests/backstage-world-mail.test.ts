@@ -18,6 +18,8 @@ test("World mail projection contains only genuine controlled certified sources",
  assert.match(WORLD_MAIL_SQL,/finished.authored_outcome='HAPPENS'/);
  assert.match(WORLD_MAIL_SQL,/a.kind='SEGMENT'/);
  assert.match(WORLD_MAIL_SQL,/slot.payload->'participants' @>/);
+ assert.match(WORLD_MAIL_SQL,/slot.payload->'actorIds'/);
+ assert.match(WORLD_MAIL_SQL,/targetPresence'='ON_SCREEN'/);
  assert.match(WORLD_MAIL_SQL,/programme_format IN \('SOLO','RELATIONSHIP','FACTION'\)/);
  assert.match(WORLD_MAIL_SQL,/e.status='ACTIVE'/);
  assert.match(WORLD_MAIL_SQL,/NOT EXISTS\(/);

@@ -59,8 +59,13 @@ test("solo, relationship and faction reactions require certified linked cast, re
      "(world_id,draft_id,slot_id,position,kind,payload)"+
      " VALUES($1,$2,$3,$4,'SEGMENT',$5::jsonb)",
      [worldId,showId,slotId,chapter.position,JSON.stringify({
-      kind:"INTERVIEW",outcome:"HAPPENS",actorIds:[chapter.speaker],targetIds:[],
-      participants:[{personId:chapter.speaker,contractId:"signed-"+ids.indexOf(chapter.speaker)+"-"+suffix}],
+      kind:"INTERVIEW",outcome:"HAPPENS",actorIds:[chapter.speaker],
+      targetIds:chapter.position===0?[ids[3]!]:[],
+      targetPresence:chapter.position===0?"MENTIONED":"ON_SCREEN",
+      participants:[
+       {personId:chapter.speaker,contractId:"signed-"+ids.indexOf(chapter.speaker)+"-"+suffix},
+       ...(chapter.position===0?[{personId:ids[3]!,contractId:"signed-3-"+suffix}]:[])
+      ],
       scene:{location:"INTERVIEW_AREA",purpose:"BUILD_CHARACTER"},
      })]);
     await tx.query("INSERT INTO ppw_programme_match_activities"+
@@ -68,7 +73,7 @@ test("solo, relationship and faction reactions require certified linked cast, re
      " VALUES($1,$2,$3,$4,$5,'SEGMENT')",
      [worldId,promotionId,chapter.programmeId,showId,slotId]);
    }
-   // An unrelated actor is not allowed to speak on behalf of a linked scene.
+   // A named-only target is not a performer and must not be given a voice.
    const unrelated="unrelated-"+suffix;
    await tx.query("INSERT INTO ppw_programmes"+
     "(world_id,promotion_id,programme_id,status,programme_format,repetition,heat)"+
@@ -108,7 +113,7 @@ test("solo, relationship and faction reactions require certified linked cast, re
      [worldId,promotionId,chapter.programmeId,showId,slotId,
       "verified-"+slotId,chapter.crowd]);
    }
-   // The link is present but has NO cast in this scene: never invent their voice.
+   // A linked character was only mentioned by an on-screen actor: never invent their voice.
    await tx.query("INSERT INTO ppw_programme_resolved_activities"+
     "(world_id,promotion_id,programme_id,show_id,slot_id,week_index,kind,signature,crowd_response,impact)"+
     " VALUES($1,$2,$3,$4,'scene-0',0,'SEGMENT','unrelated',78,60)",

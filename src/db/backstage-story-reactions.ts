@@ -41,6 +41,11 @@ story_scene AS (
     AND member.promotion_id=a.promotion_id AND member.programme_id=a.programme_id
     AND slot.payload->'participants' @>
      jsonb_build_array(jsonb_build_object('personId',member.person_id))
+    /* A mentioned name is NOT an appearance or a wrestler's own voice.
+     * Only a real actor or a target explicitly on screen may speak. */
+    AND ((slot.payload->'actorIds') ? member.person_id
+     OR (slot.payload->>'targetPresence'='ON_SCREEN'
+      AND (slot.payload->'targetIds') ? member.person_id))
    ORDER BY member.person_id LIMIT 1
   ) narrator ON true
   WHERE a.world_id=$1 AND a.promotion_id=$2
