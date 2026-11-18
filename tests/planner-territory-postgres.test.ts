@@ -236,3 +236,61 @@ test("two human managers retain separate current + six future weeks, protected c
   }).finally(()=>db.close());
  }
 });
+
+
+test("alternate-week TV can be booked only on real due weeks without charging Neon for off-week phantom cards",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const world="alternate-tv-"+randomUUID(),player="booker-"+randomUUID();
+ const db=postgresPool(url!,3),promotionId="promotion-0";
+ const scope={worldId:world,playerId:player,promotionId};
+ try{
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world));
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_promotions SET event_cadence_weeks=2 WHERE world_id=$1 AND promotion_id=$2",
+   [world,promotionId]));
+  assert.equal((await joinWorld(db.pool,{worldId:world,playerId:player,
+   requestId:"join-alt",expectedRevision:0})).status,"APPLIED");
+  assert.equal((await submitPromotionClaim(db.pool,{...scope,
+   requestId:"claim-alt",expectedRevision:1})).status,"APPLIED");
+  const before=await readSixWeekPlanner(db.pool,scope);
+  assert.deepEqual(before.weeks.map(x=>x.required),
+   [true,false,true,false,true,false,true],
+   "Only the contracted alternate-week series can demand a broadcast");
+  assert.deepEqual(before.weeks.filter(w=>w.scheduled.some(s=>
+   s.eventType==="REGULAR")).map(w=>w.week),[1,3,5,7]);
+  const venue=before.venues.find(v=>v.home)!;
+  const plan=(week:number,requestId:string,revision:number)=>({
+   ...scope,year:1,week,requestId,expectedRevision:revision,
+   eventType:"REGULAR" as const,day:5,
+   marketId:venue.marketId,venueId:venue.venueId,
+   ticketStrategy:"STANDARD" as const
+  });
+  await assert.rejects(planShowWeek(db.pool,plan(2,"phantom-week-two",
+   before.worldRevision)),/No regular TV episode is due this week/);
+  const unchanged=await readSixWeekPlanner(db.pool,scope);
+  assert.equal(unchanged.worldRevision,before.worldRevision);
+  assert.equal(unchanged.weeks[1]?.shows.length,0);
+  assert.equal(unchanged.weeks[1]?.required,false);
+  const accepted=await planShowWeek(db.pool,plan(3,"real-week-three",
+   before.worldRevision));
+  assert.equal(accepted.status,"APPLIED");
+  const after=await readSixWeekPlanner(db.pool,scope);
+  assert.equal(after.weeks[2]?.shows[0]?.draftId,accepted.result.draftId);
+  assert.equal(after.weeks[1]?.shows.length,0,
+   "Booking a real show must never materialise an adjacent rest-week show");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_card_slots","ppw_booking_drafts",
+    "ppw_contract_offers","ppw_contract_renewal_proposals",
+    "ppw_contract_date_requests","ppw_ledger_events",
+    "ppw_command_receipts","ppw_promotion_controls","ppw_memberships",
+    "ppw_contracts","ppw_championships","ppw_people","ppw_venues",
+    "ppw_promotion_market_states","ppw_show_series","ppw_promotions",
+    "ppw_markets"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});

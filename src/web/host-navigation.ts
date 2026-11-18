@@ -126,7 +126,14 @@ export function drawerRootForSection(section:HostSection):HostDrawerRoot{
  * optional focus in private, scope-checked browser history, never the URL.
  * The actual show/contract/creative authorisation still runs on the server.
  */
-export interface ProgrammeCardHistoryFocus{programmeId:string;ideaKind?:string}
+export interface ProgrammeCardHistoryFocus{programmeId:string;ideaKind?:string;
+ blueprintBeat?:{blueprintId:string;beatId:string}}
+const validBlueprintBeat=(value:unknown):value is {blueprintId:string;beatId:string}=>{
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const ref=value as Record<string,unknown>;
+ return [ref.blueprintId,ref.beatId].every(v=>
+  typeof v==="string"&&v.trim().length>0&&v.length<=80);
+};
 export function bookingHistoryState(worldId:string,promotionId:string,showId:string,
  focus?:ProgrammeCardHistoryFocus|null){
  if(![worldId,promotionId,showId].every(v=>v.trim().length>0&&v.length<=200))
@@ -136,12 +143,16 @@ export function bookingHistoryState(worldId:string,promotionId:string,showId:str
    focus.programmeId.length>200||
    (focus.ideaKind!==undefined&&
     (typeof focus.ideaKind!=="string"||!focus.ideaKind||
-     focus.ideaKind.length>60)))
+     focus.ideaKind.length>60))||
+   (focus.blueprintBeat!==undefined&&!validBlueprintBeat(focus.blueprintBeat)))
    throw new Error("Invalid Programme booking focus");
  }
  return {ppwBooking:{worldId,promotionId,showId,
   ...(focus?{programmeId:focus.programmeId,
-   ...(focus.ideaKind?{ideaKind:focus.ideaKind}:{})}:{})}};
+   ...(focus.ideaKind?{ideaKind:focus.ideaKind}:{}),
+   ...(focus.blueprintBeat?{blueprintBeat:{
+    blueprintId:focus.blueprintBeat.blueprintId,
+    beatId:focus.blueprintBeat.beatId}}:{})}:{})}};
 }
 export function readBookingHistory(state:unknown,worldId:string,promotionId:string):string|null{
  if(!state||typeof state!=="object"||Array.isArray(state))return null;
@@ -168,6 +179,9 @@ export function readBookingProgrammeFocus(state:unknown,worldId:string,
  if(p.ideaKind!==undefined&&
   (typeof p.ideaKind!=="string"||!p.ideaKind.trim()||
    p.ideaKind.length>60))return null;
+ if(p.blueprintBeat!==undefined&&!validBlueprintBeat(p.blueprintBeat))return null;
  return {programmeId:p.programmeId,
-  ...(typeof p.ideaKind==="string"?{ideaKind:p.ideaKind}:{})};
+  ...(typeof p.ideaKind==="string"?{ideaKind:p.ideaKind}:{}),
+  ...(validBlueprintBeat(p.blueprintBeat)?{blueprintBeat:{
+   blueprintId:p.blueprintBeat.blueprintId,beatId:p.blueprintBeat.beatId}}:{})};
 }

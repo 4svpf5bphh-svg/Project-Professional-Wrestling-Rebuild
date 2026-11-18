@@ -9,7 +9,7 @@ export function inferProgrammeMatchLinks(
  matches:readonly ProgrammeMatchInput[],
  participants:readonly ProgrammePersonSide[],
 ):ProgrammeMatchLink[]{
- if(matches.length>100||participants.length>400)throw new Error("Programme link input too large");
+ if(matches.length>100||participants.length>600)throw new Error("Programme link input too large");
  const story=new Map<string,{A:Set<string>;B:Set<string>}>();
  for(const person of participants){
   if(!person.programmeId||!person.personId||!["A","B"].includes(person.side))
@@ -45,7 +45,7 @@ export function validateProgrammeAngleLinks(
  angles:readonly {slotId:string;programmeId:string;personIds:readonly string[]}[],
  members:readonly ProgrammePersonSide[],
 ):void{
- if(angles.length>100||members.length>400)
+ if(angles.length>100||members.length>600)
   throw new Error("Programme angle input too large");
  const byProgramme=new Map<string,Set<string>>();
  for(const member of members){
@@ -61,4 +61,47 @@ export function validateProgrammeAngleLinks(
   if(!people||!angle.personIds.some(id=>people.has(id)))
    throw new Error("Choose a wrestler from the linked rivalry before adding this angle");
  }
+}
+
+/** A single- or multi-character journey can explicitly include its wrestler's
+ * real match against an outside opponent. Never infer a story merely because
+ * a wrestler appears, and never hijack the original rivalry match inference.
+ * Existing World/card validation still owns match eligibility and finish.
+ */
+export function validateNonRivalMatchLinks(
+ matches:readonly {slotId:string;programmeId:string;personIds:readonly string[];
+  tournament:boolean}[],
+ members:readonly (ProgrammePersonSide&{
+  programmeFormat:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION"})[],
+):ProgrammeMatchLink[]{
+ const links:ProgrammeMatchLink[]=[];
+ if(matches.length>100||members.length>600)throw new Error("Story match link limit exceeded");
+ const seen=new Set<string>();
+ for(const match of matches){
+  if(!match.slotId||!match.programmeId||seen.has(match.slotId))
+   throw new Error("Invalid explicit story match");
+  seen.add(match.slotId);
+  const cast=members.filter(m=>m.programmeId===match.programmeId);
+  if(!cast.length||cast.some(m=>m.programmeFormat==="RIVALRY"))
+   throw new Error("Only non-rival story journeys can be explicitly linked to a match");
+  if(match.tournament)throw new Error("Tournament matches retain their own bracket identity");
+  if(!match.personIds.some(id=>cast.some(m=>m.personId===id)))
+   throw new Error("A linked story match must include a wrestler from that story");
+  links.push({slotId:match.slotId,programmeId:match.programmeId});
+ }
+ return links;
+}
+
+/** Preserve the original automatic rival-match links by default. When a
+ * manager explicitly associates the same real bout to a non-rival journey,
+ * their saved choice takes precedence for that bout only. This prevents an
+ * ambiguous two-Programme read-back without rewriting unrelated rivalries.
+ */
+export function mergeProgrammeMatchLinks(
+ automatic:readonly ProgrammeMatchLink[],explicit:readonly ProgrammeMatchLink[],
+):ProgrammeMatchLink[]{
+ const selected=new Set(explicit.map(x=>x.slotId));
+ if(selected.size!==explicit.length)
+  throw new Error("A match cannot have multiple selected storylines");
+ return [...automatic.filter(x=>!selected.has(x.slotId)),...explicit];
 }

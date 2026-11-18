@@ -344,7 +344,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
   weeks:Array.from({length:7},(_,offset)=>{
    const index=start+offset,when=dateAt(index);
    const due=scheduledSeriesOnWeek(scheduled,when.year,when.week,yearly);
-   return {...when,offset,required:true,
+   return {...when,offset,required:due.length>0,
     major:due.some(x=>x.eventType==="MAJOR"),canEdit:owned.booking_open,
     scheduled:due,
     shows:drafts.filter(d=>d.year===when.year&&d.week===when.week).map(d=>({
@@ -421,6 +421,14 @@ export async function planShowWeek(pool:TransactionPool,input:PlanWeekInput){
    const event:PlannedEventType=selected?.eventType??"REGULAR";
    if(input.eventType!==event)
     throw new Error("Show type must match the calendar event");
+   // The TV licence fixes airtime, while the original recurrent series fixes
+   // which weeks actually contain an episode. Do not allow arbitrary extra
+   // broadcasts in off-cadence weeks via a missing series ID.
+   // Existing legacy drafts remain editable; historical shows are untouched.
+   if(!input.draftId&&event==="REGULAR"&&
+    !due.some(s=>s.eventType==="REGULAR"))
+    throw new Error("No regular TV episode is due this week. "+
+     "Select a scheduled broadcast week in Calendar.");
    const bookingClass:"REGULAR"|"PREMIUM"=
     selected?.eventType==="MAJOR"?"PREMIUM":"REGULAR";
    // Contracted television dates are server-authoritative, not a UI hint.

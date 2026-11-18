@@ -14,6 +14,17 @@ test("World mail projection contains only genuine controlled certified sources",
  assert.match(WORLD_MAIL_SQL,/n.certainty='CONFIRMED'/);
  assert.match(WORLD_MAIL_SQL,/n.story_key LIKE 'broadcast:network:%'/);
  assert.match(WORLD_MAIL_SQL,/ppw_staff_employments e/);
+ assert.match(WORLD_MAIL_SQL,/ppw_programme_resolved_activities a/);
+ assert.match(WORLD_MAIL_SQL,/p.creative_intent->'followUp'/);
+ assert.match(WORLD_MAIL_SQL,/story.programme_id AS story_programme_id/);
+ assert.match(WORLD_MAIL_SQL,/story.status='ACTIVE'/);
+ assert.match(WORLD_MAIL_SQL,/story.show_id/);
+ assert.match(WORLD_MAIL_SQL,/finished.authored_outcome='HAPPENS'/);
+ assert.match(WORLD_MAIL_SQL,/a.kind='SEGMENT'/);
+ assert.match(WORLD_MAIL_SQL,/slot.payload->'participants' @>/);
+ assert.match(WORLD_MAIL_SQL,/slot.payload->'actorIds'/);
+ assert.match(WORLD_MAIL_SQL,/targetPresence'='ON_SCREEN'/);
+ assert.match(WORLD_MAIL_SQL,/programme_format IN \('SOLO','RELATIONSHIP','FACTION'\)/);
  assert.match(WORLD_MAIL_SQL,/e.status='ACTIVE'/);
  assert.match(WORLD_MAIL_SQL,/NOT EXISTS\(/);
  assert.match(WORLD_MAIL_SQL,/ppw_player_attention_dismissals/);
@@ -34,7 +45,13 @@ test("World mail projection contains only genuine controlled certified sources",
    action:"STAFF",created_week_index:18,read:true,seed:"123"},
   {id:id("c"),kind:"FREE_AGENT",sender_key:"p-1",sender_name:"Available Prospect",
    target_person_id:"p-1",subject:"Could we talk?",body:"I saw your show",
-   action:"MARKET",created_week_index:18,read:false,seed:"123"}
+   action:"MARKET",created_week_index:18,read:false,seed:"123"},
+  {id:id("d"),kind:"LOCKER_ROOM",sender_key:"p-2",sender_name:"Character Name",
+   target_person_id:"p-2",subject:"About that chapter",body:"On-screen story",
+   action:"PROGRAMMES",created_week_index:18,read:false,seed:"123",
+   story_chapter:true,story_programme_id:"story-1",story_show_id:"show-1",
+   story_slot_id:"scene-1",story_week_index:18,story_crowd_response:71,
+   story_format:"SOLO",can_story_follow_up:true}
  ];
  let queries=0;
  const tx={query:async(sql:string,params:readonly unknown[])=>{
@@ -52,6 +69,14 @@ test("World mail projection contains only genuine controlled certified sources",
  assert.equal(inbox[1]?.action,"STAFF");
  assert.equal(inbox[2]?.sender,"Available Prospect");
  assert.equal(inbox[2]?.targetPersonId,"p-1");
+ assert.equal(inbox[3]?.sender,"Character Name");
+ assert.equal(inbox[3]?.storyChapter,true);
+ assert.equal(inbox[3]?.action,"PROGRAMMES");
+ assert.equal(inbox[3]?.storyProgrammeId,"story-1");
+ assert.equal(inbox[3]?.storySource?.sourceSlotId,"scene-1");
+ assert.equal(inbox[3]?.storySource?.crowdResponse,71);
+ assert.equal(inbox[3]?.canChooseStoryFollowUp,true);
+ assert.equal(inbox[3]?.storyFollowUp,undefined);
 });
 test("World mail rejects invalid source IDs and oversized results",async()=>{
  const query=async()=>[{id:"fake",kind:"NETWORK",sender_key:"BROADCAST_GROWTH",

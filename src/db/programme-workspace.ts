@@ -6,17 +6,26 @@ import {applyWorldCommand} from "./world-commands.js";
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import type {SqlRows} from "./world-operations.js";
-import {programmeIdentity,validateProgrammeSides,type ProgrammeRef,type ProgrammeSides}
+import {programmeIdentity,validateProgrammeSides,type ProgrammeRef,
+ type ProgrammeSides,type ProgrammeFormat}
  from "../domain/programme-lifecycle.js";
-import {eligibleProgrammePayoffs,type ProgrammePayoff}
+import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
  from "../domain/programme-finales.js";
+import {parseProgrammeCreativeIntent,type ProgrammeCreativeIntent}
+ from "../domain/programme-creative-intent.js";
+import {STORY_BLUEPRINTS} from "../domain/story-blueprints.js";
+import {readProgrammeBlueprintProgress}
+ from "../domain/programme-blueprint-progress.js";
 export type {ProgrammePayoff} from "../domain/programme-finales.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
 export type ProgrammeCommandInput=Scope&{requestId:string;expectedRevision:number};
-export type StartProgrammeInput=ProgrammeCommandInput&ProgrammeSides&{championshipId?:string|null};
+export type StartProgrammeInput=ProgrammeCommandInput&ProgrammeSides&{
+ programmeFormat?:ProgrammeFormat;championshipId?:string|null};
 export type EndProgrammeInput=ProgrammeCommandInput&{programmeId:string};
 export type ProgrammeFinaleInput=ProgrammeCommandInput&{programmeId:string;
  showId:string|null;slotId:string|null;payoff:ProgrammePayoff|null};
+export type ProgrammeCreativeIntentInput=ProgrammeCommandInput&{
+ programmeId:string;creativeIntent:ProgrammeCreativeIntent|null};
 export type ProgrammeDirectionChoice="PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND";
 export type ProgrammeDirectionInput=ProgrammeCommandInput&{
  programmeId:string;showId:string;slotId:string;choice:ProgrammeDirectionChoice;
@@ -41,10 +50,11 @@ async function assertPromotion(tx:SqlRows,scope:Scope):Promise<Auth>{
 export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
  return withSqlClient(pool,async tx=>{
   const auth=await assertPromotion(tx,scope),currentWeek=(auth.year-1)*52+auth.week-1;
-  const rows=await tx.query<{programme_id:string;status:string;heat:number|null;
+  const rows=await tx.query<{programme_id:string;status:string;
+    programme_format:ProgrammeFormat;heat:number|null;
    repetition:number;activity_count:number;match_count:number;segment_count:number;
    side_a_wins:number;side_b_wins:number;draws:number;
-   championship_id:string|null;started_week_index:number|null;
+   championship_id:string|null;creative_intent:unknown;started_week_index:number|null;
    ended_week_index:number|null;direction_choice:ProgrammeDirectionChoice|null;
    direction_show_id:string|null;direction_slot_id:string|null;
    direction_week_index:number|null;
@@ -54,7 +64,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    origin_recorded_week_index:number|null;origin_previous_matches:number|null;
    wrestler_changes:{personId:string;name:string;beforePopularity:number|null;
     beforeMomentum:number|null;afterPopularity:number|null;afterMomentum:number|null}[]}>([
-   "SELECT programme.programme_id,programme.status,programme.heat,programme.repetition,programme.championship_id,",
+   "SELECT programme.programme_id,programme.status,programme.programme_format,programme.heat,programme.repetition,programme.championship_id,programme.creative_intent,",
    "started_week_index,ended_week_index,activity_count,match_count,",
    "segment_count,side_a_wins,side_b_wins,draws,",
    "direction.choice AS direction_choice,direction.show_id AS direction_show_id,",
@@ -141,9 +151,9 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "LEFT JOIN ppw_tag_teams t ON t.world_id=r.world_id",
    "AND t.team_id=r.ref_id AND r.ref_kind='TEAM'",
    "WHERE r.world_id=$1 AND r.promotion_id=$2 AND r.programme_id=ANY($3::text[])",
-   "ORDER BY r.programme_id,r.side,r.position LIMIT 401"
+   "ORDER BY r.programme_id,r.side,r.position LIMIT 601"
   ].join(" "),[scope.worldId,scope.promotionId,programmes,currentWeek]):[];
-  if(refs.length>400)throw new Error("Programme refs exceed bounded capacity");
+  if(refs.length>600)throw new Error("Programme refs exceed bounded capacity");
   // Distinct signed roster: no per-wrestler queries, and zero date balances
   // still count as on-roster if the agreement itself remains in force.
   const roster=await tx.query<{person_id:string;name:string;full_approval:boolean}>([
@@ -193,7 +203,8 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    scene_intensity:string|null;scene_visual:string|null;angle_outcome:string|null;
    turn_alignment:string|null;stable_decision:string|null};
   type Planned={programme_id:string;draft_id:string;slot_id:string;kind:"MATCH"|"SEGMENT";
-   segment_kind:string|null;title_match:boolean;stipulation_match:boolean;
+   segment_kind:string|null;scene_purpose:string|null;
+   title_match:boolean;stipulation_match:boolean;
    year:number;week:number;show_name:string|null;status:"DRAFT"|"SUBMITTED";
    booking_class:"REGULAR"|"PREMIUM"};
   type Finale={programme_id:string;show_id:string;slot_id:string;
@@ -203,8 +214,20 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   type Agreement={programme_id:string;person_id:string;approved:boolean;
    score:number;decided_week_index:number;expires_week_index:number;
    match_type:string;permitted_outcome:string};
+  // Only selected saved blueprints are transmitted. Custom storylines need
+  // no extra SQL result rows, and no separate database read is introduced.
+  const selectedBlueprints=new Set(rows.flatMap(p=>{
+   const intent=parseProgrammeCreativeIntent(p.creative_intent);
+   return intent&&intent.blueprintId!=="CUSTOM"?[intent.blueprintId]:[];
+  }));
+  const beatSpecs=STORY_BLUEPRINTS.filter(b=>selectedBlueprints.has(b.id))
+   .flatMap(b=>b.beats.map(beat=>({blueprint_id:b.id,beat_id:beat.id,
+    segment_kind:beat.kind,scene_purpose:beat.purpose})));
+  type BlueprintFact={programme_id:string;beat_id:string;
+   week_index:number|null;crowd_response:number|null};
   const combined=programmes.length?await tx.query<{
-   source:"ACTIVITY"|"AGREEMENT"|"PLANNED"|"FINALE";details:Recent|Agreement|Planned|Finale
+   source:"ACTIVITY"|"AGREEMENT"|"PLANNED"|"FINALE"|"BLUEPRINT";
+   details:Recent|Agreement|Planned|Finale|BlueprintFact
   }>([
    "SELECT 'ACTIVITY'::text AS source,to_jsonb(activity) AS details FROM (",
    "SELECT recent.programme_id,recent.show_id,recent.slot_id,recent.kind,",
@@ -237,6 +260,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "SELECT 'PLANNED'::text AS source,to_jsonb(upcoming) AS details FROM (",
    "SELECT a.programme_id,a.draft_id,a.slot_id,a.kind,d.year,d.week,",
    "CASE WHEN a.kind='SEGMENT' THEN s.payload->>'kind' ELSE NULL END AS segment_kind,",
+   "CASE WHEN a.kind='SEGMENT' THEN s.payload->'scene'->>'purpose' ELSE NULL END AS scene_purpose,",
    "CASE WHEN a.kind='MATCH' THEN",
    "NULLIF(s.payload->>'championshipId','') IS NOT NULL ELSE false END AS title_match,",
    "CASE WHEN a.kind='MATCH' THEN",
@@ -258,8 +282,33 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "resolved_week_index,resolved_crowd_response,resolved_winner_side",
    "FROM ppw_programme_finales",
    "WHERE world_id=$1 AND promotion_id=$2 AND programme_id=ANY($3::text[])",
-   "ORDER BY programme_id LIMIT 101) f"
-  ].join(" "),[scope.worldId,scope.promotionId,programmes,currentWeek]):[];
+   "ORDER BY programme_id LIMIT 101) f",
+   "UNION ALL",
+   // A proposed, interrupted or refused chapter cannot count: the settled
+   // programme history only contains completed HAPPENS segments.
+   "SELECT 'BLUEPRINT'::text AS source,to_jsonb(proof) AS details FROM (",
+   "SELECT p.programme_id,spec.beat_id,seen.week_index,seen.crowd_response",
+   "FROM ppw_programmes p",
+   "JOIN LATERAL jsonb_to_recordset($5::jsonb) AS spec(",
+   "blueprint_id text,beat_id text,segment_kind text,scene_purpose text)",
+   "ON p.creative_intent->>'blueprintId'=spec.blueprint_id",
+   "LEFT JOIN LATERAL (",
+   "SELECT a.week_index,a.crowd_response",
+   "FROM ppw_programme_resolved_activities a",
+   "JOIN ppw_card_slots scene ON scene.world_id=a.world_id",
+   "AND scene.draft_id=a.show_id AND scene.slot_id=a.slot_id",
+   "AND scene.kind='SEGMENT'",
+   "WHERE a.world_id=$1 AND a.promotion_id=$2",
+   "AND a.programme_id=p.programme_id AND a.kind='SEGMENT'",
+   "AND scene.payload->>'kind'=spec.segment_kind",
+   "AND scene.payload->'scene'->>'purpose'=spec.scene_purpose",
+   "ORDER BY a.week_index,a.show_id,a.slot_id LIMIT 1",
+   ") seen ON true",
+   "WHERE p.world_id=$1 AND p.promotion_id=$2",
+   "AND p.programme_id=ANY($3::text[])",
+   "ORDER BY p.programme_id,spec.beat_id LIMIT 301) proof"
+  ].join(" "),[scope.worldId,scope.promotionId,programmes,currentWeek,
+   JSON.stringify(beatSpecs)]):[];
   const recent=combined.filter(x=>x.source==="ACTIVITY")
    .map(x=>x.details as Recent);
   const agreements=combined.filter(x=>x.source==="AGREEMENT")
@@ -268,6 +317,9 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    .map(x=>x.details as Planned);
   const finales=combined.filter(x=>x.source==="FINALE")
    .map(x=>x.details as Finale);
+  const blueprintFacts=combined.filter(x=>x.source==="BLUEPRINT")
+   .map(x=>x.details as BlueprintFact);
+  if(blueprintFacts.length>300)throw new Error("Programme blueprint evidence exceeds bound");
   if(recent.length>500)throw new Error("Programme history view limit exceeded");
   if(agreements.length>300)throw new Error("Too many rivalry agreements");
   if(planned.length>300)throw new Error("Too many planned rivalry chapters");
@@ -282,11 +334,27 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
     name:x.ref_kind==="PERSON"?names.get(x.ref_id)??historicPeople.get(x.ref_id)??x.ref_id:
      teamNames.get(x.ref_id)??historicTeams.get(x.ref_id)??x.ref_id,
    }));
-   return {programmeId:p.programme_id,status:p.status,heat:p.heat,
+   return {programmeId:p.programme_id,programmeFormat:p.programme_format,
+     status:p.status,heat:p.heat,
     repetition:p.repetition,activityCount:p.activity_count,
     matchCount:p.match_count,segmentCount:p.segment_count,
     sideAWins:p.side_a_wins,sideBWins:p.side_b_wins,draws:p.draws,
     championshipId:p.championship_id,
+    creativeIntent:parseProgrammeCreativeIntent(p.creative_intent),
+    blueprintProgress:(()=>{
+     const intent=parseProgrammeCreativeIntent(p.creative_intent);
+     const blueprint=STORY_BLUEPRINTS.find(b=>b.id===intent?.blueprintId);
+     return blueprint?readProgrammeBlueprintProgress(blueprint,
+      blueprintFacts.filter(x=>x.programme_id===p.programme_id).map(x=>({
+       beatId:x.beat_id,weekIndex:x.week_index,crowdResponse:x.crowd_response
+      })),
+      planned.filter(x=>x.programme_id===p.programme_id).map(x=>({
+       showId:x.draft_id,slotId:x.slot_id,
+       kind:x.kind,segmentKind:x.segment_kind,scenePurpose:x.scene_purpose,
+       year:x.year,week:x.week,showName:x.show_name??"Scheduled show",
+       status:x.status
+      }))):null;
+    })(),
     startedWeekIndex:p.started_week_index,endedWeekIndex:p.ended_week_index,
     wrestlerChanges:p.status==="COMPLETED"?p.wrestler_changes:[],
     wrestlerOrigin:p.origin_request_id&&p.origin_person_id&&p.origin_opponent_id&&
@@ -334,7 +402,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
      selected.sort((a,b)=>a.year-b.year||a.week-b.week||
       a.draft_id.localeCompare(b.draft_id)||a.slot_id.localeCompare(b.slot_id));
      return selected.map(x=>({showId:x.draft_id,slotId:x.slot_id,
-      kind:x.kind,segmentKind:x.segment_kind,
+      kind:x.kind,segmentKind:x.segment_kind,scenePurpose:x.scene_purpose,
       titleMatch:x.title_match,stipulationMatch:x.stipulation_match,
       ...(x.booking_class==="PREMIUM"?{premium:true}:{}),
       year:x.year,week:x.week,
@@ -375,11 +443,55 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
   };
  });
 }
+/** This same bounded World command records story intention without an extra
+ * storyline table, Groq call, or a fabricated match/relationship effect.
+ */
+export async function saveProgrammeCreativeIntent(pool:TransactionPool,
+ input:ProgrammeCreativeIntentInput){
+ if(!valid(input.programmeId))throw new Error("Invalid programme ID");
+ const intent=parseProgrammeCreativeIntent(input.creativeIntent);
+ return applyWorldCommand(pool,{
+  worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
+  expectedRevision:input.expectedRevision,commandType:"PROGRAMME_CREATIVE_INTENT",
+  requiresOpenWeek:true,
+  execute:async tx=>{
+   const auth=await assertPromotion(tx,input);
+   if(!auth.booking_open)throw new Error("Programme creative window closed");
+   // The client may author story text, but only the certified Backstage
+   // reply command may create/change its evidence-bound follow-up. Preserve
+   // that existing field through edits (including Clear story direction).
+   const userText=intent===null?null:JSON.stringify({
+    blueprintId:intent.blueprintId,motivation:intent.motivation,
+    audienceGoal:intent.audienceGoal,destination:intent.destination});
+   const changed=await tx.query<{programme_id:string;creative_intent:unknown}>([
+    "UPDATE ppw_programmes p SET creative_intent=CASE",
+    "WHEN p.creative_intent ? 'followUp' THEN",
+    "COALESCE($4::jsonb,jsonb_build_object(",
+    "'blueprintId','CUSTOM','motivation','','audienceGoal','','destination',''))",
+    "||jsonb_build_object('followUp',p.creative_intent->'followUp')",
+    "ELSE $4::jsonb END",
+    "WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.programme_id=$3",
+    "AND p.status='ACTIVE' RETURNING p.programme_id,p.creative_intent"
+   ].join(" "),[input.worldId,input.promotionId,input.programmeId,userText]);
+   if(changed.length!==1)throw new Error("Choose an active Programme owned by your promotion");
+   await tx.query([
+    "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
+    "VALUES($1,$2,$3,'PROGRAMME_CREATIVE_INTENT_SAVED',",
+    "jsonb_build_object('promotionId',$4::text,'programmeId',$5::text,",
+    "'blueprintId',$6::text))"
+   ].join(" "),[input.worldId,auth.year,auth.week,input.promotionId,
+    input.programmeId,intent?.blueprintId??null]);
+   return {programmeId:input.programmeId,
+    creativeIntent:parseProgrammeCreativeIntent(changed[0]!.creative_intent)};
+  }
+ });
+}
 export async function startProgramme(pool:TransactionPool,input:StartProgrammeInput){
- const sides=validateProgrammeSides(input);
+ const programmeFormat=input.programmeFormat??"RIVALRY";
+ const sides=validateProgrammeSides(input,programmeFormat);
  if(input.championshipId!==undefined&&input.championshipId!==null&&!valid(input.championshipId))
   throw new Error("Invalid programme championship");
- const identity=programmeIdentity(sides);
+ const identity=programmeIdentity(sides,programmeFormat);
  return applyWorldCommand(pool,{
   worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,
   expectedRevision:input.expectedRevision,commandType:"START_PROGRAMME",
@@ -436,14 +548,14 @@ export async function startProgramme(pool:TransactionPool,input:StartProgrammeIn
     "WHERE world_id=$1 AND promotion_id=$2",
     "AND status='ACTIVE' AND programme_key=$3"
    ].join(" "),[input.worldId,input.promotionId,identity]);
-   if(duplicate.length)throw new Error("This active rivalry already exists");
+   if(duplicate.length)throw new Error("This active story already exists");
    const programmeId="programme-"+randomUUID();
    await tx.query([
     "INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,",
-    "heat,repetition,started_week_index,championship_id,programme_key)",
-    "VALUES($1,$2,$3,'ACTIVE',NULL,0,$4,$5,$6)"
+    "heat,repetition,started_week_index,championship_id,programme_key,programme_format)",
+    "VALUES($1,$2,$3,'ACTIVE',NULL,0,$4,$5,$6,$7)"
    ].join(" "),[input.worldId,input.promotionId,programmeId,currentWeek,
-    input.championshipId??null,identity]);
+    input.championshipId??null,identity,programmeFormat]);
    const inserted=await tx.query<{ref_id:string}>([
     "INSERT INTO ppw_programme_side_refs(world_id,promotion_id,programme_id,",
     "side,position,ref_kind,ref_id)",
@@ -475,10 +587,11 @@ export async function startProgramme(pool:TransactionPool,input:StartProgrammeIn
     "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)",
     "VALUES($1,$2,$3,'PROGRAMME_STARTED',",
     "jsonb_build_object('promotionId',$4::text,'programmeId',$5::text,",
-    "'participants',$6::int,'championshipId',$7::text))"
+    "'participants',$6::int,'championshipId',$7::text,'format',$8::text))"
    ].join(" "),[input.worldId,auth.year,auth.week,input.promotionId,
-    programmeId,unique.length,input.championshipId??null]);
-   return {programmeId,status:"ACTIVE" as const,participants:unique.length};
+    programmeId,unique.length,input.championshipId??null,programmeFormat]);
+   return {programmeId,status:"ACTIVE" as const,
+    programmeFormat,participants:unique.length};
   }
  });
 }
@@ -535,8 +648,7 @@ export async function chooseProgrammeFinale(pool:TransactionPool,input:Programme
  if(!valid(input.programmeId))throw new Error("Invalid rivalry");
  const clear=input.showId===null&&input.slotId===null&&input.payoff===null;
  if(!clear&&(!valid(input.showId)||!valid(input.slotId)||
-   !["DECISIVE_MATCH","TITLE_SHOWDOWN","STIPULATION_SHOWDOWN",
-     "BETRAYAL","RECONCILIATION","FINAL_CONFRONTATION"].includes(input.payoff??"")))
+   !Object.hasOwn(PROGRAMME_PAYOFFS,input.payoff??"")))
   throw new Error("Select a valid booked finale");
  return applyWorldCommand(pool,{
   worldId:input.worldId,playerId:input.playerId,requestId:input.requestId,

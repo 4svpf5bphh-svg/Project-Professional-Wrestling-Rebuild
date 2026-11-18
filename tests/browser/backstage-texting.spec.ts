@@ -214,3 +214,39 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
   });
 }
+
+test("read but still unanswered company messages remain under Requests, not Unread",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const sample={world:{revision:12,name:"Genesis",year:1,week:12,phase:"OPEN",
+  nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+  membership:"ACTIVE",promotion:{id:"local",name:"CWA",tier:"LOCAL",cash:200000,debt:0}};
+ const staffMail={id:"staff-issue-1",kind:"STAFF",sender:"Creative Director",
+  subject:"We need a fresh approach",body:"The storyline needs a different beat.",
+  action:"PROGRAMMES",createdWeekIndex:11,read:true,canStaffRespond:true};
+ const settledMail={id:"staff-settled-1",kind:"STAFF",sender:"Talent Manager",
+  subject:"Renewal decision settled",body:"Our prior reply is recorded.",
+  action:"CONTRACTS",createdWeekIndex:10,read:true,canStaffRespond:false,
+  staffResponse:{decision:"DEFER",status:"ACKNOWLEDGED",dueWeekIndex:12}};
+ await page.route("**/api/session",r=>r.fulfill({json:{worldId:"genesis",
+  playerId:"owner",csrfToken:"fixture",overview:sample,availablePromotions:[]}}));
+ await page.route("**/api/card",r=>{
+  const method=r.request().postDataJSON().method;
+  return r.fulfill({json:method==="backstage"?{
+   personId:null,personName:"",worldYear:1,worldWeek:12,worldRevision:12,canEdit:true,
+   roster:[],persona:null,archetypes:[],history:[],memories:[],recentRequests:[],
+   nextPitchWeek:0,documentedAlternates:[],conversations:[],
+   worldMessages:[staffMail,settledMail]
+  }:{}});
+ });
+ await page.goto("/#/backstage");
+ await page.getByRole("button",{name:"Requests",exact:true}).click();
+ await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(1);
+ await expect(page.locator(".ppw-backstage-world-contact")).toContainText("We need a fresh approach");
+ await expect(page.locator(".ppw-backstage-world-contact")).toContainText("REPLY");
+ await page.getByRole("button",{name:"Unread",exact:true}).click();
+ await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(0);
+ await page.getByRole("button",{name:"Staff",exact:true}).click();
+ await expect(page.locator(".ppw-backstage-world-contact")).toHaveCount(2);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

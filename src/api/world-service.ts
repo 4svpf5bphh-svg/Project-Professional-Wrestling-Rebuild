@@ -2,7 +2,8 @@ import {readTournamentWorkspace,createTournament,cancelTournament,type CreateTou
  from "../db/tournament-workspace.js";
 import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries,
  type SeriesMutation,type ArchiveSeries} from "../db/calendar-workspace.js";
-import {saveAnnualPremiumPlan,type AnnualPremiumMutation}
+import {saveAnnualPremiumPlan,renameBookedPremiumEdition,
+ type AnnualPremiumMutation,type RenameBookedPremiumInput}
  from "../db/annual-premium-calendar.js";
 import {readSixWeekPlanner,planShowWeek,saveCreativeOutline,
  type PlanWeekInput,type CreativeOutlineInput}
@@ -22,6 +23,8 @@ import {readWorkingConnections} from "../db/working-connections-workspace.js";
 import {readPortablePersonaWorkspace} from "../db/portable-persona-workspace.js";
 import {markBackstageThreadRead} from "../db/backstage-conversations.js";
 import {markWorldMailRead} from "../db/backstage-world-mail.js";
+import {chooseBackstageStoryFollowUp,type BackstageStoryFollowUpInput}
+ from "../db/backstage-story-follow-up.js";
 import {replyToBroadcaster,type NetworkReplyInput} from "../db/backstage-network-replies.js";
 import {respondToStaffMail,type StaffReplyInput} from "../db/backstage-staff-replies.js";
 import {respondToStaffDisagreement,type DisagreementInput} from "../db/backstage-staff-disagreements.js";
@@ -36,7 +39,9 @@ import {readStableWorkspace,readActiveStableChoices,
  type CreateStableInput,type ChangeStableInput,type DisbandStableInput}
  from "../db/stable-workspace.js";
 import {readProgrammeWorkspace,startProgramme,endProgramme,chooseProgrammeDirection,chooseProgrammeFinale,
- type StartProgrammeInput,type EndProgrammeInput,type ProgrammeDirectionInput,type ProgrammeFinaleInput} from "../db/programme-workspace.js";
+ saveProgrammeCreativeIntent,
+ type StartProgrammeInput,type EndProgrammeInput,type ProgrammeDirectionInput,type ProgrammeFinaleInput,
+ type ProgrammeCreativeIntentInput} from "../db/programme-workspace.js";
 import { joinWorld } from "../db/membership-operations.js";
 import { submitPromotionClaim } from "../db/promotion-commands.js";
 import { readPlayerWorldOverview } from "../db/player-world-overview.js";
@@ -498,6 +503,14 @@ export async function saveAnnualPremiumAsActor(context:WorldApiContext,
  return saveAnnualPremiumPlan(context.pool,{...input,playerId:context.actor.playerId});
 }
 
+export async function renameBookedPremiumAsActor(context:WorldApiContext,
+ input:Omit<RenameBookedPremiumInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.draftId,"show");
+ return renameBookedPremiumEdition(context.pool,
+  {...input,playerId:context.actor.playerId});
+}
+
 /** A six-week controlled promotion planner; authenticated player is trusted. */
 export async function plannerAsActor(context:WorldApiContext,worldId:string,promotionId:string){
  validate(context.actor.playerId,"actor");validate(worldId,"World");
@@ -674,6 +687,13 @@ export async function programmeFinaleAsActor(context:WorldApiContext,
  return chooseProgrammeFinale(context.pool,{...input,playerId:context.actor.playerId});
 }
 
+export async function programmeCreativeIntentAsActor(context:WorldApiContext,
+ input:Omit<ProgrammeCreativeIntentInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");
+ return saveProgrammeCreativeIntent(context.pool,{...input,playerId:context.actor.playerId});
+}
+
 export async function programmeDirectionAsActor(context:WorldApiContext,
  input:Omit<ProgrammeDirectionInput,"playerId">){
  validate(context.actor.playerId,"actor");validateMutation(input);
@@ -804,6 +824,15 @@ export async function replyToBroadcasterAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.mailId,"message");
  return replyToBroadcaster(context.pool,{...input,playerId:context.actor.playerId});
+}
+
+/** Certified character-story reply; actor and revision are server-owned. */
+export async function chooseBackstageStoryFollowUpAsActor(context:WorldApiContext,
+ input:Omit<BackstageStoryFollowUpInput,"playerId">){
+ validate(context.actor.playerId,"actor");validateMutation(input);
+ validate(input.promotionId,"promotion");validate(input.mailId,"message");
+ return chooseBackstageStoryFollowUp(context.pool,{...input,
+  playerId:context.actor.playerId});
 }
 
 /** Authenticated staff promise on a genuine current personnel concern. */

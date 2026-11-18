@@ -4,14 +4,17 @@
  * No new Neon reads, AI calls, or other persistent state.
  */
 import type {SegmentKind} from "../simulation/legacy/show-segments.js";
+import type {StoryFollowUp} from "./programme-story-follow-up.js";
 import type {AngleScene} from "./angle-scene.js";
 import {SEGMENT_BOOKING_RULES} from "./segment-booking.js";
 export interface ProgrammeAngleContext{
+ programmeFormat?:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION";
  heat:number|null;repetition:number;activityCount?:number;segmentCount?:number;
  programmeId?:string;championshipId?:string|null;
- recentActivity?:readonly {kind:string}[];
+ recentActivity?:readonly {kind:string;showId?:string;slotId?:string}[];
  lastChapter?:{kind:string;segmentKind:string|null;
   sceneLocation?:string|null;scenePurpose?:string|null}|null;
+ creativeIntent?:{followUp?:StoryFollowUp}|null;
  latestFollowUp?:{choice:"PURSUE_REMATCH"|"PLAN_RETALIATION"|"LET_STAND";
   laterMatchRecorded?:boolean;laterAngleRecorded?:boolean;
   nextMatchWeekIndex?:number|null;nextAngleWeekIndex?:number|null}|null;
@@ -45,6 +48,98 @@ const idea=(kind:SegmentKind,title:string,reason:string,minutes=5):ProgrammeAngl
  };
  return {kind,title,reason,minutes,...map[kind]};
 };
+/** A character journey, an alliance or a faction has no fictional enemy side.
+ * Recommend scenes one can book from the actual cast and editable facts.
+ * No turn, feud, victory, stable membership or relationship is presumed.
+ */
+function nonRivalProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea[]{
+ // Explicit manager response to an actual certified scene has priority.
+ const saved=p.creativeIntent?.followUp;
+ const latest=p.recentActivity?.[0];
+ // A new certified chapter supersedes the older manager response.
+ // The old choice remains visible in history, but cannot keep hijacking
+ // the next-booking suggestions after the World has genuinely moved on.
+ const choice=saved&&(!latest||!latest.showId||!latest.slotId||
+  (latest.showId===saved.sourceShowId&&latest.slotId===saved.sourceSlotId))?
+  saved.choice:null;
+ if(choice==="CHANGE_PRESENTATION"){
+  const subject=p.programmeFormat==="SOLO"?"the character":
+   p.programmeFormat==="RELATIONSHIP"?"the relationship":"the faction";
+  return [
+   idea("VIDEO_PACKAGE","Reframe the story",
+    "Introduce a different view of "+subject+" using certified scenes, without rewriting the past.",3),
+   idea("INTERVIEW","Hear a new perspective",
+    "Choose a real cast member to explain their motive. No loyalty change or turn is assumed.",6),
+   idea("PROMO","State a new direction",
+    "The booker writes what the character wants; no outcome or future match is decided.")];
+ }
+ if(choice==="SLOW_BURN")return [
+  idea("VIDEO_PACKAGE","Let the moment sink in",
+   "Recap what actually aired. Holding back escalation cannot create a new event.",3),
+  idea("INTERVIEW","Plant a quieter question",
+   "Let the selected character hint at the next chapter, not claim it already happened.",6),
+  idea("PROMO","Tease a long-term goal",
+   "Name an ambition without promising a turn, alliance, title or result.")];
+ if(choice==="BUILD_ON_REACTION"){
+  const subject=p.programmeFormat==="SOLO"?"the wrestler":
+   p.programmeFormat==="RELATIONSHIP"?"these characters":"the group's real cast";
+  return [
+   idea("PROMO","Give the reaction a purpose",
+    "Let "+subject+" set a fresh goal following the verified scene; no win or deal is granted."),
+   idea("INTERVIEW","Respond to the audience",
+    "Use genuine cast and certified events; change the beat rather than repeating a scene.",6),
+   idea("VIDEO_PACKAGE","Show what connected",
+    "Recap the performed chapter. The next outcome remains the booker's choice.",3)];
+ }
+ const started=(p.activityCount??0)>0;
+ if(p.programmeFormat==="SOLO")return started?[
+  idea("INTERVIEW","React to their latest chapter",
+   "Let the wrestler reflect on their real on-screen journey, regardless of how the last match ended.",6),
+  idea("PROMO","Set a new personal goal",
+   "Choose a clear next ambition; a declaration is not a guaranteed title opportunity.",5),
+  idea("VIDEO_PACKAGE","Show their journey",
+   "Revisit actual certified performances without inventing extra wins or setbacks.",3)
+ ]:[
+  idea("INTERVIEW","Introduce their ambition",
+   "Give the wrestler a motive before asking fans to invest in their rise.",6),
+  idea("PROMO","Make a personal statement",
+   "Let the wrestler explain their character and goals; you decide how it is received."),
+  idea("VIDEO_PACKAGE","Introduce the wrestler",
+   "Present the character and their authentic background without inventing a result.",3)
+ ];
+ if(p.programmeFormat==="RELATIONSHIP")return started?[
+  idea("INTERVIEW","Explore the bond",
+   "Use a real conversation to explore trust or doubt, without assuming a betrayal.",6),
+  idea("CELEBRATION","Share a moment",
+   "Script a public scene between the characters if it suits what has actually happened."),
+  idea("VIDEO_PACKAGE","Revisit their history",
+   "Remind viewers of certified moments rather than claiming off-screen friendship.",3)
+ ]:[
+  idea("INTERVIEW","Introduce the connection",
+   "Let these wrestlers explain why they might work together; no alliance is granted."),
+  idea("PROMO","Set a shared goal",
+   "Put the possible partnership's ambition in the ring before any success is assumed."),
+  idea("CELEBRATION","Share the spotlight",
+   "Choose how the characters interact in a real scene; no unearned victory is implied.")
+ ];
+ // Faction programmes can involve unaffiliated people. Do not insert actual
+ // stable transactions, leader roles, automatic splits or backstage promises.
+ return started?[
+  idea("INTERVIEW","Who holds the group together?",
+   "Give each character a chance to express ambition or doubt based on real events.",6),
+  idea("PROMO","Declare the group's direction",
+   "Decide who speaks for the group and what they demand, without assigning a leader."),
+  idea("VIDEO_PACKAGE","The faction's road so far",
+   "Use certified chapters to show how this group has evolved.",3)
+ ]:[
+  idea("PROMO","Present the group",
+   "Let the chosen wrestlers explain a common purpose; this is not a new stable transaction."),
+  idea("INTERVIEW","What does each person want?",
+   "Explore individual motives before a leader, alliance or betrayal is established.",6),
+  idea("CELEBRATION","Share the stage",
+   "Choose how these characters interact publicly; no shared achievement is assumed.")
+ ];
+}
 function rawProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea[]{
  const d=p.latestFollowUp;
  if(d?.choice==="PLAN_RETALIATION"&&
@@ -114,7 +209,8 @@ function rawProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea
  * lead suggestion. A rematch/retaliation promise still uses its own choices.
  */
 export function recommendProgrammeAngles(p:ProgrammeAngleContext):readonly ProgrammeAngleIdea[]{
- const ideas=rawProgrammeAngles(p);
+ const ideas=p.programmeFormat&&p.programmeFormat!=="RIVALRY"?
+  nonRivalProgrammeAngles(p):rawProgrammeAngles(p);
  const previous=p.lastChapter;
  if(previous?.kind!=="SEGMENT"||!previous.segmentKind||ideas.length<2||
   ideas[0]?.kind!==previous.segmentKind)return ideas;

@@ -1,6 +1,4 @@
 import {eventDesign} from "./broadcast-identity.js";
-import {createAnimatedEventPoster} from "./animated-event-poster.js";
-import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {createPromotionLogo} from "./promotion-logo.js";
 import {promotionBrand} from "./broadcast-identity.js";
 import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
@@ -8,7 +6,8 @@ import {seriesDue,weekIndex,type ShowSeries,type ShowRole}
 import {validateAnnualPremiumEvents,type AnnualPremiumEvent,
  type PremiumPolicy} from "../domain/annual-premium-plan.js";
 import type {StandingTier} from "../domain/annual-promotion-standing.js";
-import type {CalendarBooking} from "../db/calendar-workspace.js";
+import type {CalendarBooking,PremiumCalendarEdition}
+ from "../db/calendar-workspace.js";
 import {calendarBookingForSeries,calendarBookingLocation,calendarBookingState}
  from "./calendar-booked-show.js";
 import {calendarSeriesPreview,setSeriesCadence,SERIES_CADENCES}
@@ -23,7 +22,7 @@ export interface CalendarPort{
  canEdit:boolean;eventPosterStyle?:string|null;broadcastPackage?:string|null;series:ShowSeries[];
  broadcastSlot?:{offerCode:string;networkName:string;day:number;hour:number;
   startWeekIndex:number;endWeekIndex:number}|null;
- bookings?:CalendarBooking[];
+ bookings?:CalendarBooking[];premiumEditions?:PremiumCalendarEdition[];
  annual?:{tier:StandingTier;policyStartYear?:number;policy:PremiumPolicy;years:{
   year:number;confirmed:boolean;events:AnnualPremiumEvent[];
   suggested:AnnualPremiumEvent[]}[]};
@@ -35,6 +34,8 @@ export interface CalendarPort{
  archive(input:{requestId:string;expectedRevision:number;seriesId:string}):Promise<unknown>;
  saveAnnual?(input:{requestId:string;expectedRevision:number;
   year:number;events:AnnualPremiumEvent[]}):Promise<unknown>;
+ renameBooked?(input:{requestId:string;expectedRevision:number;draftId:string;
+  year:number;week:number;name:string}):Promise<unknown>;
 }
 const node=(tag:string,text="",css="")=>{
  const el=document.createElement(tag);el.textContent=text;el.className=css;return el;};
@@ -43,13 +44,17 @@ const label=(role:ShowRole)=>role==="FLAGSHIP"?"A show · Flagship":
  role==="PREMIUM"?"Premium PPV":"Special / PPV";
 export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>void){
  let data:Awaited<ReturnType<CalendarPort["load"]>>|null=null;
- let editing:ShowSeries|null=null,busy=false,error="",expanded=false;
+ let editing:ShowSeries|null=null,busy=false,error="";
  let mode:"mine"|"world"="mine",ppvOnly=false,manageExpanded=false;
- let fourWeekBlock=0;
  let pendingChange:{fingerprint:string;requestId:string}|null=null;
  let yearChosen:number|null=null,yearActiveWeek:number|null=null;
  const yearlyDrafts=new Map<number,AnnualPremiumEvent[]>();
  let pendingYear:{fingerprint:string;requestId:string}|null=null;
+ let pendingRename:{fingerprint:string;requestId:string}|null=null;
+ const renamedDrafts=new Map<string,string>();
+ const premiumEdition=(year:number,week:number)=>
+  (data?.premiumEditions??[]).find(x=>x.year===year&&x.week===week)??null;
+ const draftKey=(draft:PremiumCalendarEdition)=>draft.draftId;
  function button(name:string,click:()=>void,disabled=false){
   const b=node("button",name,"ppw-calendar-button") as HTMLButtonElement;
   b.type="button";b.disabled=disabled;b.onclick=click;return b;
@@ -198,7 +203,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  function yearData(){
   if(!data?.annual)return null;
   if(yearChosen===null||!data.annual.years.some(x=>x.year===yearChosen))
-   yearChosen=data.week===1?data.year:data.year+1;
+   yearChosen=data.year;
   return data.annual.years.find(x=>x.year===yearChosen)??null;
  }
  function yearEvents(year:number):AnnualPremiumEvent[]{
@@ -207,6 +212,10 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   return yearlyDrafts.get(year)??(yearRow.confirmed?yearRow.events:yearRow.suggested);
  }
  function changeYearEvent(year:number,week:number,seriesId:string|null){
+  if(premiumEdition(year,week)){
+   error="A booked or certified PPV has a protected identity. Select it to review the actual title.";
+   render();return;
+  }
   const previous=yearEvents(year).find(x=>x.week===week&&x.seriesId===seriesId);
   const without=yearEvents(year).filter(x=>x.week!==week);
   if(seriesId)without.push(previous?{...previous}:{week,seriesId});
@@ -217,6 +226,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   pendingYear=null;render();
  }
  function renameYearEvent(year:number,week:number,name:string){
+  if(premiumEdition(year,week))return;
   const current=yearEvents(year).find(x=>x.week===week);
   if(!current||!data)return;
   const seriesName=data.series.find(s=>s.seriesId===current.seriesId)?.name??"";
@@ -225,6 +235,32 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    {...e,name:trimmed&&trimmed!==seriesName?trimmed:undefined}:e);
   yearlyDrafts.set(year,revised);
   pendingYear=null;
+ }
+ async function renameBookedPremium(booking:PremiumCalendarEdition){
+  if(!data||busy||!port.renameBooked)return;
+  const name=(renamedDrafts.get(draftKey(booking))??booking.showName).trim();
+  if(!name||name.length>80){error="Enter a PPV title up to 80 characters";render();return;}
+  const input={expectedRevision:data.worldRevision,draftId:booking.draftId,
+   year:booking.year,week:booking.week,name};
+  const fingerprint=JSON.stringify(input);
+  if(!pendingRename||pendingRename.fingerprint!==fingerprint)
+   pendingRename={fingerprint,requestId:crypto.randomUUID()};
+  const requestId=pendingRename.requestId;
+  busy=true;error="";render();
+  try{
+   const result=await port.renameBooked({...input,requestId});
+   const status=result&&typeof result==="object"&&"status" in result?
+    String(result.status):"";
+   if(status==="STALE"){
+    data=await port.load();pendingRename=null;
+    throw new Error("The World changed. Review the booked title before renaming.");
+   }
+   if(status!=="APPLIED"&&status!=="REPLAYED")
+    throw new Error("The booked PPV was not renamed. Check the card and retry.");
+   data=await port.load();renamedDrafts.delete(draftKey(booking));
+   yearlyDrafts.delete(booking.year);pendingRename=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Could not rename the booked PPV";}
+  finally{busy=false;render();}
  }
  async function confirmAnnual(){
   const selected=yearData(),annual=data?.annual;
@@ -261,13 +297,18 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   if(!data?.annual)return null;
   const annual=data.annual,chosen=yearData()!;
   const rootSection=node("section","","ppw-calendar-panel ppw-calendar-year-plan");
-  rootSection.append(node("span","THE YEAR AHEAD","ppw-calendar-schedule-kicker"),
-   node("h2","Plan your PPVs"));
+  rootSection.append(node("span","TV + PREMIUM EVENTS","ppw-calendar-schedule-kicker"),
+   node("h2","Year "+chosen.year+" · Full calendar"));
   const summary=node("p",
    data.promotionName+" · "+annual.tier+" · "+
    annual.policy.minimum+"–"+annual.policy.maximum+
    " major events per 52-week year","ppw-calendar-year-subtitle");
   rootSection.append(summary);
+  rootSection.append(node("p",
+   chosen.year===data.year?
+    "CURRENT WORLD YEAR · Actual TV recurrence and this year's events":
+    "FUTURE YEAR · PPV changes affect Year "+chosen.year+" only",
+   "ppw-calendar-year-context"));
   const years=node("div","","ppw-calendar-year-toggle");
   for(const row of annual.years){
    const choose=button("Year "+row.year,()=>{
@@ -302,29 +343,47 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    const grid=node("div","","ppw-calendar-week-grid");
    for(let i=1;i<=13;i++){
     const week=quarter*13+i,edition=dated.get(week);
-    const show=edition?series.get(edition.seriesId):null;
-    const showName=edition?.name??show?.name;
+    const booked=premiumEdition(chosen.year,week);
+    const show=edition?series.get(edition.seriesId):
+     booked?series.get(booked.showSeriesId??""):null;
+    // The actual saved draft/certified title outranks the calendar preview.
+    const showName=booked?.showName??edition?.name??show?.name;
     const picked=week===yearActiveWeek;
     const date=button("W"+String(week).padStart(2,"0"),()=>{
      yearActiveWeek=week;render();
-    },!canEdit);
+    },busy);
     date.classList.add("ppw-calendar-week-button");
-    date.dataset.hasEvent=String(!!show);
+    date.dataset.hasEvent=String(!!showName);
+    date.dataset.booked=String(!!booked);
+    if(booked)date.dataset.status=booked.certified?"CERTIFIED":
+     booked.status==="SUBMITTED"?"SUBMITTED":"DRAFT";
     date.setAttribute("aria-pressed",String(picked));
-    date.setAttribute("aria-label","Year "+chosen.year+" week "+week+
-     (showName?" — "+showName:" — available"));
-    if(showName)date.append(node("small",showName));
+    if(showName)date.append(node("small",showName,
+     "ppw-calendar-year-major"));
+    if(booked)date.append(node("small",booked.certified?"CERTIFIED":
+     booked.status==="SUBMITTED"?"SUBMITTED":"BOOKED",
+     "ppw-calendar-year-edition-state"));
     const tv=data!.broadcastSlot,idx=weekIndex(chosen.year,week);
-    if(tv&&idx>=tv.startWeekIndex&&idx<=tv.endWeekIndex)
-     date.append(node("small","TV · "+
-      ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][tv.day-1],
+    const dueTv=data!.series.filter(s=>s.eventType==="REGULAR"&&
+     seriesDue(s,idx));
+    date.dataset.hasTelevision=String(dueTv.length>0);
+    const appearances=[showName,...dueTv.map(x=>x.name)].filter(Boolean);
+    date.setAttribute("aria-label","Year "+chosen.year+" week "+week+" — "+
+     (appearances.length?appearances.join(" + "):"no shows due"));
+    for(const regular of dueTv.slice(0,2)){
+     const validSlot=tv&&idx>=tv.startWeekIndex&&idx<=tv.endWeekIndex;
+     date.append(node("small",regular.name+
+      (validSlot?" · "+["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][tv.day-1]:""),
       "ppw-calendar-ppv-week-tv"));
+    }
     grid.append(date);
    }
    part.append(grid);quarters.append(part);
   }
   rootSection.append(quarters);
-  if(yearActiveWeek!==null&&canEdit){
+  const selectedBooking=yearActiveWeek===null?null:
+   premiumEdition(chosen.year,yearActiveWeek);
+  if(yearActiveWeek!==null&&canEdit&&!selectedBooking){
    const picker=node("section","","ppw-calendar-year-picker");
    picker.append(node("strong","YEAR "+chosen.year+" · WEEK "+yearActiveWeek),
     node("p","Pick an event for this week. Nothing is booked until you confirm."));
@@ -356,10 +415,13 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
      const tile=root.querySelector<HTMLButtonElement>(
       ".ppw-calendar-week-button[aria-pressed=true]");
      if(tile&&shown){
-      const title=tile.querySelector("small");
+      const title=tile.querySelector(".ppw-calendar-year-major");
       if(title)title.textContent=shown;
+      const index=weekIndex(chosen.year,yearActiveWeek!);
+      const dueNames=data!.series.filter(x=>x.eventType==="REGULAR"&&
+       seriesDue(x,index)).map(x=>x.name);
       tile.setAttribute("aria-label","Year "+chosen.year+" week "+yearActiveWeek+
-       " — "+shown);
+       " — "+[shown,...dueNames].join(" + "));
      }
     };
     named.append(name);
@@ -368,6 +430,56 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
      "Official annual event names are protected.","ppw-calendar-year-footer"));
    }
    rootSection.append(picker);
+  }
+  if(yearActiveWeek!==null&&(!canEdit||selectedBooking)){
+   const week=yearActiveWeek,index=weekIndex(chosen.year,week);
+   const due=data.series.filter(s=>s.eventType==="REGULAR"&&seriesDue(s,index));
+   const premium=dated.get(week);
+   const plannedName=premium?.name??data.series.find(s=>
+    s.seriesId===premium?.seriesId)?.name;
+   const premiumName=selectedBooking?.showName??plannedName;
+   const detail=node("section","","ppw-calendar-year-picker");
+   detail.append(node("strong","Year "+chosen.year+" · Week "+week));
+   for(const tv of due)detail.append(node("p",
+    tv.name+" · "+(tv.cadenceWeeks===1?"weekly":
+     tv.cadenceWeeks===2?"alternate-week":"every "+tv.cadenceWeeks+" weeks")+" TV"));
+   if(premiumName)detail.append(node("p","PPV / special · "+premiumName));
+   if(selectedBooking){
+    detail.append(node("strong",selectedBooking.certified?"CERTIFIED SHOW":
+     selectedBooking.status==="SUBMITTED"?"SUBMITTED CARD":
+     selectedBooking.ready?"CARD READY":"EDITABLE BOOKED DRAFT"));
+    if(plannedName&&plannedName!==selectedBooking.showName)
+     detail.append(node("p",
+      "The annual title says “"+plannedName+"”, but the actual booked show remains “"+
+      selectedBooking.showName+"”. It will not be renamed automatically.",
+      "ppw-calendar-year-name-warning"));
+    const offset=index-weekIndex(data.year,data.week);
+    const renamable=!!port.renameBooked&&data.canEdit&&
+     selectedBooking.status==="DRAFT"&&!selectedBooking.ready&&
+     !selectedBooking.certified&&offset>=0&&offset<=6;
+    if(renamable){
+     const named=node("label","","ppw-calendar-year-edition");
+     named.append(node("span","Rename booked PPV"));
+     const name=document.createElement("input");
+     name.type="text";name.maxLength=80;
+     name.setAttribute("aria-label","Rename booked PPV");
+     name.value=renamedDrafts.get(draftKey(selectedBooking))??selectedBooking.showName;
+     name.oninput=()=>{renamedDrafts.set(draftKey(selectedBooking),name.value);
+      pendingRename=null;};
+     named.append(name);detail.append(named,
+      button("Save booked PPV title",()=>void renameBookedPremium(selectedBooking)));
+     detail.append(node("small",
+      "Explicit rename updates this unsubmitted card and its confirmed annual edition together. Matches and booking rules stay unchanged.",
+      "ppw-calendar-year-footer"));
+    }else detail.append(node("small",
+     "Submitted, certified or ready cards keep their actual title. Editable drafts can only be renamed in the six-week booking window.",
+     "ppw-calendar-year-footer"));
+   }
+   if(!due.length&&!premiumName)detail.append(node("p","No show due this week"));
+   if(lockedCurrent)detail.append(node("small",
+    "Current-year commitments are locked. Select Year "+(data.year+1)+
+    " to plan future annual PPV dates.","ppw-calendar-year-footer"));
+   rootSection.append(detail);
   }
   if(canEdit){
    rootSection.append(button("Use recommended dates",()=>{
@@ -379,7 +491,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    commit.classList.add("ppw-calendar-year-confirm");rootSection.append(commit);
   }
   rootSection.append(node("small",
-   "A confirmed year reserves show names and weeks only. TV broadcasts keep their contracted slots; PPV cards, venues and costs are planned closer to the event.",
+   "TV follows its actual recurrence. PPV dates and names are saved per World year.",
    "ppw-calendar-year-footer"));
   return rootSection;
  }
@@ -421,24 +533,21 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  }
  function ownTile(s:ShowSeries,year:number,week:number,
   due:readonly ShowSeries[],owner?:string){
-  const card=eventTile(s.name,s.role,s.eventType,owner);
-  const chosenArtwork=s.eventType==="MAJOR"?
-   createAnimatedEventPoster({style:s.posterStyle??data?.eventPosterStyle,
-    eventName:s.name,promotionName:owner??data?.promotionName??"",compact:true}):
-   createBroadcastPackageFrame({style:data?.broadcastPackage,kind:"OPEN",
-    show:s.name,promotion:owner??data?.promotionName??"",compact:true});
-  if(chosenArtwork){
-   chosenArtwork.classList.add("ppw-calendar-owned-poster");
-   card.dataset.hasArtwork="true";
-   card.querySelector(".ppw-calendar-artwork-shell")?.replaceWith(chosenArtwork);
-   card.dataset.animatedPoster=String(s.eventType==="MAJOR");
-  }
+  const booking=calendarBookingForSeries(s,year,week,due,data?.bookings??[]);
+  const actualName=booking?.showName??
+   (s.eventType==="MAJOR"?premiumEdition(year,week)?.showName:null)??s.name;
+  const card=eventTile(actualName,s.role,s.eventType,owner);
+  // The annual calendar is a compact agenda; art remains on show/results.
+  card.classList.add("ppw-calendar-event-compact");
+  card.querySelector(".ppw-calendar-artwork-shell")?.remove();
+  card.querySelector(".ppw-calendar-event-emblem")?.remove();
+  card.querySelector(".ppw-calendar-owner-mark")?.remove();
+  card.prepend(node("strong",actualName,"ppw-calendar-compact-title"));
   const slot=data?.broadcastSlot,index=weekIndex(year,week);
   if(s.eventType==="REGULAR"&&slot&&index>=slot.startWeekIndex&&index<=slot.endWeekIndex)
    card.append(node("span",slot.networkName+" · "+
     ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][slot.day-1]+" "+
     String(slot.hour).padStart(2,"0")+":00","ppw-calendar-tv-slot"));
-  const booking=calendarBookingForSeries(s,year,week,due,data?.bookings??[]);
   const offset=weekIndex(year,week)-weekIndex(data!.year,data!.week);
   const near=offset>=0&&offset<6;
   if(booking){
@@ -462,79 +571,6 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     })));
   }
   return card;
- }
-
- /** Browse the existing certified 52-week schedule in month-like four-week
-  * windows. No invented Gregorian dates, second booking ledger, or Neon read. */
- function fourWeekNavigator():HTMLElement|null{
-  if(!data)return null;
-  const source=mode==="mine"?data.weeks.slice(0,52).map(w=>({
-   year:w.year,week:w.week,offset:w.offset,
-   events:w.shows.map(e=>({name:e.name,eventType:e.eventType}))
-  })):(data.worldWeeks??[]).map(w=>({
-   year:w.year,week:w.week,offset:w.offset,
-   events:w.events.map(e=>({name:e.name,eventType:e.eventType}))
-  }));
-  if(!source.length)return null;
-  const total=Math.ceil(source.length/4);
-  fourWeekBlock=Math.max(0,Math.min(fourWeekBlock,total-1));
-  const slice=source.slice(fourWeekBlock*4,fourWeekBlock*4+4);
-  const first=slice[0]!,last=slice[slice.length-1]!;
-  const panel=node("section","","ppw-calendar-four-week");
-  panel.setAttribute("aria-label","Four-week show calendar");
-  const heading=node("div","","ppw-calendar-four-week-header");
-  const labels=node("div","","ppw-calendar-four-week-title");
-  labels.append(node("small","FOUR-WEEK OVERVIEW","ppw-calendar-schedule-kicker"),
-   node("h3",first.year===last.year?
-    "Year "+first.year+" · Weeks "+first.week+"–"+last.week:
-    "Y"+first.year+" W"+first.week+" – Y"+last.year+" W"+last.week));
-  const controls=node("div","","ppw-calendar-four-week-controls");
-  const prev=button("Previous four weeks",()=>{fourWeekBlock--;render();},fourWeekBlock===0);
-  const next=button("Next four weeks",()=>{fourWeekBlock++;render();},fourWeekBlock===total-1);
-  controls.append(prev,next);heading.append(labels,controls);panel.append(heading);
-  const grid=node("div","","ppw-calendar-four-week-grid");
-  grid.setAttribute("role","group");grid.setAttribute("aria-label","Select a show week");
-  const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  for(const w of slice){
-   const visible=ppvOnly?w.events.filter(e=>e.eventType==="MAJOR"):w.events;
-   const key=w.year+"-"+w.week;
-   const tile=button("",()=>{
-    if(mode==="mine"&&!ppvOnly&&w.offset>=12)expanded=true;
-    render();
-    const target=root.querySelector<HTMLElement>(
-     '.ppw-calendar-occurrence[data-week="'+key+'"]');
-    target?.scrollIntoView({behavior:window.matchMedia(
-     "(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
-   },!visible.length);
-   tile.classList.add("ppw-calendar-four-week-tile");
-   tile.dataset.week=key;
-   tile.dataset.current=String(weekIndex(w.year,w.week)===
-    weekIndex(data.year,data.week));
-   tile.dataset.major=String(visible.some(e=>e.eventType==="MAJOR"));
-   tile.setAttribute("aria-label","View Year "+w.year+" Week "+w.week+
-    " in the show list: "+(visible.length?visible.map(e=>e.name).join(", "):"no events"));
-   tile.append(node("strong","W"+String(w.week).padStart(2,"0")),
-    node("small","YEAR "+w.year,"ppw-calendar-four-week-year"));
-   for(const event of visible.slice(0,2)){
-    const line=node("span",event.name,"ppw-calendar-four-week-event");
-    line.dataset.major=String(event.eventType==="MAJOR");tile.append(line);
-    const slot=data.broadcastSlot,idx=weekIndex(w.year,w.week);
-    if(mode==="mine"&&event.eventType==="REGULAR"&&slot&&
-     idx>=slot.startWeekIndex&&idx<=slot.endWeekIndex)
-     tile.append(node("small",days[slot.day-1]+" · "+
-      String(slot.hour).padStart(2,"0")+":00","ppw-calendar-four-week-day"));
-   }
-   if(visible.length>2)
-    tile.append(node("small","+"+(visible.length-2)+" more",
-     "ppw-calendar-four-week-more"));
-   if(!visible.length)
-    tile.append(node("span","No shows announced","ppw-calendar-four-week-empty"));
-   grid.append(tile);
-  }
-  panel.append(grid,node("small",
-   "Select a week for its existing booking details. TV broadcast days are fixed by contract.",
-   "ppw-calendar-four-week-help"));
-  return panel;
  }
 
  function render(){
@@ -592,7 +628,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
   const tabs=node("div","","ppw-calendar-view-tabs");
   tabs.setAttribute("role","group");tabs.setAttribute("aria-label","Calendar view");
   for(const [value,title] of [["mine","My shows"],["world","Across the World"]] as const){
-   const option=button(title,()=>{mode=value;fourWeekBlock=0;render();});
+   const option=button(title,()=>{mode=value;render();});
    option.setAttribute("aria-pressed",String(mode===value));tabs.append(option);
   }
   upcoming.append(tabs);
@@ -600,10 +636,14 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    const tv=data.broadcastSlot,current=weekIndex(data.year,data.week);
    if(tv.endWeekIndex>=current){
     const line=node("div","","ppw-calendar-network-term");
-    line.append(node("strong","WEEKLY TELEVISION · "+tv.networkName),
+    const regular=data.series.find(s=>s.role==="FLAGSHIP"&&s.active);
+    const cadence=regular?.cadenceWeeks===1?"WEEKLY":
+     regular?.cadenceWeeks===2?"ALTERNATE-WEEK":
+     "EVERY "+(regular?.cadenceWeeks??"?")+" WEEKS";
+    line.append(node("strong",cadence+" TELEVISION · "+tv.networkName),
      node("span",["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][tv.day-1]+
       " · "+String(tv.hour).padStart(2,"0")+":00 · Fixed by your contract"),
-     node("small","Future episodes appear automatically while the agreement is active. Plan their venues and cards closer to each week."));
+     node("small","Only due broadcasts appear on the calendar. Your contracted day and time stay fixed."));
     upcoming.append(line);
    }
   }
@@ -614,10 +654,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     option.setAttribute("aria-pressed",String(ppvOnly===selected));filters.append(option);
    }
    upcoming.append(filters);
-   const navigator=fourWeekNavigator();
-   if(navigator)upcoming.append(navigator);
    let rendered=0;
-   for(const w of (ppvOnly?data.weeks:data.weeks.slice(0,expanded?52:12))){
+   for(const w of data.weeks.slice(0,6)){
     const shows=ppvOnly?w.shows.filter(s=>s.eventType==="MAJOR"):w.shows;
     if(!shows.length)continue;
     const article=node("article","","ppw-calendar-occurrence"+
@@ -631,12 +669,10 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     upcoming.append(article);rendered++;
    }
    if(!rendered)upcoming.append(node("p",ppvOnly?
-    "No premium events or specials are announced in the current calendar year.":
-    "No upcoming events are scheduled. Manage recurring events to add a show.",
+    "No PPVs or specials are due in the next six weeks.":
+    "No shows are due in the next six weeks.",
     "ppw-calendar-empty"));
-   if(!ppvOnly)upcoming.append(button(expanded?"Show fewer weeks":"View full 52-week year",()=>{
-    expanded=!expanded;render();
-   }));
+
   }else{
    upcoming.append(node("p","See what rival promotions have announced. Their venues and future match cards remain under wraps."));
    const filters=node("div","","ppw-calendar-type-tabs");
@@ -645,8 +681,6 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     option.setAttribute("aria-pressed",String(ppvOnly===selected));filters.append(option);
    }
    upcoming.append(filters);
-   const navigator=fourWeekNavigator();
-   if(navigator)upcoming.append(navigator);
    let rendered=0;
    for(const w of data.worldWeeks??[]){
     const visible=ppvOnly?w.events.filter(e=>e.eventType==="MAJOR"):w.events;

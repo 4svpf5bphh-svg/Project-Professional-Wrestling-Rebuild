@@ -19,18 +19,22 @@ test("a booked programme finale cannot close a feud until its exact angle happen
  const scope={worldId,promotionId,playerId};
  let programmeId="";
  const receipt=(showId:string,week:number,slotId:string,
-  outcome:"HAPPENS"|"REFUSED"|"INTERRUPTED"):CompletedShowReceipt=>({
+  outcome:"HAPPENS"|"REFUSED"|"INTERRUPTED",
+  kind:"CONFRONTATION"|"PROMO"="CONFRONTATION"):CompletedShowReceipt=>({
   worldId,promotionId,showId,year:1,week,
   resolutionId:"resolution-"+showId,crowdResponse:75,matches:[],
-  segments:[{slotId,position:0,kind:"CONFRONTATION",
+  segments:[{slotId,position:0,kind,
    outcome,crowdResponse:79}]
  });
- const payload=(slotId:string)=>({slotId,kind:"CONFRONTATION",
+ const payload=(slotId:string,kind:"CONFRONTATION"|"PROMO"="CONFRONTATION")=>({slotId,kind,
   actorIds:[alice],targetIds:[bob],outcome:"HAPPENS",
   participants:[{personId:alice,contractId:"contract-a-"+uuid},
    {personId:bob,contractId:"contract-b-"+uuid}],
-  durationMinutes:5,creativeBeat:{kind:"CONFRONTATION",ending:"STAREDOWN"}});
- const prepare=async(showId:string,week:number,slotId:string)=>{
+  durationMinutes:5,creativeBeat:kind==="PROMO"?
+   {kind:"PROMO",purpose:"STATEMENT_OF_INTENT"}:
+   {kind:"CONFRONTATION",ending:"STAREDOWN"}});
+ const prepare=async(showId:string,week:number,slotId:string,
+  kind:"CONFRONTATION"|"PROMO"="CONFRONTATION")=>{
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("INSERT INTO ppw_booking_drafts("+
     "world_id,draft_id,promotion_id,year,week,status)"+
@@ -38,7 +42,7 @@ test("a booked programme finale cannot close a feud until its exact angle happen
    await tx.query("INSERT INTO ppw_card_slots("+
     "world_id,draft_id,slot_id,position,kind,payload)"+
     " VALUES($1,$2,$3,0,'SEGMENT',$4::jsonb)",
-    [worldId,showId,slotId,JSON.stringify(payload(slotId))]);
+    [worldId,showId,slotId,JSON.stringify(payload(slotId,kind))]);
    await tx.query("INSERT INTO ppw_programme_match_activities("+
     "world_id,promotion_id,programme_id,draft_id,slot_id,kind)"+
     " VALUES($1,$2,$3,$4,$5,'SEGMENT')",
@@ -46,8 +50,9 @@ test("a booked programme finale cannot close a feud until its exact angle happen
   });
  };
  const complete=async(showId:string,week:number,slotId:string,
-  outcome:"HAPPENS"|"REFUSED"|"INTERRUPTED")=>{
-  const r=receipt(showId,week,slotId,outcome);
+  outcome:"HAPPENS"|"REFUSED"|"INTERRUPTED",
+  kind:"CONFRONTATION"|"PROMO"="CONFRONTATION")=>{
+  const r=receipt(showId,week,slotId,outcome,kind);
   return withWorldTransaction(db.pool,async tx=>{
    await tx.query("UPDATE ppw_booking_drafts SET status='SUBMITTED'"+
     " WHERE world_id=$1 AND draft_id=$2",[worldId,showId]);
@@ -118,12 +123,14 @@ test("a booked programme finale cannot close a feud until its exact angle happen
   assert.equal(current.finale?.resolvedWeekIndex,null);
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]));
-  await prepare("week2",2,"final-faceoff");
+  // A solo promo is a valid owner-authored final chapter: no compulsory
+  // betrayal, attack, alliance, title change or actual match is invented.
+  await prepare("week2",2,"final-faceoff","PROMO");
   const replanned=await chooseProgrammeFinale(db.pool,{...scope,programmeId,
    requestId:"plan-2",expectedRevision:2,
-   showId:"week2",slotId:"final-faceoff",payoff:"FINAL_CONFRONTATION"});
+   showId:"week2",slotId:"final-faceoff",payoff:"FINAL_CHAPTER"});
   assert.equal(replanned.status,"APPLIED");
-  const resolved=await complete("week2",2,"final-faceoff","HAPPENS");
+  const resolved=await complete("week2",2,"final-faceoff","HAPPENS","PROMO");
   assert.deepEqual(resolved,{recorded:1,programmes:1});
   view=await readProgrammeWorkspace(db.pool,scope);
   current=view.programmes.find(x=>x.programmeId===programmeId)!;
@@ -199,7 +206,7 @@ test("a booked programme finale cannot close a feud until its exact angle happen
    settleCompletedProgrammeHistory(tx,{
     worldId,promotionId,showId:"week2",year:1,week:2,
     eventImportance:75,matches:[]
-   },receipt("week2",2,"final-faceoff","HAPPENS"))),
+   },receipt("week2",2,"final-faceoff","HAPPENS","PROMO"))),
    {recorded:0,programmes:0});
  }finally{
   await withWorldTransaction(db.pool,async tx=>{

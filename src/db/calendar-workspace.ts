@@ -32,6 +32,10 @@ export interface CalendarBooking {
  day:number|null;venueName:string|null;marketName:string|null;
  ready:boolean;
 }
+export interface PremiumCalendarEdition{
+ draftId:string;year:number;week:number;showSeriesId:string|null;
+ showName:string;status:"DRAFT"|"SUBMITTED";ready:boolean;certified:boolean;
+}
 type Owner={name:string;tier:StandingTier;year:number;week:number;
  premium_plan_start_year:number;revision:string|number;
  booking_open:boolean;cadence:number;major_interval:number|null;annual_plans:unknown;event_poster:string|null;broadcast_package:string|null;
@@ -137,7 +141,8 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    cadence_weeks:number|null;anchor_week:number|null;
    importance:number|null;earned_prestige:number|null;
    celebrated_editions:number|null;last_celebrated_week_index:number|null;
-   poster_style:string|null;owned_bookings:unknown;annual_plans:unknown;
+   poster_style:string|null;owned_bookings:unknown;premium_editions:unknown;
+    annual_plans:unknown;
   }>([
    "SELECT p.promotion_id,p.name AS promotion_name,p.tier,p.management_mode,",
    "EXISTS(SELECT 1 FROM ppw_promotion_controls active_control",
@@ -174,7 +179,27 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    "LEFT JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id",
    "LEFT JOIN ppw_markets market ON market.world_id=d.world_id",
    "AND market.market_id=d.market_id)",
-   "END AS owned_bookings",
+   "END AS owned_bookings,",
+   // A bounded current+next-year owner-only aggregate; no additional query
+   // and no private booking information leaked to rival public calendars.
+   "CASE WHEN row_number() OVER(ORDER BY p.promotion_id,s.series_id)=1 THEN",
+   "(SELECT coalesce(jsonb_agg(jsonb_build_object(",
+   "'draftId',d.draft_id,'year',d.year,'week',d.week,",
+   "'showSeriesId',d.show_series_id,'showName',coalesce(d.show_name,'Premium event'),",
+   "'status',d.status,'ready',d.lock_ready_fingerprint IS NOT NULL,",
+   "'certified',done.show_id IS NOT NULL) ORDER BY d.year,d.week,d.draft_id),'[]'::jsonb)",
+   "FROM (SELECT draft_id,world_id,year,week,show_series_id,show_name,",
+   "status,lock_ready_fingerprint FROM ppw_booking_drafts",
+   "WHERE world_id=$1 AND promotion_id=$2 AND booking_class='PREMIUM'",
+   "AND year BETWEEN w.year AND w.year+1 AND",
+   "(status IN ('DRAFT','SUBMITTED') OR EXISTS(",
+   "SELECT 1 FROM ppw_completed_shows completed",
+   "WHERE completed.world_id=ppw_booking_drafts.world_id",
+   "AND completed.show_id=ppw_booking_drafts.draft_id))",
+   "ORDER BY year,week,draft_id LIMIT 53) d",
+   "LEFT JOIN ppw_completed_shows done ON done.world_id=d.world_id",
+   "AND done.show_id=d.draft_id)",
+   "END AS premium_editions",
    "FROM ppw_promotions p JOIN ppw_worlds w ON w.world_id=p.world_id",
    "LEFT JOIN ppw_show_series s ON s.world_id=p.world_id",
    "AND s.promotion_id=p.promotion_id AND s.active",
@@ -204,6 +229,27 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
     bookingClass:b.bookingClass,showSeriesId:b.showSeriesId,
     showName:b.showName,status:b.status,day:b.day,venueName:b.venueName,
     marketName:b.marketName,ready:b.ready} as CalendarBooking;
+  });
+  const rawEditions=rows.find(row=>Array.isArray(row.premium_editions))?.premium_editions;
+  if(rawEditions!==undefined&&!Array.isArray(rawEditions))
+   throw new Error("Invalid private premium edition snapshot");
+  if((rawEditions?.length??0)>52)
+   throw new Error("Premium edition identity budget exceeded");
+  const premiumEditions:PremiumCalendarEdition[]=(rawEditions??[]).map((raw:unknown)=>{
+   if(!raw||typeof raw!=="object"||Array.isArray(raw))
+    throw new Error("Invalid booked premium edition");
+   const b=raw as Record<string,unknown>;
+   if(!validId(b.draftId)||!Number.isSafeInteger(b.year)||
+    !Number.isSafeInteger(b.week)||(b.week as number)<1||
+    (b.week as number)>52||typeof b.showName!=="string"||
+    (b.showSeriesId!==null&&typeof b.showSeriesId!=="string")||
+    !["DRAFT","SUBMITTED"].includes(b.status as string)||
+    typeof b.ready!=="boolean"||typeof b.certified!=="boolean")
+    throw new Error("Invalid protected premium edition identity");
+   return {draftId:b.draftId as string,year:b.year as number,week:b.week as number,
+    showSeriesId:b.showSeriesId as string|null,showName:b.showName as string,
+    status:b.status as "DRAFT"|"SUBMITTED",ready:b.ready as boolean,
+    certified:b.certified as boolean};
   });
   // Fold both years of *public* annual identities into the existing
   // per-promotion World read. Zero additional SQL network round-trips.
@@ -294,7 +340,8 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
   }));
   return {annual:{tier:owned.tier,policyStartYear:owned.premium_plan_start_year,
    policy:premiumPolicy(owned.tier),
-    years:annualYears},worldWeeks,bookings,eventPosterStyle:owned.event_poster,
+    years:annualYears},worldWeeks,bookings,premiumEditions,
+     eventPosterStyle:owned.event_poster,
     broadcastPackage:owned.broadcast_package,broadcastSlot,
     promotionId:scope.promotionId,promotionName:owned.name,year:owned.year,week:owned.week,
    worldRevision:Number(owned.revision),canEdit:owned.booking_open,

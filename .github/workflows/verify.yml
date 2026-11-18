@@ -758,6 +758,56 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0151_promotion_creative_outline.sql
+      - name: Allow any certified on-screen scene to close a real storyline
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0152_any_angle_programme_finale.sql
+      - name: Prove any-angle finale migration leaves existing data intact on retry
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0152_any_angle_programme_finale.sql
+      - name: Preserve original finale timing and enable any-angle payoff safely
+        env:
+          PGPASSWORD: ppw_test
+        run: |
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conrelid='ppw_programme_finales'::regclass
+                AND contype='c'
+                AND pg_get_constraintdef(oid) ILIKE '%resolved_week_index%'
+                AND pg_get_constraintdef(oid) ILIKE '%planned_week_index%'
+            ) THEN
+              RAISE EXCEPTION 'Original finale timing check was lost';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conrelid='ppw_programme_finales'::regclass
+                AND conname='ppw_programme_finales_any_angle_payoff_check'
+            ) THEN
+              RAISE EXCEPTION 'Any-angle certified finale check missing';
+            END IF;
+          END
+          $$;
+          SQL
+      - name: Install Programme creative direction on disposable World
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0153_programme_creative_intent.sql
+      - name: Verify the Programme creative migration remains idempotent
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0153_programme_creative_intent.sql
+      - name: Install solo, relationship and faction Programme formats on disposable World
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0154_programme_story_formats.sql
+      - name: Verify original rivalry identities survive Programme format migration retry
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0154_programme_story_formats.sql
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test

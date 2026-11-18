@@ -5,6 +5,7 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {projectShowBreakdown} from "./show-breakdown.js";
+import {segmentTemperature} from "../domain/segment-temperature.js";
 import {programmeBroadcastRecap,programmeManagementNote}
  from "../domain/verified-programme-broadcast.js";
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
@@ -409,9 +410,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(entry.fallout?.ratingStars!==undefined)
    append(meta,node("span","ppw-result-rating",
     "★ "+entry.fallout.ratingStars.toFixed(2)+" / 5"));
-  if(entry.type==="SEGMENT"&&entry.segmentRatingStars!==undefined)
-   append(meta,node("span","ppw-result-angle-grade",
-    "SEGMENT ★ "+entry.segmentRatingStars.toFixed(2)+" / 5"));
+  if(entry.type==="SEGMENT"&&typeof entry.segmentRatingStars==="number"){
+   const warmth=segmentTemperature(entry.segmentRatingStars);
+   if(warmth){
+    const tag=node("span","ppw-result-angle-grade ppw-segment-temperature",
+     "ANGLE · "+warmth.label.toUpperCase());
+    tag.dataset.temperature=warmth.tone;
+    tag.title="Certified segment execution · "+entry.segmentRatingStars.toFixed(2)+" / 5";
+    append(meta,tag);
+   }
+  }
   if(entry.fallout?.actualMinutes!==undefined)
    append(meta,node("span","ppw-result-minutes",
     entry.fallout.actualMinutes+" MIN"));
@@ -432,6 +440,12 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   summary.append(trail);
   append(details,summary);
   const body=node("div","ppw-result-story");
+  if(entry.type==="SEGMENT"&&typeof entry.segmentRatingStars==="number"){
+   const warmth=segmentTemperature(entry.segmentRatingStars);
+   if(warmth)body.append(node("p","ppw-segment-score-detail",
+    "Certified angle execution · "+entry.segmentRatingStars.toFixed(2)+
+    " / 5 · "+warmth.description));
+  }
   const narrative=node("div","ppw-ringside-slot");
   narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
   append(body,narrative);
@@ -643,7 +657,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  // All three chapters reuse one immutable completed show; no extra reads.
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
  let premiumOpening:HTMLElement|null=null;
- let televisionOpening=false;
+ let televisionOpening:HTMLElement|null=null;
  // A permanent television identity, before the actual Results Skin report.
  // The certified narrative, manager analysis and results are untouched.
  if(poster){
@@ -668,17 +682,19 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    promotion:show.promotionName??"PPW",show:show.showName??"Weekly show"});
   if(opening){
    const wrap=node("section","ppw-tv-opening-wrap");
-   wrap.append(opening);headlines.append(wrap);
-   televisionOpening=true;
+   wrap.append(opening);televisionOpening=wrap;
   }
  }
- // The purchased TV opening already names this certified show. Repeating a
- // second giant title-banner directly below it added no useful information.
- // Preserve normal Results Skin and PPV header behaviour without a TV frame.
- headlines.append(...(televisionOpening?[]:[header]),
-  ...(featured.length?[highlights]:[]));
+ // Headlines stay a lightweight chapter. The actual branded opening belongs
+ // at the start of the full broadcast, which is the default results screen.
+ if(televisionOpening){
+  headlines.append(node("h2","ppw-headlines-show-name",
+   show.showName??"The completed show"));
+ }else headlines.append(header);
+ if(featured.length)headlines.append(highlights);
  const full=node("section","ppw-results-page");full.dataset.page="full";
  if(premiumOpening)full.append(premiumOpening);
+ else if(televisionOpening)full.append(televisionOpening);
  else{
   const identity=node("header","ppw-results-show-intro");
   identity.append(node("span","ppw-eyebrow","PPW / RINGSIDE"),
@@ -756,8 +772,18 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   const meta=node("div","ppw-breakdown-meta");
   meta.append(node("strong","","#"+(entry.position+1)+" · "+entry.kind),
    node("span","","CROWD "+Math.round(entry.crowd)+"/100"));
-  if(entry.stars!==null)meta.append(node("span","ppw-breakdown-stars",
-   "★ "+entry.stars.toFixed(2)+"/5"));
+  if(entry.kind==="MATCH"&&entry.stars!==null)
+   meta.append(node("span","ppw-breakdown-stars","★ "+entry.stars.toFixed(2)+"/5"));
+  if(entry.kind==="ANGLE"&&entry.segmentStars!==null){
+   const warmth=segmentTemperature(entry.segmentStars);
+   if(warmth){
+    const tag=node("span","ppw-segment-temperature",
+     "ANGLE · "+warmth.label.toUpperCase());
+    tag.dataset.temperature=warmth.tone;
+    tag.title="Certified segment execution · "+entry.segmentStars.toFixed(2)+"/5";
+    meta.append(tag);
+   }
+  }
   if(entry.minutes!==null)meta.append(node("span","",entry.minutes+" MIN"));
   card.append(meta,node("h3","",entry.headline),
    node("p","ppw-breakdown-cast",entry.participants));

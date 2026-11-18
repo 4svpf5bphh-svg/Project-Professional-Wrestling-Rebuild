@@ -39,21 +39,21 @@ for(const width of [320,390]){
   });
   await page.goto("/#/calendar");
   await expect(page.getByRole("heading",{name:"Show Calendar"})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Plan your PPVs"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Year 1 · Full calendar"})).toBeVisible();
   await expect(page.locator(".ppw-calendar-quarter")).toHaveCount(4);
   await expect(page.locator(".ppw-calendar-week-button")).toHaveCount(52);
   await expect(page.getByText("Suggested for Year 1")).toBeVisible();
-  const week20=page.getByRole("button",{name:"Year 1 week 20 — available"});
+  const week20=page.getByRole("button",{name:"Year 1 week 20 — CWA Weekly"});
   await week20.click();
   await page.locator(".ppw-calendar-year-picker").getByRole("button",
    {name:"CWA Premium"}).click();
   await page.getByLabel("PPV edition name").fill("CWA Summer Slam");
-  await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Summer Slam"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Summer Slam + CWA Weekly"})).toBeVisible();
   // Choosing the same branded series again must not erase a manually named
   // edition before the manager confirms the year's dates.
   await page.locator(".ppw-calendar-year-picker")
    .getByRole("button",{name:"CWA Premium"}).click();
-  await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Summer Slam"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Summer Slam + CWA Weekly"})).toBeVisible();
   await page.getByRole("button",{name:"Confirm Year 1"}).click();
   await expect(page.getByText("Confirmed for Year 1")).toBeVisible();
   expect(saves).toHaveLength(1);
@@ -101,11 +101,11 @@ test("stale World revision preserves selected PPVs without falsely reporting suc
   return route.fulfill({json:{status:"APPLIED",revision:6}});
  });
  await page.goto("/#/calendar");
- await page.getByRole("button",{name:"Year 1 week 20 — available"}).click();
+ await page.getByRole("button",{name:"Year 1 week 20 — CWA Weekly"}).click();
  await page.locator(".ppw-calendar-year-picker").getByRole("button",{name:"CWA Premium"}).click();
  await page.getByRole("button",{name:"Confirm Year 1"}).click();
  await expect(page.getByText(/chosen PPV dates are preserved/)).toBeVisible();
- await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Premium"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Year 1 week 20 — CWA Premium + CWA Weekly"})).toBeVisible();
  await page.getByRole("button",{name:"Confirm Year 1"}).click();
  expect(saves).toHaveLength(2);
  expect(saves.map(s=>s.expectedRevision)).toEqual([4,5]);
@@ -122,10 +122,10 @@ test("ongoing save keeps its original year untouched and opens next-year PPV pla
   return route.fulfill({json:calendar(4,false,suggested,36)});
  });
  await page.goto("/#/calendar");
- await expect(page.getByRole("button",{name:"Year 2",exact:true})).toHaveAttribute("aria-pressed","true");
- await expect(page.getByText("Suggested for Year 2")).toBeVisible();
- await page.getByRole("button",{name:"Year 1",exact:true}).click();
+ await expect(page.getByRole("button",{name:"Year 1",exact:true})).toHaveAttribute("aria-pressed","true");
  await expect(page.getByText(/This year's existing dates stay protected/)).toBeVisible();
+ await page.getByRole("button",{name:"Year 2",exact:true}).click();
+ await expect(page.getByText("Suggested for Year 2")).toBeVisible();
  await expect(page.getByRole("button",{name:"Confirm Year 1"})).toHaveCount(0);
  expect(writes).toBe(0);
 });

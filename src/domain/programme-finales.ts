@@ -2,7 +2,9 @@
  * Both planning and canonical certification use this exact eligibility table.
  * No scripted winner, alliance or wrestler choice is manufactured here.
  */
+import {SEGMENT_BOOKING_RULES} from "./segment-booking.js";
 export const PROGRAMME_PAYOFFS={
+ FINAL_CHAPTER:"Final chapter · this scene ends the story",
  DECISIVE_MATCH:"Decisive final match",
  TITLE_SHOWDOWN:"Championship showdown",
  STIPULATION_SHOWDOWN:"Final stipulation match",
@@ -29,7 +31,11 @@ export function eligibleProgrammePayoffs(kind:FinaleSlotKind,payload:unknown):re
     data.stipulation!=="STANDARD")available.push("STIPULATION_SHOWDOWN");
   return available;
  }
- return typeof data.kind==="string"?anglePayoffs[data.kind]??[]:[];
+ if(typeof data.kind!=="string"||!Object.hasOwn(SEGMENT_BOOKING_RULES,data.kind))
+  return [];
+ // Every genuine, linked on-screen scene can conclude the Programme.
+ // Specific betrayals/reconciliations remain available but are not mandatory.
+ return ["FINAL_CHAPTER",...(anglePayoffs[data.kind]??[])];
 }
 export function certifiedFinaleDelivered(input:{
  kind:FinaleSlotKind;payoff:ProgrammePayoff;payload:unknown;

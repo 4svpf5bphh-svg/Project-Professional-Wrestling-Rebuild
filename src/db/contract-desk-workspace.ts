@@ -158,15 +158,24 @@ export async function readContractDesk(
     o.submitted_week_index DESC,o.offer_id DESC LIMIT 200`,
    [worldId,promotionId,currentWeekIndex]);
   const pendingOffers=offers.filter(o=>o.status==="PENDING");
+  const awaitingRenewalOfferIds=new Set(pendingOffers
+   .map(o=>o.source_contract_id).filter((id):id is string=>id!==null));
   const decidedOffers=offers.filter(o=>o.status!=="PENDING").slice(0,8);
+  const awaitingSameTermsIds=new Set(renewals.map(r=>r.contract_id));
   const byContract=new Map(contracts.map(c=>[c.contract_id,c]));
   const roster=contracts.map(c=>{
    const entry=contractDeskEntry({
     contractId:c.contract_id,personId:c.person_id,name:c.name,
     family:c.family,status:c.status,remainingDates:c.remaining_dates,
     expiresWeekIndex:c.expires_week_index,startWeekIndex:c.start_week_index,currentWeekIndex});
+   // A signed next term removes expiry work; an outstanding offer removes
+   // the duplicate "renew now" alarm but cannot pretend a contract is signed.
+   const pendingTerms=awaitingRenewalOfferIds.has(c.contract_id)||
+    awaitingSameTermsIds.has(c.contract_id);
    return c.renewal_secured?{...entry,expiringSoon:false,
-    needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:entry;
+    needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:
+    pendingTerms?{...entry,expiringSoon:false,
+     needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:entry;
   });
   const talentBudget=forecastTalentBudget(contracts.map(c=>({
     personId:c.person_id,contractId:c.contract_id,status:c.status,family:c.family,
@@ -203,8 +212,10 @@ export async function readContractDesk(
       (cost.career_stage==="SPECIAL_ATTRACTION"?1.35:
        cost.career_stage==="VETERAN"?1.1:
        cost.career_stage==="PROSPECT"?.75:1))),
-    pendingNegotiation:pendingIds.has(c.contractId),pendingRenewal:renewalIds.has(c.contractId),
-     renewalArranged:arrangedIds.has(c.contractId),
+    pendingNegotiation:pendingIds.has(c.contractId),
+    pendingRenewal:renewalIds.has(c.contractId),
+    pendingRenewalOffer:awaitingRenewalOfferIds.has(c.contractId),
+    renewalArranged:arrangedIds.has(c.contractId)||cost.renewal_secured,
     backstageContractConversationId:cost.backstage_contract_request_id};}),
    requests:requests.map(q=>({...q,additional_payment:Number(q.additional_payment)})),
    renewals,offers:pendingOffers,

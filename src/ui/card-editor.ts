@@ -46,8 +46,14 @@ import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {reconcileDraftAgreements} from "./card-contract-reconciliation.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 import {isQuickBookField} from "./quick-book.js";
-import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter}
+import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter,
+ programmeStoryLeadStarter}
  from "./programme-booking-starter.js";
+import {STORY_BLUEPRINTS,storyBlueprint,storyBlueprintFamily,type BlueprintFamily}
+ from "../domain/story-blueprints.js";
+import {storyBlueprintAngleStarter} from "./story-blueprint-starter.js";
+import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
+ from "../domain/programme-finales.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
@@ -57,17 +63,21 @@ export interface CardEditorPort{
  /** Transient on-page focus from the Programme Desk, not a saved game command. */
  focusProgrammeId?:string;
  focusProgrammeIdeaKind?:ProgrammeAngleIdea["kind"];
+ focusBlueprintBeat?:{blueprintId:string;beatId:string};
  /** One-shot dossier route. Must re-check signed rights for the selected show. */
  focusWrestler?:{personId:string;name:string};
  focusTitleChallenge?:{championshipId:string;holderId:string;holderName:string;
   challengerId:string;challengerName:string};
  talent(search:string,cursor:TalentPage["cursor"]):Promise<TalentPage>;
  save(input:{requestId:string;expectedRevision:number;
-  matches:{slotId:string;payload:unknown}[];
+  matches:{slotId:string;payload:unknown;programmeId?:string|null}[];
   segments:{slotId:string;payload:unknown}[];runningOrder:string[]}):Promise<SaveResult>;
  confirmReady?(input:{requestId:string;expectedRevision:number}):Promise<ReadyResult>;
  requestCreativeConsent?(input:{requestId:string;expectedRevision:number;
   slotId:string;personId:string;proposedMatch?:unknown}):Promise<unknown>;
+ /** A separate, revision-checked owner decision on an existing saved scene. */
+ planFinale?(input:{requestId:string;expectedRevision:number;
+  programmeId:string;showId:string;slotId:string;payoff:ProgrammePayoff}):Promise<unknown>;
  /** Notify the host only when the active editor has locally unsaved authorship. */
  onDraftChange?(dirty:boolean):void;
  openPlanner?():void;
@@ -138,6 +148,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   division:string|null;alignment?:string|null;available:boolean;reason:string;appearanceFee?:number|null;creativeControl?:string|null;
   workingConnections?:AdvisorPerson["workingConnections"]}&Partial<ConditionSnapshot>>();
  let expanded:string|null=null;
+ const selectedFinalePayoffs=new Map<string,ProgrammePayoff>();
+ const finaleRequests=new Map<string,{fingerprint:string;requestId:string}>();
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
   query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
@@ -170,6 +182,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  // existing unsaved-card state. Already saved slots are never discarded.
  const inProgressWizards=new Map<string,{wasDirty:boolean}>();
  const openQuickExtras=new Set<string>();
+ const blueprintPickerOpen=new Set<string>();
+ const blueprintFamilies=new Map<string,BlueprintFamily>();
+ const blueprintChoices=new Map<string,string>();
  let resetGuideScroll=false;
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
@@ -332,6 +347,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   matches.delete(slotId);segments.delete(slotId);
   order=order.filter(id=>id!==slotId);
   inProgressWizards.delete(slotId);
+  blueprintPickerOpen.delete(slotId);
+  blueprintFamilies.delete(slotId);
+  blueprintChoices.delete(slotId);
   slotBookingSteps.delete(slotId);
   guidedPickerSlots.delete(slotId);
   dirty=pending.wasDirty;pendingRequestId=null;error="";success="";
@@ -356,7 +374,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    order=view.slots.map(x=>x.slotId);
    for(const slot of view.slots){
     if(slot.kind==="MATCH")
-     matches.set(slot.slotId,restoreEditorMatch(slot.slotId,slot.payload));
+     matches.set(slot.slotId,{...restoreEditorMatch(slot.slotId,slot.payload),
+       programmeId:(()=>{
+       const linkedId=(view.matchProgrammeLinks??[])
+        .find(x=>x.slotId===slot.slotId)?.programmeId;
+       return view.programmes.find(p=>p.programmeId===linkedId&&
+        (p.programmeFormat??"RIVALRY")!=="RIVALRY")?.programmeId??null;
+      })()});
     else segments.set(slot.slotId,{
      ...restoreEditorSegment(slot.slotId,slot.payload),
      programmeId:view.programmeLinks.find(x=>x.slotId===slot.slotId)?.programmeId??null,
@@ -413,7 +437,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(!initialProgrammeFocusDone){
     initialProgrammeFocusDone=true;
     const selected=view.programmes.find(p=>p.programmeId===port.focusProgrammeId);
-    if(selected&&view.canEdit&&port.focusProgrammeIdeaKind){
+    const blueprint=port.focusBlueprintBeat?
+     storyBlueprint(port.focusBlueprintBeat.blueprintId):undefined;
+    const beat=blueprint?.beats.find(x=>
+     x.id===port.focusBlueprintBeat?.beatId);
+    if(selected&&view.canEdit&&blueprint&&beat){
+     // Existing original segment rules still validate this catalogue beat.
+     // Only begin a local wizard; cast and World revision remain authoritative.
+     const slotId="angle-"+crypto.randomUUID();
+     segments.set(slotId,storyBlueprintAngleStarter(slotId,beat,selected.programmeId));
+     blueprintFamilies.set(slotId,blueprint.family);
+     blueprintChoices.set(slotId,blueprint.id);
+     slotBookingSteps.set(slotId,"CAST");
+     order.push(slotId);expanded=slotId;startWizard(slotId);
+    }else if(selected&&view.canEdit&&port.focusProgrammeIdeaKind){
      const recommended=recommendProgrammeAngles(selected).find(idea=>
       idea.kind===port.focusProgrammeIdeaKind);
      if(recommended){
@@ -634,7 +671,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     catch(e){throw new Error("Slot "+(order.indexOf(s.slotId)+1)+" (angle): "+errorText(e));}
    });
    const payloads=[...matches.values()].map(m=>{
-    try{return {slotId:m.slotId,payload:buildBookedMatch(m)};}
+    try{return {slotId:m.slotId,payload:buildBookedMatch(m),
+       programmeId:m.programmeId??null};}
     catch(e){throw new Error("Slot "+(order.indexOf(m.slotId)+1)+" (match): "+errorText(e));}
    });
    if(!payloads.length)throw new Error("Book at least one match");
@@ -664,6 +702,42 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     success=previous==="REPLAYED"?"Booking already saved":"Show card saved";
    else
     error="The booking was accepted, but its refreshed card could not load. Retry without changing your selections.";
+  }catch(e){error=errorText(e);}
+  finally{saving=false;render();}
+ }
+ /** Finales are only authoritatively planned after this exact angle is saved
+  * and linked to an active Programme. A failed network response replays the
+  * original command receipt; no accidental second ledger write or finale.
+  */
+ async function planStorylineFinale(slotId:string,programmeId:string,payoff:ProgrammePayoff){
+  if(!view||dirty||saving||!view.canEdit||!port.planFinale)return;
+  if(!view.slots.some(s=>s.slotId===slotId&&s.kind==="SEGMENT")||
+   !view.programmeLinks.some(x=>x.slotId===slotId&&x.programmeId===programmeId)){
+   error="Save this angle with its active storyline before choosing the ending.";
+   render();return;
+  }
+  const fingerprint=JSON.stringify({slotId,programmeId,payoff});
+  const prior=finaleRequests.get(slotId);
+  const requestId=prior?.fingerprint===fingerprint?
+   prior.requestId:crypto.randomUUID();
+  finaleRequests.set(slotId,{fingerprint,requestId});
+  saving=true;error="";success="";render();
+  try{
+   const result=await port.planFinale({requestId,expectedRevision:view.worldRevision,
+    programmeId,showId:view.showId,slotId,payoff}) as {status?:string};
+   if(result.status==="STALE"){
+    finaleRequests.delete(slotId);
+    await load();
+    error="Another manager changed the World. Review this saved scene before setting its ending.";
+    return;
+   }
+   if(result.status!=="APPLIED"&&result.status!=="REPLAYED")
+    throw new Error("The storyline finale was not confirmed. Retry with your saved choice.");
+   finaleRequests.delete(slotId);
+   if(await load())
+    success="Storyline ending planned. Only the certified on-air scene can finish this story.";
+   else
+    error="The ending was planned, but the refreshed card could not load. Reload the card.";
   }catch(e){error=errorText(e);}
   finally{saving=false;render();}
  }
@@ -1053,6 +1127,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const id="angle-"+crypto.randomUUID();
     segments.set(id,newEditorSegment(id));
     slotBookingSteps.set(id,"SETUP");
+    blueprintPickerOpen.add(id);
     order.push(id);expanded=id;startWizard(id);
     if(specialOwned===null&&port.specialMoments)void loadSpecialMoments();
    },!mutable(),"ppw-add-angle ppw-action-angle"));
@@ -1095,7 +1170,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   if(view.programmes.length){
    const suggestions=el("section","ppw-card-rivalry-launch");
    const head=el("div","ppw-card-rivalry-launch-head");
-   head.append(el("strong","","Add a rivalry chapter"));
+   head.append(el("strong","",
+    ((view.programmes.find(p=>p.programmeId===focusedRivalryId)??
+     view.programmes[0]!).programmeFormat??"RIVALRY")==="RIVALRY"?
+     "Add a rivalry chapter":"Add a story chapter"));
    if(port.openProgrammes)head.append(button("Manage stories",()=>{
     port.openProgrammes?.();
    },false,"ppw-card-rivalry-manage"));
@@ -1105,7 +1183,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    focusedRivalryId=selected.programmeId;
    const picks=el("div","ppw-card-rivalry-picks");
    picks.setAttribute("role","group");
-   picks.setAttribute("aria-label","Choose a rivalry to book");
+   picks.setAttribute("aria-label",
+    (selected.programmeFormat??"RIVALRY")==="RIVALRY"?
+     "Choose a rivalry to book":"Choose a storyline to book");
    for(const feud of view.programmes){
     const pick=button(feud.label,()=>{
      focusedRivalryId=feud.programmeId;render();
@@ -1116,8 +1196,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    suggestions.append(picks);
    const actions=el("div","ppw-card-rivalry-shortcuts");
    const occupied=new Set([...matches.values()].flatMap(assignedIds));
-   const matchReady=programmeMatchStarter(selected,"preview",occupied);
-   if(matchReady.ok){
+   const isRivalry=(selected.programmeFormat??"RIVALRY")==="RIVALRY";
+   const matchReady=isRivalry?programmeMatchStarter(selected,"preview",occupied):null;
+   if(matchReady?.ok){
     actions.append(button("Book rivalry match",()=>{
      const id="match-"+crypto.randomUUID();
      const start=programmeMatchStarter(selected,id,
@@ -1133,7 +1214,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const id="angle-"+crypto.randomUUID();
      segments.set(id,programmeAngleIdeaStarter(selected,id,idea));
      if(selected.cast?.some(x=>x.side==="A")&&
-      selected.cast?.some(x=>x.side==="B")){
+      (selected.cast?.some(x=>x.side==="B")||!isRivalry)){
       slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
      }
      order.push(id);expanded=id;startWizard(id);
@@ -1141,8 +1222,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     action.title=idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason;
     actions.append(action);
    }
-   if(!matchReady.ok&&actions.childElementCount===0)
+   if(!matchReady?.ok&&actions.childElementCount===0)
     suggestions.append(el("p","ppw-card-story-availability","Book the cast manually."));
+   if(!isRivalry)suggestions.append(el("p","ppw-card-story-availability",
+    "Book a real match and link it under Storyline when scripting. No opponent or winner is chosen for you."));
    suggestions.append(actions);
    root.append(suggestions);
   }
@@ -1380,6 +1463,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       facts.append(el("span","","Title match · "+(title?.name??"Championship")));
      }
      if(m.tournamentId)facts.append(el("span","","Tournament bout"));
+      if(m.programmeId){
+       const story=view.programmes.find(p=>p.programmeId===m.programmeId);
+       if(story)facts.append(el("span","","Storyline · "+story.label));
+      }
     }
     if(segment?.programmeId){
      const feud=view.programmes.find(x=>x.programmeId===segment.programmeId);
@@ -1799,6 +1886,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      winnerPicker.append(choice);
     }
     controls.append(winnerPicker);
+    // A solo/relationship/faction storyline is linked explicitly, never
+    // inferred from a wrestler's mere appearance in an unrelated match.
+    // The server rechecks active story ownership and actual match cast.
+    const matchPeople=new Set(assignedIds(m));
+    const stories=view.programmes.filter(p=>
+     (p.programmeFormat??"RIVALRY")!=="RIVALRY"&&
+     (p.cast.some(member=>matchPeople.has(member.personId))||
+      p.programmeId===m.programmeId));
+    if(stories.length&&!m.tournamentId)
+     controls.append(field("Storyline (optional)",selector(m.programmeId??"",
+      [["","None"],...stories.map(p=>[p.programmeId,p.label])],
+      v=>edit(m,{programmeId:v||null}),!mutable())));
     controls.append(field("Intent",selector(m.intent,
      ["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL","HIGH_RISK",
       "STORY","PROTECTIVE","EPIC"].map(x=>[x,nice(x)]),
@@ -2171,6 +2270,81 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         guide.append(context);
        }else{
         const angleSetup=el("div","ppw-guide-angle-setup");
+        // The Blueprint is an optional creative starting point. It is
+        // deliberately not a booked outcome, a new ledger or invented feud.
+        const blueprintPanel=el("section","ppw-story-blueprint-panel");
+        const blueprintHead=el("div","ppw-story-blueprint-heading");
+        blueprintHead.append(el("strong","","What story are you telling?"),
+         button(blueprintPickerOpen.has(slotId)?"Use custom angle":"Browse Story Blueprints",()=>{
+          if(blueprintPickerOpen.has(slotId))blueprintPickerOpen.delete(slotId);
+          else blueprintPickerOpen.add(slotId);
+          render();
+         },!mutable(),"ppw-story-blueprint-toggle"));
+        blueprintPanel.append(blueprintHead);
+        if(blueprintPickerOpen.has(slotId)){
+         const families=el("div","ppw-story-blueprint-families");
+         const familyLabels:Record<BlueprintFamily,string>={
+          RISE:"The Rise",FALL:"The Fall",
+          RELATIONSHIPS:"Relationships",CONFLICT:"Conflict"
+         };
+         const family=blueprintFamilies.get(slotId)??"RISE";
+         for(const [key,label] of Object.entries(familyLabels)){
+          const choice=button(label,()=>{
+           blueprintFamilies.set(slotId,key as BlueprintFamily);
+           blueprintChoices.delete(slotId);render();
+          },!mutable(),"ppw-story-blueprint-family");
+          choice.setAttribute("aria-pressed",String(family===key));
+          families.append(choice);
+         }
+         blueprintPanel.append(families);
+         const choices=el("div","ppw-story-blueprint-options");
+         const selectedId=blueprintChoices.get(slotId);
+         for(const blueprint of storyBlueprintFamily(family)){
+          const pick=button("",()=>{
+           blueprintChoices.set(slotId,blueprint.id);render();
+          },!mutable(),"ppw-story-blueprint-option");
+          pick.append(el("strong","",blueprint.name),
+           el("small","",blueprint.description));
+          pick.setAttribute("aria-pressed",String(selectedId===blueprint.id));
+          choices.append(pick);
+         }
+         blueprintPanel.append(choices);
+         const selected=STORY_BLUEPRINTS.find(x=>x.id===selectedId);
+         if(selected){
+          blueprintPanel.append(el("p","ppw-story-blueprint-intention",
+           "Why: "+selected.motivation+" · Audience: "+selected.desiredFeeling));
+          if(view!.programmes.length){
+           const storyLinks=el("div","ppw-story-blueprint-links");
+           storyLinks.append(el("strong","","Connect an active Programme (optional)"));
+           const linkChoices=el("div","ppw-story-blueprint-link-chips");
+           for(const [id,name] of [[null,"Standalone angle"] as const,
+            ...view!.programmes.map(p=>[p.programmeId,p.label] as const)]){
+            const link=button(name,()=>{
+             editSegment(segment!,{programmeId:id});
+            },!mutable(),"ppw-story-blueprint-link");
+            link.setAttribute("aria-pressed",String((segment?.programmeId??null)===id));
+            linkChoices.append(link);
+           }
+           storyLinks.append(linkChoices);blueprintPanel.append(storyLinks);
+          }
+          const beats=el("div","ppw-story-blueprint-beats");
+          beats.append(el("strong","","Choose the next beat — any order"));
+          for(const beat of selected.beats){
+           const action=button("",()=>{
+            const next=storyBlueprintAngleStarter(slotId,beat,
+             segment!.programmeId??null);
+            segments.set(slotId,next);
+            slotBookingSteps.set(slotId,"CAST");
+            resetGuideScroll=true;render();
+           },!mutable(),"ppw-story-blueprint-beat");
+           action.append(el("strong","",beat.title),
+            el("small","",beat.intention));
+           beats.append(action);
+          }
+          blueprintPanel.append(beats);
+         }
+        }
+        angleSetup.append(blueprintPanel);
         // Preserve the original validated selectors as handlers, but show
         // only tappable categories and scene choices to the player.
         const goalSelect=essentials.querySelector<HTMLSelectElement>(
@@ -2230,7 +2404,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         if(storyline)castingOptions.append(storyline);
         if(castingOptions.childElementCount)guide.append(castingOptions);
         const linkedFeud=view.programmes.find(p=>p.programmeId===segment?.programmeId);
-        if(linkedFeud&&linkedFeud.cast?.some(x=>x.side==="A")&&
+        const linkedRivalry=(linkedFeud?.programmeFormat??"RIVALRY")==="RIVALRY";
+        if(linkedFeud&&linkedRivalry&&
+         linkedFeud.cast?.some(x=>x.side==="A")&&
          linkedFeud.cast.some(x=>x.side==="B")){
          const fastCast=el("section","ppw-guide-feud-cast");
          fastCast.append(el("strong","","CAST YOUR RIVALRY"),
@@ -2249,6 +2425,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          }
          fastCast.append(castActions);
          guide.append(fastCast);
+        }
+        if(linkedFeud&&!linkedRivalry&&linkedFeud.cast?.length){
+         const characters=el("section","ppw-guide-feud-cast");
+         characters.append(el("strong","","CAST YOUR STORY"),
+          el("p","",linkedFeud.label+
+           " · Choose the character leading this scene. You can add other speakers and targets, or change the outcome manually."));
+         const leads=el("div","ppw-guide-feud-cast-buttons");
+         for(const member of linkedFeud.cast.filter(x=>x.side==="A")){
+          const action=button(member.name+" leads",()=>{
+           const result=programmeStoryLeadStarter(linkedFeud,segment!,member.personId);
+           if(!result.ok){error=result.reason;render();return;}
+           editSegment(segment!,{actors:result.value.actors,targets:result.value.targets});
+          },!mutable()||!member.contractId,"ppw-guide-feud-cast-button");
+          if(!member.contractId)action.title="Unavailable for this show. Check contract and medical status.";
+          leads.append(action);
+         }
+         characters.append(leads);guide.append(characters);
         }
        }
        const hint=el("p","ppw-booking-hint",castReadiness.hint);
@@ -2607,6 +2800,42 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(segment?.kind==="VIDEO_PACKAGE")
         brief.append(el("p","ppw-guide-fee-note",
          "Pre-recorded video · No live appearance fees for this segment."));
+       // A Blueprint's exact saved scene is a legitimate finale without a
+       // forced attack, turn or match. Never write this while the card is
+       // unsaved: the existing canonical Programme command verifies the
+       // owner, active story, slot association and World revision.
+       if(segment?.programmeId&&port.planFinale){
+        const story=view.programmes.find(p=>p.programmeId===segment.programmeId);
+        if(story){
+         const panel=el("section","ppw-guide-finale");
+         panel.append(el("strong","ppw-guide-section-label","Final chapter?"),
+          el("p","ppw-guide-finale-explain",
+           "This scene can be the last chapter of "+story.label+
+           ". The story only closes after this exact angle actually airs."));
+         const choices=el("div","ppw-guide-finale-choices");
+         choices.setAttribute("role","group");
+         choices.setAttribute("aria-label","Choose storyline ending");
+         const payoffs=eligibleProgrammePayoffs("SEGMENT",{kind:segment.kind});
+         const selected=selectedFinalePayoffs.get(slotId)??"FINAL_CHAPTER";
+         for(const payoff of payoffs){
+          const pick=button(PROGRAMME_PAYOFFS[payoff],()=>{
+           selectedFinalePayoffs.set(slotId,payoff);render();
+          },!mutable(),"ppw-guide-finale-choice");
+          pick.setAttribute("aria-pressed",String(selected===payoff));
+          choices.append(pick);
+         }
+         panel.append(choices);
+         const saved=!dirty&&view.slots.some(s=>s.slotId===slotId&&
+          s.kind==="SEGMENT")&&view.programmeLinks.some(link=>
+          link.slotId===slotId&&link.programmeId===segment.programmeId);
+         if(!saved)panel.append(el("small","ppw-guide-finale-note",
+          "Finish and save this card first. Then reopen the angle to confirm its ending."));
+         panel.append(button("Plan this storyline ending",()=>{
+          void planStorylineFinale(slotId,story.programmeId,selected);
+         },!mutable()||!saved,"ppw-guide-finale-confirm"));
+         brief.append(panel);
+        }
+       }
        else if(segment?.targets.length&&
         ["PROMO","INTERVIEW","CHALLENGE"].includes(segment.kind)&&
         segment.targetPresence!=="ON_SCREEN")

@@ -8,6 +8,8 @@ const overview={
 };
 const session={worldId:"playtest",playerId:"owner",csrfToken:"csrf",overview,
  availablePromotions:[]};
+const weekly={seriesId:"flagship",name:"weekly show",role:"FLAGSHIP",
+ eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:65,active:true};
 const arena={
  venueId:"home-hall",marketId:"home",marketName:"Home market",name:"Town Hall",
  capacity:900,weeklyHireCost:6000,prestige:45,productionSuitability:60,
@@ -19,7 +21,7 @@ function planner(revision:number,showCreated:boolean){
   worldRevision:revision,canEdit:true,homeMarketId:"home",
   venues:[arena],venuePressure:[],
   weeks:[{year:1,week:1,offset:0,required:true,major:false,canEdit:true,
-   scheduled:[],shows:showCreated?[{
+   scheduled:[weekly],shows:showCreated?[{
     draftId:"created-on-server",year:1,week:1,status:"DRAFT",eventType:"REGULAR",
     bookingClass:"REGULAR",showSeriesId:null,showName:"Weekly show",
     day:5,marketId:"home",venueId:"home-hall",marketName:"Home market",
@@ -58,7 +60,8 @@ test("iPhone retries a committed show with the SAME receipt after its response i
  await expect(page.getByRole("button",{name:"Edit card"})).toBeVisible();
  expect(keys).toHaveLength(2);
  expect(keys[0]).toBe(keys[1]);
- await expect(page.getByText(/Weekly show · Fri · Town Hall/)).toBeVisible();
+ await expect(page.locator(".ppw-planner-week-show-name")).toHaveText("Weekly show");
+ await expect(page.locator(".ppw-planner-week")).toContainText("Fri · Town Hall");
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -169,7 +172,7 @@ test("iPhone Week 3 without a show edits, reorders and saves Week 4's confirmed-
  await expect(page.locator(".ppw-match-broadcast")).toHaveCount(0);
 });
 
-test("the Planner uses real booked premium event names with selected poster without extra reads",async({page})=>{
+test("the Planner uses real booked PPV names without repeating full poster assets or reads",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -187,11 +190,9 @@ test("the Planner uses real booked premium event names with selected poster with
   return route.fulfill({json:{...data,eventPosterStyle:"AFTERSHOCK"}});
  });
  await page.goto("/#/planner");
- const poster=page.locator(".ppw-event-poster");
- await expect(poster).toHaveCount(1);
- await expect(poster).toHaveAttribute("data-poster","aftershock");
- await expect(poster.locator(".ppw-ep-title")).toHaveText("Midnight Ascension");
- await expect(poster.locator(".ppw-ep-main")).toHaveText("TO BE ANNOUNCED");
+ await expect(page.locator(".ppw-event-poster")).toHaveCount(0);
+ await expect(page.locator(".ppw-planner-week-show-name")).toHaveText("Midnight Ascension");
+ await expect(page.locator(".ppw-planner-week")).toContainText("Midnight Ascension");
  expect(methods).toEqual(["planner"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
@@ -210,7 +211,7 @@ test("iPhone Planner fixes a signed Thursday TV slot while PPVs default to Satur
   calls.push({method:q.method,...(typeof q.day==="number"?{day:q.day}:{})});
   if(q.method==="planner")return route.fulfill({json:{
    ...planner(4,false),broadcastSlot:slot,
-   weeks:[{...planner(4,false).weeks[0]!,scheduled:[premium]}]
+   weeks:[{...planner(4,false).weeks[0]!,scheduled:[weekly,premium]}]
   }});
   if(q.method==="planShow")return route.fulfill({json:{status:"APPLIED",revision:5,
    result:{draftId:"planned-on-server",status:"CREATED"}}});
@@ -287,7 +288,7 @@ test("Saturday network television moves the PPV weekend default to Sunday",async
    offerCode:"BROADCAST_TV",networkName:"BBS Sports",day:6,hour:20,
    startWeekIndex:0,endWeekIndex:25
   },
-  weeks:[{...planner(4,false).weeks[0]!,scheduled:[premium]}]
+  weeks:[{...planner(4,false).weeks[0]!,scheduled:[weekly,premium]}]
  }}));
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Book PPV · Summer Showdown"}).click();

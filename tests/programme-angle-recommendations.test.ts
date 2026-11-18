@@ -49,3 +49,67 @@ test("repetition, hot interest and cold stories receive distinct advice",()=>{
  assert.equal(recommendProgrammeAngles({...base,heat:90})[0]?.kind,"CONTRACT_SIGNING");
  assert.equal(recommendProgrammeAngles({...base,heat:15})[0]?.kind,"INTERVIEW");
 });
+
+test("solo, mentor and faction stories suggest castable scenes without inventing a feud",()=>{
+ const cases=[
+  {programmeFormat:"SOLO" as const,opening:["INTERVIEW","PROMO","VIDEO_PACKAGE"],
+   next:["INTERVIEW","PROMO","VIDEO_PACKAGE"]},
+  {programmeFormat:"RELATIONSHIP" as const,opening:["INTERVIEW","PROMO","CELEBRATION"],
+   next:["INTERVIEW","CELEBRATION","VIDEO_PACKAGE"]},
+  {programmeFormat:"FACTION" as const,opening:["PROMO","INTERVIEW","CELEBRATION"],
+   next:["INTERVIEW","PROMO","VIDEO_PACKAGE"]}
+ ];
+ for(const sample of cases){
+  const opening=recommendProgrammeAngles({...base,programmeFormat:sample.programmeFormat,activityCount:0});
+  const developed=recommendProgrammeAngles({...base,programmeFormat:sample.programmeFormat,activityCount:4});
+  assert.deepEqual(opening.map(x=>x.kind),sample.opening);
+  assert.deepEqual(developed.map(x=>x.kind),sample.next);
+  for(const item of [...opening,...developed]){
+   assert.ok(SEGMENT_BOOKING_RULES[item.kind]);
+   assert.doesNotMatch(item.reason,
+    /they betrayed|they already|won the title|automatically booked|guaranteed a win/i);
+  }
+ }
+ const old=recommendProgrammeAngles({...base,activityCount:0});
+ const original=recommendProgrammeAngles({...base,programmeFormat:"RIVALRY",activityCount:0});
+ assert.deepEqual(original,old,"Rivalry recommendations remain identical");
+});
+
+test("a chosen certified-story follow-up changes the actual next booking starters",()=>{
+ const format="FACTION" as const;
+ const ideas=(choice:"BUILD_ON_REACTION"|"CHANGE_PRESENTATION"|"SLOW_BURN")=>
+  recommendProgrammeAngles({...base,programmeFormat:format,activityCount:2,
+   creativeIntent:{followUp:{choice,sourceShowId:"certified-show",
+    sourceSlotId:"performed-scene",sourceWeekIndex:6}}});
+ assert.deepEqual(ideas("BUILD_ON_REACTION").map(x=>x.kind),
+  ["PROMO","INTERVIEW","VIDEO_PACKAGE"]);
+ assert.deepEqual(ideas("CHANGE_PRESENTATION").map(x=>x.kind),
+  ["VIDEO_PACKAGE","INTERVIEW","PROMO"]);
+ assert.deepEqual(ideas("SLOW_BURN").map(x=>x.kind),
+  ["VIDEO_PACKAGE","INTERVIEW","PROMO"]);
+ for(const choice of ["BUILD_ON_REACTION","CHANGE_PRESENTATION","SLOW_BURN"] as const){
+  for(const suggestion of ideas(choice)){
+   assert.ok(SEGMENT_BOOKING_RULES[suggestion.kind]);
+   assert.doesNotMatch(suggestion.reason,/already betrayed|automatically|will win|confirmed split/i);
+  }
+ }
+ // Original rivalries cannot be steered by non-rival creative replies.
+ assert.deepEqual(recommendProgrammeAngles({...base,programmeFormat:"RIVALRY",
+  creativeIntent:{followUp:{choice:"SLOW_BURN",sourceShowId:"s",
+   sourceSlotId:"x",sourceWeekIndex:2}}}),recommendProgrammeAngles({...base,programmeFormat:"RIVALRY"}));
+});
+
+test("a later certified chapter retires an old follow-up recommendation",()=>{
+ const authored={choice:"BUILD_ON_REACTION" as const,
+  sourceShowId:"first",sourceSlotId:"original-angle",sourceWeekIndex:3};
+ const withSource={...base,programmeFormat:"SOLO" as const,activityCount:4,
+  creativeIntent:{followUp:authored}};
+ assert.equal(recommendProgrammeAngles({...withSource,
+  recentActivity:[{kind:"SEGMENT",showId:"first",slotId:"original-angle"}]})[0]?.kind,
+  "PROMO");
+ assert.deepEqual(recommendProgrammeAngles({...withSource,
+  recentActivity:[{kind:"SEGMENT",showId:"second",slotId:"another-angle"}]})
+  .map(x=>x.kind),recommendProgrammeAngles({...base,programmeFormat:"SOLO",
+   activityCount:4,recentActivity:[{kind:"SEGMENT",showId:"second",
+    slotId:"another-angle"}]}).map(x=>x.kind));
+});

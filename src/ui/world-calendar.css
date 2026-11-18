@@ -306,3 +306,55 @@
  .ppw-calendar-four-week-header{gap:4px}
  .ppw-calendar-four-week-controls .ppw-calendar-button{min-width:42px}
  .ppw-calendar-four-week-grid{gap:5px}}
+
+
+/* Unified annual TV+premium plan: one compact schedule rather than a
+   separate four-week navigator plus repeated full-size broadcast posters. */
+.ppw-calendar-year-context{margin:6px 0 12px;padding:8px 10px;
+ border-left:3px solid #7bdce9;border-radius:5px;background:#1d3b4e;
+ color:#cef0f5;font-size:12px;font-weight:800;letter-spacing:.025em}
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-has-television="true"]{
+ border-color:#6198aa;background:#1f3b50}
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-has-event="true"]{
+ border-color:#e2b16b;background:#473426}
+.ppw-calendar-ppv-week-tv{display:block;max-width:100%;font-size:9px!important;
+ color:#a2e4ea!important;white-space:normal;overflow-wrap:anywhere;
+ line-height:1.22!important}
+.ppw-calendar-year-major{display:block;max-width:100%;color:#ffe6b0!important;
+ font-size:9px!important;font-weight:850!important;overflow-wrap:anywhere}
+.ppw-calendar-event-compact.ppw-calendar-event{
+ display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+ padding:11px 13px 11px 16px;min-height:0;
+ margin:7px 0;border-radius:11px;box-shadow:none}
+.ppw-calendar-event-compact .ppw-calendar-compact-title{
+ flex-basis:100%;font-size:clamp(15px,4vw,19px);
+ color:#f3f8ff;font-weight:850;line-height:1.3}
+.ppw-calendar-event-compact.ppw-calendar-event-major .ppw-calendar-compact-title{
+ color:#ffdea7}
+.ppw-calendar-event-compact .ppw-calendar-event-copy{
+ display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0}
+.ppw-calendar-event-compact .ppw-calendar-tv-slot{flex:1 1 100%}
+.ppw-calendar-event-compact .ppw-calendar-booked-state,
+.ppw-calendar-event-compact .ppw-calendar-unbooked-state,
+.ppw-calendar-event-compact .ppw-calendar-booked-place{
+ grid-column:auto;justify-self:auto;flex:0 1 auto}
+.ppw-calendar-event-compact .ppw-calendar-button{
+ grid-column:auto;justify-self:auto;flex:1 1 auto;min-height:40px;
+ margin:0;white-space:normal}
+.ppw-calendar-event-compact:after{display:none}
+
+/* The real booked/certified PPV name takes priority over the annual draft.
+   Do not advertise a proposed name as if the card was silently rewritten. */
+.ppw-calendar-week-button[data-booked="true"]{
+ border-color:#e0bc83!important}
+.ppw-calendar-year-edition-state{font-size:9px!important;letter-spacing:.1em;
+ font-weight:850;color:#ffe1ab!important}
+.ppw-calendar-year-name-warning{padding:9px 10px;
+ border-radius:9px;border:1px solid #a77d52;color:#ffe4ba!important;
+ background:#4a3125;font-size:12px;line-height:1.45}
+.ppw-calendar-year-picker .ppw-calendar-year-edition input{
+ width:100%;max-width:100%;box-sizing:border-box;
+ min-height:44px;font-size:16px}
+@media(max-width:390px){
+ .ppw-calendar-year-name-warning{overflow-wrap:anywhere}
+}

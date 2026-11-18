@@ -11,6 +11,8 @@ import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessag
  type BackstageDecision} from "../domain/backstage-conversations.js";
 import type {WorldMail,WorldMailAction} from "../db/backstage-world-mail.js";
 import {staffDebateReaction} from "../domain/backstage-staff-dialogue.js";
+import {STORY_FOLLOW_UPS,storyFollowUpBrief,type StoryFollowUpChoice}
+ from "../domain/programme-story-follow-up.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
  markRead(personId:string):Promise<{readCount:number}>;
@@ -35,6 +37,11 @@ export interface PersonaDeskPort{
   requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
   result?:{mailId:string;personId:string;decision:"INVITE"|"PASS";
    status:"INVITED"|"DECLINED"}}>;
+ chooseStoryFollowUp?(input:{mailId:string;choice:StoryFollowUpChoice;
+  requestId:string;expectedRevision:number}):Promise<{status:string;revision:number;
+  result?:{mailId:string;programmeId:string;choice:StoryFollowUpChoice;
+   sourceShowId:string;sourceSlotId:string;sourceWeekIndex:number}}>;
+ openStoryProgramme?(programmeId:string):void;
  openRecruitment?(personId:string,name:string):void;
  openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
@@ -70,12 +77,14 @@ export function mountPersonaDesk(root:HTMLElement,
   requestId:string;expectedRevision:number}|null=null;
  let pendingPartner:{mailId:string;decision:"INVITE"|"LEAVE";
   requestId:string;expectedRevision:number}|null=null;
+ let pendingStory:{mailId:string;choice:StoryFollowUpChoice;
+  requestId:string;expectedRevision:number}|null=null;
  let pendingRecruitment:{mailId:string;decision:"INVITE"|"PASS";
   requestId:string;expectedRevision:number}|null=null;
  let pendingStaff:{mailId:string;decision:"COMMIT"|"DEFER";
   requestId:string;expectedRevision:number}|null=null;
  let inboxFilter:"ALL"|"UNREAD"|"ACTIVE"|"HISTORY"|"ARCHIVED"|
-  "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"|"DISAGREEMENTS"|"LOCKER_ROOM"=initialInboxFilter;
+  "STAFF"|"NETWORK"|"SCOUT"|"FREE_AGENT"|"WRESTLERS"|"DISAGREEMENTS"|"LOCKER_ROOM"|"STORIES"=initialInboxFilter;
  let inboxSearch="";
  let lastInboxScroll=0;
  let scrollToLatest=false;
@@ -362,7 +371,46 @@ export function mountPersonaDesk(root:HTMLElement,
   }catch(e){error=e instanceof Error?e.message:"Recruitment reply not confirmed";}
   finally{loading=false;render();}
  }
+ async function answerStory(mailId:string,choice:StoryFollowUpChoice){
+  if(!view||loading||!port.chooseStoryFollowUp||view.worldRevision===null)return;
+  const selected=view.worldMessages?.find(m=>m.id===mailId);
+  if(!selected?.storyProgrammeId||!selected.storySource||
+   !selected.canChooseStoryFollowUp)return;
+  const same=pendingStory?.mailId===mailId&&pendingStory.choice===choice;
+  const request=same?pendingStory!:{mailId,choice,requestId:crypto.randomUUID(),
+   expectedRevision:view.worldRevision};
+  pendingStory=request;loading=true;render();
+  try{
+   const response=await port.chooseStoryFollowUp(request);
+   if(response.status!=="APPLIED"&&response.status!=="REPLAYED")
+    throw Error("The World has changed. Reopen this storyline before answering.");
+   const confirmed=response.result;
+   if(!confirmed||confirmed.mailId!==mailId||confirmed.choice!==choice||
+    confirmed.programmeId!==selected.storyProgrammeId||
+    confirmed.sourceShowId!==selected.storySource.sourceShowId||
+    confirmed.sourceSlotId!==selected.storySource.sourceSlotId||
+    confirmed.sourceWeekIndex!==selected.storySource.sourceWeekIndex)
+    throw Error("The story response could not be confirmed. Retry your original choice.");
+   const updated=(items:WorldMail[]|undefined)=>(items??[]).map(m=>
+    m.storyProgrammeId===confirmed.programmeId&&
+    m.storySource?.sourceShowId===confirmed.sourceShowId&&
+    m.storySource.sourceSlotId===confirmed.sourceSlotId?
+     {...m,canChooseStoryFollowUp:false,storyFollowUp:choice}:m);
+   view={...view,worldRevision:response.revision,
+    worldMessages:updated(view.worldMessages)};
+   if(inboxWorldMessages!==null)inboxWorldMessages=updated(inboxWorldMessages);
+   inboxWorldRevision=response.revision;pendingStory=null;error="";
+  }catch(e){error=e instanceof Error?e.message:"Story response could not be saved";}
+  finally{loading=false;render();}
+ }
  let preservedThreadScroll:number|null=null,preservedThreadPerson:string|null=null;
+ const worldNeedsReply=(mail:WorldMail)=>
+  (mail.canRespond===true&&!mail.networkResponse)||
+  (mail.canStaffRespond===true&&!mail.staffResponse)||
+  (mail.canDisagree===true&&!mail.disagreementResponse)||
+  (mail.canPartnerRespond===true&&!mail.partnerResponse)||
+  (mail.canFreeAgentRespond===true&&!mail.freeAgentResponse)||
+  (mail.canChooseStoryFollowUp===true&&!mail.storyFollowUp);
  function render(){
   const previous=root.querySelector<HTMLElement>(".ppw-persona-chat");
   const previousDocumentScroll=window.scrollY;
@@ -382,9 +430,10 @@ export function mountPersonaDesk(root:HTMLElement,
     head.append(control);
    }
   if(pane==="INBOX")head.append(el("h1","","Messages"));
-  else head.append(el("span","ppw-eyebrow","CONTACTS"),
-   el("h1","","Contact details"),
-   el("p","ppw-muted","Private career conversations and character history."));
+  else if(pane==="PROFILE")head.append(el("span","ppw-eyebrow","BACKSTAGE / ROSTER"),
+   el("h1","","People"),
+   el("p","ppw-muted","Characters, conversations and career history."));
+  else head.append(el("h1","","Conversation"));
   if(pane!=="THREAD"&&pane!=="WORLD_THREAD")root.append(head);
   else if(onBack){
    // From a dossier, leave the conversation without relying on a hidden
@@ -414,7 +463,7 @@ export function mountPersonaDesk(root:HTMLElement,
    back.classList.add("ppw-backstage-phone-back");
    const avatar=el("span","ppw-backstage-phone-avatar",
     mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
-    mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
+    mail.kind==="FREE_AGENT"?"FA":mail.storyChapter?"SR":mail.kind==="LOCKER_ROOM"?"LR":"ST");
    const identity=el("span","ppw-backstage-phone-identity");
    identity.append(el("strong","",mail.sender),
     el("small","",mail.kind==="NETWORK"?"Broadcast partner":
@@ -442,6 +491,7 @@ export function mountPersonaDesk(root:HTMLElement,
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
      mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
      mail.kind==="FREE_AGENT"?"No contract or appearance has been agreed.":
+     mail.storyChapter?"From an actual completed Programme chapter and verified audience response; no off-screen character consequence has been assumed.":
      mail.kind==="LOCKER_ROOM"&&mail.staffReview?
       "From your earlier staff decision and a completed review of real workload or programme progress.":
      mail.kind==="LOCKER_ROOM"?"From actual teammate match history and an answered mediation request.":
@@ -552,7 +602,28 @@ export function mountPersonaDesk(root:HTMLElement,
      reply.status==="WITHDRAWN"?"Your previously submitted offer was withdrawn.":
      "No contract offer was submitted."));
    }
+   if(mail.storyChapter&&mail.storyFollowUp&&mail.storySource){
+    const story=storyFollowUpBrief(mail.storyFollowUp,mail.storySource.programmeFormat);
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
+     "My next chapter: "+STORY_FOLLOW_UPS[mail.storyFollowUp].label+". "+story.direction));
+    chat.append(el("p","ppw-backstage-world-evidence",
+     "Saved as creative direction. No segment, booking or relationship was changed."));
+   }
    const actions=el("div","ppw-backstage-world-actions");
+   if(mail.storyChapter&&mail.canChooseStoryFollowUp&&
+    !mail.storyFollowUp&&port.chooseStoryFollowUp){
+    const prompt=el("div","ppw-backstage-story-options");
+    prompt.append(el("strong","","Choose the next storyline direction"),
+     el("p","ppw-muted","A creative choice, not a booked turn, match or wrestler agreement."));
+    for(const choice of Object.keys(STORY_FOLLOW_UPS) as StoryFollowUpChoice[]){
+     const spec=STORY_FOLLOW_UPS[choice];
+     const option=button(spec.label,()=>void answerStory(mail.id,choice),loading);
+     option.classList.add("ppw-backstage-story-choice");
+     option.append(el("small","",spec.explanation));
+     prompt.append(option);
+    }
+    actions.append(prompt);
+   }
    if(mail.kind==="LOCKER_ROOM"&&mail.canPartnerRespond&&!mail.partnerResponse&&port.respondPartner){
     actions.append(button("Ask them to work together",
      ()=>void answerPartner(mail.id,"INVITE"),loading));
@@ -605,7 +676,10 @@ export function mountPersonaDesk(root:HTMLElement,
     actions.append(button("Review next match booking",()=>port.openPlanner!(),loading));
    if(mail.targetPersonId&&port.openWrestler)
     actions.append(button("View wrestler dossier",()=>port.openWrestler!(mail.targetPersonId!),loading));
-   actions.append(button(actionNames[mail.action],()=>port.openDepartment?.(mail.action),
+   if(mail.storyChapter&&mail.storyProgrammeId&&port.openStoryProgramme)
+     actions.append(button("Open this exact storyline",
+      ()=>port.openStoryProgramme!(mail.storyProgrammeId!),loading));
+    else actions.append(button(actionNames[mail.action],()=>port.openDepartment?.(mail.action),
     loading||!port.openDepartment));
    actions.append(button("Back to messages",returnToMessages));
    chat.append(actions);root.append(chat);return;
@@ -626,11 +700,11 @@ export function mountPersonaDesk(root:HTMLElement,
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
     ["ACTIVE","Requests"],["WRESTLERS","Wrestlers"],["STAFF","Staff"],
     ["NETWORK","Networks"],["SCOUT","Scouting"],
-    ["FREE_AGENT","Free agents"],["DISAGREEMENTS","Staff disagreements"],
+    ["FREE_AGENT","Free agents"],["STORIES","Storylines"],["DISAGREEMENTS","Staff disagreements"],
     ["LOCKER_ROOM","Locker room"],["HISTORY","History"],["ARCHIVED","Archived"]] as const){
     const b=button(label,()=>{
      inboxFilter=filter;
-     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS"].includes(filter)){
+     if(inboxWorldMessages===null&&["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS","STORIES"].includes(filter)){
       void load();return;
      }
      render();
@@ -655,6 +729,7 @@ export function mountPersonaDesk(root:HTMLElement,
    let count=0;
    for(const mail of [...(view.worldMessages??[])].filter(item=>
     inboxFilter==="ALL"||inboxFilter===item.kind||
+     (inboxFilter==="STORIES"&&item.storyChapter===true)||
     (inboxFilter==="DISAGREEMENTS"&&
      (item.canDisagree||!!item.disagreementResponse||
       item.subject.startsWith("Our staff review")||
@@ -664,24 +739,27 @@ export function mountPersonaDesk(root:HTMLElement,
       item.subject.startsWith("Creative after the staff review")||
       item.subject.startsWith("The staff disagreement")))||
     (inboxFilter==="UNREAD"&&!item.read)||
-    (inboxFilter==="ACTIVE"&&!item.read))){
+    (inboxFilter==="ACTIVE"&&worldNeedsReply(item)))){
     const item=button("",()=>void openWorldMail(mail.id));
     item.classList.add("ppw-backstage-contact","ppw-backstage-world-contact");
     if(!mail.read)item.classList.add("ppw-backstage-unread");
+    if(worldNeedsReply(mail))item.dataset.needsDecision="true";
+     if(mail.storyChapter)item.dataset.storyChapter="true";
     const avatar=el("span","ppw-backstage-avatar",
      mail.kind==="NETWORK"?"TV":mail.kind==="SCOUT"?"SC":
-     mail.kind==="FREE_AGENT"?"FA":mail.kind==="LOCKER_ROOM"?"LR":"ST");
+     mail.kind==="FREE_AGENT"?"FA":mail.storyChapter?"SR":mail.kind==="LOCKER_ROOM"?"LR":"ST");
     const copy=el("span","ppw-backstage-contact-copy");
     const top=el("span","ppw-backstage-contact-top");
     top.append(el("strong","",mail.sender),el("small","ppw-backstage-contact-stamp",
      "W"+(mail.createdWeekIndex%52+1)));
     copy.append(top,el("span","ppw-backstage-contact-preview",mail.subject));
     item.append(avatar,copy);
+    if(worldNeedsReply(mail))item.append(el("span","ppw-messenger-awaiting","REPLY"));
     if(!mail.read)item.append(el("span","ppw-backstage-unread-dot",""));
     entries.append(item);count++;
    }
    for(const wrestler of [...view.roster].filter(w=>{
-    if(["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS"].includes(inboxFilter))
+    if(["STAFF","NETWORK","SCOUT","FREE_AGENT","DISAGREEMENTS","STORIES"].includes(inboxFilter))
      return false;
     if(inboxFilter==="LOCKER_ROOM")return w.latestIncoming?.kind==="PARTNERSHIP"&&
      !w.latestIncoming.archived;

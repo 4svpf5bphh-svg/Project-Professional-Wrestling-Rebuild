@@ -710,3 +710,36 @@
 /* Independently earned angle execution rating, separate from audience noise. */
 .ppw-result-angle-grade{font-size:12px;font-weight:850;color:#9aeed5;
  letter-spacing:.015em;font-variant-numeric:tabular-nums}
+
+/* Certified segment execution is displayed as a readable crowd-temperature
+   judgement. The actual 0–5 score remains in the chapter's verified details. */
+.ppw-results .ppw-segment-temperature{
+ display:inline-flex;align-items:center;max-width:100%;min-height:25px;
+ padding:4px 8px;border:1px solid #8194ac;border-radius:999px;
+ background:#25364a;color:#e4ecf6;font-size:10px;font-weight:850;
+ line-height:1.25;letter-spacing:.04em;white-space:normal}
+.ppw-results .ppw-segment-temperature[data-temperature="cold"]{
+ background:#172a47;border-color:#7198c5;color:#b9d8ff}
+.ppw-results .ppw-segment-temperature[data-temperature="cool"]{
+ background:#233e55;border-color:#6b99af;color:#bddfea}
+.ppw-results .ppw-segment-temperature[data-temperature="mild"]{
+ background:#4b4440;border-color:#b9a58b;color:#efe1bd}
+.ppw-results .ppw-segment-temperature[data-temperature="warm"]{
+ background:#4d382d;border-color:#c39471;color:#ffe2b4}
+.ppw-results .ppw-segment-temperature[data-temperature="hot"]{
+ background:#5d3029;border-color:#e3975e;color:#ffe3b0}
+.ppw-results .ppw-segment-temperature[data-temperature="boiling"]{
+ background:#672927;border-color:#ffc67d;color:#fff0ce}
+.ppw-results .ppw-segment-score-detail{
+ margin:4px 0 9px;color:var(--ring-muted,#b5c5d6);
+ font-size:12px;line-height:1.5;font-variant-numeric:tabular-nums}
+.ppw-results .ppw-tv-opening-wrap{min-width:0;overflow:hidden;
+ margin:0 0 12px;border-radius:14px}
+@media(max-width:390px){
+ .ppw-results .ppw-segment-temperature{font-size:9px;min-height:24px;padding:4px 6px}
+}
+
+/* TV's true opening plays on Full Show. Editorial Headlines need only a
+   compact show identity, never another oversized broadcast hero. */
+.ppw-results .ppw-headlines-show-name{font-size:clamp(15px,4vw,21px);
+ color:#f6e7cf;line-height:1.25;margin:2px 0 12px;letter-spacing:.02em}

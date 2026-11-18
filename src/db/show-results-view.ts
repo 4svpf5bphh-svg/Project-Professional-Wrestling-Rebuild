@@ -34,6 +34,8 @@ export interface CompletedAngleContext{
  targetPresence?:"MENTIONED"|"ON_SCREEN"|null;
  videoPurpose:string|null;stableDecision:"ACCEPTED"|"REJECTED"|null;
  turnTargetAlignment:string|null;
+ /** Exact manager-authored turn direction, not implied wrestler history. */
+ turnPresentation?:string|null;
  scene?:AngleScene|null;
 }
 export interface ShowResultEntry{
@@ -383,6 +385,11 @@ export async function readCompletedShowView(
     stableDecision:decision==="ACCEPTED"||decision==="REJECTED"?decision:null,
     turnTargetAlignment:typeof angle.turnTargetAlignment==="string"?
      angle.turnTargetAlignment:null,
+    turnPresentation:segment.kind==="TURN"&&angle.creativeBeat&&
+     typeof angle.creativeBeat==="object"&&!Array.isArray(angle.creativeBeat)&&
+     "presentation" in angle.creativeBeat&&
+     typeof angle.creativeBeat.presentation==="string"?
+      angle.creativeBeat.presentation:null,
    };
    entries.push({slotId:segment.slotId,position:segment.position,type:"SEGMENT",
     headline:story?.headline??human(segment.kind),

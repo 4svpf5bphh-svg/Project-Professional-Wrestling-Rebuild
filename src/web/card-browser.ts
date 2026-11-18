@@ -67,6 +67,21 @@ let pendingProgrammeFocusPersonId:string|null=null;
 type BackstageRivalryFocus={worldId:string;promotionId:string;
  personId:string;opponentId:string};
 let pendingBackstageRivalryFocus:BackstageRivalryFocus|null=null;
+/** An earned story reply opens exactly the Programme that produced it.
+ * One-use and promotion-scoped; no public hash identity and no new query.
+ */
+let pendingBackstageStoryFocus:{worldId:string;promotionId:string;programmeId:string}|null=null;
+export function queueBackstageStoryFocus(focus:{
+ worldId:string;promotionId:string;programmeId:string}){
+ if(![focus.worldId,focus.promotionId,focus.programmeId].every(x=>
+  typeof x==="string"&&x.length>0&&x.length<=200))return;
+ pendingBackstageStoryFocus=focus;
+}
+export function consumeBackstageStoryFocus(worldId:string,promotionId:string){
+ const focus=pendingBackstageStoryFocus;
+ pendingBackstageStoryFocus=null;
+ return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?focus:null;
+}
 /** A single private route handoff to the *existing* recruitment editor.
  * No wrestler ID in a public hash or localStorage; consume only for the
  * exact World and promotion. Server verifies person and offer eligibility.
@@ -101,11 +116,21 @@ export function consumeBackstageRivalryFocus(worldId:string,promotionId:string){
  * Planner still discovers a real editable show; no draft is fabricated.
  */
 export type ProgrammeBookingFocus={worldId:string;promotionId:string;
- programmeId:string;ideaKind?:string};
+ programmeId:string;ideaKind?:string;
+ blueprintBeat?:{blueprintId:string;beatId:string};
+ bookedDraft?:{draftId:string;year:number;week:number}};
 let pendingProgrammeBookingFocus:ProgrammeBookingFocus|null=null;
 export function queueProgrammeBookingFocus(focus:ProgrammeBookingFocus){
  if(![focus.worldId,focus.promotionId,focus.programmeId]
   .every(x=>typeof x==="string"&&x.trim().length>0&&x.length<=200))return;
+ if(focus.blueprintBeat&&![focus.blueprintBeat.blueprintId,focus.blueprintBeat.beatId]
+  .every(x=>typeof x==="string"&&x.trim().length>0&&x.length<=80))return;
+ if(focus.bookedDraft&&(
+  typeof focus.bookedDraft.draftId!=="string"||
+  !focus.bookedDraft.draftId.trim()||focus.bookedDraft.draftId.length>200||
+  !Number.isSafeInteger(focus.bookedDraft.year)||focus.bookedDraft.year<1||
+  !Number.isSafeInteger(focus.bookedDraft.week)||focus.bookedDraft.week<1||
+  focus.bookedDraft.week>52))return;
  pendingProgrammeBookingFocus=focus;
 }
 export function consumeProgrammeBookingFocus(worldId:string,promotionId:string){
@@ -237,7 +262,8 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
  onNavigate?:(section:HostSection)=>void,
  focusProgrammeId?:string,focusProgrammeIdeaKind?:string,
  focusWrestler?:FocusedBookingWrestler,
- focusTitleChallenge?:Omit<TitleChallengeFocus,"worldId"|"promotionId">){
+ focusTitleChallenge?:Omit<TitleChallengeFocus,"worldId"|"promotionId">,
+ focusBlueprintBeat?:{blueprintId:string;beatId:string}){
  const call=createCardClient(scope);
  const navigate=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -253,6 +279,7 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
   onDraftChange,
   focusProgrammeId,
   focusProgrammeIdeaKind:focusProgrammeIdeaKind as CardEditorPort["focusProgrammeIdeaKind"],
+  focusBlueprintBeat,
   focusWrestler,
   focusTitleChallenge,
   load:()=>call("load"),
@@ -271,6 +298,9 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
   requestCreativeConsent:({requestId,expectedRevision,slotId,personId,proposedMatch})=>
    call("creativeConsent",{requestId,expectedRevision,slotId,personId,
     ...(proposedMatch===undefined?{}:{proposedMatch})}),
+  planFinale:({requestId,expectedRevision,programmeId,showId,slotId,payoff})=>
+   call("planProgrammeFinale",{requestId,expectedRevision,programmeId,
+    targetShowId:showId,targetSlotId:slotId,payoff}),
   openPlanner:()=>{
    if(onReturnToPlanner){onReturnToPlanner();return;}
    // A reminder can enter directly at #/planner/card. Leaving that
@@ -798,13 +828,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  openResults?:(showId:string)=>void,openArchive?:()=>void):ProgrammeDeskPort{
  return {
   load:()=>call("programmes"),openResults,openArchive,
-  openPlanner:(programmeId,ideaKind)=>{
+  openPlanner:(programmeId,ideaKind,blueprintBeat,bookedDraft)=>{
    // The authenticated host owns #/planner and #/card history. In contrast
    // to mounting a Planner over #/programmes, a real hash navigation lets
    // iPhone Back/reload, the bottom drawer and selected-card recovery agree.
    // Keep the optional wrestler-created story context off the public URL.
    if(programmeId)queueProgrammeBookingFocus({
-    worldId:scope.worldId,promotionId:scope.promotionId,programmeId,ideaKind});
+    worldId:scope.worldId,promotionId:scope.promotionId,programmeId,ideaKind,
+    blueprintBeat,bookedDraft});
    const destination=hostSectionHash("planner");
    if(window.location.hash!==destination)window.location.hash=destination;
    else{
@@ -814,16 +845,21 @@ function programmePort(call:ReturnType<typeof createCardClient>,
     const openSelectedCard=(draftId:string,programmeId?:string)=>{
      mountBookingPage(root,{...scope,showId:draftId},
       ()=>mountPlannerPage(root,scope,backToProgrammes,false,undefined,openSelectedCard),
-      undefined,undefined,programmeId??focus?.programmeId,focus?.ideaKind);
+      undefined,undefined,programmeId??focus?.programmeId,focus?.ideaKind,
+      undefined,undefined,focus?.blueprintBeat);
     };
     mountPlannerPage(root,scope,backToProgrammes,!!focus,undefined,openSelectedCard);
    }
   },
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
-  start:({requestId,expectedRevision,sideA,sideB,championshipId})=>
-   call("startProgramme",{requestId,expectedRevision,sideA,sideB,championshipId}),
+  start:({requestId,expectedRevision,sideA,sideB,programmeFormat,championshipId})=>
+   call("startProgramme",{requestId,expectedRevision,sideA,sideB,
+    programmeFormat,championshipId}),
   end:({requestId,expectedRevision,programmeId})=>
    call("endProgramme",{requestId,expectedRevision,programmeId}),
+  saveCreativeIntent:({requestId,expectedRevision,programmeId,creativeIntent})=>
+   call("saveProgrammeCreativeIntent",{requestId,expectedRevision,
+    programmeId,creativeIntent}),
   planFinale:({requestId,expectedRevision,programmeId,showId,slotId,payoff})=>
    call("planProgrammeFinale",{requestId,expectedRevision,programmeId,
     targetShowId:showId,targetSlotId:slotId,payoff}),
@@ -838,14 +874,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  };
 }
 export function mountProgrammePage(root:HTMLElement,scope:Scope,
- focusPersonId?:string,focusOpponentId?:string){
+ focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string){
  const call=createCardClient(scope);
  const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
   ()=>mountProgrammePage(root,scope,focusPersonId));};
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
   ()=>{void mountResultsArchivePage(root,scope,
    ()=>mountProgrammePage(root,scope,focusPersonId));}),
-  undefined,focusPersonId,focusOpponentId);
+  undefined,focusPersonId,focusOpponentId,focusProgrammeId);
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>,
@@ -885,6 +921,12 @@ function personaPort(call:ReturnType<typeof createCardClient>,
   load:personId=>call("backstage",personId?{personId}:{inboxOnly:true}),
   markRead:personId=>call("markBackstageRead",{personId}),
   markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),
+  chooseStoryFollowUp:input=>call("chooseBackstageStoryFollowUp",input),
+  openStoryProgramme:programmeId=>{
+   queueBackstageStoryFocus({worldId:scope.worldId,
+    promotionId:scope.promotionId,programmeId});
+   window.location.hash=hostSectionHash("programmes");
+  },
   respondNetwork:input=>call("respondBackstageNetwork",input),
   respondStaff:input=>call("respondBackstageStaff",input),
   respondDisagreement:input=>call("respondBackstageDisagreement",input),
@@ -951,6 +993,7 @@ export function mountCalendarPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
   save:input=>call("saveCalendar",input),
   archive:input=>call("archiveCalendar",input),
   saveAnnual:input=>call("saveAnnualPremium",input),
+  renameBooked:input=>call("renameBookedPremium",input),
   openCard:draftId=>onOpenBooking?onOpenBooking(draftId):
    mountBookingPage(root,{...scope,showId:draftId}),
   openPlanner:target=>mountPlannerPage(root,scope,

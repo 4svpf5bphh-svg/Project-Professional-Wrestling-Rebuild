@@ -16,13 +16,13 @@ export function createCardClient(scope:CardSessionScope,
  if(typeof showId!=="string"||showId.length>200)
   throw new Error("Invalid optional booking draft");
  return async function call(method:string,extra:Record<string,unknown>={}){
-  if(!["overview","dismissAttention","dismissAttentionBatch","load","talent","save","ready","creativeConsent","results","programmes","startProgramme","endProgramme","planProgrammeFinale","chooseProgrammeDirection","standingProgrammeConsent","stables","createStable",
+  if(!["overview","dismissAttention","dismissAttentionBatch","load","talent","save","ready","creativeConsent","results","programmes","startProgramme","endProgramme","saveProgrammeCreativeIntent","planProgrammeFinale","chooseProgrammeDirection","standingProgrammeConsent","stables","createStable",
    "addStableMember","removeStableMember","disbandStable","stableChoices",
    "workingConnections","persona","requestPersona","backstage","markBackstageRead",
-   "markBackstageWorldRead","respondBackstageNetwork","respondBackstageStaff","respondBackstageDisagreement","respondBackstageFreeAgent","respondPartnerMediation",
+   "markBackstageWorldRead","chooseBackstageStoryFollowUp","respondBackstageNetwork","respondBackstageStaff","respondBackstageDisagreement","respondBackstageFreeAgent","respondPartnerMediation",
    "backstageArchive","backstageDecision","resultsArchive","publicResults",
    "championships","championshipHistory","tournaments","createChampionship","createTournament","cancelTournament","tagTeams","createTagTeam","renameTagTeam","createTrio",
-   "planner","planShow","saveCreativeOutline","calendar","saveCalendar","archiveCalendar","saveAnnualPremium","contracts","wrestlerDirectory","wrestlerProfile","wrestlerCareer","saveWrestlerRepertoire","submitContractOffer","business","signCommercial","setSpendingPlan","previewRestructure","restructurePromotion","staff","setStaffContinuity","setGorillaPolicy","gorillaWorkspace","saveGorillaShow","hireTalentManager","releaseTalentManager","hireStaff","releaseStaff","renewStaff","industry","industryNews","worldHeritage","legendsVault","legendSeen","worldMomentsOlder","kpWorkspace","achievements","kpClaimWeek","kpAction","industryFeatured","worldRankings","worldCareerSearch","promotionRecordBook","requestContractDates","cancelContractDates","renewContract",
+   "planner","planShow","saveCreativeOutline","calendar","saveCalendar","archiveCalendar","saveAnnualPremium","renameBookedPremium","contracts","wrestlerDirectory","wrestlerProfile","wrestlerCareer","saveWrestlerRepertoire","submitContractOffer","business","signCommercial","setSpendingPlan","previewRestructure","restructurePromotion","staff","setStaffContinuity","setGorillaPolicy","gorillaWorkspace","saveGorillaShow","hireTalentManager","releaseTalentManager","hireStaff","releaseStaff","renewStaff","industry","industryNews","worldHeritage","legendsVault","legendSeen","worldMomentsOlder","kpWorkspace","achievements","kpClaimWeek","kpAction","industryFeatured","worldRankings","worldCareerSearch","promotionRecordBook","requestContractDates","cancelContractDates","renewContract",
    "withdrawContractRenewal","withdrawContractOffer"].includes(method))
    throw new Error("Unknown card action");
   if(["load","talent","save","ready","results"].includes(method)&&!showId)

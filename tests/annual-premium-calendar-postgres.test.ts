@@ -4,7 +4,8 @@ import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
-import {saveAnnualPremiumPlan} from "../src/db/annual-premium-calendar.js";
+import {saveAnnualPremiumPlan,renameBookedPremiumEdition}
+ from "../src/db/annual-premium-calendar.js";
 import {readPromotionCalendar,archivePromotionSeries}
  from "../src/db/calendar-workspace.js";
 import {readSixWeekPlanner,planShowWeek} from "../src/db/planner-workspace.js";
@@ -119,21 +120,81 @@ test("one 52-week PPV confirmation creates playable booked events, protects them
   assert.equal(event.weeks[0]?.shows[0]?.bookingClass,"PREMIUM");
   assert.equal(event.weeks[0]?.shows[0]?.showName,"CWA Spring Riot");
   assert.equal(event.weeks[0]?.shows[0]?.day,6);
+  const draftId=booked.status==="APPLIED"?booked.result.draftId:"";
+  assert.ok(draftId);
+  const protectedBefore=await readPromotionCalendar(db.pool,scope);
+  assert.equal(protectedBefore.premiumEditions[0]?.showName,"CWA Spring Riot");
+  assert.equal(protectedBefore.premiumEditions[0]?.showSeriesId,
+   suggested[0]!.seriesId);
+  // An annual rename is NOT a rename of the already booked show.
   await assert.rejects(saveAnnualPremiumPlan(db.pool,{...scope,
-   requestId:"move-booked",expectedRevision:2,year:1,
+   requestId:"silently-rename",expectedRevision:2,year:1,
+   events:suggested.map((e,i)=>i===0?{...e,name:"The Lottery"}:e)}),
+   /cannot be cancelled, renamed or moved/);
+  // Explicit owner consent changes the draft and annual edition together.
+  const renamed=await renameBookedPremiumEdition(db.pool,{...scope,
+   requestId:"rename-booked",expectedRevision:2,draftId,
+   year:1,week:12,name:"The Lottery"});
+  assert.equal(renamed.status,"APPLIED");
+  assert.equal((await renameBookedPremiumEdition(db.pool,{...scope,
+   requestId:"rename-booked",expectedRevision:2,draftId,
+   year:1,week:12,name:"The Lottery"})).status,"REPLAYED");
+  const afterRename=await readPromotionCalendar(db.pool,scope);
+  assert.equal(afterRename.premiumEditions[0]?.showName,"The Lottery");
+  assert.equal(afterRename.annual?.years[0]?.events[0]?.name,"The Lottery");
+  assert.equal((await readSixWeekPlanner(db.pool,scope))
+   .weeks[0]?.shows[0]?.showName,"The Lottery");
+  await assert.rejects(saveAnnualPremiumPlan(db.pool,{...scope,
+   requestId:"move-booked",expectedRevision:3,year:1,
    events:suggested.filter(x=>x.week!==12)}),/cannot be cancelled|weeks between/);
   await assert.rejects(archivePromotionSeries(db.pool,{...scope,
-   requestId:"archive-booked",expectedRevision:2,
+   requestId:"archive-booked",expectedRevision:3,
    seriesId:suggested[0]!.seriesId}),/confirmed annual PPV plan/);
   const future=await saveAnnualPremiumPlan(db.pool,{...scope,
-   requestId:"year-two",expectedRevision:2,year:2,
+   requestId:"year-two",expectedRevision:3,year:2,
    events:before.annual!.years[1]!.suggested});
   assert.equal(future.status,"APPLIED");
+  // Submitted bookings are immutable even if someone attempts an explicit
+  // rename with the latest valid World revision.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_booking_drafts SET status='SUBMITTED' "+
+   "WHERE world_id=$1 AND draft_id=$2",[worldId,draftId]));
+  await assert.rejects(renameBookedPremiumEdition(db.pool,{...scope,
+   requestId:"submitted-rename",expectedRevision:4,draftId,
+   year:1,week:12,name:"Another Name"}),/cannot be renamed/);
+  assert.equal((await readSixWeekPlanner(db.pool,scope))
+   .weeks[0]?.shows[0]?.showName,"The Lottery");
   const count=await withWorldTransaction(db.pool,tx=>tx.query<{year:number;size:number}>(`
    SELECT year,jsonb_array_length(events) AS size FROM ppw_annual_premium_plans
    WHERE world_id=$1 AND promotion_id=$2 ORDER BY year`,[worldId,promotionId]));
   assert.deepEqual(count,[{year:1,size:3},{year:2,size:3}],
    "Only two compact year rows, never 104 generated show rows");
+  // Existing live Worlds may have NO annual plan in their protected current
+  // year. Their booked draft must still be editable explicitly and must
+  // remain correctly named on Calendar even if the legacy series differs.
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_annual_premium_plans "+
+    "WHERE world_id=$1 AND promotion_id=$2 AND year=1",
+    [worldId,promotionId]);
+   await tx.query("UPDATE ppw_worlds SET premium_plan_start_year=2 "+
+    "WHERE world_id=$1",[worldId]);
+   await tx.query("UPDATE ppw_booking_drafts SET status='DRAFT' "+
+    "WHERE world_id=$1 AND draft_id=$2",[worldId,draftId]);
+  });
+  const legacy=await renameBookedPremiumEdition(db.pool,{...scope,
+   requestId:"legacy-name",expectedRevision:4,draftId,
+   year:1,week:12,name:"Legacy Lottery"});
+  assert.equal(legacy.status,"APPLIED");
+  const legacyCalendar=await readPromotionCalendar(db.pool,scope);
+  assert.equal(legacyCalendar.annual?.years[0]?.confirmed,false);
+  assert.equal(legacyCalendar.premiumEditions[0]?.showName,"Legacy Lottery");
+  assert.equal((await readSixWeekPlanner(db.pool,scope))
+   .weeks[0]?.shows[0]?.showName,"Legacy Lottery");
+  const oldAnnual=await withWorldTransaction(db.pool,tx=>tx.query(
+   "SELECT year FROM ppw_annual_premium_plans "+
+   "WHERE world_id=$1 AND promotion_id=$2 ORDER BY year",[worldId,promotionId]));
+  assert.deepEqual(oldAnnual,[{year:2}],
+   "A grandfathered year's renamed draft must not create an annual plan");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_annual_premium_plans","ppw_booking_drafts",

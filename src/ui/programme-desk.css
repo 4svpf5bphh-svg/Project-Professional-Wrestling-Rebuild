@@ -624,3 +624,107 @@
 .ppw-programme-crowd-trend[data-direction=cooling]{
  border-left:3px solid #f8a69e}
 .ppw-programme-crowd-trend[data-direction=cooling] span{color:#ffcbcb}
+
+/* Optional blueprint choices/editable motivation in the existing Programme. */
+.ppw-programme-creative-intent{min-width:0;display:grid;gap:10px;
+ padding:13px;background:linear-gradient(135deg,#1b2d44,#191f39);
+ border:1px solid #5f7e9d;border-radius:13px}
+.ppw-programme-creative-intent h3{margin:0;color:#f8f2df;font-size:18px;line-height:1.3}
+.ppw-programme-creative-intent p{margin:0;font-size:12px;line-height:1.45}
+.ppw-story-current-blueprint{font-size:13px;color:#ade9f9}
+.ppw-story-blueprint-picker{min-width:0;border:1px solid #547b96;border-radius:11px;
+ padding:8px;background:#11283e}
+.ppw-story-blueprint-picker>summary{cursor:pointer;min-height:42px;
+ display:flex;align-items:center;font-size:13px;font-weight:800;color:#e9f7ff}
+.ppw-story-blueprint-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;min-width:0}
+.ppw-story-family{grid-column:1/-1;font-size:10px;letter-spacing:.12em;
+ text-transform:uppercase;font-weight:850;color:#95c8e7;margin-top:6px}
+.ppw-story-blueprint-option{min-width:0;min-height:44px;padding:10px 7px;
+ border-radius:9px;border:1px solid #51758e;background:#173b55;color:#f0f8fc;
+ font:750 12px/1.35 system-ui;white-space:normal;overflow-wrap:anywhere}
+.ppw-story-blueprint-option[aria-pressed=true]{background:#3e4e83;
+ border:2px solid #e9bb81;color:#fff}
+.ppw-story-creative-field{display:grid;gap:5px;min-width:0;
+ color:#d5edf9;font-size:12px;font-weight:800}
+.ppw-story-creative-field textarea{width:100%;max-width:100%;min-width:0;
+ box-sizing:border-box;min-height:76px;resize:vertical;padding:10px;
+ font:400 16px/1.35 system-ui;border-radius:10px;background:#edf4fa;
+ color:#142c46;border:1px solid #8caecb}
+.ppw-story-creative-field textarea:focus-visible,
+.ppw-story-blueprint-option:focus-visible{outline:3px solid #efc381;outline-offset:2px}
+@media(max-width:355px){.ppw-programme-creative-intent{padding:10px}
+ .ppw-story-blueprint-choices{grid-template-columns:minmax(0,1fr)}}
+
+/* Saved story beats are optional routes into the canonical card editor. */
+.ppw-programme-next-beats{display:grid;gap:8px;min-width:0;
+ margin:10px 0 4px;padding:12px;border:1px solid #7a7097;
+ border-radius:12px;background:linear-gradient(125deg,#202b4a,#302641)}
+.ppw-programme-next-beats h4{font:850 14px/1.35 system-ui;margin:0;color:#fff1d4}
+.ppw-programme-next-beats p{font-size:11px;line-height:1.4;margin:0}
+.ppw-programme-next-beats .ppw-programme-beat-action{display:grid;
+ grid-template-columns:minmax(0,1fr);gap:4px;width:100%;min-height:52px;
+ text-align:left;white-space:normal;overflow-wrap:anywhere;
+ padding:10px 12px;border:1px solid #9175ac;border-radius:9px;
+ background:#354271;color:#fff2e4;font:850 13px/1.3 system-ui}
+.ppw-programme-next-beats .ppw-programme-beat-action small{
+ font:500 11px/1.3 system-ui;color:#d9e2f5;white-space:normal}
+.ppw-programme-next-beats .ppw-programme-beat-action:focus-visible{
+ outline:3px solid #efc381;outline-offset:2px}
+
+/* Earned Blueprint beats: distinguish a saved intention, booked card and
+   performed on-air fact without implying an automatic character change. */
+.ppw-programme-next-beats .ppw-story-beat-tally{font-weight:850;color:#b7f1e3}
+.ppw-programme-next-beats .ppw-story-beat-message{color:#d4e9f8;font-size:11px}
+.ppw-programme-next-beats .ppw-programme-beat-state{
+ font:850 10px/1.3 system-ui;letter-spacing:.09em;color:#e3f3ff}
+.ppw-programme-next-beats .ppw-programme-beat-proof{
+ color:#d7f7ec;font-size:11px;line-height:1.4}
+.ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="booked"]{
+ background:#224d59;border-color:#7dbab5}
+.ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="booked"] .ppw-programme-beat-state{
+ color:#aaf4df}
+.ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="played"]{
+ background:#252e45;border-color:#6b8799}
+.ppw-programme-next-beats .ppw-programme-beat-action[data-beat-status="played"] .ppw-programme-beat-state{
+ color:#adcfde}
+
+/* Evidence-first creative cues are guidance, never certified events. */
+.ppw-programme-next-beats .ppw-story-beat-cue{
+ margin:0;padding:9px 0 7px;border-bottom:1px solid #647692;
+ color:#deecfc;font:650 11px/1.45 system-ui;overflow-wrap:anywhere}
+.ppw-programme-next-beats[data-cue-signal=medical] .ppw-story-beat-cue{
+ color:#ffdfa7}
+.ppw-programme-next-beats[data-cue-signal=cooling] .ppw-story-beat-cue{
+ color:#d9e7f4}
+.ppw-programme-next-beats .ppw-programme-beat-action:has(.ppw-programme-beat-state){
+ min-width:0}
+
+/* Solo, relationship and faction stories use the same original Programme
+ * dashboard without pretending to have an opposing rival side. */
+.ppw-programme-format-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+.ppw-programme-format-option{min-width:0;min-height:66px;display:grid;align-content:center;gap:4px;
+ text-align:left;white-space:normal;padding:9px 10px;border-radius:10px;
+ background:#23425b;border:1px solid #64859e;color:#f0f7fb;font:850 13px/1.25 system-ui}
+.ppw-programme-format-option small{color:#c5deed;font:500 11px/1.35 system-ui}
+.ppw-programme-format-option[aria-pressed=true]{background:#344a78;border:2px solid #edc783}
+.ppw-programme-format-option:focus-visible{outline:3px solid #edc783;outline-offset:2px}
+.ppw-programme-broadcast:has(.ppw-programme-story-type){
+ grid-template-columns:minmax(0,1fr)!important;justify-items:stretch}
+.ppw-programme-broadcast:has(.ppw-programme-story-type) .ppw-programme-broadcast-side{
+ display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;min-width:0}
+.ppw-programme-story-type{font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+ font-weight:850;color:#e3c493;padding:6px 0}
+.ppw-programme-archive-duel:has(.ppw-programme-story-type){
+ grid-template-columns:minmax(0,1fr)!important}
+@media(max-width:355px){.ppw-programme-format-choices{grid-template-columns:minmax(0,1fr)}}
+
+/* Author-approved follow-up is a creative cue, never a result badge. */
+.ppw-programme-story-follow-up{display:grid;gap:6px;min-width:0;
+ margin:12px 0;padding:12px;border:1px solid #547d97;border-radius:11px;
+ background:rgba(22,50,77,.66);color:#eff7ff}
+.ppw-programme-story-follow-up strong{font-size:14px;line-height:1.35}
+.ppw-programme-story-follow-up p{margin:0;line-height:1.45;overflow-wrap:anywhere}
+.ppw-programme-story-follow-up small{line-height:1.45;color:#cbdfec}
+.ppw-programme-story-cue{padding:10px 12px;border-left:3px solid #d7ba7d;
+ border-radius:4px;background:rgba(29,51,72,.6);line-height:1.5}

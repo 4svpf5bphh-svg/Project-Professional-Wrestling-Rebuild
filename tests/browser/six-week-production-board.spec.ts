@@ -94,8 +94,10 @@ test("manager saves a seven-week PPV outline once, and it survives reload withou
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Plan future story beats"}).click();
+ await page.getByRole("button",{name:"Creative outline for Year 1 Week 3"}).click();
  await page.getByLabel("Creative intention for Year 1 Week 3")
   .fill("Joe questions the champion");
+ await page.getByRole("button",{name:"Creative outline for Year 1 Week 6"}).click();
  await page.getByLabel("Creative intention for Year 1 Week 6")
   .fill("Slow turn payoff at Spring Riot");
  // Typed thoughts are only plans: no new booking or fees.
@@ -108,6 +110,7 @@ test("manager saves a seven-week PPV outline once, and it survives reload withou
  await expect(page.locator(".ppw-planner-outline")).toContainText("Spring Riot");
  await expect(page.locator(".ppw-planner-board-tile[data-state='UNBOOKED']")).toHaveCount(4);
  await page.getByRole("button",{name:"Edit 2 week notes"}).click();
+ await page.getByRole("button",{name:"Creative outline for Year 1 Week 3"}).click();
  await page.getByLabel("Creative intention for Year 1 Week 3").fill("");
  await page.getByRole("button",{name:"Save six-week outline"}).click();
  await expect(page.locator(".ppw-planner-outline")).not.toContainText("Joe questions the champion");

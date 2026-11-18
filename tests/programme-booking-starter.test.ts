@@ -85,3 +85,36 @@ test("older programme cards without cast metadata keep manual booking available"
  assert.equal(result.ok,false);
  assert.match(!result.ok?result.reason:"",/manually/);
 });
+
+test("solo story cast selects one actually signed character without inventing a rival",async()=>{
+ const {programmeStoryLeadStarter}=await import("../src/ui/programme-booking-starter.js");
+ const solo={programmeId:"solo",programmeFormat:"SOLO" as const,cast:[
+  {personId:"joe",name:"Samoa Joe",side:"A" as const,contractId:"contract-joe"}]};
+ const interview=recommendProgrammeAngles({heat:40,repetition:0,programmeFormat:"SOLO"})[0]!;
+ const started=programmeAngleIdeaStarter(solo,"opening",interview);
+ assert.equal(started.programmeId,"solo");
+ const cast=programmeStoryLeadStarter(solo,started,"joe");
+ assert.equal(cast.ok,true);
+ if(cast.ok){
+  assert.deepEqual(cast.value.actors.map(p=>p.personId),["joe"]);
+  assert.deepEqual(cast.value.targets,[]);
+  const payload=buildEditorSegment(cast.value);
+  assert.equal(payload.kind,"INTERVIEW");
+  assert.deepEqual(payload.actorIds,["joe"]);
+ }
+ assert.equal(programmeStoryLeadStarter(solo,started,"outsider").ok,false);
+ assert.equal(programmeStoryLeadStarter(p,started,"joe").ok,false);
+ const unavailable={...solo,cast:[{...solo.cast[0]!,contractId:null}]};
+ const blocked=programmeStoryLeadStarter(unavailable,started,"joe");
+ assert.equal(blocked.ok,false);
+ assert.match(!blocked.ok?blocked.reason:"",/not eligible/);
+ const recap=programmeAngleIdeaStarter(solo,"recap",
+  recommendProgrammeAngles({heat:40,repetition:0,programmeFormat:"SOLO"})
+   .find(x=>x.kind==="VIDEO_PACKAGE")!);
+ assert.equal(recap.videoPurpose,"WRESTLER_HYPE");
+ assert.equal(recap.scene?.purpose,"BUILD_CHARACTER",
+  "A solo-character recap must not be described as feud footage");
+ assert.equal(programmeAngleIdeaStarter(p,"old-recap",
+  recommendProgrammeAngles({heat:82,repetition:0})
+   .find(x=>x.kind==="VIDEO_PACKAGE")!).videoPurpose,"FEUD_RECAP");
+});

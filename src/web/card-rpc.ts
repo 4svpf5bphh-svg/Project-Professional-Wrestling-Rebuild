@@ -3,7 +3,7 @@ import {BACKSTAGE_LABELS,type BackstageDecision}
  from "../domain/backstage-conversations.js";
 import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
 import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
- saveAnnualPremiumAsActor,
+ saveAnnualPremiumAsActor,renameBookedPremiumAsActor,
  plannerAsActor,planShowAsActor,saveCreativeOutlineAsActor,contractDeskAsActor,wrestlerDirectoryAsActor,wrestlerProfileAsActor,wrestlerCareerAsActor,editWrestlerRepertoireAsActor,businessAsActor,
  previewRestructureAsActor,restructurePromotionAsActor,signCommercialDealAsActor,
  requestBroadcastDayAsActor,
@@ -11,11 +11,11 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,achievementsWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
- portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,respondStaffDisagreementAsActor,respondBackstageFreeAgentAsActor,respondPartnerMediationAsActor,backstageArchiveAsActor,
+ portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,chooseBackstageStoryFollowUpAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,respondStaffDisagreementAsActor,respondBackstageFreeAgentAsActor,respondPartnerMediationAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
- programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeFinaleAsActor,programmeDirectionAsActor,standingCreativeAgreementAsActor,
+ programmeWorkspaceAsActor,startProgrammeAsActor,endProgrammeAsActor,programmeFinaleAsActor,programmeDirectionAsActor,programmeCreativeIntentAsActor,standingCreativeAgreementAsActor,
  completedShowAsActor,completedShowArchiveAsActor,publicCompletedShowAsActor,championshipsAsActor,createChampionshipAsActor,tournamentsAsActor,createTournamentAsActor,cancelTournamentAsActor,championshipHistoryAsActor,showCardEditorAsActor,cardTalentAsActor,saveCardEditorAsActor,requestMatchConsentAsActor,markPreparedShowReadyAsActor} from "../api/world-service.js";
 
 /** Framework-independent authenticated RPC router. Caller must verify the session,
@@ -123,6 +123,15 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
   return replyToBroadcasterAsActor(context,{worldId,promotionId,mailId:id("mailId"),
    requestId:id("requestId"),expectedRevision:p.expectedRevision as number,
    decision:p.decision});
+ }
+ if(method==="chooseBackstageStoryFollowUp"){
+  if(!["BUILD_ON_REACTION","CHANGE_PRESENTATION","SLOW_BURN"].includes(String(p.choice)))
+   throw new Error("Invalid story follow-up choice");
+  if(!Number.isSafeInteger(p.expectedRevision)||Number(p.expectedRevision)<0)
+   throw new Error("Invalid World revision");
+  return chooseBackstageStoryFollowUpAsActor(context,{worldId,promotionId,
+   mailId:id("mailId"),requestId:id("requestId"),expectedRevision:p.expectedRevision as number,
+   choice:p.choice as import("../domain/programme-story-follow-up.js").StoryFollowUpChoice});
  }
  if(method==="respondBackstageStaff"){
   if(p.decision!=="COMMIT"&&p.decision!=="DEFER")
@@ -256,6 +265,14 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    worldId,promotionId,requestId,expectedRevision,year:p.year as number,
    events:p.events as import("../domain/annual-premium-plan.js").AnnualPremiumEvent[]
   });
+ }
+ if(method==="renameBookedPremium"){
+  if(!Number.isSafeInteger(p.year)||!Number.isSafeInteger(p.week)||
+   typeof p.name!=="string"||!p.name.trim()||p.name.trim().length>80)
+   throw new Error("Invalid booked premium rename");
+  return renameBookedPremiumAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,draftId:id("draftId"),year:p.year as number,
+   week:p.week as number,name:p.name as string});
  }
  if(method==="saveCreativeOutline"){
   if(!Array.isArray(p.notes)||p.notes.length>7||
@@ -433,17 +450,30 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="disbandStable")return disbandStableAsActor(context,{
   worldId,promotionId,requestId,expectedRevision,stableId:id("stableId")});
  if(method==="startProgramme"){
+  const programmeFormat=p.programmeFormat??"RIVALRY";
+  if(!["RIVALRY","SOLO","RELATIONSHIP","FACTION"].includes(String(programmeFormat)))
+   throw new Error("Invalid programme format");
   const check=(v:unknown):v is {kind:"PERSON"|"TEAM";refId:string}[]=>
-   Array.isArray(v)&&v.length>0&&v.length<=2&&v.every(x=>
+   Array.isArray(v)&&v.length<=5&&v.every(x=>
     x&&typeof x==="object"&&
-    (x.kind==="PERSON"||x.kind==="TEAM")&&typeof x.refId==="string");
+    (x.kind==="PERSON"||x.kind==="TEAM")&&
+    typeof x.refId==="string"&&x.refId.length>0&&x.refId.length<=200);
   if(!check(p.sideA)||!check(p.sideB)||!(
    p.championshipId===undefined||p.championshipId===null||
    typeof p.championshipId==="string"))
-   throw new Error("Invalid programme sides");
+   throw new Error("Invalid programme cast");
   return startProgrammeAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,sideA:p.sideA,sideB:p.sideB,
+   programmeFormat:programmeFormat as import("../domain/programme-lifecycle.js").ProgrammeFormat,
    championshipId:p.championshipId as string|null|undefined});
+ }
+ if(method==="saveProgrammeCreativeIntent"){
+  const payload=p.creativeIntent;
+  if(payload!==null&&(!payload||typeof payload!=="object"||Array.isArray(payload)))
+   throw new Error("Invalid Programme creative direction");
+  return programmeCreativeIntentAsActor(context,{worldId,promotionId,requestId,
+   expectedRevision,programmeId:id("programmeId"),
+   creativeIntent:payload as import("../domain/programme-creative-intent.js").ProgrammeCreativeIntent|null});
  }
  if(method==="standingProgrammeConsent"){
   if(!["SINGLES","TAG"].includes(String(p.matchType))||

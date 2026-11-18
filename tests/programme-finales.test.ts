@@ -8,12 +8,13 @@ test("an on-screen finale is always tied to a real, appropriate angle or match",
  assert.deepEqual(eligibleProgrammePayoffs("MATCH",match),["DECISIVE_MATCH"]);
  assert.deepEqual(eligibleProgrammePayoffs("MATCH",{...match,championshipId:"belt",stipulation:"CAGE"}),
   ["DECISIVE_MATCH","TITLE_SHOWDOWN","STIPULATION_SHOWDOWN"]);
- assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("CONFRONTATION")),["FINAL_CONFRONTATION"]);
- assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("TURN")),["BETRAYAL"]);
- assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("STABLE_RECONCILIATION")),["RECONCILIATION"]);
- assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("VIDEO_PACKAGE")),[]);
+ assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("CONFRONTATION")),["FINAL_CHAPTER","FINAL_CONFRONTATION"]);
+ assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("TURN")),["FINAL_CHAPTER","BETRAYAL"]);
+ assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("STABLE_RECONCILIATION")),["FINAL_CHAPTER","RECONCILIATION"]);
+ assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("VIDEO_PACKAGE")),["FINAL_CHAPTER"]);
+ assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",angle("PROMO")),["FINAL_CHAPTER"]);
  assert.deepEqual(eligibleProgrammePayoffs("SEGMENT",{kind:"FORGED"}),[]);
- assert.equal(Object.keys(PROGRAMME_PAYOFFS).length,6);
+ assert.equal(Object.keys(PROGRAMME_PAYOFFS).length,7);
 });
 test("a decisive feud match has to produce a certified winner",()=>{
  assert.equal(certifiedFinaleDelivered({
@@ -50,6 +51,16 @@ test("only a completed, still-matching scripted scene can deliver the angle payo
   winnerSide:null,angleHappened:true}),false);
 });
 
+test("a non-rivalry final chapter requires the exact authored scene to happen",()=>{
+ for(const kind of ["PROMO","INTERVIEW","VIDEO_PACKAGE","CELEBRATION"]){
+  assert.equal(certifiedFinaleDelivered({kind:"SEGMENT",payoff:"FINAL_CHAPTER",
+   payload:angle(kind),winnerSide:null,angleHappened:true}),true);
+  assert.equal(certifiedFinaleDelivered({kind:"SEGMENT",payoff:"FINAL_CHAPTER",
+   payload:angle(kind),winnerSide:null,angleHappened:false}),false);
+ }
+ assert.equal(certifiedFinaleDelivered({kind:"SEGMENT",payoff:"FINAL_CHAPTER",
+  payload:angle("FORGED"),winnerSide:null,angleHappened:true}),false);
+});
 test("DQ or injury stoppage cannot silently certify a decisive feud payoff",()=>{
  for(const actualFinish of ["DISQUALIFICATION","INJURY_STOPPAGE"]){
   assert.equal(certifiedFinaleDelivered({kind:"MATCH",payoff:"DECISIVE_MATCH",

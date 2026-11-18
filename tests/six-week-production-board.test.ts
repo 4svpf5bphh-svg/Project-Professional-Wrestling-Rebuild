@@ -59,11 +59,19 @@ test("the board preserves a mixed show week and current-year rollover",()=>{
  assert.equal(board.submittedShows,2);
 });
 
-test("an unscheduled week is not promoted to a fictional PPV",()=>{
- const board=buildSixWeekProduction([week(3,12,0,[],[])]);
+test("an off-cadence rest week is not a missing TV booking or fictional PPV",()=>{
+ const board=buildSixWeekProduction([
+  week(3,12,0,[],[]),week(3,13,1,[],[series("tv","REGULAR","Ascension")])
+ ]);
  assert.equal(board.nextPremium,null);
  assert.equal(board.weeks[0]!.premiumName,null);
+ assert.equal(board.weeks[0]!.state,"NO_SHOW_DUE");
+ assert.equal(board.weeks[0]!.label,"No show due");
+ assert.equal(board.weeks[0]!.missingShows,0);
  assert.equal(board.weeks[0]!.submittedCount,0);
+ assert.equal(board.weeks[1]!.state,"UNBOOKED");
+ assert.equal(board.needsActionWeeks,1,"Rest weeks must not count as missing cards");
+ assert.equal(board.unsubmittedWeeks,1);
 });
 
 

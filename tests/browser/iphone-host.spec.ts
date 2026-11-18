@@ -176,7 +176,7 @@ test("Home alerts open expiring agreements or pending offers directly without an
   .getByRole("button",{name:/Needs action/})).toHaveAttribute("aria-current","page");
  await expect(page.getByText(/Contracts closest to expiry/)).toBeVisible();
  await page.goto("/#/home");
- await expect(page.getByRole("button",{name:/RESULTS ARCHIVE|LATEST RESULT/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/RESULTS ARCHIVE|LATEST CERTIFIED SHOW/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Offers awaiting decisions/})).toHaveCount(0);
  expect(methods).toEqual(["overview","contracts","overview"]);
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
@@ -564,7 +564,8 @@ test("Home contract wire dismisses one resolved offer without suppressing show o
  await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
- await page.locator(".ppw-home-action-with-dismiss").getByRole("button",{name:"Dismiss"}).click();
+ // Resolved notices belong to Recent Changes, not to the urgent tasks stack.
+ await page.getByRole("button",{name:"Dismiss Alice's contract update"}).click();
  await expect(page.getByText("Alice has signed")).toHaveCount(0);
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
  await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
@@ -1398,7 +1399,8 @@ test("iPhone venue choices show rival interest and save without repeated Planner
   venues:[venue("arena","Main Arena"),venue("hall","Town Hall")],
   venuePressure:[{year:1,week:5,day:5,venueId:"arena",otherPromotions:2}],
   weeks:[{year:1,week:5,offset:0,required:true,major:false,canEdit:true,
-   shows:[],scheduled:[]}]
+   shows:[],scheduled:[{seriesId:"tv",name:"weekly show",role:"FLAGSHIP",
+    eventType:"REGULAR",cadenceWeeks:1,anchorWeek:0,importance:70,active:true}]}]
  };
  await page.route("**/api/session",async route=>route.fulfill({json:current}));
  await page.route("**/api/card",async route=>{
@@ -2074,3 +2076,30 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+test("320/390 Home gives certified broadcast and unanswered Backstage decisions priority over duplicate finances",async({page})=>{
+ const rich={...overview, promotion:{...overview.promotion,
+  nextShow:{year:1,week:5,showName:"Ascension",ready:false,status:"DRAFT"},
+  latestShow:{year:1,week:3,showName:"Ascension",crowdResponse:78},
+  standing:{position:12,total:32},
+  attention:{unpreparedShow:true,pendingBackstage:true,expiringTalent:false,
+   backstageUnreadCount:2,backstageRequests:[{personId:"star",name:"Star",kind:"CREATIVE"}],
+   pendingContractOffers:false,plannedShows:1}
+ }};
+ await page.route("**/api/session",r=>r.fulfill({json:{...current,overview:rich}}));
+ await page.route("**/api/card",r=>r.fulfill({json:
+  r.request().postDataJSON().method==="overview"?rich:{}}));
+ for(const width of [320,390]){
+  await page.setViewportSize({width,height:844});
+  await page.goto("/#/home");
+  await expect(page.getByRole("button",{name:/LATEST CERTIFIED SHOW · Ascension/})).toBeVisible();
+  await expect(page.locator(".ppw-home-certified-score")).toHaveText("78/100 · CROWD");
+  await expect(page.locator(".ppw-home-backstage-action"))
+   .toContainText("needs your decision");
+  await expect(page.getByRole("button",{name:/Star is waiting/})).toBeVisible();
+  await expect(page.locator(".ppw-home-finances")).toHaveCount(0);
+  await expect(page.getByRole("button",{name:/WORLD RANK/})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ }
+});
