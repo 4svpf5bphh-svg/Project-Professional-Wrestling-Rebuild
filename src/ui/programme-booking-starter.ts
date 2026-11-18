@@ -11,11 +11,15 @@ import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
 import {initialAngleScene,anglePurposesFor,angleLocationsFor}
  from "../domain/angle-scene.js";
 import type {ProgrammeAngleIdea} from "../domain/programme-angle-recommendations.js";
+import type {ProgrammeFormat} from "../domain/programme-lifecycle.js";
 export interface FeudCastPerson{
  personId:string;name:string;side?:"A"|"B"|null;
  contractId?:string|null;appearanceFee?:number|null;creativeControl?:string|null;
 }
-export interface FeudCast{programmeId:string;cast:readonly FeudCastPerson[]}
+export interface FeudCast{
+ programmeId:string;programmeFormat?:ProgrammeFormat;
+ cast:readonly FeudCastPerson[]
+}
 export type StarterResult<T>={ok:true;value:T}|{ok:false;reason:string};
 const notReady=(reason:string):StarterResult<never>=>({ok:false,reason});
 const bySide=(p:FeudCast,side:"A"|"B")=>(p.cast??[]).filter(x=>x.side===side)
@@ -64,7 +68,9 @@ export function programmeAngleIdeaStarter(p:FeudCast,slotId:string,
  const purpose=idea.purpose;
  const location=idea.location;
  return {...initial,programmeId:p.programmeId,durationMinutes:idea.minutes,
-  ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:"FEUD_RECAP" as const}:{}),
+  ...(idea.kind==="VIDEO_PACKAGE"?{videoPurpose:
+    p.programmeFormat&&p.programmeFormat!=="RIVALRY"?
+     "WRESTLER_HYPE" as const:"FEUD_RECAP" as const}:{}),
   scene:{...defaultScene,
    purpose:purpose&&anglePurposesFor(idea.kind).includes(purpose)?purpose:defaultScene.purpose,
    location:location&&angleLocationsFor(idea.kind).includes(location)?location:defaultScene.location}};
@@ -94,4 +100,33 @@ export function programmeAngleCastStarter(p:FeudCast,segment:EditorSegment,
   if(!ready.complete)return notReady(ready.hint);
   return {ok:true,value:next};
  }catch(e){return notReady(e instanceof Error?e.message:"Cannot cast this rivalry scene");}
+}
+
+/** A story without an opposing feud side still needs a playable cast.
+ * The manager explicitly chooses the performer who starts a scene. This
+ * uses the same signed and show-week-scoped rights as original feud casting.
+ * It does not prefill targets, additional speakers, stable membership,
+ * alignment, match outcomes, appearance fees or off-screen relationships.
+ */
+export function programmeStoryLeadStarter(p:FeudCast,segment:EditorSegment,
+ personId:string):StarterResult<EditorSegment>{
+ if(!p.programmeFormat||p.programmeFormat==="RIVALRY")
+  return notReady("Choose a rivalry side for this original Programme");
+ if(!p.cast?.length||p.cast.length>5)
+  return notReady("This story has no usable cast. Choose wrestlers manually.");
+ const person=p.cast.find(x=>x.personId===personId&&x.side==="A");
+ if(!person)return notReady("Choose an actual character from this story");
+ if(!person.contractId)
+  return notReady(person.name+" is not eligible for this show's date. Check contracts and medical clearance.");
+ const rules=SEGMENT_BOOKING_RULES[segment.kind];
+ if(!rules||rules.maxActors<1)
+  return notReady("Choose a different scene for this character");
+ try{
+  // The rest of this scene stays editable: a rescue still needs its second
+  // rescuer and target, a signing requires additional speakers, and a
+  // betrayal requires the player's actual scripted action.
+  const next:EditorSegment={...segment,actors:[],targets:[]};
+  return {ok:true,value:addSegmentPerson(next,"actors",
+   {personId:person.personId,contractId:person.contractId})};
+ }catch(e){return notReady(e instanceof Error?e.message:"Cannot cast this story scene");}
 }

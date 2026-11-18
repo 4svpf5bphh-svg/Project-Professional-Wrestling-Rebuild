@@ -702,7 +702,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     b.slotId.localeCompare(a.slotId))[0];
    // Retain the original server-authoritative after-match decision, but
    // surface concrete next intentions instead of a nested 'Creative direction'.
-   if(latestMatch&&view.canEdit){
+   if(latestMatch&&view.canEdit&&storyKind(p)==="RIVALRY"){
     const suggested=suggestProgrammeAdvice({
      heat:p.heat,repetition:p.repetition,activityCount:p.activityCount,
      matchCount:p.matchCount,segmentCount:p.segmentCount,

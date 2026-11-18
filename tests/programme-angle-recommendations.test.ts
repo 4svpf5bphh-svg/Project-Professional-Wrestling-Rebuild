@@ -49,3 +49,27 @@ test("repetition, hot interest and cold stories receive distinct advice",()=>{
  assert.equal(recommendProgrammeAngles({...base,heat:90})[0]?.kind,"CONTRACT_SIGNING");
  assert.equal(recommendProgrammeAngles({...base,heat:15})[0]?.kind,"INTERVIEW");
 });
+
+test("solo, mentor and faction stories suggest castable scenes without inventing a feud",()=>{
+ const cases=[
+  {programmeFormat:"SOLO" as const,opening:["INTERVIEW","PROMO","VIDEO_PACKAGE"],
+   next:["INTERVIEW","PROMO","VIDEO_PACKAGE"]},
+  {programmeFormat:"RELATIONSHIP" as const,opening:["INTERVIEW","PROMO","CELEBRATION"],
+   next:["INTERVIEW","CELEBRATION","VIDEO_PACKAGE"]},
+  {programmeFormat:"FACTION" as const,opening:["PROMO","INTERVIEW","CELEBRATION"],
+   next:["INTERVIEW","PROMO","VIDEO_PACKAGE"]}
+ ];
+ for(const sample of cases){
+  const opening=recommendProgrammeAngles({...base,programmeFormat:sample.programmeFormat,activityCount:0});
+  const developed=recommendProgrammeAngles({...base,programmeFormat:sample.programmeFormat,activityCount:4});
+  assert.deepEqual(opening.map(x=>x.kind),sample.opening);
+  assert.deepEqual(developed.map(x=>x.kind),sample.next);
+  for(const item of [...opening,...developed]){
+   assert.ok(SEGMENT_BOOKING_RULES[item.kind]);
+   assert.doesNotMatch(item.reason,/they betrayed|they already|won the title|automatically|guaranteed/i);
+  }
+ }
+ const old=recommendProgrammeAngles({...base,activityCount:0});
+ const original=recommendProgrammeAngles({...base,programmeFormat:"RIVALRY",activityCount:0});
+ assert.deepEqual(original,old,"Rivalry recommendations remain identical");
+});

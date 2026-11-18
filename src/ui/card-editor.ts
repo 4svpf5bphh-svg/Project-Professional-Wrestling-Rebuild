@@ -46,7 +46,8 @@ import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {reconcileDraftAgreements} from "./card-contract-reconciliation.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 import {isQuickBookField} from "./quick-book.js";
-import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter}
+import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter,
+ programmeStoryLeadStarter}
  from "./programme-booking-starter.js";
 import {STORY_BLUEPRINTS,storyBlueprint,storyBlueprintFamily,type BlueprintFamily}
  from "../domain/story-blueprints.js";
@@ -1169,7 +1170,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   if(view.programmes.length){
    const suggestions=el("section","ppw-card-rivalry-launch");
    const head=el("div","ppw-card-rivalry-launch-head");
-   head.append(el("strong","","Add a rivalry chapter"));
+   head.append(el("strong","",
+    ((view.programmes.find(p=>p.programmeId===focusedRivalryId)??
+     view.programmes[0]!).programmeFormat??"RIVALRY")==="RIVALRY"?
+     "Add a rivalry chapter":"Add a story chapter"));
    if(port.openProgrammes)head.append(button("Manage stories",()=>{
     port.openProgrammes?.();
    },false,"ppw-card-rivalry-manage"));
@@ -1179,7 +1183,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    focusedRivalryId=selected.programmeId;
    const picks=el("div","ppw-card-rivalry-picks");
    picks.setAttribute("role","group");
-   picks.setAttribute("aria-label","Choose a rivalry to book");
+   picks.setAttribute("aria-label",
+    (selected.programmeFormat??"RIVALRY")==="RIVALRY"?
+     "Choose a rivalry to book":"Choose a storyline to book");
    for(const feud of view.programmes){
     const pick=button(feud.label,()=>{
      focusedRivalryId=feud.programmeId;render();
@@ -1190,8 +1196,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    suggestions.append(picks);
    const actions=el("div","ppw-card-rivalry-shortcuts");
    const occupied=new Set([...matches.values()].flatMap(assignedIds));
-   const matchReady=programmeMatchStarter(selected,"preview",occupied);
-   if(matchReady.ok){
+   const isRivalry=(selected.programmeFormat??"RIVALRY")==="RIVALRY";
+   const matchReady=isRivalry?programmeMatchStarter(selected,"preview",occupied):null;
+   if(matchReady?.ok){
     actions.append(button("Book rivalry match",()=>{
      const id="match-"+crypto.randomUUID();
      const start=programmeMatchStarter(selected,id,
@@ -1207,7 +1214,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      const id="angle-"+crypto.randomUUID();
      segments.set(id,programmeAngleIdeaStarter(selected,id,idea));
      if(selected.cast?.some(x=>x.side==="A")&&
-      selected.cast?.some(x=>x.side==="B")){
+      (selected.cast?.some(x=>x.side==="B")||!isRivalry)){
       slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
      }
      order.push(id);expanded=id;startWizard(id);
@@ -1215,8 +1222,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     action.title=idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason;
     actions.append(action);
    }
-   if(!matchReady.ok&&actions.childElementCount===0)
+   if(!matchReady?.ok&&actions.childElementCount===0)
     suggestions.append(el("p","ppw-card-story-availability","Book the cast manually."));
+   if(!isRivalry)suggestions.append(el("p","ppw-card-story-availability",
+    "Book a real match and link it under Storyline when scripting. No opponent or winner is chosen for you."));
    suggestions.append(actions);
    root.append(suggestions);
   }
@@ -2395,7 +2404,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         if(storyline)castingOptions.append(storyline);
         if(castingOptions.childElementCount)guide.append(castingOptions);
         const linkedFeud=view.programmes.find(p=>p.programmeId===segment?.programmeId);
-        if(linkedFeud&&linkedFeud.cast?.some(x=>x.side==="A")&&
+        const linkedRivalry=(linkedFeud?.programmeFormat??"RIVALRY")==="RIVALRY";
+        if(linkedFeud&&linkedRivalry&&
+         linkedFeud.cast?.some(x=>x.side==="A")&&
          linkedFeud.cast.some(x=>x.side==="B")){
          const fastCast=el("section","ppw-guide-feud-cast");
          fastCast.append(el("strong","","CAST YOUR RIVALRY"),
@@ -2414,6 +2425,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          }
          fastCast.append(castActions);
          guide.append(fastCast);
+        }
+        if(linkedFeud&&!linkedRivalry&&linkedFeud.cast?.length){
+         const characters=el("section","ppw-guide-feud-cast");
+         characters.append(el("strong","","CAST YOUR STORY"),
+          el("p","",linkedFeud.label+
+           " · Choose the character leading this scene. You can add other speakers and targets, or change the outcome manually."));
+         const leads=el("div","ppw-guide-feud-cast-buttons");
+         for(const member of linkedFeud.cast.filter(x=>x.side==="A")){
+          const action=button(member.name+" leads",()=>{
+           const result=programmeStoryLeadStarter(linkedFeud,segment!,member.personId);
+           if(!result.ok){error=result.reason;render();return;}
+           editSegment(segment!,{actors:result.value.actors,targets:result.value.targets});
+          },!mutable()||!member.contractId,"ppw-guide-feud-cast-button");
+          if(!member.contractId)action.title="Unavailable for this show. Check contract and medical status.";
+          leads.append(action);
+         }
+         characters.append(leads);guide.append(characters);
         }
        }
        const hint=el("p","ppw-booking-hint",castReadiness.hint);
