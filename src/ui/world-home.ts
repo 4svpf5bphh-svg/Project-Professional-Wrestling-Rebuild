@@ -191,7 +191,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   }
   const state=el("div","ppw-home-world-state");
   state.append(el("span","","WORLD STATUS"),
-   el("strong","",deadlineDue?"● DEADLINE REACHED":
+   el("strong","",deadlineDue?"● LOCK DUE":
     world.phase==="OPEN"?"● WORLD OPEN":
     world.phase==="LOCKED"?"● CARDS LOCKED":"● PROCESSING"),
    el("small","","Y"+world.year+" W"+world.week));
@@ -209,7 +209,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const copy=el("span","ppw-home-booking-copy");
   copy.append(el("strong","",bookingOpen?"BOOKING OPEN":
    deadlineDue?"BOOKING DEADLINE REACHED":
-   world.phase==="LOCKED"?"CARDS LOCKED":"WORLD PROCESSING"));
+   world.phase==="LOCKED"?"BOOKING CLOSED":"WORLD PROCESSING"));
   const longTestWindow=bookingOpen&&Number.isFinite(world.nextLockEpoch)&&
    Number.isFinite(world.serverEpoch)&&world.nextLockEpoch-world.serverEpoch>30*86400;
   const detail=el("small","ppw-home-countdown",deadlineDue?"Booking deadline reached · check World status":
