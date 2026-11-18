@@ -44,12 +44,15 @@ test("iPhone shows genuine year-end/finance notices with private dismissal and p
  await expect(page.getByText("Your financial outlook has changed")).toBeVisible();
  await expect(page.getByText(/prestige rose by 1.8 points/)).toBeVisible();
  await expect(page.getByText(/Healthy to On watch/)).toBeVisible();
- await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
- await expect(page.getByRole("button",{name:/Wendy is waiting/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next show/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/BOOKING OPEN/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Open Backstage messages/})).toBeVisible();
+ await expect(page.locator(".ppw-home-brief")).not.toContainText("Wendy");
  await page.getByRole("button",{name:"Dismiss your annual company review is in"}).click();
  await expect(page.getByText("Your annual company review is in")).toHaveCount(0);
  await expect(page.getByText("Your financial outlook has changed")).toBeVisible();
- await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next show/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/BOOKING OPEN/})).toBeVisible();
  await page.reload();
  await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Your annual company review is in")).toHaveCount(0);
@@ -72,9 +75,9 @@ test("iPhone clears mixed contract, backstage and company notices without hiding
   const req=route.request().postDataJSON() as {method:string;attentionIds?:string[]};
   methods.push(req.method);
   if(req.method==="dismissAttentionBatch"){
-   expect(req.attentionIds).toEqual(["offer-result:two","backstage-result:25",
+   expect(req.attentionIds).toEqual(["offer-result:two",
     "business-update:100","business-update:101"]);
-   dismissed=true;return route.fulfill({json:{dismissed:4,firstDismissals:4}});
+   dismissed=true;return route.fulfill({json:{dismissed:3,firstDismissals:3}});
   }
   if(req.method==="overview")return route.fulfill({json:{...base,promotion:{
    ...p,attention:dismissed?{...notice,offerResults:[],backstageResults:[],businessUpdates:[]}:notice
@@ -87,7 +90,9 @@ test("iPhone clears mixed contract, backstage and company notices without hiding
  await expect(page.getByText("Company updates")).toHaveCount(0);
  await expect(page.getByText("Decisions received")).toHaveCount(0);
  await expect(page.getByText("Promises settled")).toHaveCount(0);
- await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
- await expect(page.getByRole("button",{name:/Wendy is waiting/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next show/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/BOOKING OPEN/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Open Backstage messages/})).toBeVisible();
+ await expect(page.locator(".ppw-home-brief")).not.toContainText("Wendy");
  expect(methods).toEqual(["overview","dismissAttentionBatch"]);
 });

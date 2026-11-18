@@ -191,9 +191,15 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   }
   const state=el("div","ppw-home-world-state");
   state.append(el("span","","WORLD STATUS"),
-   el("strong","",world.phase==="OPEN"?"Booking open":
-    world.phase==="LOCKED"?"Cards locked":"Processing"),
+   el("strong","",deadlineDue?"● DEADLINE REACHED":
+    world.phase==="OPEN"?"● WORLD OPEN":
+    world.phase==="LOCKED"?"● CARDS LOCKED":"● PROCESSING"),
    el("small","","Y"+world.year+" W"+world.week));
+  if(!bookingOpen){
+   const check=el("button","ppw-home-status-refresh","Check World status") as HTMLButtonElement;
+   check.type="button";check.disabled=loading;check.onclick=()=>void load();
+   state.append(check);
+  }
   status.append(state);hero.append(top,status);
   root.append(hero);
   // The booking-open cue stays prominent without expanding the prestige bar.
@@ -204,19 +210,19 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   copy.append(el("strong","",bookingOpen?"BOOKING OPEN":
    deadlineDue?"BOOKING DEADLINE REACHED":
    world.phase==="LOCKED"?"CARDS LOCKED":"WORLD PROCESSING"));
-  const detail=el("small","",deadlineDue?"Check the World status before continuing.":
-   bookingOpen?"Open the production board to prepare your next show.":
+  const longTestWindow=bookingOpen&&Number.isFinite(world.nextLockEpoch)&&
+   Number.isFinite(world.serverEpoch)&&world.nextLockEpoch-world.serverEpoch>30*86400;
+  const detail=el("small","ppw-home-countdown",deadlineDue?"Booking deadline reached · check World status":
+   bookingOpen&&longTestWindow?"Booking is open · finish your next card when ready":
+   bookingOpen?"Booking closes soon · prepare your next show":
    "Your World will update after processing.");
   copy.append(detail);
   booking.append(el("span","ppw-home-booking-icon","▣"),copy,
    el("span","ppw-home-booking-arrow","→"));
   booking.onclick=bookingOpen?port.planner:()=>void load();
   root.append(booking);
-  if(bookingOpen){
-   const longTestWindow=Number.isFinite(world.nextLockEpoch)&&
-    Number.isFinite(world.serverEpoch)&&world.nextLockEpoch-world.serverEpoch>30*86400;
-   if(!longTestWindow)startClock(detail,world,()=>{expiredOnScreen=key;draw();});
-  }
+  if(bookingOpen&&!longTestWindow)
+   startClock(detail,world,()=>{expiredOnScreen=key;draw();});
   if(promotion){
    const dashboard=el("section","ppw-home-dashboard");
    dashboard.setAttribute("aria-label","Your show and Backstage");
@@ -250,9 +256,16 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     last?"Y"+last.year+" W"+last.week+" · Results":"Results archive",
     port.results,"◀");
    lastShow.classList.add("ppw-home-show-last");
+   lastShow.setAttribute("aria-label",last?
+    "Last show · LATEST CERTIFIED SHOW · "+last.showName:
+    "Last show · RESULTS ARCHIVE");
+   if(last&&Number.isFinite(last.crowdResponse))
+    lastShow.querySelector(".ppw-home-tile-copy")?.append(
+     el("span","ppw-home-certified-score",
+      Math.round(last.crowdResponse)+"/100 · CROWD"));
    const nextShow=control("Next show",
     next?"Y"+next.year+" W"+next.week+" · "+
-     (next.ready?"Card ready":"Book the card"):"Open the show planner",
+     (next.ready?"Card ready":"Book the card"):"Plan this week\'s show",
     next&&!next.ready?(port.openUnfinishedCard??port.planner):port.planner,"▶");
    nextShow.classList.add("ppw-home-show-next");
    if(next?.ready)nextShow.dataset.ready="true";
@@ -261,9 +274,18 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    // The genuine player-private unread count is already in this one overview
    // snapshot. Never trigger a second Home database read.
    const unread=promotion.attention?.backstageUnreadCount??0;
+   const backstageDecision=promotion.attention?.pendingBackstage===true;
+   const soleRequest=promotion.attention?.backstageRequests?.length===1?
+    promotion.attention.backstageRequests[0]:null;
+   const openBackstage=unread===0&&backstageDecision&&soleRequest&&
+    port.openBackstageThread?
+    ()=>port.openBackstageThread!(soleRequest.personId,true):
+    unread>0||backstageDecision?port.openUnreadBackstage??port.backstage:port.backstage;
    const backstage=control("BACKSTAGE",
+    backstageDecision?(soleRequest?
+     soleRequest.name+" needs your decision":"A private conversation needs your decision"):
     "Wrestlers · staff · broadcasters · opportunities",
-    unread>0?port.openUnreadBackstage??port.backstage:port.backstage,"✉");
+    openBackstage,"✉");
    backstage.classList.add("ppw-home-backstage-action");
    backstage.setAttribute("aria-label",unread>0?
     "Open Backstage, "+unread+" unread message"+(unread===1?"":"s"):
@@ -297,11 +319,17 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    arena.append(stat("YOUR PROMOTION",promotion.name,competition?.ownLatestShow));
    const vs=el("span","ppw-home-vs-mark","VS");
    vs.setAttribute("aria-hidden","true");arena.append(vs);
-   arena.append(stat("YOUR RIVAL",competition?.name??"Not assigned",
-    competition?.rivalLatestShow));
+   arena.append(stat(competition?.humanManaged?"YOUR RIVAL · HUMAN MANAGER":
+    "YOUR RIVAL",competition?.name??"Not assigned",competition?.rivalLatestShow));
    circuit.append(arena);
+   if(competition&&typeof competition.ownAvgAttendance==="number"&&
+    typeof competition.rivalAvgAttendance==="number")
+    circuit.append(el("small","ppw-home-ratings-attendance",
+     "AVG ATTENDANCE · "+
+     Math.round(competition.ownAvgAttendance).toLocaleString("en-GB")+
+     " vs "+Math.round(competition.rivalAvgAttendance).toLocaleString("en-GB")));
    if(competition?.provisional)circuit.append(el("small",
-    "ppw-home-competition-review","Provisional circuit peer"));
+    "ppw-home-competition-review","Provisional peer"));
    const openWar=el("button","ppw-home-competition-action",
     "Open Ratings War →") as HTMLButtonElement;
    openWar.type="button";openWar.onclick=()=>(port.ratingsWar??port.business)();
@@ -631,7 +659,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    inbox.setAttribute("aria-label","Recent decisions and changes");
    inbox.append(el("header","ppw-home-updates-head",
     "RECENT CHANGES · "+resolvedCount),inboxBody);
-   root.append(inbox);
+   brief.append(inbox);
   }
   if(port.dismissAttentionBatch&&resolvedCount>1){
    const clear=el("button","ppw-home-clear-resolved",
