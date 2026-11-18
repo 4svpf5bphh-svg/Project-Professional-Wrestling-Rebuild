@@ -95,22 +95,34 @@ export async function settleCertifiedWorldLegends(
  `,[worldId,year,week]);
  if(!claimed.length)return {processed:false,unlocked:[] as string[]};
  const currentIndex=(year-1)*52+week-1;
+ // Anchor the work to the exact certified WEEK before joining match reports.
+ // Without a materialisation boundary the planner can choose to scan and
+ // multiply an entire growing career archive by Week 39, defeating the World
+ // resolution statement timeout despite indexed (world,show,match) keys.
+ // All joins remain canonical, set-based, and performed in one Neon roundtrip.
  const matches=await tx.query<MatchRow>(`
+  WITH current_week_matches AS MATERIALIZED (
+   SELECT m.world_id,m.show_id,m.match_id,m.position,
+    m.actual_finish,m.crowd_response
+   FROM ppw_completed_shows s
+   JOIN ppw_completed_show_matches m
+    ON m.world_id=s.world_id AND m.show_id=s.show_id
+   WHERE s.world_id=$1 AND s.year=$2 AND s.week=$3
+   ORDER BY s.show_id,m.position LIMIT 3001
+  )
   SELECT m.match_id,m.position,
     max(m.position) OVER (PARTITION BY m.show_id) AS last_position,
     f.rating_stars::text,d.booking_class,slot.payload,e.evidence_json,
     m.actual_finish,m.crowd_response
-  FROM ppw_completed_shows s
-  JOIN ppw_completed_show_matches m ON m.world_id=s.world_id AND m.show_id=s.show_id
+  FROM current_week_matches m
   JOIN ppw_completed_match_report_facts f ON f.world_id=m.world_id
    AND f.show_id=m.show_id AND f.match_id=m.match_id
-  JOIN ppw_booking_drafts d ON d.world_id=s.world_id AND d.draft_id=s.show_id
+  JOIN ppw_booking_drafts d ON d.world_id=m.world_id AND d.draft_id=m.show_id
   JOIN ppw_card_slots slot ON slot.world_id=m.world_id
    AND slot.draft_id=m.show_id AND slot.slot_id=m.match_id
   JOIN ppw_completed_match_evidence e ON e.world_id=m.world_id
    AND e.show_id=m.show_id AND e.match_id=m.match_id
-  WHERE s.world_id=$1 AND s.year=$2 AND s.week=$3
-  ORDER BY s.show_id,m.position LIMIT 3001
+  ORDER BY m.show_id,m.position
  `,[worldId,year,week]);
  if(matches.length>3000)throw new Error("Legend match evidence exceeded World safety bound");
  const ids=[...new Set(matches.flatMap(m=>readCardParticipants(m.payload).map(x=>x.personId)))];
