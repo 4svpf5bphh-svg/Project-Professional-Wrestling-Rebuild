@@ -700,7 +700,7 @@ export function mountPersonaDesk(root:HTMLElement,
    for(const [filter,label] of [["ALL","All"],["UNREAD","Unread"],
     ["ACTIVE","Requests"],["WRESTLERS","Wrestlers"],["STAFF","Staff"],
     ["NETWORK","Networks"],["SCOUT","Scouting"],
-    ["FREE_AGENT","Free agents"],["STORIES","Storylines"],["DISAGREEMENTS","Staff disagreements"],
+    ["FREE_AGENT","Free agents"],["STORIES","Storylines"],["DISAGREEMENTS","Disagreements"],
     ["LOCKER_ROOM","Locker room"],["HISTORY","History"],["ARCHIVED","Archived"]] as const){
     const b=button(label,()=>{
      inboxFilter=filter;
@@ -709,6 +709,7 @@ export function mountPersonaDesk(root:HTMLElement,
      }
      render();
     });
+    if(filter==="DISAGREEMENTS")b.setAttribute("aria-label","Staff disagreements");
     if(filter===inboxFilter)b.classList.add("ppw-persona-selected");
     controls.append(b);
    }

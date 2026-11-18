@@ -624,7 +624,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    inboxBody.append(wire);
   }
   const resolvedCount=(attention?.offerResults??[]).length+dateDecisions.length+
-   resolved.length+businessUpdates.length+titleNews.length+injuryNews.length+clearanceNotices.length;
+   businessUpdates.length+titleNews.length+injuryNews.length+clearanceNotices.length;
   if(inboxBody.childElementCount){
    // Recent changes should be visible, not behind a nested dropdown.
    const inbox=el("section","ppw-home-updates");
