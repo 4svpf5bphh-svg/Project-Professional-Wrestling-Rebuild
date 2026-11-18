@@ -14,6 +14,8 @@ export interface PlayerWorldOverview {
  promotion:null|{id:string;name:string;tier:string;homeMarketName:string|null;cash:number;debt:number;
     milestoneFrame?:"GOLD"|"PLATINUM"|null;
     promoterPrestige?:{rank:string;earnedCount:number;total:number;prestigeScore:number};
+   /** The same player-owned KP broadcast style shown on actual TV graphics. */
+   broadcastPackageStyle?:string|null;
    standing?:{position:number;total:number}|null;
    competition?:PromotionCompetitionCard|null;
    nextShow?:{year:number;week:number;showName:string;ready:boolean;status:string}|null;
@@ -67,6 +69,7 @@ export async function readPlayerWorldOverview(
    server_epoch:string;membership_status:"ACTIVE"|"INACTIVE"|null;
    promotion_id:string|null;promotion_name:string|null;tier:string|null;
    home_market_name:string|null;prestige_style:string|null;prestige_metrics:unknown;
+   broadcast_package_style:string|null;
    cash:string|number|null;debt:string|number|null;
    last_weekly_net:string|number|null;runway_weeks:number|null;
    financial_distress:string|null;
@@ -88,6 +91,8 @@ export async function readPlayerWorldOverview(
     m.status AS membership_status,
     owned.promotion_id,owned.name AS promotion_name,owned.tier,owned.home_market_name,
      showcase.style AS prestige_style,achievement.prestige_metrics,
+     (SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$2)
+      AS broadcast_package_style,
     owned.cash,owned.debt,owned.last_weekly_net,
     owned.runway_weeks,owned.financial_distress,
     notices.planned_shows,notices.unprepared_show,
@@ -970,6 +975,7 @@ export async function readPlayerWorldOverview(
    promotion:x.promotion_id!==null?{
     id:x.promotion_id,name:x.promotion_name!,tier:x.tier!,
     competition:x.cp??null,
+    broadcastPackageStyle:x.broadcast_package_style,
     promoterPrestige:{rank:achievementSummary.rank,
      earnedCount:achievementSummary.earnedCount,total:achievementSummary.total,
      prestigeScore:achievementSummary.prestigeScore},

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Blue versus magenta wrestling ratings stage">
+<defs>
+ <linearGradient id="base" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08152c"/><stop offset=".5" stop-color="#140f30"/><stop offset="1" stop-color="#2b0c38"/></linearGradient>
+ <radialGradient id="blue"><stop stop-color="#2386ee" stop-opacity=".8"/><stop offset="1" stop-color="#2b60dc" stop-opacity="0"/></radialGradient>
+ <radialGradient id="pink"><stop stop-color="#f42ad8" stop-opacity=".75"/><stop offset="1" stop-color="#f42ad8" stop-opacity="0"/></radialGradient>
+ <linearGradient id="versus" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#19d4fe"/><stop offset=".52" stop-color="#ac53fe"/><stop offset="1" stop-color="#fc46bd"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="13"/></filter>
+ <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#eff2ff" opacity=".14"/></pattern>
+</defs>
+<rect width="960" height="360" fill="url(#base)"/>
+<ellipse cx="135" cy="140" rx="440" ry="320" fill="url(#blue)"/>
+<ellipse cx="840" cy="140" rx="430" ry="330" fill="url(#pink)"/>
+<path d="M0 45L960 45 M0 78L960 78" stroke="#a6ccff" stroke-opacity=".18" stroke-width="3"/>
+<path d="M0 22L350 110 492 57 600 104 960 18" stroke="#8799c4" stroke-opacity=".43" stroke-width="7" fill="none"/>
+<path d="M0 48L305 129 490 72 678 125 960 47" stroke="#91acd0" stroke-opacity=".25" stroke-width="4" fill="none"/>
+<g fill="#cdefff"><circle cx="54" cy="23" r="9"/><circle cx="111" cy="34" r="7"/><circle cx="169" cy="42" r="6"/></g>
+<g fill="#f9c5fc"><circle cx="784" cy="37" r="6"/><circle cx="846" cy="26" r="7"/><circle cx="908" cy="15" r="10"/></g>
+<path d="M48 29L340 360H0V200Z" fill="#2acfff" opacity=".1"/>
+<path d="M897 22L630 360H960V156Z" fill="#fa36be" opacity=".13"/>
+<path d="M0 293L960 293 M0 332L960 332" stroke="#acc8ff" stroke-opacity=".15" stroke-width="4"/>
+<path d="M0 350Q220 305 440 357 M520 358Q765 305 960 344" fill="none" stroke="#b9dfff" stroke-width="5" opacity=".2"/>
+<path d="M490 -55L455 172 509 172 459 414" stroke="url(#versus)" stroke-width="16" filter="url(#glow)" opacity=".85"/>
+<path d="M490 -55L455 172 509 172 459 414" stroke="url(#versus)" stroke-width="4" opacity=".9"/>
+<path d="M0 0H960V360H0Z" fill="url(#dots)" opacity=".33"/>
+<path d="M0 0H960V360H0Z" fill="none" stroke="#c477dc" stroke-width="6" stroke-opacity=".1"/>
+<!-- lighting trusses and panels intentionally leave both sides clear for actual scores -->
+<path d="M0 80L74 57V218L0 241 M960 80L886 57V218L960 241" fill="none" stroke="#76bcf3" stroke-width="10" opacity=".22"/>
+<path d="M0 88L74 64 M0 233L74 210 M960 88L886 64 M960 233L886 210" stroke="#f5f5ff" stroke-opacity=".3" stroke-width="3"/>
+</svg>

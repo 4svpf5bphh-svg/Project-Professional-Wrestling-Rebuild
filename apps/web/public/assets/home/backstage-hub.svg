@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Backstage production corridor with equipment and arena lighting">
+<defs>
+ <linearGradient id="hall" x1="0" x2="1" y1="0" y2=".4"><stop stop-color="#030e27"/><stop offset=".5" stop-color="#1b1844"/><stop offset="1" stop-color="#240e32"/></linearGradient>
+ <linearGradient id="floor" x1="0" x2=".6" y1="0" y2="1"><stop stop-color="#151a38"/><stop offset=".58" stop-color="#2b1740"/><stop offset="1" stop-color="#101329"/></linearGradient>
+ <linearGradient id="case"><stop stop-color="#12132b"/><stop offset=".58" stop-color="#30364a"/><stop offset="1" stop-color="#121526"/></linearGradient>
+ <linearGradient id="lights"><stop stop-color="#00c9fe" stop-opacity=".4"/><stop offset=".55" stop-color="#ff3fbd" stop-opacity=".23"/><stop offset="1" stop-color="#ff5ac9" stop-opacity="0"/></linearGradient>
+ <radialGradient id="spot"><stop stop-color="#e6c3ff" stop-opacity=".8"/><stop offset=".13" stop-color="#d751d4" stop-opacity=".4"/><stop offset="1" stop-color="#a82ec1" stop-opacity="0"/></radialGradient>
+ <filter id="blur"><feGaussianBlur stdDeviation="19"/></filter>
+ <filter id="glow"><feGaussianBlur stdDeviation="5"/></filter>
+ <pattern id="mesh" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M0 0L16 16 M16 0L0 16" stroke="#9ba0c4" stroke-opacity=".1" stroke-width=".5"/></pattern>
+</defs>
+<rect width="960" height="360" fill="url(#hall)"/>
+<path d="M0 0L435 0 405 190 0 240Z" fill="#101b35"/><path d="M960 0L537 0 545 190 960 250Z" fill="#0b1029"/>
+<path d="M0 360L400 183 548 183 960 360Z" fill="url(#floor)"/>
+<path d="M0 0L420 0 420 190 0 300" fill="url(#mesh)" opacity=".5"/>
+<path d="M409 35L547 35 547 194 409 194Z" fill="#070e2b" stroke="#583b83" stroke-width="5"/>
+<path d="M433 39L525 39 536 190 420 190Z" fill="#211543"/>
+<path d="M447 40L506 40 519 190 431 190Z" fill="#070f2b"/>
+<path d="M438 175L520 175 520 185 438 185Z" fill="#6545a7"/>
+<!-- distant wrestling ring -->
+<path d="M445 125H509 M444 148H510 M443 169H511" stroke="#e4baff" stroke-width="3"/><path d="M448 116V170M505 115V170" stroke="#c4a1f2" stroke-width="4"/>
+<!-- overhead rigging and depth -->
+<path d="M0 13L960 13 M130 5L465 58 815 5" fill="none" stroke="#697389" stroke-opacity=".54" stroke-width="5"/>
+<path d="M200 0L437 55 M742 0L523 55" stroke="#768399" stroke-opacity=".4" stroke-width="4"/>
+<path d="M0 91H410 M550 91H960" stroke="#345174" stroke-opacity=".5" stroke-width="5"/>
+<g fill="#cbeaff"><circle cx="356" cy="15" r="5"/><circle cx="619" cy="28" r="7"/><circle cx="484" cy="61" r="5"/></g>
+<ellipse cx="490" cy="65" rx="205" ry="200" fill="url(#spot)"/>
+<path d="M440 60L520 60 604 360 305 360Z" fill="url(#lights)" filter="url(#blur)"/>
+<!-- staggered production flight cases -->
+<g stroke="#a0a8c3" stroke-width="3">
+ <rect x="746" y="93" width="175" height="169" rx="5" fill="url(#case)"/>
+ <path d="M752 145H916M752 214H916M775 100V257M895 100V257" stroke="#585e7c"/>
+ <rect x="763" y="114" width="23" height="12" rx="2" fill="#0a1022"/>
+ <rect x="848" y="151" width="38" height="14" rx="3" fill="#1d1b32"/>
+ <rect x="799" y="239" width="47" height="10" rx="2" fill="#a6a5bd"/>
+ <circle cx="767" cy="267" r="9" fill="#060d1b"/><circle cx="894" cy="267" r="9" fill="#060d1b"/>
+ <rect x="645" y="135" width="97" height="107" rx="3" fill="url(#case)"/>
+ <path d="M646 170H741M665 136V241M718 136V241" stroke="#525b74"/>
+ <circle cx="665" cy="248" r="6" fill="#070f25"/><circle cx="720" cy="248" r="6" fill="#070f25"/>
+</g>
+<!-- flight-case latch highlights -->
+<path d="M748 101L916 101" stroke="#7ce7ff" stroke-width="3" opacity=".6"/>
+<path d="M646 140L742 140" stroke="#ef71d3" stroke-width="2" opacity=".8"/>
+<!-- production monitor cluster -->
+<g fill="#131e3b" stroke="#93a3c9" stroke-width="3">
+ <rect x="565" y="62" width="128" height="74" rx="3"/>
+ <rect x="706" y="26" width="111" height="64" rx="3"/>
+</g>
+<path d="M571 121L598 98 618 112 646 83 684 92 M712 80L729 65 755 73 781 44 810 57" fill="none" stroke="#5aa1fa" stroke-width="3"/>
+<path d="M577 71H687M712 36H812" stroke="#e447c1" stroke-width="2" opacity=".5"/>
+<!-- neon lighting -->
+<path d="M655 0L694 0 620 139" stroke="#ed48c8" stroke-width="7" filter="url(#glow)"/>
+<path d="M655 0L694 0 620 139" stroke="#fb6ad1" stroke-width="2"/>
+<path d="M75 0L112 0 342 234" stroke="#35c5f8" stroke-opacity=".5" stroke-width="6" filter="url(#glow)"/>
+<path d="M75 0L112 0 342 234" stroke="#35c5f8" stroke-opacity=".5" stroke-width="2"/>
+<!-- long reflections -->
+<path d="M439 196L503 196 610 360 335 360Z" fill="#e64be5" opacity=".12"/>
+<path d="M720 274L753 276 920 360 683 360Z" fill="#66e4ff" opacity=".08"/>
+<path d="M174 277L230 269 338 360 32 360Z" fill="#66d9fe" opacity=".09"/>
+<path d="M0 359L418 195 546 195 960 359" fill="none" stroke="#c2a7e9" stroke-opacity=".18" stroke-width="2"/>
+<rect width="960" height="360" fill="url(#mesh)" opacity=".14"/>
+</svg>
