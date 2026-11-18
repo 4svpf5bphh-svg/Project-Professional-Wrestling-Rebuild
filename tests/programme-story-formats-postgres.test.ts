@@ -2,10 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
-import {withWorldTransaction} from "../src/db/transaction.js";
+import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {startProgramme,readProgrammeWorkspace,saveProgrammeCreativeIntent}
  from "../src/db/programme-workspace.js";
+import {saveCardEditorAsActor,showCardEditorAsActor}
+ from "../src/api/world-service.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 test("one owner can create and reopen solo, relationship and five-person faction stories without fabricating an opponent",
@@ -60,6 +63,17 @@ test("one owner can create and reopen solo, relationship and five-person faction
   assert.equal(view.programmes.length,4);
   assert.deepEqual(view.programmes.map(p=>p.programmeFormat).sort(),
    ["FACTION","RELATIONSHIP","RIVALRY","SOLO"]);
+  const meter=new MeasuredQuerySession("solo-relationship-faction-roster-read");
+  const bounded:TransactionPool={async connect(){
+   const connection=await db.pool.connect();
+   return {release(){connection.release();},
+    async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]=[]){
+     return meter.execute(()=>connection.query<T>(sql,args));
+    }};
+  }};
+  const measured=await readProgrammeWorkspace(bounded,scope);
+  assert.equal(measured.programmes.length,4);
+  meter.assertBudget({maxQueries:7,maxResultBytes:90_000});
   const soloView=view.programmes.find(p=>p.programmeId===solo.result.programmeId)!;
   assert.equal(soloView.sideA[0]?.name,"Character 1");
   assert.deepEqual(soloView.sideB,[]);
@@ -107,6 +121,45 @@ test("one owner can create and reopen solo, relationship and five-person faction
   assert.equal(saved.blueprintProgress?.booked,1,
    "The real saved interview prepares the matching underdog beat, but cannot earn it until certified");
   assert.equal(saved.blueprintProgress?.beats[0]?.status,"BOOKED");
+  // A real match featuring the solo wrestler and an active existing
+  // rivalry must honour the booker's explicit character journey. This is
+  // the actual authenticated card-save path, not a forged link in SQL.
+  const draftId="solo-match-"+suffix;
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)"+
+   " VALUES($1,$2,$3,1,2,'DRAFT')",[worldId,draftId,promotionId]));
+  const context={pool:db.pool,actor:{playerId}};
+  const match={matchType:"SINGLES",
+   participants:[{personId:ids[0]!,contractId:"contract-0-"+suffix},
+    {personId:ids[2]!,contractId:"contract-2-"+suffix}],
+   scriptedWinner:ids[0]!,plannedFinish:"CLEAN_PIN",
+   plannedLengthMinutes:16,intent:"COMPETITIVE"};
+  const savedMatch=await saveCardEditorAsActor(context,{...scope,showId:draftId,
+   requestId:"explicit-solo-bout",expectedRevision:5,
+   matches:[{slotId:"main",payload:match,programmeId:solo.result.programmeId}],
+   segments:[],runningOrder:["main"]});
+  assert.equal(savedMatch.status,"APPLIED");
+  const matchLinks=async()=>withWorldTransaction(db.pool,tx=>tx.query<{
+   programme_id:string}>("SELECT programme_id FROM ppw_programme_match_activities"+
+    " WHERE world_id=$1 AND draft_id=$2 AND kind='MATCH'",
+    [worldId,draftId]));
+  assert.deepEqual(await matchLinks(),[{programme_id:solo.result.programmeId}],
+   "The explicit solo story takes precedence over an automatic feud on this match");
+  const loaded=await showCardEditorAsActor(context,worldId,promotionId,draftId);
+  assert.deepEqual(loaded.matchProgrammeLinks,
+   [{slotId:"main",programmeId:solo.result.programmeId}]);
+  assert.equal(loaded.programmes.find(p=>p.programmeId===solo.result.programmeId)?
+   .programmeFormat,"SOLO");
+  // Removing that optional story choice restores automatic original rivalry
+  // matching for the identical, still-unchanged canonical bout.
+  const resaved=await saveCardEditorAsActor(context,{...scope,showId:draftId,
+   requestId:"return-to-rivalry",expectedRevision:6,
+   matches:[{slotId:"main",payload:match,programmeId:null}],
+   segments:[],runningOrder:["main"]});
+  assert.equal(resaved.status,"APPLIED");
+  const rivalId=original.status==="APPLIED"?original.result.programmeId:null;
+  assert.deepEqual(await matchLinks(),[{programme_id:rivalId}],
+   "The original two-sided rivalry is rediscovered when no explicit story is selected");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_ledger_events","ppw_command_receipts",
