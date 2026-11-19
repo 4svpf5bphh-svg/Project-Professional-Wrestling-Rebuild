@@ -5,6 +5,8 @@ import {ANGLE_MOMENT_PRESETS,angleMomentsForFamily,angleMomentPresetStarter}
 import {STORY_BLUEPRINTS} from "../src/domain/story-blueprints.js";
 import {isAngleScene} from "../src/domain/angle-scene.js";
 import {isSegmentCreativeBeat} from "../src/domain/segment-creative-beats.js";
+import {describeAuthoredSegment} from "../src/domain/segment-results.js";
+import {authoredConsequenceIntents} from "../src/domain/segment-consequences.js";
 import {buildEditorSegment,addSegmentPerson}
  from "../src/ui/card-segment-model.js";
 
@@ -58,4 +60,18 @@ test("title challenge stays open and ambush has only authored physical scene dat
  assert.deepEqual(a.targets,[]);
  assert.throws(()=>angleMomentPresetStarter("slot","invalid"));
  assert.throws(()=>angleMomentPresetStarter("slot","betrayal-turn","x".repeat(201)));
+});
+
+test("authored moment reaches original results and World consequence intents",()=>{
+ let attack=angleMomentPresetStarter("attack","revenge-attack","feud-1");
+ attack=addSegmentPerson(attack,"actors",{personId:"joe",contractId:"j"});
+ attack=addSegmentPerson(attack,"targets",{personId:"riddle",contractId:"r"});
+ const payload=buildEditorSegment(attack);
+ const result=describeAuthoredSegment(payload,new Map([
+  ["joe","Samoa Joe"],["riddle","Matt Riddle"]
+ ]));
+ assert.equal(result.kind,"ATTACK");
+ assert.match(result.summary,/arena car park/i);
+ assert.equal(authoredConsequenceIntents(payload)[0]?.intent,"ATTACK_OCCURRED");
+ assert.equal(attack.programmeId,"feud-1");
 });

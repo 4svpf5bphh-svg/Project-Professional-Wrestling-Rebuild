@@ -3,7 +3,7 @@ import {test,expect} from "@playwright/test";
 /** A quick scene travels through the original authenticated card editor.
  * Its why/where/how can change and the saved payload stays standard PPW. */
 for(const width of [320,390])for(const moment of ["betrayal-turn","jealous-ambush"] as const){
- test("Phase 59 "+moment+" is customisable and saved with one Programme at "+width+"px",async({page})=>{
+ test("Phase 59 "+moment+" is customisable and saved with one Programme at "+width+"px",async({page},testInfo)=>{
   await page.setViewportSize({width,height:844});
   let revision=8,saved:Record<string,unknown>|null=null,slotId:string|null=null;
   const calls:string[]=[];
@@ -83,6 +83,9 @@ for(const width of [320,390])for(const moment of ["betrayal-turn","jealous-ambus
    .getByRole("button",{name:"Samoa Joe vs Matt Riddle"}).click();
   await dialog.locator(".ppw-angle-moment-families")
    .getByRole("button",{name:moment==="betrayal-turn"?"Relationships":"The Fall"}).click();
+  await testInfo.attach("phase59-moment-"+moment+"-"+width,{
+   body:await page.screenshot(),contentType:"image/png"
+  });
   await dialog.locator('.ppw-angle-moment-option[data-moment-id="'+moment+'"]').click();
   await expect(dialog.getByRole("button",{name:"Next · Script outcome"})).toBeVisible();
   await dialog.getByRole("button",{name:"Side A initiates"}).click();
@@ -103,6 +106,9 @@ for(const width of [320,390])for(const moment of ["betrayal-turn","jealous-ambus
   }
   await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
   await expect(dialog.locator(".ppw-angle-script-overview")).toBeVisible();
+  await testInfo.attach("phase59-script-review-"+moment+"-"+width,{
+   body:await page.screenshot(),contentType:"image/png"
+  });
   expect(calls.filter(x=>x==="save")).toHaveLength(0);
   await dialog.getByRole("button",{name:"Complete angle"}).click();
   await page.getByRole("button",{name:/Save card|Save changes/}).click();
@@ -111,6 +117,8 @@ for(const width of [320,390])for(const moment of ["betrayal-turn","jealous-ambus
   await page.locator(".ppw-card-bar .ppw-expand").last().click();
   dialog=page.getByRole("dialog",{name:"Edit angle"});
   await expect(dialog).toBeVisible();
+  if(await dialog.getByRole("button",{name:"← Revise script"}).count())
+   await dialog.getByRole("button",{name:"← Revise script"}).click();
   await expect(dialog.locator('.ppw-guide-script-choice[data-field="Storytelling purpose"]')
    .locator('button[aria-pressed="true"]')).toContainText(moment==="betrayal-turn"?
      "Explain the change of heart":"Settle an old score");

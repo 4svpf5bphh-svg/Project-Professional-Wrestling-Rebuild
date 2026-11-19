@@ -2330,7 +2330,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         const blueprintPanel=el("section","ppw-story-blueprint-panel");
         const blueprintHead=el("div","ppw-story-blueprint-heading");
         blueprintHead.append(el("strong","","Explore a full story arc"),
-         button(blueprintPickerOpen.has(slotId)?"Use custom angle":"Browse Story Blueprints",()=>{
+         button(blueprintPickerOpen.has(slotId)?"Hide Story Blueprints":"Browse Story Blueprints",()=>{
           if(blueprintPickerOpen.has(slotId))blueprintPickerOpen.delete(slotId);
           else blueprintPickerOpen.add(slotId);
           render();
