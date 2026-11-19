@@ -91,11 +91,13 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
       navigated=true;port.openCard(next.draft.draftId,focusedProgrammeId);
       return;
      }
-     navigated=true;
+     // Remain on Planner; let finally redraw when busy=false.
      edit(next.week,next.draft,next.seriesId,focusedProgrammeId??null);
      return;
     }
-    error="No editable television or premium show is scheduled in this booking window. Review your calendar.";
+    error=focusedProgrammeId?
+     "No editable television or premium show is scheduled in this booking window. Review your calendar.":
+     "There isn't an unfinished show card this week. Check your schedule below.";
    }
   }catch(e){error=e instanceof Error?e.message:"Planner unavailable";}
   finally{busy=false;if(!navigated)draw();}
