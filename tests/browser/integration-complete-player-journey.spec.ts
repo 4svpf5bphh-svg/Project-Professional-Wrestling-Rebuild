@@ -137,11 +137,11 @@ for(const width of [320,390]){
    .fill("The truth comes out tonight.");
   await dialog.getByRole("button",{name:"Add scripted moment"}).click();
   await dialog.getByLabel("Moment 2 action").selectOption("REPLY");
-  await dialog.getByLabel("Moment 2 performer").selectOption("riddle");
-  await dialog.getByLabel("Moment 2 recipient").selectOption("joe");
+  await dialog.getByLabel("Moment 2 who").selectOption("riddle");
+  await dialog.getByLabel("Moment 2 responding to").selectOption("joe");
   await dialog.getByRole("button",{name:"Add scripted moment"}).click();
   await dialog.getByLabel("Moment 3 action").selectOption("ATTACK");
-  await dialog.getByLabel("Moment 3 recipient").selectOption("riddle");
+  await dialog.getByLabel("Moment 3 target").selectOption("riddle");
   await expect(dialog.locator(".ppw-angle-sequence-step")).toHaveCount(3);
   await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
   await expect(dialog.locator(".ppw-angle-sequence-review")).toContainText(

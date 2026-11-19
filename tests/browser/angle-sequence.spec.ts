@@ -78,11 +78,29 @@ for(const width of [320,390]){
   await dialog.getByLabel("Moment 1 dialogue or detail").fill("I want an answer.");
   await dialog.getByRole("button",{name:"Add scripted moment"}).click();
   await dialog.getByLabel("Moment 2 action").selectOption("REPLY");
-  await dialog.getByLabel("Moment 2 performer").selectOption("bob");
-  await dialog.getByLabel("Moment 2 recipient").selectOption("alice");
+  await dialog.getByLabel("Moment 2 who").selectOption("bob");
+  await expect(dialog.locator(".ppw-angle-sequence")).toContainText("Responding to");
+  await dialog.getByLabel("Moment 2 responding to").selectOption("alice");
   await dialog.getByRole("button",{name:"Add scripted moment"}).click();
   await dialog.getByLabel("Moment 3 action").selectOption("ATTACK");
-  await dialog.getByLabel("Moment 3 recipient").selectOption("bob");
+  await expect(dialog.locator(".ppw-angle-sequence")).toContainText("Target");
+  await dialog.getByLabel("Moment 3 target").selectOption("bob");
+  const scene=dialog.locator(".ppw-angle-sequence");
+  await expect(scene).not.toContainText("Performer");
+  await expect(scene).not.toContainText("Recipient");
+  // Keep the two wrestler choices on one line even at 320px, with
+  // native touch-size and iPhone-safe 16px controls.
+  const controls=await scene.locator(".ppw-angle-sequence-step").last()
+   .locator(".ppw-angle-sequence-field select").evaluateAll(nodes=>{
+    const boxes=nodes.map(node=>node.getBoundingClientRect());
+    return boxes.map((r,i)=>({x:r.x,y:r.y,w:r.width,h:r.height,
+     font:parseFloat(getComputedStyle(nodes[i]!).fontSize)}));
+   });
+  expect(controls).toHaveLength(3);
+  expect(Math.abs(controls[1]!.y-controls[2]!.y)).toBeLessThanOrEqual(2);
+  expect(controls[1]!.x+controls[1]!.w).toBeLessThan(controls[2]!.x);
+  for(const field of controls){expect(field.h).toBeGreaterThanOrEqual(44);
+   expect(field.font).toBeGreaterThanOrEqual(16);}
   await expect(dialog.locator(".ppw-angle-sequence-step")).toHaveCount(3);
   // The actual editor at 320px and 390px. Capture the authored beat order.
   await dialog.locator(".ppw-angle-sequence").screenshot({

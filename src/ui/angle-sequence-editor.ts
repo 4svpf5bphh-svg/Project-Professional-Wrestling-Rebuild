@@ -24,6 +24,19 @@ const field=(label:string,control:HTMLElement)=>{
  const wrapper=dom("label","ppw-angle-sequence-field");
  wrapper.append(dom("span","",label),control);return wrapper;
 };
+/** Every beat reads like wrestling booking rather than database roles. */
+const rivalLabel=(action:AngleActionKind)=>{
+ switch(action){
+  case "REPLY":return "Responding to";
+  case "INTERRUPT":return "Interrupting";
+  case "CHALLENGE":return "Challenging";
+  case "ATTACK":return "Target";
+  case "FIGHT_BACK":return "Fighting back at";
+  case "RESCUE":return "Saving";
+  case "BETRAY":return "Betraying";
+  default:return "Aimed at";
+ }
+};
 const actionButton=(text:string,label:string,onClick:()=>void,disabled:boolean)=>{
  const b=document.createElement("button");b.type="button";b.textContent=text;
  b.setAttribute("aria-label",label);b.disabled=disabled;b.onclick=onClick;return b;
@@ -33,8 +46,8 @@ export function createAngleSequenceEditor(
 ):HTMLElement{
  const section=dom("section","ppw-angle-sequence");
  const heading=dom("header","ppw-angle-sequence-title");
- heading.append(dom("strong","","Direct the action, beat by beat"),
-  dom("small","","Combine dialogue, reactions and physical moments inside this one scene. The actual wrestlers and original result rules still apply."));
+ heading.append(dom("strong","","Book the beats"),
+  dom("small","","Up to six moments. One on-screen angle."));
  section.append(heading);
  const context={kind:segment.kind,
   actorIds:segment.actors.map(p=>p.personId),
@@ -76,7 +89,7 @@ export function createAngleSequenceEditor(
      return {...rest,action,...(to?{to}:{})};
     }),true);
    },!canEdit,"Moment "+(i+1)+" action")));
-  controls.append(field("Performer",select(step.by,visible.map(id=>[id,name(id)]),
+  controls.append(field("Who",select(step.by,visible.map(id=>[id,name(id)]),
    by=>update(list=>list.map((item,j)=>{
     if(j!==i)return item;
     const other=[...visible,...(angleActionNeedsPresentTarget(item.action)?[]:mentioned)]
@@ -84,28 +97,27 @@ export function createAngleSequenceEditor(
     const {to:_prior,...rest}=item;
     const to=item.to===by?other[0]:item.to;
     return {...rest,by,...(to?{to}:{})};
-   }),true),!canEdit,"Moment "+(i+1)+" performer")));
+   }),true),!canEdit,"Moment "+(i+1)+" who")));
   if(step.action!=="WALK_AWAY"){
    const targetOptions=[...visible,
     ...(angleActionNeedsPresentTarget(step.action)?[]:mentioned)]
     .filter(id=>id!==step.by);
    const options:readonly (readonly [string,string])[]=[
-    ...(!angleActionNeedsTarget(step.action)?[["","No recipient"] as const]:[]),
+    ...(!angleActionNeedsTarget(step.action)?[["","No specific rival"] as const]:[]),
     ...targetOptions.map(id=>[id,name(id)] as const)];
-   controls.append(field(angleActionNeedsTarget(step.action)?
-    "Recipient":"Addressed to (optional)",select(step.to??"",options,
+   controls.append(field(rivalLabel(step.action),select(step.to??"",options,
     raw=>update(list=>list.map((item,j)=>{
      if(j!==i)return item;
      const {to:_old,...rest}=item;
      return {...rest,...(raw?{to:raw}:{})};
-    }),true),!canEdit,"Moment "+(i+1)+" recipient")));
+    }),true),!canEdit,"Moment "+(i+1)+" "+rivalLabel(step.action).toLowerCase())));
   }
   box.append(controls);
   const note=dom("label","ppw-angle-sequence-note");
-  note.append(dom("span","","Optional dialogue or stage direction"));
+  note.append(dom("span","","Dialogue / direction"));
   const input=document.createElement("textarea");input.rows=2;input.maxLength=160;
   input.value=step.line??"";input.disabled=!canEdit;
-  input.placeholder="Exact words or stage detail (optional)";
+  input.placeholder="Words, reaction or cue (optional)";
   input.setAttribute("aria-label","Moment "+(i+1)+" dialogue or detail");
   // Update the actual working draft without stealing iPhone keyboard focus.
   input.oninput=()=>update(list=>list.map((item,j)=>{
@@ -126,7 +138,7 @@ export function createAngleSequenceEditor(
   "Optional. Leave empty for a traditional single-action angle, or add a response, escalation and finish."));
  else if(!isAuthoredAngleSequence(segment.scriptedActions,context)){
   const warning=dom("p","ppw-angle-sequence-warning",
-   "A scripted moment no longer fits the selected wrestlers or angle. Change its performer, recipient or action before continuing.");
+   "This moment no longer fits the chosen wrestlers or angle. Check Who, the target and the action.");
   warning.setAttribute("role","alert");section.append(warning);
  }
  return section;
