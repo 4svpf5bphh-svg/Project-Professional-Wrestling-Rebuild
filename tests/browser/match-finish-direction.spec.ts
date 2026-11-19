@@ -64,6 +64,7 @@ for(const width of [320,390]){
   await expect(page.getByText("Show card saved")).toBeVisible();
   expect(saves).toBe(1);
   await page.reload();
+  await page.getByRole("button",{name:"Edit card"}).click();
   await page.locator(".ppw-card-bar .ppw-expand").first().click();
   dialog=page.getByRole("dialog",{name:"Edit match"});
   await expect(dialog.getByLabel("Weapon used")).toHaveValue("SCREWDRIVER");
