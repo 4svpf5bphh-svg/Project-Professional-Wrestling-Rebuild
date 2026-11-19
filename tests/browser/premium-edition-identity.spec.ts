@@ -96,7 +96,13 @@ for(const [status,certified,ready] of [
   });
   await page.goto("/#/calendar");
   await page.getByRole("button",{name:"Year 1 week 33 — Extreme Warfare + CWA Weekly"}).click();
-  await expect(page.getByText("PPV / special · Extreme Warfare")).toBeVisible();
+  // The focused annual week is now the only PPV identity/status summary.
+  // Older duplicate detail paragraphs no longer exist below the week panel.
+  const focus=page.getByRole("region",{name:"Week 33 shows and booking"});
+  const booked=focus.locator('[data-event-type="MAJOR"]');
+  await expect(booked).toContainText("Extreme Warfare");
+  await expect(booked).toContainText(certified?"Certified":
+   status==="SUBMITTED"?"Card submitted":ready?"Card ready":"Card in progress");
   await expect(page.getByLabel("Rename booked PPV")).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Leave week free"})).toHaveCount(0);
   expect(calls).toEqual(["calendar"]);
