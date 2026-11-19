@@ -155,6 +155,20 @@ function assertReferencedPromoTargetStayedOffScreen(
 }
 
 
+/** Do not let Groq turn a speech-only booked chapter into a surprise brawl.
+ * Explicit scripted beats are authoritative; stage business is optional colour,
+ * not permission to add unbooked wrestling moves or lasting consequences. */
+function assertSpokenAngleStayedSpoken(source:ShowResultEntry,prose:string):void{
+ const actions=source.segmentContext?.scriptedActions;
+ if(source.type!=="SEGMENT"||!actions?.length||
+  actions.some(a=>["ATTACK","FIGHT_BACK","RESCUE","BETRAY"].includes(a.action)))return;
+ let body=prose;
+ // Exact booker-written lines may quote a threat of violence, not enact it.
+ for(const a of actions)if(a.line)body=body.replaceAll(a.line,"");
+ if(/\\b(?:series|flurry|exchange|barrage|succession|combination) of[^.!?]{0,55}\\b(?:drop[ -]?kicks?|superkicks?|punches|strikes|suplexes|clotheslines|slams)\\b|\\b(?:hit|landed|delivered|launched|performed|executed|unleashed|connected with|drilled|levelled|stunned|flattened)[^.!?]{0,65}\\b(?:drop[ -]?kicks?|superkicks?|suplexes|clotheslines|powerbombs?|DDTs?|chair shots?|punches|body slams?)\\b/i.test(body))
+  throw new Error("Ringside invented physical wrestling in a talk-only booked angle");
+}
+
 /** Remove only identical repeated sentences locally, no second Groq call.
  * No judgement of paraphrases or simulated finish reconstruction.
  */
@@ -249,6 +263,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
   assertReferencedPromoTargetStayedOffScreen(source,prose);
+  assertSpokenAngleStayedSpoken(source,prose);
   // A declared turn against a rival is not proof the two were partners.
   // A saved betrayal direction is necessary for on-air ally history.
   if(source.type==="SEGMENT"&&source.segmentKind==="TURN"&&
@@ -530,6 +545,13 @@ stipulationRules if present.
 
 Angles are filmed scenes, not bouts. Use verified initiator, victim,
 location, outcome, scene purpose and visible scripted aftermath.
+The saved angle.scriptedActions are the ONLY directed actions and spoken
+words: narrate them in order, preserving their exact quoted lines. If they
+contain only spoken beats (SPEAK, WARN, TAUNT, CHALLENGE, INTERRUPT,
+REPLY or WALK_AWAY), NO wrestling moves, strikes, dropkicks or brawls
+occur. Presence alone is NEVER permission to add a physical spot.
+Only an explicit ATTACK, FIGHT_BACK, RESCUE or BETRAY permits physical
+contact, and even then do not add unrelated manoeuvres or new outcomes.
 In a PROMO, actorNames are speakers. The verified angle.targetPresence
 field decides whether targetNames are merely MENTIONED or ON_SCREEN.
 If MENTIONED (or unrecorded legacy presence), the named target must NOT

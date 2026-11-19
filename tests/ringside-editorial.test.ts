@@ -381,3 +381,24 @@ test("a booked face turn cannot invent former partners or an alliance banner",()
    /partnership or alliance/);
  }
 });
+
+test("authored spoken-only confrontation never becomes an invented drop-kick attack",()=>{
+ const scene:CompletedShowView={...example,entries:[example.entries[0]!,{
+  ...example.entries[1]!,segmentKind:"CHALLENGE",
+  segmentContext:{actorNames:["Iziah Hunter"],targetNames:["Austin Gunn"],
+   scriptedActions:[{action:"SPEAK",by:"hunter",to:"gunn",
+    line:"I need to prove I belong in CWA!"}],
+   targetPresence:"ON_SCREEN"}
+ }]};
+ const proposed={...valid,slots:[valid.slots[0]!,{
+  slotId:"angle-1",headline:"The verbal challenge",
+  recap:"Hunter called out Austin Gunn. The Gunns responded with a cocky taunt and a series of synchronized drop-kicks that left Hunter reeling."
+ }]};
+ assert.throws(()=>validateRingsideCopy(proposed,scene),/talk-only/);
+ const spoken={...proposed,slots:[valid.slots[0]!,{
+  slotId:"angle-1",headline:"A challenge without a fight",
+  recap:"Hunter demanded his chance. The Gunns listened, and the atmosphere tightened as neither side stepped forward."
+ }]};
+ assert.doesNotThrow(()=>validateRingsideCopy(spoken,scene));
+ assert.match(RINGSIDE_STYLE_GUIDE,/NO wrestling moves, strikes, dropkicks or brawls/);
+});
