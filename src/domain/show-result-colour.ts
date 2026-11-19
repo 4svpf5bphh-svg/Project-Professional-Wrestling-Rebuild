@@ -41,5 +41,18 @@ export function shortResultColour(entry:ShowResultEntry,showId:string):string{
   case "OVER_THE_TOP_ROPE":story=winner+" survived the final elimination.";break;
   default:story=winner+" got the win.";
  }
- return story+" "+mood;
+ const consequences:string[]=[];
+ const title=entry.fallout?.title;
+ if(title){
+  if(title.changed)consequences.push(title.winnerName+
+   " is the new "+title.name+" champion.");
+  else consequences.push(title.winnerName+" retained the "+title.name+".");
+ }
+ const runIn=entry.fallout?.interference;
+ if(runIn?.outcome==="SUCCESS")consequences.push(
+  (runIn.personName??"A ringside participant")+
+  " made a decisive intervention at ringside.");
+ else if(runIn?.outcome==="THWARTED")consequences.push(
+  "An attempted ringside intervention was stopped before it could decide the finish.");
+ return [story,...consequences,mood].join(" ");
 }
