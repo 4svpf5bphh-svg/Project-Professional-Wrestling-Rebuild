@@ -18,7 +18,8 @@ export interface PlannerPort {
 const node=(tag:string,text="",className="")=>{
  const x=document.createElement(tag);x.textContent=text;x.className=className;return x;};
 export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
- openUnfinishedCard=false,initialTarget?:CalendarPlanningTarget){
+ openUnfinishedCard=false,initialTarget?:CalendarPlanningTarget,
+ focusedProgrammeId?:string){
  let cardRoutePending=openUnfinishedCard;
  let focusTarget=initialTarget;
  let data:PlannerView|null=null,error="",busy=false,editing:PlannerWeek|null=null;
@@ -65,14 +66,35 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    }
    if(cardRoutePending){
     cardRoutePending=false;
-    const unfinished=data.weeks.find(w=>w.offset===0)?.shows.filter(s=>
-     s.status==="DRAFT"&&!s.ready)??[];
-    // Optional premiums cannot displace the compulsory normal broadcast.
-    const draft=unfinished.find(s=>s.bookingClass==="REGULAR")??unfinished[0];
-    if(draft&&data.canEdit){
-     navigated=true;port.openCard(draft.draftId);return;
+    // Treat broadcaster off-weeks as off-weeks. Only a saved draft or
+    // a confirmed scheduled TV/PPV may receive the next story chapter.
+    const weeks=[...data.weeks].sort((a,b)=>a.offset-b.offset);
+    const next=weeks.flatMap(week=>{
+     if(!week.canEdit)return [];
+     const regular=week.shows.find(s=>
+      s.status==="DRAFT"&&s.bookingClass==="REGULAR");
+     const dueRegular=week.scheduled.find(s=>s.eventType==="REGULAR"&&
+      !week.shows.some(show=>show.bookingClass==="REGULAR"));
+     const premium=week.shows.find(s=>
+      s.status==="DRAFT"&&s.bookingClass==="PREMIUM");
+     const duePremium=week.scheduled.find(s=>s.eventType==="MAJOR"&&
+      !week.shows.some(show=>show.bookingClass==="PREMIUM"));
+     if(regular)return [{week,draft:regular,seriesId:regular.showSeriesId??""}];
+     if(dueRegular)return [{week,draft:undefined,seriesId:dueRegular.seriesId}];
+     if(premium)return [{week,draft:premium,seriesId:premium.showSeriesId??""}];
+     if(duePremium)return [{week,draft:undefined,seriesId:duePremium.seriesId}];
+     return [];
+    })[0];
+    if(next&&data.canEdit){
+     if(next.draft?.venueId){
+      navigated=true;port.openCard(next.draft.draftId,focusedProgrammeId);
+      return;
+     }
+     navigated=true;
+     edit(next.week,next.draft,next.seriesId,focusedProgrammeId??null);
+     return;
     }
-    error="There isn't an unfinished show card this week. Check your schedule below.";
+    error="No editable television or premium show is scheduled in this booking window. Review your calendar.";
    }
   }catch(e){error=e instanceof Error?e.message:"Planner unavailable";}
   finally{busy=false;if(!navigated)draw();}
@@ -263,7 +285,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     ", "+(week.premiumName?"PPV "+week.premiumName+", ":"")+week.label);
    tile.replaceChildren(
     node("strong","W"+week.week),
-    node("small","Y"+week.year+(week.isPremium?" · PPV":" · TV")),
+    node("small","Y"+week.year+(week.state==="NO_SHOW_DUE"?
+      " · OFF WEEK":week.isPremium?" · PPV":" · TV")),
     node("span",week.label,"ppw-planner-board-state"));
    tiles.append(tile);
   }

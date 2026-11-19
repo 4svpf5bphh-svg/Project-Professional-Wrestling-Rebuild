@@ -848,7 +848,8 @@ function programmePort(call:ReturnType<typeof createCardClient>,
       undefined,undefined,programmeId??focus?.programmeId,focus?.ideaKind,
       undefined,undefined,focus?.blueprintBeat);
     };
-    mountPlannerPage(root,scope,backToProgrammes,!!focus,undefined,openSelectedCard);
+    mountPlannerPage(root,scope,backToProgrammes,!!focus,undefined,
+     openSelectedCard,focus?.programmeId);
    }
   },
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
@@ -965,7 +966,8 @@ export function mountPersonaPage(root:HTMLElement,scope:Scope,
  */
 export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
  openUnfinishedCard=false,initialTarget?:import("../ui/world-calendar.js").CalendarPlanningTarget,
- onOpenBooking?:(draftId:string,programmeId?:string)=>void){
+ onOpenBooking?:(draftId:string,programmeId?:string)=>void,
+ focusedProgrammeId?:string){
  const call=createCardClient(scope);
  const port:PlannerPort={
   load:()=>call("planner"),
@@ -981,7 +983,8 @@ export function mountPlannerPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
   openCalendar:()=>mountCalendarPage(root,scope,
    ()=>mountPlannerPage(root,scope,onBack,false,undefined,onOpenBooking),onOpenBooking)
  };
- return mountPlanner(root,port,onBack,openUnfinishedCard,initialTarget);
+ return mountPlanner(root,port,onBack,openUnfinishedCard,initialTarget,
+  focusedProgrammeId);
 }
 
 /** Show identity recurrence editor; no private rival draft plans are exposed. */
