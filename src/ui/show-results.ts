@@ -6,6 +6,7 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {projectShowBreakdown} from "./show-breakdown.js";
 import {segmentTemperature} from "../domain/segment-temperature.js";
+import {describeAngleSequenceStep} from "../domain/angle-sequence.js";
 import {programmeBroadcastRecap,programmeManagementNote}
  from "../domain/verified-programme-broadcast.js";
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
@@ -449,6 +450,21 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   const narrative=node("div","ppw-ringside-slot");
   narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
   append(body,narrative);
+  if(entry.type==="SEGMENT"&&entry.outcome==="HAPPENS"&&
+   entry.segmentContext?.scriptedActions?.length){
+   const scripted=document.createElement("details");
+   scripted.className="ppw-result-script-sequence";
+   scripted.open=true;
+   scripted.append(node("summary","",
+    "ON-SCREEN SEQUENCE · "+entry.segmentContext.scriptedActions.length+" MOMENTS"));
+   const ordered=document.createElement("ol");
+   const names=new Map<string,string>();
+   entry.actorIds.forEach((id,i)=>names.set(id,entry.segmentContext?.actorNames[i]??id));
+   entry.targetIds.forEach((id,i)=>names.set(id,entry.segmentContext?.targetNames[i]??id));
+   for(const moment of entry.segmentContext.scriptedActions)
+    ordered.append(node("li","",describeAngleSequenceStep(moment,names)));
+   scripted.append(ordered);body.append(scripted);
+  }
   // Official finish remains verifiable without repeating the result in a huge box.
   const finish=replayVerifiedMatchFinish(entry);
   if(finish){
