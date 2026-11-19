@@ -111,8 +111,9 @@ for(const width of [320,390]){
   await expect(card).toContainText("Revolution Pro");
   await expect(card).toContainText("Ascension");
   await expect(card).toContainText("Uprising");
-  await expect(card).toContainText("74/100");
-  await expect(card).toContainText("81/100");
+  await expect(card).toContainText("0.10 TV rating");
+  await expect(card).toContainText("TV rating pending");
+   await expect(card.locator(".ppw-home-ratings-score")).toHaveCount(0);
   await expect(card).toContainText("Provisional peer");
   await card.getByRole("button",{name:"Open Ratings War"}).click();
   const war=page.locator(".ppw-ratings-war-desk");

@@ -159,7 +159,7 @@ for(const width of [320,390]){
   await page.route("**/api/session",route=>route.fulfill({json:session}));
   await page.route("**/api/card",route=>route.fulfill({json:overview}));
   await page.goto("/#/home");
-  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+  await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
   if(await page.getByRole("button",{name:/Skip intro/}).isVisible().catch(()=>false))
    await page.getByRole("button",{name:/Skip intro/}).click();
   const menu=page.getByRole("button",{name:"Open World menu"});

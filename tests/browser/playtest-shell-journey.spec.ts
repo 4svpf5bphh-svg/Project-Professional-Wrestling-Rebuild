@@ -29,7 +29,7 @@ test("World status confirmation updates the promotion banner without a duplicate
   return route.fulfill({json:{...session.overview,world:changed}});
  });
  await page.goto("/#/home");
- await expect(page.getByText("● CARDS LOCKED")).toBeVisible();
+ await expect(page.locator(".ppw-home-phase-tag")).toHaveText("CARDS LOCKED");
  await expect(page.locator(".ppw-shell-brand small")).toContainText("Y1 W5");
  await page.getByRole("button",{name:"Check World status"}).click();
  await expect(page.getByRole("heading",{name:"The World has moved on"})).toBeVisible();
@@ -114,7 +114,7 @@ test("old session replies cannot restore a previous manager over the new player'
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("Current Owner");
  release();
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("Current Owner");
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
  expect(reads).toBe(2);
 });
 

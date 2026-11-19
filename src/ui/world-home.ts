@@ -300,8 +300,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    arena.append(stat(promotion.name,competition?.ownLatestShow));
    const vs=el("span","ppw-home-vs-mark","VS");
    vs.setAttribute("aria-hidden","true");arena.append(vs);
-   arena.append(stat(competition?.name??"Opponent not assigned",
-    competition?.rivalLatestShow));
+   const rival=stat(competition?.name??"Opponent not assigned",
+    competition?.rivalLatestShow);
+   if(competition?.humanManaged)
+    rival.append(el("small","ppw-home-human-rival","HUMAN MANAGER"));
+   arena.append(rival);
    circuit.append(arena);
    if(competition&&typeof competition.ownAvgAttendance==="number"&&
     typeof competition.rivalAvgAttendance==="number")

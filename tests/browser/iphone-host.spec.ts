@@ -2086,7 +2086,7 @@ test("320/390 Home gives certified broadcast and unanswered Backstage decisions 
   await page.setViewportSize({width,height:844});
   await page.goto("/#/home");
   await expect(page.getByRole("button",{name:/LATEST CERTIFIED SHOW · Ascension/})).toBeVisible();
-  await expect(page.locator(".ppw-home-certified-score")).toHaveText("78/100 · CROWD");
+  await expect(page.locator(".ppw-home-certified-score")).toHaveCount(0);
   await expect(page.locator(".ppw-home-backstage-action"))
    .toContainText("needs your decision");
   await expect(page.locator(".ppw-home-brief")).not.toContainText("Star");
