@@ -42,3 +42,18 @@ test("never leak arbitrary SQL, private promotion names or returned strings",()=
  assert.equal(bookingErrorMessage({code:"VENUE"}),null);
  assert.equal(bookingErrorMessage("__proto__"),null);
 });
+
+import {deskErrorCode,deskErrorMessage} from "../src/web/card-error-feedback.js";
+test("contract offer errors explain actionable limits without exposing server details",()=>{
+ const cases:[string,string,string][]=[
+  ["An offer to this wrestler is already pending","OFFER_PENDING","already have an offer"],
+  ["exclusive offer overlaps another signed agreement","OFFER_OVERLAP","conflict"],
+  ["exclusive guarantee below the original minimum wage","OFFER_MINIMUM","minimum"],
+  ["Recruitment offer must start in the current week","OFFER_START","cannot begin"]
+ ];
+ for(const [message,code,text] of cases){
+  assert.equal(deskErrorCode(message,"submitContractOffer"),code);
+  assert.match(deskErrorMessage(code)??"",new RegExp(text,"i"));
+ }
+ assert.equal(deskErrorCode("sensitive SQL error query 42","submitContractOffer"),null);
+});

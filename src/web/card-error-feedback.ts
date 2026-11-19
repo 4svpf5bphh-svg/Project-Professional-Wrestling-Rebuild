@@ -61,13 +61,18 @@ export function cardActionDomain(method:string):
  return "general";
 }
 export type DeskErrorCode="KP_BALANCE"|"ALREADY_OWNED"|"ART_PENDING"|"LEGEND_LOCKED"|
- "RENEWAL_ARRANGED"|"RENEWAL_MANUAL"|"CONTRACT_EXPIRED"|"STORY_CHANGED";
+ "RENEWAL_ARRANGED"|"RENEWAL_MANUAL"|"CONTRACT_EXPIRED"|"STORY_CHANGED"|
+ "OFFER_PENDING"|"OFFER_OVERLAP"|"OFFER_MINIMUM"|"OFFER_START";
 export function deskErrorCode(message:string,method:string):DeskErrorCode|null{
  const domain=cardActionDomain(method);
  if(domain==="contracts"){
   if(/renewal already arranged|renewal already reserved/i.test(message))return "RENEWAL_ARRANGED";
   if(/manual negotiation required|invalid renewal source contract/i.test(message))return "RENEWAL_MANUAL";
   if(/contract already expired/i.test(message))return "CONTRACT_EXPIRED";
+  if(/offer to this wrestler is already pending/i.test(message))return "OFFER_PENDING";
+  if(/exclusive offer overlaps|exclusive contract blocks outside work|overlapping signed agreement/i.test(message))return "OFFER_OVERLAP";
+  if(/exclusive guarantee below/i.test(message))return "OFFER_MINIMUM";
+  if(/Recruitment offer must start|offer start has passed|Renewal must start after/i.test(message))return "OFFER_START";
   return null;
  }
  if(method==="chooseBackstageStoryFollowUp"&&/story chapter can no longer|already received a reply|storyline has already/i.test(message))return "STORY_CHANGED";
@@ -87,6 +92,10 @@ export function deskErrorMessage(code:unknown):string|null{
   RENEWAL_ARRANGED:"A renewal is already accepted. Reload Contracts to see the next agreement.",
   RENEWAL_MANUAL:"These renewal terms need a negotiated offer. Review the duration and payment before submitting.",
   CONTRACT_EXPIRED:"This agreement has expired. Review the wrestler’s availability in the Talent Market.",
+  OFFER_PENDING:"You already have an offer awaiting this wrestler. Open Contract Desk → Offers before sending another.",
+  OFFER_OVERLAP:"These terms conflict with an existing exclusive contract. Try a shorter or later agreement.",
+  OFFER_MINIMUM:"The exclusive weekly wage is below the wrestler’s minimum. Review the guarantee.",
+  OFFER_START:"The agreement cannot begin in this week. Reopen the offer and review its start date.",
   STORY_CHANGED:"That chapter is no longer awaiting a decision. Reopen Backstage to review the latest story."
  };
  return typeof code==="string"&&Object.prototype.hasOwnProperty.call(map,code)?
