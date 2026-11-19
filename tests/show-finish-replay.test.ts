@@ -88,3 +88,18 @@ test("fallback finish labels use the saved object, never a randomly invented pro
   signatureMoves:["Imaginary Finish"],finishingMoves:["Never Booked"],source:"WORLD_RECORD"}];
  assert.doesNotMatch(shortResultColour(clean,"one"),/Imaginary Finish|Never Booked/);
 });
+
+test("offline main-event copy carries certified title defence and actual ringside help",async()=>{
+ const {shortResultColour}=await import("../src/domain/show-result-colour.js");
+ const entry=match("FOREIGN_OBJECT");
+ entry.fallout={injuries:[],eliminations:[],
+  title:{name:"CWA Intercontinental Championship",winnerName:"Alice",
+   priorHolderName:"Alice",changed:false},
+  interference:{personName:"Manager",outcome:"SUCCESS"}};
+ const story=shortResultColour(entry,"title-main");
+ assert.match(story,/Alice retained the CWA Intercontinental Championship/);
+ assert.match(story,/Manager made a decisive intervention/);
+ assert.doesNotMatch(story,/kendo|ring bell|steel chair|screwdriver/i);
+ entry.fallout.interference!.outcome="ABORTED";
+ assert.doesNotMatch(shortResultColour(entry,"title-main"),/decisive intervention/i);
+});
