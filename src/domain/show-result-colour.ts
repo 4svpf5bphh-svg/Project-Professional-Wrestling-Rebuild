@@ -46,7 +46,11 @@ export function shortResultColour(entry:ShowResultEntry,showId:string):string{
  if(title){
   if(title.changed)consequences.push(title.winnerName+
    " is the new "+title.name+" champion.");
-  else consequences.push(title.winnerName+" retained the "+title.name+".");
+  else if(!title.priorHolderName)consequences.push("The "+title.name+" remains vacant.");
+  else if(title.priorHolderName===title.winnerName)
+   consequences.push(title.priorHolderName+" retained the "+title.name+".");
+  else consequences.push(title.priorHolderName+" kept the "+title.name+
+   " despite the result. No championship changed hands.");
  }
  const runIn=entry.fallout?.interference;
  if(runIn?.outcome==="SUCCESS")consequences.push(

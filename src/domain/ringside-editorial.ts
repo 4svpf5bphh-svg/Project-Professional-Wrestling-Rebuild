@@ -499,7 +499,11 @@ multiple bouts. Reader sees a continuous card.
 
 The slot records are AUTHORITATIVE: participant names, match format,
 winner, winning method, title movement, injured wrestlers, interference,
-angle outcomes and audience mood. Match.wrestlingIQ gives the legal
+angle outcomes and audience mood. If slot.fallout.title.changed is false,
+slot.fallout.title.winnerName names the MATCH winner, not necessarily the
+champion. The priorHolderName retains the belt when different from the
+match winner; with no prior holder the title stays vacant. Only changed:true
+certifies a new champion. Do not call a challenger's DQ win a title defence. Match.wrestlingIQ gives the legal
 format and psychology; slot.match.stipulationRules gives the real
 winning condition and suggested dramatic beats. Those beats and
 possibleSpots are creative possibilities, NOT certified event records.

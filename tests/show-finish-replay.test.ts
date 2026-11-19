@@ -103,3 +103,26 @@ test("offline main-event copy carries certified title defence and actual ringsid
  entry.fallout.interference!.outcome="ABORTED";
  assert.doesNotMatch(shortResultColour(entry,"title-main"),/decisive intervention/i);
 });
+
+test("offline title fallout distinguishes winning the match from retaining the championship",async()=>{
+ const {shortResultColour}=await import("../src/domain/show-result-colour.js");
+ const noTransfer=match("DISQUALIFICATION");
+ noTransfer.fallout={injuries:[],eliminations:[],
+  title:{name:"CWA Heavyweight Title",winnerName:"Alice",
+   priorHolderName:"Bob",changed:false}};
+ const result=shortResultColour(noTransfer,"dq-challenge");
+ assert.match(result,/Alice took the win by disqualification/);
+ assert.match(result,/Bob kept the CWA Heavyweight Title/);
+ assert.doesNotMatch(result,/Alice retained|Alice is the new/);
+ const vacant=match("FOREIGN_OBJECT");
+ vacant.fallout={injuries:[],eliminations:[],
+  title:{name:"CWA Women's Title",winnerName:"Alice",
+   priorHolderName:null,changed:false}};
+ assert.match(shortResultColour(vacant,"vacant-dq"),/CWA Women's Title remains vacant/);
+ assert.doesNotMatch(shortResultColour(vacant,"vacant-dq"),/retained/);
+ const transfer=match("CLEAN_PIN");
+ transfer.fallout={injuries:[],eliminations:[],
+  title:{name:"CWA Women's Title",winnerName:"Alice",
+   priorHolderName:"Bob",changed:true}};
+ assert.match(shortResultColour(transfer,"title-win"),/Alice is the new CWA Women's Title champion/);
+});
