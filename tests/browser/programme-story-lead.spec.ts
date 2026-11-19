@@ -73,6 +73,7 @@ for(const width of [320,390]){
   // Programme Desk is the one source of creative chapter starters now;
   // the Card no longer repeats its recommendations above actual booking.
   await page.goto("/#/programmes");
+  await page.getByRole("button",{name:"Plan",exact:true}).click();
   await page.getByRole("button",{name:"Introduce their ambition"}).click();
   let dialog=page.getByRole("dialog",{name:"Edit angle"});
   await expect(dialog.getByText("CAST YOUR STORY")).toBeVisible();
