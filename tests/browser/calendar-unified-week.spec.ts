@@ -69,6 +69,11 @@ for(const width of [320,390]){
    .toContainText("Submitted for lock");
   await expect(focus.getByRole("button",{name:"Review booking"})).toHaveCount(1);
   await expect(focus.getByRole("button",{name:"Book PPV"})).toHaveCount(0);
+  // Real rendered calendar at actual iPhone widths, not generated mockups.
+  await page.screenshot({path:"test-results/ppw-integrated-calendar-"+width+".png",
+   fullPage:true,animations:"disabled"});
+  await focus.screenshot({path:"test-results/ppw-integrated-calendar-week-"+width+".png",
+   animations:"disabled"});
   await page.getByRole("button",{name:"Year 1 week 30 — no shows due"}).click();
   await expect(page.getByRole("region",{name:"Week 30 shows and booking"}))
    .toContainText("Off week");

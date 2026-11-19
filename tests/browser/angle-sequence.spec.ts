@@ -84,6 +84,10 @@ for(const width of [320,390]){
   await dialog.getByLabel("Moment 3 action").selectOption("ATTACK");
   await dialog.getByLabel("Moment 3 recipient").selectOption("bob");
   await expect(dialog.locator(".ppw-angle-sequence-step")).toHaveCount(3);
+  // The actual editor at 320px and 390px. Capture the authored beat order.
+  await dialog.locator(".ppw-angle-sequence").screenshot({
+   path:"test-results/ppw-integrated-creative-editor-"+width+".png",
+   animations:"disabled"});
   await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
   await expect(dialog.locator(".ppw-angle-sequence-review"))
    .toContainText("Alice spoke");
@@ -91,6 +95,9 @@ for(const width of [320,390]){
    .toContainText("Bob answered Alice");
   await expect(dialog.locator(".ppw-angle-sequence-review"))
    .toContainText("Alice attacked Bob");
+  await dialog.locator(".ppw-angle-sequence-review").screenshot({
+   path:"test-results/ppw-integrated-script-review-"+width+".png",
+   animations:"disabled"});
   await dialog.getByRole("button",{name:"Complete angle"}).click();
   await page.getByRole("button",{name:/Save card|Save changes/}).click();
   await expect(page.getByText("Show card saved")).toBeVisible();
