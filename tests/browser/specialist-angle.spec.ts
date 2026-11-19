@@ -301,6 +301,7 @@ test("iPhone booker can start an unsaved rivalry challenge in the streamlined an
   .getByRole("button",{name:"Challenges"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Challenge");
+ await dialog.getByLabel("Storyline (optional)").selectOption("gunns-rivalry");
  await expect(dialog.getByLabel("Storyline (optional)")).toHaveValue("gunns-rivalry");
  await expect(dialog.getByText(/needs a target|choose.*target/i).first()).toBeVisible();
  expect(methods).toEqual(["planner","load"]);
