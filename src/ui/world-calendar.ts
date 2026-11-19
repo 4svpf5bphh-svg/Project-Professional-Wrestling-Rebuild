@@ -352,6 +352,9 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     const booked=ppv?.booked??false,showName=ppv?.name;
     const date=button("W"+String(week).padStart(2,"0"),()=>{
      yearActiveWeek=week;render();
+     // Keep the chosen week and its booking actions together on screen.
+     root.querySelector<HTMLElement>(".ppw-calendar-week-focus")
+      ?.scrollIntoView({block:"nearest",behavior:"auto"});
     },busy);
     date.classList.add("ppw-calendar-week-button");
     date.dataset.hasEvent=String(Boolean(showName));
@@ -359,6 +362,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     date.dataset.hasTelevision=String(television.length>0);
     date.dataset.hasCard=String(scheduled.some(e=>e.booked));
     date.dataset.hasBoth=String(Boolean(showName)&&television.length>0);
+    date.dataset.suggested=String(ppv?.status==="SUGGESTED");
     if(ppv?.booked)date.dataset.status=ppv.status;
     date.setAttribute("aria-pressed",String(week===yearActiveWeek));
     if(showName)date.append(node("small",showName,"ppw-calendar-year-major"));
@@ -383,6 +387,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    part.append(grid);quarters.append(part);
   }
   rootSection.append(quarters);
+  const activeQuarter=yearActiveWeek===null?null:
+   quarters.children[Math.floor((yearActiveWeek-1)/13)] as HTMLElement|undefined;
   // Selecting any week exposes exactly the due broadcast(s), annual PPV
   // and owner-private saved draft without another Calendar or Planner read.
   const focusWeek=yearActiveWeek??(chosen.year===data.year?data.week:null);
@@ -442,7 +448,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
       "ppw-calendar-week-focus-location"));
     focus.append(line);
    }
-   rootSection.append(focus);
+   if(activeQuarter)activeQuarter.append(focus);
+   else rootSection.insertBefore(focus,quarters);
   }
   const selectedBooking=yearActiveWeek===null?null:
    premiumEdition(chosen.year,yearActiveWeek);
@@ -492,7 +499,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     if(official)picker.append(node("p",
      "Official annual event names are protected.","ppw-calendar-year-footer"));
    }
-   rootSection.append(picker);
+   (activeQuarter??rootSection).append(picker);
   }
   if(yearActiveWeek!==null&&(!canEdit||selectedBooking)){
    const week=yearActiveWeek,index=weekIndex(chosen.year,week);
@@ -542,7 +549,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    if(lockedCurrent)detail.append(node("small",
     "Current-year commitments are locked. Select Year "+(data.year+1)+
     " to plan future annual PPV dates.","ppw-calendar-year-footer"));
-   rootSection.append(detail);
+   (activeQuarter??rootSection).append(detail);
   }
   if(canEdit){
    rootSection.append(button("Use recommended dates",()=>{
