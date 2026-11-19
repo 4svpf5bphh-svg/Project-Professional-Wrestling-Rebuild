@@ -84,7 +84,7 @@ test("fallback finish labels use the saved object, never a randomly invented pro
  assert.match(legacy,/concealed weapon/);
  assert.doesNotMatch(legacy,/chair|bell|chain|kendo|screwdriver/i);
  const clean=match("CLEAN_PIN");
- clean.performerIdentities=[{personId:"a",ringName:"Alice",character:null,style:null,
+ clean.performerIdentities=[{personId:"a",ringName:"Alice",character:"Cocky challenger",style:null,
   signatureMoves:["Imaginary Finish"],finishingMoves:["Never Booked"],source:"WORLD_RECORD"}];
  assert.doesNotMatch(shortResultColour(clean,"one"),/Imaginary Finish|Never Booked/);
 });
