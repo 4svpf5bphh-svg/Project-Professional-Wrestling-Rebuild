@@ -265,49 +265,6 @@
 .ppw-calendar-event[data-has-artwork=true]>.ppw-calendar-tv-slot{align-self:flex-start}
 .ppw-calendar-ppv-week-tv{font-size:10px!important;color:#b8ebed!important;letter-spacing:0!important}
 
-/* Four-week calendar overview reuses the existing World 52-week schedule. */
-.ppw-calendar-four-week{min-width:0;display:grid;gap:10px;
- padding:12px 11px;margin:15px 0;border:1px solid #506f82;
- border-radius:15px;background:linear-gradient(145deg,#162f47,#101f32)}
-.ppw-calendar-four-week-header{display:flex;justify-content:space-between;
- align-items:center;gap:9px;min-width:0}
-.ppw-calendar-four-week-title{min-width:0}
-.ppw-calendar-four-week-title h3{margin:5px 0 0;color:#f0f8ff;
- font-size:clamp(15px,3.8vw,19px);line-height:1.25}
-.ppw-calendar-four-week-controls{display:flex;gap:5px;flex-shrink:0}
-.ppw-calendar-four-week-controls .ppw-calendar-button{
- margin:0;padding:7px;min-height:44px;min-width:44px;font-size:0}
-.ppw-calendar-four-week-controls .ppw-calendar-button:first-child:before{
- content:"‹";font-size:25px}
-.ppw-calendar-four-week-controls .ppw-calendar-button:last-child:before{
- content:"›";font-size:25px}
-.ppw-calendar-four-week-grid{display:grid;
- grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;min-width:0}
-.ppw-calendar-four-week-tile.ppw-calendar-button{display:flex;min-width:0;
- flex-direction:column;align-items:stretch;gap:5px;margin:0;padding:10px 8px;
- text-align:left;white-space:normal;overflow-wrap:anywhere;
- background:#20394e;color:#eef8ff;border-radius:11px;border:1px solid #54778e}
-.ppw-calendar-four-week-tile strong{font-size:17px;line-height:1}
-.ppw-calendar-four-week-year{font-size:10px;color:#b6cfe2}
-.ppw-calendar-four-week-event{font-size:11px;line-height:1.3;
- padding:5px 6px;color:#d2f6fc;background:#184653;border-radius:6px}
-.ppw-calendar-four-week-event[data-major=true]{color:#ffebba;background:#5b4131}
-.ppw-calendar-four-week-day{font-size:10px;color:#b2e7f1}
-.ppw-calendar-four-week-more,.ppw-calendar-four-week-empty{font-size:10px;color:#bad0db}
-.ppw-calendar-four-week-tile[data-major=true]{border-color:#c6a069}
-.ppw-calendar-four-week-tile[data-current=true]{outline:2px solid #83e9d5;outline-offset:-2px}
-.ppw-calendar-four-week-tile:disabled{opacity:.6;cursor:default}
-.ppw-calendar-four-week-help{font-size:11px;line-height:1.5;color:#bed4e0}
-.ppw-calendar-four-week-tile:focus-visible{outline:3px solid #dbf7ff}
-@media(max-width:560px){.ppw-calendar-four-week-grid{
- grid-template-columns:repeat(2,minmax(0,1fr))}
- .ppw-calendar-four-week-tile.ppw-calendar-button{min-height:84px}}
-@media(max-width:350px){.ppw-calendar-four-week{padding:10px 7px}
- .ppw-calendar-four-week-header{gap:4px}
- .ppw-calendar-four-week-controls .ppw-calendar-button{min-width:42px}
- .ppw-calendar-four-week-grid{gap:5px}}
-
-
 /* Unified annual TV+premium plan: one compact schedule rather than a
    separate four-week navigator plus repeated full-size broadcast posters. */
 .ppw-calendar-year-context{margin:6px 0 12px;padding:8px 10px;
@@ -358,3 +315,61 @@
 @media(max-width:390px){
  .ppw-calendar-year-name-warning{overflow-wrap:anywhere}
 }
+
+/* Phase 60: annual board is the single TV + PPV booking entry point.
+ * A selected week exposes the real draft and contract, never a mockup. */
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-has-card=true]{
+ box-shadow:inset 0 -3px #72dcd2}
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-has-both=true]{
+ border-color:#eec583;background:linear-gradient(155deg,#60472e,#213e52)}
+.ppw-calendar-year-tv-booked{font-size:9px!important;color:#9ff3e5!important;
+ font-weight:850!important;letter-spacing:.01em}
+.ppw-calendar-ppv-week-tv{font-weight:850!important;
+ letter-spacing:.015em!important}
+.ppw-calendar-week-focus{display:grid;gap:10px;margin:14px 0;
+ padding:12px;border:1px solid #6b90af;border-radius:14px;
+ background:linear-gradient(132deg,#162c45,#1c253b)}
+.ppw-calendar-week-focus-head{display:flex;align-items:center;
+ justify-content:space-between;gap:7px}
+.ppw-calendar-week-focus-head strong{color:#c7ebfa;font:900 12px/1.3 system-ui;
+ letter-spacing:.08em}
+.ppw-calendar-week-focus-event{display:grid;grid-template-columns:minmax(0,1fr) auto;
+ gap:6px;align-items:center;padding:11px 12px;min-width:0;
+ border:1px solid #5f839b;border-left:4px solid #52cce1;border-radius:11px;
+ background:#102b44}
+.ppw-calendar-week-focus-ppv{border-left-color:#ebc27a;
+ border-color:#987e61;background:linear-gradient(105deg,#383043,#233146)}
+.ppw-calendar-week-focus-kind{grid-column:1/-1;color:#a4e5f4;
+ font:850 9px/1.15 system-ui;letter-spacing:.1em}
+.ppw-calendar-week-focus-ppv .ppw-calendar-week-focus-kind{color:#f6d298}
+.ppw-calendar-week-focus-title{min-width:0;color:#f6fbff;
+ font:850 clamp(13px,3.8vw,17px)/1.23 system-ui;overflow-wrap:anywhere}
+.ppw-calendar-week-focus-status{color:#c8dcec;font:750 10px/1.3 system-ui;
+ text-align:right;white-space:normal}
+.ppw-calendar-week-focus-airtime,.ppw-calendar-week-focus-location{
+ grid-column:1/-1;color:#b9eefa;font:650 11px/1.35 system-ui;
+ overflow-wrap:anywhere}
+.ppw-calendar-week-focus-event .ppw-calendar-button{
+ grid-column:1/-1;justify-self:start;margin:3px 0 0;padding:8px 13px;
+ border-color:#76dce8;background:#155166;min-height:42px;
+ font:850 12px/1.2 system-ui}
+.ppw-calendar-week-focus-event .ppw-calendar-button:focus-visible{
+ outline:3px solid #f1d194;outline-offset:2px}
+.ppw-calendar-week-focus-empty{color:#c6d9e7;margin:6px 2px;
+ font:600 12px/1.45 system-ui}
+@media(max-width:359px){
+ .ppw-calendar-week-focus{padding:9px}
+ .ppw-calendar-week-focus-event{padding:9px;
+  grid-template-columns:minmax(0,1fr)}
+ .ppw-calendar-week-focus-status{text-align:left}
+}
+
+/* Tentative annual dates are not yet real PPV obligations. */
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-suggested=true]{
+ border-style:dashed;border-color:#b9a77c;
+ background:linear-gradient(145deg,#343b47,#2a303c)}
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-suggested=true]
+ .ppw-calendar-year-major{color:#d8cbb1!important}
+.ppw-calendar-quarter>.ppw-calendar-week-focus{
+ margin:13px 2px 4px;padding:11px;border-color:#79a8c2}
+.ppw-calendar-quarter>.ppw-calendar-year-picker{margin:9px 2px 4px}

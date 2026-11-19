@@ -250,19 +250,25 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-calendar-four-week")).toHaveCount(0);
   await expect(page.locator(".ppw-calendar-week-button")).toHaveCount(52);
   const tvWeek=page.getByRole("button",{name:"Year 1 week 5 — Indie Weekly"});
-  await expect(tvWeek).toContainText("Indie Weekly");
+  // The 52-week tiles stay readable: the full show name is in their
+  // accessible label and the real selected-week programme detail.
+  await expect(tvWeek).toContainText("TV");
   await expect(tvWeek).toContainText("Fri");
   const noTv=page.getByRole("button",{name:"Year 1 week 6 — no shows due"});
   await expect(noTv).not.toContainText("Indie Weekly");
   const both=page.getByRole("button",{name:"Year 1 week 11 — Indie Cup + Indie Weekly"});
   await expect(both).toContainText("Indie Cup");
-  await expect(both).toContainText("Indie Weekly");
+  await expect(both).toContainText("TV");
   await both.click();
+  await expect(page.getByRole("region",{name:"Week 11 shows and booking"}))
+   .toContainText("Indie Weekly");
+  await expect(page.getByRole("region",{name:"Week 11 shows and booking"}))
+   .toContainText("Indie Cup");
   await expect(page.locator(".ppw-calendar-year-picker")).toContainText("WEEK 11");
   await expect(page.locator(".ppw-calendar-year-picker")).toContainText("Indie Cup");
-  await expect(page.locator(".ppw-calendar-event-compact")).toHaveCount(3);
-  // The agenda lists only the next six weeks; W11 remains reachable
-  // through the true annual PPV/TV grid without another query.
+  await expect(page.locator(".ppw-calendar-event-compact")).toHaveCount(5);
+  // The agenda includes the current plus six future weeks, so W11 is
+  // now actionable both here and on the actual annual TV/PPV grid.
   await expect(page.locator(".ppw-calendar-owned-poster")).toHaveCount(0);
   expect(calls).toEqual(["calendar"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
