@@ -74,3 +74,21 @@ test("only an outside contracted wrestler can run in, and winner never changes",
  assert.throws(()=>normalizeBookableMatch({...singles,plannedFinish:"DISQUALIFICATION",
   cheatingWrestlerId:"person-1"}),/responsible/);
 });
+
+test("foreign object and referee bump preserve booker intent but cannot bypass the real finish rules",()=>{
+ const basic={...make(2,1),ruleset:undefined,eliminationOrder:undefined};
+ const script=normalizeBookableMatch({...basic,plannedFinish:"FOREIGN_OBJECT",
+  finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"});
+ assert.equal(script.scriptedWinnerSide,"B");
+ assert.equal(script.finishProp,"SCREWDRIVER");
+ assert.equal(script.refereeSpot,"REF_BUMP");
+ assert.deepEqual(script.participants,basic.participants);
+ assert.throws(()=>normalizeBookableMatch({...basic,plannedFinish:"CLEAN_PIN",
+  finishProp:"SCREWDRIVER"}),/foreign-object finish prop/);
+ assert.throws(()=>normalizeBookableMatch({...basic,plannedFinish:"FOREIGN_OBJECT",
+  finishProp:"NOT_A_WEAPON"}),/foreign-object finish prop/);
+ assert.throws(()=>normalizeBookableMatch({...basic,plannedFinish:"CLEAN_PIN",
+  refereeSpot:"REF_BUMP"}),/disputed finish/);
+ assert.throws(()=>normalizeBookableMatch({...basic,plannedFinish:"FOREIGN_OBJECT",
+  refereeSpot:"UNKNOWN"}),/disputed finish/);
+});

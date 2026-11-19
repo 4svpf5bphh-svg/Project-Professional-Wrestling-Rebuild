@@ -196,3 +196,18 @@ test("selecting an established tag team casts both members without altering the 
  assert.throws(()=>assignBookedTeam(match,1,[first[0]!,first[0]!]),/distinct/);
  assert.throws(()=>assignBookedTeam(match,0,[first[0]!]),/fit/);
 });
+
+test("a directed dirty finish round-trips through the original match editor without resetting the winner",()=>{
+ let match=newEditorMatch("weapon","SINGLES");
+ match=assignPerformer(match,0,0,{personId:"face",contractId:"face-deal"});
+ match=assignPerformer(match,1,0,{personId:"heel",contractId:"heel-deal"});
+ match=changeWinner(match,1);
+ const script={...match,plannedFinish:"FOREIGN_OBJECT" as const,
+  finishProp:"SCREWDRIVER" as const,refereeSpot:"REF_BUMP" as const,
+  cheatingWrestlerId:"heel"};
+ const booked=buildBookedMatch(script);
+ assert.equal(booked.scriptedWinnerSide,"B");
+ assert.equal(booked.finishProp,"SCREWDRIVER");
+ assert.equal(booked.refereeSpot,"REF_BUMP");
+ assert.deepEqual(buildBookedMatch(restoreEditorMatch("weapon",booked)),booked);
+});

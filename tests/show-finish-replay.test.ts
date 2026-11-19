@@ -72,3 +72,19 @@ test("selected finish object and referee bump survive the certified result and m
  later.matchContext={...later.matchContext!,finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"};
  assert.doesNotMatch(replayVerifiedMatchFinish(later)!.description,/screwdriver|knocked down/i);
 });
+
+test("fallback finish labels use the saved object, never a randomly invented prop",async()=>{
+ const {shortResultColour}=await import("../src/domain/show-result-colour.js");
+ const entry=match("FOREIGN_OBJECT");
+ entry.matchContext={...entry.matchContext!,finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"};
+ const text=shortResultColour(entry,"fixed-show");
+ assert.match(text,/screwdriver/i);
+ assert.doesNotMatch(text,/chair|kendo|ring bell/i);
+ const legacy=shortResultColour(match("FOREIGN_OBJECT"),"legacy-show");
+ assert.match(legacy,/concealed weapon/);
+ assert.doesNotMatch(legacy,/chair|bell|chain|kendo|screwdriver/i);
+ const clean=match("CLEAN_PIN");
+ clean.performerIdentities=[{personId:"a",ringName:"Alice",character:null,style:null,
+  signatureMoves:["Imaginary Finish"],finishingMoves:["Never Booked"],source:"WORLD_RECORD"}];
+ assert.doesNotMatch(shortResultColour(clean,"one"),/Imaginary Finish|Never Booked/);
+});
