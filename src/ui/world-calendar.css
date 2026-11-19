@@ -382,3 +382,10 @@
 .ppw-calendar-quarter>.ppw-calendar-week-focus{
  margin:9px 2px 4px;padding:9px;border-color:#79a8c2}
 .ppw-calendar-quarter>.ppw-calendar-year-picker{margin:9px 2px 4px}
+/* Only show exceptional booked-title/rename information; never repeat the
+ * same TV + PPV identities already in the selected week's live agenda. */
+.ppw-calendar-quarter>.ppw-calendar-booked-identity{padding:8px 9px;margin:6px 2px 2px}
+.ppw-calendar-booked-identity .ppw-calendar-year-name-warning{margin:0;
+ border:0;border-left:3px solid #d9b37c;padding:7px 9px;
+ background:#342f38;color:#ffe5bd!important}
+.ppw-calendar-booked-identity .ppw-calendar-year-edition{margin:9px 0 6px}

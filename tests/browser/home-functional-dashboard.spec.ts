@@ -76,6 +76,20 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-home-ratings-promotion"))
    .toHaveText(["Chaotic Wrestling Alliance","Revolution Pro"]);
   await expect(page.getByRole("heading",{name:"Notifications"})).toBeVisible();
+  const notificationHead=page.locator(".ppw-home-brief-title");
+  const count=notificationHead.locator(".ppw-home-notification-count");
+  await expect(count).toHaveText("1 TO REVIEW");
+  if(width===320){
+   const metrics=await notificationHead.evaluate(header=>{
+    const title=header.querySelector("h3")!.getBoundingClientRect();
+    const count=header.querySelector(".ppw-home-notification-count")!.getBoundingClientRect();
+    return {titleCentre:title.top+title.height/2,
+     countCentre:count.top+count.height/2,
+     countRight:count.right,headerRight:header.getBoundingClientRect().right};
+   });
+   expect(Math.abs(metrics.titleCentre-metrics.countCentre)).toBeLessThanOrEqual(4);
+   expect(metrics.countRight).toBeLessThanOrEqual(metrics.headerRight+1);
+  }
   await expect(page.getByRole("button",{name:/Jay Lethal/})).toBeVisible();
   const notifications=page.locator(".ppw-home-brief");
   await expect(notifications).not.toContainText("Joe");

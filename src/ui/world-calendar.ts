@@ -501,32 +501,25 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    }
    (activeQuarter??rootSection).append(picker);
   }
-  if(yearActiveWeek!==null&&(!canEdit||selectedBooking)){
+  // The selected week's TV/PPV identities and status already appear in the
+  // single focused agenda. Only render EXTRA information when the player can
+  // rename a booked draft or a confirmed annual name differs from the card.
+  if(yearActiveWeek!==null&&selectedBooking){
    const week=yearActiveWeek,index=weekIndex(chosen.year,week);
-   const due=data.series.filter(s=>s.eventType==="REGULAR"&&seriesDue(s,index));
    const premium=dated.get(week);
    const plannedName=premium?.name??data.series.find(s=>
     s.seriesId===premium?.seriesId)?.name;
-   const premiumName=selectedBooking?.showName??plannedName;
-   const detail=node("section","","ppw-calendar-year-picker");
-   detail.append(node("strong","Year "+chosen.year+" · Week "+week));
-   for(const tv of due)detail.append(node("p",
-    tv.name+" · "+(tv.cadenceWeeks===1?"weekly":
-     tv.cadenceWeeks===2?"alternate-week":"every "+tv.cadenceWeeks+" weeks")+" TV"));
-   if(premiumName)detail.append(node("p","PPV / special · "+premiumName));
-   if(selectedBooking){
-    detail.append(node("strong",selectedBooking.certified?"CERTIFIED SHOW":
-     selectedBooking.status==="SUBMITTED"?"SUBMITTED CARD":
-     selectedBooking.ready?"CARD READY":"EDITABLE BOOKED DRAFT"));
-    if(plannedName&&plannedName!==selectedBooking.showName)
-     detail.append(node("p",
-      "The annual title says “"+plannedName+"”, but the actual booked show remains “"+
-      selectedBooking.showName+"”. It will not be renamed automatically.",
-      "ppw-calendar-year-name-warning"));
-    const offset=index-weekIndex(data.year,data.week);
-    const renamable=!!port.renameBooked&&data.canEdit&&
-     selectedBooking.status==="DRAFT"&&!selectedBooking.ready&&
-     !selectedBooking.certified&&offset>=0&&offset<=6;
+   const offset=index-weekIndex(data.year,data.week);
+   const renamable=!!port.renameBooked&&data.canEdit&&
+    selectedBooking.status==="DRAFT"&&!selectedBooking.ready&&
+    !selectedBooking.certified&&offset>=0&&offset<=6;
+   const mismatch=!!plannedName&&plannedName!==selectedBooking.showName;
+   if(mismatch||renamable){
+    const detail=node("section","","ppw-calendar-year-picker ppw-calendar-booked-identity");
+    if(mismatch)detail.append(node("p",
+     "Booked as “"+selectedBooking.showName+"”; annual plan still says “"+
+     plannedName+"”. The booked card keeps its real title.",
+     "ppw-calendar-year-name-warning"));
     if(renamable){
      const named=node("label","","ppw-calendar-year-edition");
      named.append(node("span","Rename booked PPV"));
@@ -539,17 +532,11 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
      named.append(name);detail.append(named,
       button("Save booked PPV title",()=>void renameBookedPremium(selectedBooking)));
      detail.append(node("small",
-      "Explicit rename updates this unsubmitted card and its confirmed annual edition together. Matches and booking rules stay unchanged.",
+      "Changes this draft and its annual listing together.",
       "ppw-calendar-year-footer"));
-    }else detail.append(node("small",
-     "Submitted, certified or ready cards keep their actual title. Editable drafts can only be renamed in the six-week booking window.",
-     "ppw-calendar-year-footer"));
+    }
+    (activeQuarter??rootSection).append(detail);
    }
-   if(!due.length&&!premiumName)detail.append(node("p","No show due this week"));
-   if(lockedCurrent)detail.append(node("small",
-    "Current-year commitments are locked. Select Year "+(data.year+1)+
-    " to plan future annual PPV dates.","ppw-calendar-year-footer"));
-   (activeQuarter??rootSection).append(detail);
   }
   if(canEdit){
    rootSection.append(button("Use recommended dates",()=>{

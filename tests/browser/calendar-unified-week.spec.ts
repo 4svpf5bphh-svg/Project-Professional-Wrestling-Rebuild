@@ -48,6 +48,14 @@ for(const width of [320,390]){
    name:"Year 1 week 33 — The Lottery + CWA Ascension"});
   await expect(week33).toHaveAttribute("data-has-both","true");
   await week33.click();
+  // The actual card and suggested annual title differ. Show that one useful
+  // warning, not a second full TV/PPV summary underneath the live agenda.
+  const identity=page.locator(".ppw-calendar-quarter").nth(2)
+   .locator(".ppw-calendar-booked-identity");
+  await expect(identity).toContainText("Booked as “The Lottery”");
+  await expect(identity).toContainText("annual plan still says “Lottery Night”");
+  await expect(identity).not.toContainText("CWA Ascension");
+  await expect(identity).not.toContainText("SUBMITTED CARD");
   // The details sit in the selected quarter, not below the entire year.
   await expect(page.locator(".ppw-calendar-quarter").nth(2)
    .locator(".ppw-calendar-week-focus")).toBeVisible();

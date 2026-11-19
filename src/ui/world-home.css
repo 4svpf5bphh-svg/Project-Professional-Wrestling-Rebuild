@@ -645,6 +645,12 @@
 #game .ppw-home-hero-compact button:focus-visible{
  outline:3px solid #f5cf7c;outline-offset:2px}
 @media(max-width:360px){
+ /* Title and real count are one line on a 320px iPhone. */
+ #game .ppw-home-brief-title{display:flex;align-items:center;flex-wrap:nowrap;
+  justify-content:space-between;gap:5px;min-width:0}
+ #game .ppw-home-brief-title h3{flex:1;min-width:0;
+  font-size:clamp(14px,4.35vw,17px);letter-spacing:.015em}
+ #game .ppw-home-notification-count{flex:none;font-size:9px;padding:4px 6px}
  #game .ppw-home{padding-left:10px;padding-right:10px}
  #game .ppw-home-hero-compact{padding:11px}
  #game .ppw-home-hero-compact .ppw-home-promotion-name{font-size:18px}
