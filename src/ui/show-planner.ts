@@ -69,7 +69,8 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     // Treat broadcaster off-weeks as off-weeks. Only a saved draft or
     // a confirmed scheduled TV/PPV may receive the next story chapter.
     const weeks=[...data.weeks].sort((a,b)=>a.offset-b.offset);
-    const next=weeks.flatMap(week=>{
+    const next=weeks.flatMap<{week:PlannerWeek;
+     draft?:PlannerWeek["shows"][number];seriesId:string}>(week=>{
      if(!week.canEdit)return [];
      const regular=week.shows.find(s=>
       s.status==="DRAFT"&&s.bookingClass==="REGULAR");
