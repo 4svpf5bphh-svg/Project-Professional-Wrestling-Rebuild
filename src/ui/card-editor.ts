@@ -52,6 +52,9 @@ import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarte
 import {STORY_BLUEPRINTS,storyBlueprint,storyBlueprintFamily,type BlueprintFamily}
  from "../domain/story-blueprints.js";
 import {storyBlueprintAngleStarter} from "./story-blueprint-starter.js";
+import {createAngleSequenceEditor,createAngleSequenceReview}
+ from "./angle-sequence-editor.js";
+import {isAuthoredAngleSequence} from "../domain/angle-sequence.js";
 import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
  from "../domain/programme-finales.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
@@ -1491,6 +1494,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        initialCreativeBeat(kind),
       scene:segment.kind===kind?segment.scene:initialAngleScene(kind),
       specialMoment:null,
+      scriptedActions:segment.kind===kind?segment.scriptedActions:[],
       sourceMatchSlotId:segment.kind===kind?segment.sourceMatchSlotId:null,
       stableId:["STABLE_INVITATION","STABLE_EXIT","STABLE_RECONCILIATION"].includes(kind)?
        segment.stableId:null,
@@ -2573,6 +2577,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         for(const block of [what,where,why,how]){
          if(block.childElementCount>1)guide.append(block);
         }
+        guide.append(createAngleSequenceEditor(segment!,
+         id=>selectedName([...segment!.actors,...segment!.targets]
+          .find(p=>p.personId===id)??null),
+         mutable(),(change,redraw)=>{
+          const current=segments.get(slotId);
+          if(!current)return;
+          const scriptedActions=change(current.scriptedActions);
+          if(redraw)editSegment(current,{scriptedActions});
+          else{
+           segments.set(slotId,{...current,scriptedActions});
+           markDirty();
+          }
+         }));
        }
        if(m&&view.programmes.some(p=>p.cast?.length&&
         p.cast.every(person=>assignedIds(m).includes(person.personId))))
@@ -2610,9 +2627,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         slotBookingSteps.set(slotId,"CAST");
         resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
+       const sequenceReady=m||!segment?.scriptedActions.length||
+        isAuthoredAngleSequence(segment.scriptedActions,{
+         kind:segment.kind,actorIds:segment.actors.map(p=>p.personId),
+         targetIds:segment.targets.map(p=>p.personId),
+         targetPresence:segment.targetPresence});
        actions.append(button("Next · Staff briefing",()=>{
         slotBookingSteps.set(slotId,"REVIEW");resetGuideScroll=true;render();
-       },!mutable()||!readiness.complete,"ppw-primary ppw-booking-done"));
+       },!mutable()||!readiness.complete||!sequenceReady,
+       "ppw-primary ppw-booking-done"));
        guide.append(actions);
       }else{
        const brief=el("section","ppw-guide-staff-review");
@@ -2637,6 +2660,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
            " · "+angleSceneLabel(segment!.scene.purpose):"")));
        }
        brief.append(overview);
+       if(segment){
+        const sequenceReview=createAngleSequenceReview(segment,
+         id=>selectedName([...segment.actors,...segment.targets]
+          .find(p=>p.personId===id)??null));
+        if(sequenceReview)brief.append(sequenceReview);
+       }
        const projected=forecastBookingAirtime(slotId,(m??segment)!,
         committedMatches,committedSegments,view.bookingClass);
        const airtime=el("p","ppw-guide-airtime-note",
