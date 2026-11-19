@@ -87,7 +87,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"+ Add angle"}).click();
   let dialog=page.getByRole("dialog",{name:"Edit angle"});
   await expect(dialog.locator(".ppw-story-blueprint-panel")).toBeVisible();
-  await dialog.getByRole("button",{name:"The Fall"}).click();
+  await dialog.getByRole("button",{name:"Browse Story Blueprints"}).click();
+  await dialog.locator(".ppw-story-blueprint-families").getByRole("button",{name:"The Fall"}).click();
   await dialog.getByRole("button",{name:/Slow-Burn Villain/}).click();
   await expect(dialog.locator(".ppw-story-blueprint-intention"))
    .toContainText("overlooked");

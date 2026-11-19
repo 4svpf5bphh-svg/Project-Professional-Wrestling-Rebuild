@@ -52,6 +52,8 @@ import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarte
 import {STORY_BLUEPRINTS,storyBlueprint,storyBlueprintFamily,type BlueprintFamily}
  from "../domain/story-blueprints.js";
 import {storyBlueprintAngleStarter} from "./story-blueprint-starter.js";
+import {angleMomentsForFamily,angleMomentPresetStarter}
+ from "./angle-moment-presets.js";
 import {eligibleProgrammePayoffs,PROGRAMME_PAYOFFS,type ProgrammePayoff}
  from "../domain/programme-finales.js";
 type View=Awaited<ReturnType<typeof readShowCardEditor>>;
@@ -185,6 +187,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const blueprintPickerOpen=new Set<string>();
  const blueprintFamilies=new Map<string,BlueprintFamily>();
  const blueprintChoices=new Map<string,string>();
+ const momentFamilies=new Map<string,BlueprintFamily>();
  let resetGuideScroll=false;
  const selectedName=(pick:PersonPick|null)=>!pick?"Choose wrestler":
   roster.get(pick.personId)?.name??pick.personId;
@@ -350,6 +353,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   blueprintPickerOpen.delete(slotId);
   blueprintFamilies.delete(slotId);
   blueprintChoices.delete(slotId);
+  momentFamilies.delete(slotId);
   slotBookingSteps.delete(slotId);
   guidedPickerSlots.delete(slotId);
   dirty=pending.wasDirty;pendingRequestId=null;error="";success="";
@@ -1127,7 +1131,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const id="angle-"+crypto.randomUUID();
     segments.set(id,newEditorSegment(id));
     slotBookingSteps.set(id,"SETUP");
-    blueprintPickerOpen.add(id);
+    momentFamilies.set(id,"RISE");
     order.push(id);expanded=id;startWizard(id);
     if(specialOwned===null&&port.specialMoments)void loadSpecialMoments();
    },!mutable(),"ppw-add-angle ppw-action-angle"));
@@ -2272,9 +2276,60 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         const angleSetup=el("div","ppw-guide-angle-setup");
         // The Blueprint is an optional creative starting point. It is
         // deliberately not a booked outcome, a new ledger or invented feud.
+        const momentPanel=el("section","ppw-angle-moment-panel");
+        const momentHead=el("div","ppw-angle-moment-header");
+        momentHead.append(el("strong","","Start with a wrestling moment"),
+         el("small","","Choose a starting point. You still direct the cast, scene, motive and finish."));
+        momentPanel.append(momentHead);
+        const labels:Record<BlueprintFamily,string>={
+         RISE:"The Rise",FALL:"The Fall",
+         RELATIONSHIPS:"Relationships",CONFLICT:"Conflict"};
+        const family=momentFamilies.get(slotId)??"RISE";
+        const momentTabs=el("div","ppw-angle-moment-families");
+        momentTabs.setAttribute("role","group");
+        momentTabs.setAttribute("aria-label","Wrestling moment categories");
+        for(const [value,label] of Object.entries(labels)){
+         const tab=button(label,()=>{
+          momentFamilies.set(slotId,value as BlueprintFamily);render();
+         },!mutable(),"ppw-angle-moment-family");
+         tab.setAttribute("aria-pressed",String(family===value));
+         momentTabs.append(tab);
+        }
+        momentPanel.append(momentTabs);
+        const momentChoices=el("div","ppw-angle-moment-options");
+        for(const preset of angleMomentsForFamily(family)){
+         const choice=button("",()=>{
+          const next=angleMomentPresetStarter(slotId,preset.id,segment!.programmeId);
+          segments.set(slotId,next);
+          slotBookingSteps.set(slotId,"CAST");
+          blueprintPickerOpen.delete(slotId);
+          resetGuideScroll=true;markDirty();render();
+         },!mutable(),"ppw-angle-moment-option");
+         choice.dataset.momentId=preset.id;
+         choice.append(el("strong","",preset.title),
+          el("small","",preset.description));
+         momentChoices.append(choice);
+        }
+        momentPanel.append(momentChoices);
+        if(view!.programmes.length){
+         const links=el("div","ppw-angle-moment-links");
+         links.append(el("strong","","Connect to an active storyline (optional)"));
+         const group=el("div","ppw-angle-moment-link-options");
+         for(const [id,name] of [[null,"Standalone moment"] as const,
+          ...view!.programmes.map(p=>[p.programmeId,p.label] as const)]){
+          const link=button(name,()=>editSegment(segment!,{programmeId:id}),
+           !mutable(),"ppw-angle-moment-link");
+          link.setAttribute("aria-pressed",String(segment!.programmeId===id));
+          group.append(link);
+         }
+         links.append(group);momentPanel.append(links);
+        }
+        momentPanel.append(el("small","ppw-angle-moment-footnote",
+         "Any preset can be changed. Only saved and performed scenes affect the World."));
+        angleSetup.append(momentPanel);
         const blueprintPanel=el("section","ppw-story-blueprint-panel");
         const blueprintHead=el("div","ppw-story-blueprint-heading");
-        blueprintHead.append(el("strong","","What story are you telling?"),
+        blueprintHead.append(el("strong","","Explore a full story arc"),
          button(blueprintPickerOpen.has(slotId)?"Use custom angle":"Browse Story Blueprints",()=>{
           if(blueprintPickerOpen.has(slotId))blueprintPickerOpen.delete(slotId);
           else blueprintPickerOpen.add(slotId);
@@ -2637,6 +2692,23 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
            " · "+angleSceneLabel(segment!.scene.purpose):"")));
        }
        brief.append(overview);
+       if(segment){
+        // Saved and reopened cards show the actual authored script, never
+        // an ephemeral preset label that can become stale after custom edits.
+        const script=el("div","ppw-angle-script-overview");
+        const fact=(name:string,value:string)=>{
+         const item=el("div","ppw-angle-script-line");
+         item.append(el("small","",name),el("span","",value));return item;};
+        const scene=segment.scene;
+        script.append(
+         fact("WHO",segment.actors.map(selectedName).join(" & ")+
+          (segment.targets.length?" / "+segment.targets.map(selectedName).join(" & "):"")),
+         fact("WHAT",angleName),
+         fact("WHERE",scene?angleSceneLabel(scene.location):"Not directed"),
+         fact("WHY",scene?angleSceneLabel(scene.purpose):"Not directed"),
+         fact("HOW",creativeSummary(segment.creativeBeat)||"Custom scene"));
+        brief.append(script);
+       }
        const projected=forecastBookingAirtime(slotId,(m??segment)!,
         committedMatches,committedSegments,view.bookingClass);
        const airtime=el("p","ppw-guide-airtime-note",
