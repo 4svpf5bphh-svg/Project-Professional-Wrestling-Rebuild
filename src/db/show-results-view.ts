@@ -380,7 +380,7 @@ export async function readCompletedShowView(
    const targetNames=(story?.targetIds??[]).map(name);
    const decision=story?.stableDecision??angle.stableDecision;
    const cast={
-    kind:segment.kind,
+    kind:segment.kind as import("../simulation/legacy/show-segments.js").SegmentKind,
     actorIds:Array.isArray(angle.actorIds)?angle.actorIds as string[]:[],
     targetIds:Array.isArray(angle.targetIds)?angle.targetIds as string[]:[],
     targetPresence:angle.targetPresence==="ON_SCREEN"?"ON_SCREEN" as const:
