@@ -14,7 +14,7 @@ const initial={
   intensity:"BEATDOWN"}
 };
 for(const width of [320,390]){
- test("one real PPW feud segment sequences speech, interruption and attack at "+width+"px",
+ test("one real PPW feud segment sequences speech, reply and attack at "+width+"px",
  async({page})=>{
   await page.setViewportSize({width,height:844});
   const calls:string[]=[];let saved:Record<string,unknown>={...initial};
@@ -97,6 +97,8 @@ for(const width of [320,390]){
   expect(calls.filter(x=>x==="save")).toHaveLength(1);
   await page.locator(".ppw-card-bar .ppw-expand").last().click();
   dialog=page.getByRole("dialog",{name:"Edit angle"});
+  if(await dialog.getByRole("button",{name:"← Revise script"}).count())
+   await dialog.getByRole("button",{name:"← Revise script"}).click();
   await expect(dialog.locator(".ppw-angle-sequence-step")).toHaveCount(3);
   await expect(dialog.getByLabel("Moment 2 action")).toHaveValue("REPLY");
   expect(calls).not.toContain("talent");

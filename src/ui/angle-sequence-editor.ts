@@ -62,8 +62,6 @@ export function createAngleSequenceEditor(
     ()=>update(list=>list.filter((_,j)=>i!==j),true),!canEdit));
   head.append(tools);box.append(head);
   const controls=dom("div","ppw-angle-sequence-controls");
-  const change=(patch:Partial<AuthoredAngleAction>)=>update(list=>
-   list.map((item,j)=>i===j?{...item,...patch}:item),true);
   controls.append(field("Action",select(step.action,
    angleActionsFor(segment.kind).map(a=>[a,ANGLE_SEQUENCE_LABELS[a]]),
    raw=>{

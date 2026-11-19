@@ -454,7 +454,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    entry.segmentContext?.scriptedActions?.length){
    const scripted=document.createElement("details");
    scripted.className="ppw-result-script-sequence";
-   scripted.open=true;
+   scripted.open=false;
    scripted.append(node("summary","",
     "ON-SCREEN SEQUENCE · "+entry.segmentContext.scriptedActions.length+" MOMENTS"));
    const ordered=document.createElement("ol");
