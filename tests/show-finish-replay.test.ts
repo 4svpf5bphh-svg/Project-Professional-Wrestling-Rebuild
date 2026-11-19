@@ -59,3 +59,16 @@ test("a dirty finish never claims that the referee caught an unnoticed weapon",(
  assert.match(replay.description,/concealed weapon/);
  assert.doesNotMatch(replay.description,/caught bringing|foreign object|simulation/i);
 });
+
+test("selected finish object and referee bump survive the certified result and medical override",()=>{
+ const entry=match("FOREIGN_OBJECT");
+ entry.matchContext={...entry.matchContext!,finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"};
+ entry.fallout={injuries:[],eliminations:[],finishCheaterName:"Alice"};
+ const replay=replayVerifiedMatchFinish(entry)!;
+ assert.match(replay.description,/screwdriver/i);
+ assert.match(replay.description,/knocked down/);
+ assert.match(replay.description,/Alice/);
+ const later=match("INJURY_STOPPAGE");
+ later.matchContext={...later.matchContext!,finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"};
+ assert.doesNotMatch(replayVerifiedMatchFinish(later)!.description,/screwdriver|knocked down/i);
+});

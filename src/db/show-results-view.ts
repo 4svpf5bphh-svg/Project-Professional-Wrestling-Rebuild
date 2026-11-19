@@ -24,6 +24,8 @@ import {projectVerifiedBroadcastFallout,type BroadcastFallout,
  type RecordedMatchFalloutRow} from "../domain/verified-broadcast-fallout.js";
 export interface CompletedMatchBroadcastContext{
  /** Locked card context, not an invented account of the match action. */
+ finishProp?:import("../domain/bookable-match.js").FinishProp;
+ refereeSpot?:import("../domain/bookable-match.js").RefereeSpot;
  format:string;intent:string;plannedMinutes:number|null;
  isMainEvent?:boolean;
  sides:string[][];sideParticipants?:{personId:string;name:string}[][];
@@ -348,11 +350,18 @@ export async function readCompletedShowView(
       personId:p.personId,name:name(p.personId)}))),
      winnerNames:[...winnerNames],
      championshipContested:typeof payload.championshipId==="string"&&
-      payload.championshipId.length>0};
+      payload.championshipId.length>0,
+     ...(match.actualFinish==="FOREIGN_OBJECT"&&
+      typeof payload.finishProp==="string"?{
+      finishProp:payload.finishProp as import("../domain/bookable-match.js").FinishProp}:{}),
+     ...(match.actualFinish===payload.plannedFinish&&
+      typeof payload.refereeSpot==="string"?{
+      refereeSpot:payload.refereeSpot as import("../domain/bookable-match.js").RefereeSpot}:{})};
    }catch{/* Older completed matches still retain their finish and score. */}
    const {headline,summary}=describeMatchFinish({
     actualFinish:match.actualFinish,actualWinnerSide:match.actualWinnerSide,
     winnerNames,participants:participants.map(name),
+    finishProp:matchContext?.finishProp,refereeSpot:matchContext?.refereeSpot,
    });
    entries.push({slotId:match.matchId,position:match.position,type:"MATCH",
     headline,summary,crowdResponse:match.crowdResponse,

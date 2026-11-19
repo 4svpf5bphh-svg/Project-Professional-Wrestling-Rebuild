@@ -403,3 +403,14 @@ test("authored spoken-only confrontation never becomes an invented drop-kick att
  assert.doesNotThrow(()=>validateRingsideCopy(spoken,scene));
  assert.match(RINGSIDE_STYLE_GUIDE,/NO wrestling moves, strikes, dropkicks or brawls/);
 });
+
+test("the booked weapon reaches Groq as an authoritative match detail",()=>{
+ const show:CompletedShowView={...example,entries:[{
+  ...example.entries[0]!,outcome:"FOREIGN_OBJECT",
+  matchContext:{...example.entries[0]!.matchContext!,finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"}
+ },example.entries[1]!]};
+ const matchBrief=ringsideBrief(show).slots[0]?.match;
+ assert.equal(matchBrief?.bookedWeapon,"screwdriver");
+ assert.equal(matchBrief?.refereeSpot,"REF_BUMP");
+ assert.match(RINGSIDE_STYLE_GUIDE,/bookedWeapon/);
+});

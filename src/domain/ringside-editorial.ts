@@ -1,3 +1,4 @@
+import {finishPropLabel} from "./bookable-match.js";
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
@@ -454,6 +455,8 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
       "build to one legal finish"
     }}:{}),
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
+    ...(e.matchContext.finishProp?{bookedWeapon:finishPropLabel(e.matchContext.finishProp)}:{}),
+    ...(e.matchContext.refereeSpot?{refereeSpot:e.matchContext.refereeSpot}:{}),
     titleContested:e.matchContext.championshipContested,
     ...(verifiedStipulationNote(e.matchContext.format,e.outcome)?{
      stipulationRules:verifiedStipulationNote(e.matchContext.format,e.outcome)}:{})}}:{}),
@@ -526,8 +529,10 @@ referee stoppage, not pinfall. A submission finisher like Samoa Joe's
 Coquina Clutch cannot score a pin; his Muscle Buster may lead to a
 cover. A hold may set up an independent pin later, but never claim
 the submission ITSELF forced a clean pin.
-DISQUALIFICATION never becomes a clean pin. FOREIGN_OBJECT allows
-a plausible discreet named prop, not a generic "foreign object";
+DISQUALIFICATION never becomes a clean pin. FOREIGN_OBJECT uses ONLY
+the booker's verified match.bookedWeapon, if one was supplied. Name
+that exact object, never substitute another. If none was booked,
+describe discreet cheating without specifying an invented weapon;
 PROTECTED_FINISH does not imply automatic weapons or outsiders.
 INJURY_STOPPAGE is not a pin or submission.
 I QUIT requires actual verbal surrender, often into a referee's
