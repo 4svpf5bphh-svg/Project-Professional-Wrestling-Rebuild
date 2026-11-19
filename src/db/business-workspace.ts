@@ -99,7 +99,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
         FROM (SELECT series_id,cadence_weeks,anchor_week FROM ppw_show_series
          WHERE world_id=d.world_id AND promotion_id=d.promotion_id
           AND active AND event_type='REGULAR'
-         ORDER BY series_id LIMIT 12) series) AS "regularSchedule",
+         ORDER BY series_id LIMIT 16) series) AS "regularSchedule",
        (SELECT max((e.payload->>'effectiveWeekIndex')::integer)
         FROM ppw_ledger_events e
         WHERE e.world_id=d.world_id AND e.event_type='BROADCAST_SLOT_CHANGED'

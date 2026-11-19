@@ -48,7 +48,7 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
   FROM (SELECT series_id,cadence_weeks,anchor_week FROM ppw_show_series
    WHERE world_id=deal.world_id AND promotion_id=deal.promotion_id
     AND active AND event_type='REGULAR'
-   ORDER BY series_id LIMIT 12) s
+   ORDER BY series_id LIMIT 16) s
  ) regular ON TRUE
  LEFT JOIN LATERAL (
   SELECT economics.show_id,economics.year,economics.week,draft.show_day,

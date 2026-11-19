@@ -49,9 +49,10 @@ export function assessBroadcastNetwork(terms:BroadcastNetworkTerms,
   (terms.airingHour!==null&&(!Number.isInteger(terms.airingHour)||
    terms.airingHour<0||terms.airingHour>23))||
   (terms.regularSchedule!==undefined&&(!Array.isArray(terms.regularSchedule)||
-   terms.regularSchedule.length>12||terms.regularSchedule.some(s=>
-    !Number.isSafeInteger(s.cadenceWeeks)||s.cadenceWeeks<1||s.cadenceWeeks>52||
-    !Number.isSafeInteger(s.anchorWeek)||s.anchorWeek<0))))
+   terms.regularSchedule.length>16||terms.regularSchedule.some(s=>
+    !Number.isSafeInteger(s.cadenceWeeks)||s.cadenceWeeks<1||s.cadenceWeeks>260||
+    !Number.isSafeInteger(s.anchorWeek)||s.anchorWeek<0||
+    s.anchorWeek>=s.cadenceWeeks))))
   throw new Error("Invalid broadcast obligations");
  if(reviewWeekIndex<terms.startWeekIndex||reviewWeekIndex>terms.endWeekIndex)return null;
  const target=broadcasterRatingTarget(terms.offerCode,terms.tier);

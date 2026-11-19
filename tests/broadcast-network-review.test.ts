@@ -118,3 +118,13 @@ test("alternate-week broadcaster obligations skip legitimate off-weeks and count
   {cadenceWeeks:2,anchorWeek:20},{cadenceWeeks:2,anchorWeek:21}]};
  assert.equal(assessBroadcastNetwork(twoSeries,[],21)!.status,"NO_TV");
 });
+
+test("long-cycle regular schedules use the same valid 260-week cadence as the calendar",()=>{
+ const rare={...deal,startWeekIndex:0,endWeekIndex:52,
+  regularSchedule:[{cadenceWeeks:104,anchorWeek:1}]};
+ assert.equal(assessBroadcastNetwork(rare,[],0)!.status,"OFF_WEEK");
+ assert.equal(assessBroadcastNetwork(rare,[ep(1,2)],1)!.status,"ON_TARGET");
+ assert.equal(assessBroadcastNetwork(rare,[],2)!.missedConsecutively,0);
+ assert.throws(()=>assessBroadcastNetwork({...rare,regularSchedule:[
+  {cadenceWeeks:4,anchorWeek:4}]},[],1),/Invalid/);
+});
