@@ -76,6 +76,7 @@ export async function readCanonicalSegmentContextsInTransaction(
     ...(p.videoPurpose===undefined?{}:{videoPurpose:p.videoPurpose as AuthoredSegment["videoPurpose"]}),
     ...(p.creativeBeat===undefined?{}:{creativeBeat:p.creativeBeat as SegmentCreativeBeat}),
     ...(p.scene===undefined?{}:{scene:p.scene as AngleScene}),
+    ...(p.scriptedActions===undefined?{}:{scriptedActions:p.scriptedActions as import("../domain/angle-sequence.js").AuthoredAngleAction[]}),
     ...(p.specialMoment===undefined?{}:{specialMoment:p.specialMoment as SpecialMomentSku}),
     ...(p.sourceMatchSlotId===undefined?{}:{sourceMatchSlotId:p.sourceMatchSlotId as string}),
     ...(p.turnTargetAlignment===undefined?{}:{

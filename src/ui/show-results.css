@@ -743,3 +743,15 @@
    compact show identity, never another oversized broadcast hero. */
 .ppw-results .ppw-headlines-show-name{font-size:clamp(15px,4vw,21px);
  color:#f6e7cf;line-height:1.25;margin:2px 0 12px;letter-spacing:.02em}
+
+/* A completed, player-authored scene remains readable even when Groq is
+ * unavailable. This block is assembled from the certified booked JSON. */
+.ppw-result-script-sequence{margin:12px 0;padding:10px 12px;
+ border:1px solid #537d97;border-radius:12px;
+ background:linear-gradient(125deg,#132c41,#1d2541)}
+.ppw-result-script-sequence>summary{cursor:pointer;font:850 12px/1.3 system-ui;
+ color:#b7edff;letter-spacing:.025em}
+.ppw-result-script-sequence ol{display:grid;gap:8px;padding:0 0 0 23px;
+ margin:10px 0 0;color:#eaf5ff}
+.ppw-result-script-sequence li{padding-left:3px;
+ font:500 12px/1.5 system-ui;overflow-wrap:anywhere}

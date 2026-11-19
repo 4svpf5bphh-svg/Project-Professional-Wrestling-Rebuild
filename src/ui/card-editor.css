@@ -1492,3 +1492,63 @@ body>.ppw-card-edit-shade .ppw-guide-format-tile{
 .ppw-editor .ppw-guide-finale-confirm{background:#1f6156;border-color:#73ddc5;
  color:#f3fff9;width:100%;text-align:center}
 @media(max-width:359px){.ppw-guide-finale-choices{grid-template-columns:1fr}}
+
+/* Phase 59: flexible, ordered booking actions inside the ORIGINAL angle.
+ * Real, keyboard- and touch-editable DOM; no rasterised mockup. */
+.ppw-angle-sequence{display:grid;gap:11px;min-width:0;margin:12px 0;
+ padding:13px;border:1px solid #8f78ac;border-radius:14px;
+ background:linear-gradient(130deg,#172d45,#29203f)}
+.ppw-angle-sequence-title{display:grid;gap:5px}
+.ppw-angle-sequence-title strong{font:850 17px/1.2 system-ui;color:#f2f7ff}
+.ppw-angle-sequence-title small,.ppw-angle-sequence-hint{margin:0;
+ color:#c3dbe9;font:500 12px/1.45 system-ui}
+.ppw-angle-sequence-step{display:grid;gap:9px;padding:11px;min-width:0;
+ border:1px solid #647b9d;border-radius:11px;background:#142b46}
+.ppw-angle-sequence-step-head{display:flex;align-items:center;justify-content:space-between;
+ gap:8px;color:#b6f0fc}
+.ppw-angle-sequence-step-head strong{font:850 11px/1.2 system-ui;letter-spacing:.09em}
+.ppw-angle-sequence-step-tools{display:flex;gap:5px}
+.ppw-angle-sequence-step-tools button{display:grid;place-items:center;
+ min-width:33px;min-height:33px;padding:5px;border:1px solid #7a86a8;
+ border-radius:8px;background:#253759;color:#f2f9ff;font:850 15px/1 system-ui}
+.ppw-angle-sequence-step-tools button:disabled{opacity:.32}
+.ppw-angle-sequence-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;min-width:0}
+.ppw-angle-sequence-field{display:grid;gap:5px;min-width:0;
+ color:#bbe9fa;font:750 11px/1.3 system-ui}
+.ppw-angle-sequence-field:first-child{grid-column:1/-1}
+.ppw-angle-sequence-field select{width:100%;min-width:0;max-width:100%;
+ min-height:43px;padding:8px 9px;text-overflow:ellipsis;
+ border:1px solid #648ba6;border-radius:9px;background:#13253d;
+ color:#f6f7ff;font:650 12px/1.3 system-ui}
+.ppw-angle-sequence-note{display:grid;gap:5px;min-width:0;
+ color:#bbdeea;font:750 11px/1.4 system-ui}
+.ppw-angle-sequence-note textarea{box-sizing:border-box;resize:vertical;
+ width:100%;min-height:59px;padding:9px 10px;
+ border:1px solid #5c819b;border-radius:9px;background:#112036;
+ color:#f7fcff;font:500 13px/1.45 system-ui}
+.ppw-angle-sequence-footer{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:9px}
+.ppw-angle-sequence-footer button{min-height:43px;padding:10px 14px;
+ border:1px solid #75dce9;border-radius:10px;background:#164f60;
+ color:#e7fdff;font:850 12px/1.2 system-ui}
+.ppw-angle-sequence-footer button:disabled{opacity:.45}
+.ppw-angle-sequence-footer small{color:#bed9ee;font:750 11px/1.2 system-ui}
+.ppw-angle-sequence-warning{margin:0;padding:9px 10px;
+ border-left:3px solid #edbe87;border-radius:7px;
+ background:#55393c;color:#ffdec1;font-size:12px}
+.ppw-angle-sequence-review{display:grid;gap:7px;padding:12px;
+ margin:10px 0;border:1px solid #648ca4;border-radius:12px;
+ background:#182b43}
+.ppw-angle-sequence-review strong{font-size:13px;color:#aae9f8}
+.ppw-angle-sequence-review p{margin:0;padding:7px 0 0;
+ border-top:1px solid #72869a4d;color:#edf6fe;font-size:12px;
+ line-height:1.4;overflow-wrap:anywhere}
+.ppw-angle-sequence button:focus-visible,.ppw-angle-sequence select:focus-visible,
+.ppw-angle-sequence textarea:focus-visible{outline:3px solid #fbe0a1;outline-offset:2px}
+@media(max-width:359px){
+ .ppw-angle-sequence{padding:9px}
+ .ppw-angle-sequence-step{padding:9px}
+ .ppw-angle-sequence-controls{grid-template-columns:minmax(0,1fr)}
+ .ppw-angle-sequence-field:first-child{grid-column:auto}
+}

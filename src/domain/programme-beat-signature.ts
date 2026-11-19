@@ -5,6 +5,8 @@
  */
 import {createHash} from "node:crypto";
 import {SEGMENT_BOOKING_RULES} from "./segment-booking.js";
+import {isAuthoredAngleSequence} from "./angle-sequence.js";
+import type {SegmentKind} from "../simulation/legacy/show-segments.js";
 
 export function certifiedProgrammeBeatSignature(input:{
  kind:"MATCH"|"SEGMENT";personIds:readonly string[];payload:unknown
@@ -21,6 +23,21 @@ export function certifiedProgrammeBeatSignature(input:{
      !Object.prototype.hasOwnProperty.call(SEGMENT_BOOKING_RULES,angle))
    throw new Error("Unknown certified angle kind");
   category+=":"+angle;
+   // Certified distinct on-camera sequences are different feud chapters.
+   // Old episodes and match signatures retain their exact original bytes.
+   const p=input.payload as {scriptedActions?:unknown;actorIds?:unknown;
+    targetIds?:unknown;targetPresence?:unknown};
+   if(p.scriptedActions!==undefined){
+    if(!Array.isArray(p.actorIds)||!Array.isArray(p.targetIds)||
+     !isAuthoredAngleSequence(p.scriptedActions,{
+      kind:angle as SegmentKind,actorIds:p.actorIds as string[],
+      targetIds:p.targetIds as string[],
+      targetPresence:p.targetPresence==="ON_SCREEN"?"ON_SCREEN":"MENTIONED"
+     }))throw new Error("Invalid certified scripted sequence");
+    category+=":sequence:"+createHash("sha256").update(JSON.stringify(
+     p.scriptedActions.map(step=>[step.action,step.by,step.to??null])
+    )).digest("hex").slice(0,16);
+   }
  }
  return category+":"+
   createHash("sha256").update(JSON.stringify(ids)).digest("hex");
