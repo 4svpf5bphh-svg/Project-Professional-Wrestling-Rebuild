@@ -277,6 +277,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   const tiles=node("div","","ppw-planner-board-weeks");
   tiles.setAttribute("aria-label","Select a booking week");
   for(const week of snapshot.weeks){
+   const scheduled=source.weeks.find(w=>w.year===week.year&&w.week===week.week);
+   const hasTv=Boolean(scheduled?.scheduled.some(s=>s.eventType==="REGULAR")||
+    scheduled?.shows.some(s=>s.bookingClass==="REGULAR"));
+   const hasPpv=Boolean(scheduled?.scheduled.some(s=>s.eventType==="MAJOR")||
+    scheduled?.shows.some(s=>s.bookingClass==="PREMIUM"));
+   const kind=hasTv&&hasPpv?"TV + PPV":hasPpv?"PPV":hasTv?"TV":"OFF WEEK";
    const tile=button("",()=>{
     const target=root.querySelector<HTMLElement>("#ppw-planner-week-"+week.key);
     if(target){target.scrollIntoView({block:"start"});target.focus({preventScroll:true});}
@@ -284,12 +290,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    tile.classList.add("ppw-planner-board-tile");
    tile.dataset.state=week.state;
    tile.dataset.premium=String(week.isPremium);
+   tile.dataset.hasBoth=String(hasTv&&hasPpv);
    tile.setAttribute("aria-label","Year "+week.year+" Week "+week.week+
     ", "+(week.premiumName?"PPV "+week.premiumName+", ":"")+week.label);
    tile.replaceChildren(
     node("strong","W"+week.week),
-    node("small","Y"+week.year+(week.state==="NO_SHOW_DUE"?
-      " · OFF WEEK":week.isPremium?" · PPV":" · TV")),
+    node("small","Y"+week.year+" · "+kind),
     node("span",week.label,"ppw-planner-board-state"));
    tiles.append(tile);
   }
@@ -569,8 +575,13 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     state==="CARD_IN_PROGRESS"?"attention":
     state==="PARTIALLY_BOOKED"?"booked":"empty";
    card.append(node("span",status,"ppw-planner-booking-state"));
+   const hasTv=week.scheduled.some(s=>s.eventType==="REGULAR")||
+    week.shows.some(show=>show.bookingClass==="REGULAR");
+   const hasPpv=week.scheduled.some(s=>s.eventType==="MAJOR")||
+    week.shows.some(show=>show.bookingClass==="PREMIUM");
    card.append(node("h2","Year "+week.year+" · Week "+week.week),
-    node("p",week.major?"Major event week":week.required?"Regular show week":"Optional show week"));
+    node("p",hasTv&&hasPpv?"TV and PPV scheduled this week":
+     hasPpv?"PPV week":hasTv?"Television week":"Optional show week"));
    const contracted=data.broadcastSlot,weekIndex=(week.year-1)*52+week.week-1;
    const dueTV=week.scheduled.find(s=>s.eventType==="REGULAR");
    if(dueTV&&contracted&&weekIndex>=contracted.startWeekIndex&&
