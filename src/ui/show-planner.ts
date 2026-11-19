@@ -95,9 +95,9 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
      edit(next.week,next.draft,next.seriesId,focusedProgrammeId??null);
      return;
     }
-    error=focusedProgrammeId?
-     "No editable television or premium show is scheduled in this booking window. Review your calendar.":
-     "There isn't an unfinished show card this week. Check your schedule below.";
+    error="There isn't an unfinished show card this week. Check your schedule below."+
+     (focusedProgrammeId?
+      " No editable television or premium show is scheduled in this booking window.":"");
    }
   }catch(e){error=e instanceof Error?e.message:"Planner unavailable";}
   finally{busy=false;if(!navigated)draw();}

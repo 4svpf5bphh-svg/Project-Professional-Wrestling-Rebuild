@@ -47,6 +47,18 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-home-promotion-name")).toHaveText("Chaotic Wrestling Alliance");
   await expect(page.locator(".ppw-home-prestige-small .ppw-prestige-crest-shield")).toBeVisible();
   await expect(page.locator(".ppw-home-achievement-badge")).toHaveText("4 / 47");
+  const crest=page.locator(".ppw-home-prestige-small");
+  await expect(crest.locator(".ppw-home-prestige-header")).toBeVisible();
+  // Real 320px browser capture: rank and eyebrow should each fit one line.
+  for(const selector of [".ppw-prestige-crest-eyebrow",".ppw-prestige-crest-rank"]){
+   const label=crest.locator(selector);
+   const metrics=await label.evaluate(el=>({
+    height:el.getBoundingClientRect().height,
+    scrollWidth:el.scrollWidth,clientWidth:el.clientWidth
+   }));
+   expect(metrics.height).toBeLessThan(20);
+   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth+1);
+  }
   const tv=page.locator(".ppw-home-show-spotlight .ppw-tv-frame");
   await expect(tv).toHaveAttribute("data-broadcast-package","luchafiesta");
   await expect(tv.locator(".ppw-tv-title")).toHaveText("Ascension");

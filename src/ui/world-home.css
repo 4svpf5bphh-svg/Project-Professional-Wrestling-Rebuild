@@ -426,7 +426,7 @@
  letter-spacing:-.035em;overflow-wrap:anywhere;color:#fff3ff;
  text-shadow:0 2px 8px #0b0d26}
 #game .ppw-home-hero-compact .ppw-home-prestige-small{
- display:grid!important;grid-template-columns:34px minmax(0,1fr) auto;
+ display:grid!important;grid-template-columns:32px minmax(0,1fr);
  align-items:center!important;gap:9px!important;
  width:100%;max-width:none;min-height:63px!important;margin:0;
  padding:8px 11px!important;border-radius:11px;
@@ -441,9 +441,13 @@
 #game .ppw-home-prestige-small .ppw-prestige-crest-copy{
  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
  gap:3px!important;min-width:0!important;width:100%!important}
+#game .ppw-home-prestige-header{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:6px;width:100%;min-width:0}
 #game .ppw-home-prestige-small .ppw-prestige-crest-eyebrow{
- font:850 9px/1.15 system-ui!important;letter-spacing:.04em!important;
- color:#b7e6f0!important;overflow-wrap:normal;word-break:normal}
+ font:850 9px/1.15 system-ui!important;letter-spacing:.01em!important;
+ color:#b7e6f0!important;overflow-wrap:normal;word-break:normal;
+ white-space:nowrap}
 #game .ppw-home-prestige-small .ppw-prestige-crest-rank{
  font:italic 900 clamp(11px,3.4vw,15px)/1.15 system-ui!important;
  letter-spacing:-.015em!important;white-space:normal;
