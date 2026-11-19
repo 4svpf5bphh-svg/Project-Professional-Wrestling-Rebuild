@@ -349,7 +349,8 @@ function renderSection(){
     (showId,programmeId)=>openBooking(showId,
      storyFocus&&(!programmeId||storyFocus.programmeId===programmeId)?
       storyFocus:programmeId?{worldId:scope.worldId,
-       promotionId:scope.promotionId,programmeId}:null));
+       promotionId:scope.promotionId,programmeId}:null),
+    storyFocus?.programmeId);
    break;
   }
   case "card":{
