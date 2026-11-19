@@ -648,8 +648,9 @@
  /* Title and real count are one line on a 320px iPhone. */
  #game .ppw-home-brief-title{display:flex;align-items:center;flex-wrap:nowrap;
   justify-content:space-between;gap:5px;min-width:0}
- #game .ppw-home-brief-title h3{flex:1;min-width:0;
-  font-size:clamp(14px,4.35vw,17px);letter-spacing:.015em}
+ #game .ppw-home-brief-title h3{flex:0 0 auto;min-width:0;
+  font:italic 900 15px/1.15 system-ui!important;letter-spacing:.015em;
+  white-space:nowrap;overflow-wrap:normal;word-break:normal}
  #game .ppw-home-notification-count{flex:none;font-size:9px;padding:4px 6px}
  #game .ppw-home{padding-left:10px;padding-right:10px}
  #game .ppw-home-hero-compact{padding:11px}

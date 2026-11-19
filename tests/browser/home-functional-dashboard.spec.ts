@@ -83,11 +83,19 @@ for(const width of [320,390]){
    const metrics=await notificationHead.evaluate(header=>{
     const title=header.querySelector("h3")!.getBoundingClientRect();
     const count=header.querySelector(".ppw-home-notification-count")!.getBoundingClientRect();
+    const titleEl=header.querySelector("h3")!;
     return {titleCentre:title.top+title.height/2,
      countCentre:count.top+count.height/2,
+     titleHeight:title.height,
+     titleLineHeight:parseFloat(getComputedStyle(titleEl).lineHeight),
+     titleScrollWidth:titleEl.scrollWidth,titleClientWidth:titleEl.clientWidth,
+     titleRight:title.right,countLeft:count.left,
      countRight:count.right,headerRight:header.getBoundingClientRect().right};
    });
    expect(Math.abs(metrics.titleCentre-metrics.countCentre)).toBeLessThanOrEqual(4);
+   expect(metrics.titleHeight).toBeLessThanOrEqual(metrics.titleLineHeight+1);
+   expect(metrics.titleScrollWidth).toBeLessThanOrEqual(metrics.titleClientWidth+1);
+   expect(metrics.titleRight+4).toBeLessThanOrEqual(metrics.countLeft);
    expect(metrics.countRight).toBeLessThanOrEqual(metrics.headerRight+1);
   }
   await expect(page.getByRole("button",{name:/Jay Lethal/})).toBeVisible();
