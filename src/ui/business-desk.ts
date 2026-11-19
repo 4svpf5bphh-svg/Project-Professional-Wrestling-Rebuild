@@ -964,19 +964,24 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      })));
     if(deal.networkReview){
      const review=deal.networkReview;
-     const status=review.missedConsecutively>=3?"AT RISK":
+     const status=review.status==="OFF_WEEK"?"SCHEDULED OFF WEEK":
+      review.missedConsecutively>=3?"AT RISK":
       review.status==="OFF_SLOT"?"OFF-SLOT BROADCAST":
       review.status==="NO_TV"?"NO CERTIFIED TV":
       review.status==="BELOW_TARGET"?"AUDIENCE BELOW TARGET":
       review.status==="WATCH"?"NEAR TARGET":
       review.status==="LEGACY"?"AUDIENCE NOT REPORTED":"ON TARGET";
      const line=el("div","ppw-commercial-partner-review");
-     line.dataset.status=review.missedConsecutively>=3?"warning":review.status;
+     line.dataset.status=review.status==="OFF_WEEK"?"OFF_WEEK":
+      review.missedConsecutively>=3?"warning":review.status;
      line.append(el("strong","",status),
-      el("small","",review.rating===null?"Last week · Rating not reported":
+      el("small","",review.status==="OFF_WEEK"?"Last week · No TV scheduled":
+       review.rating===null?"Last week · Rating not reported":
        "Last week · "+formatTvRating(review.rating)+" TV / "+
         review.target.toFixed(2)+" partner target"));
-     if(review.missedConsecutively>=2)
+     if(review.status==="OFF_WEEK")
+      line.append(el("small","","No delivery missed. The broadcaster reviews the next contracted episode."));
+     else if(review.missedConsecutively>=2)
       line.append(el("small","",
        review.missedConsecutively+" consecutive missed network requirements"+
        (review.missedConsecutively>=3?

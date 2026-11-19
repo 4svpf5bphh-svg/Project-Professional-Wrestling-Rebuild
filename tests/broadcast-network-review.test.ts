@@ -88,3 +88,33 @@ test("regional network targets match achievable certified TV ratings without rel
  assert.equal(formatTvRating(.1),"0.10");
  assert.equal(formatTvRating(1.69),"1.7");
 });
+
+test("alternate-week broadcaster obligations skip legitimate off-weeks and count only due broadcasts",()=>{
+ const fortnight={...deal,startWeekIndex:20,endWeekIndex:45,
+  regularSchedule:[{cadenceWeeks:2,anchorWeek:20}]};
+ const noShow=assessBroadcastNetwork(fortnight,[],21)!;
+ assert.equal(noShow.status,"OFF_WEEK");
+ assert.equal(noShow.missedConsecutively,1,
+  "The week 20 missed episode persists, but week 21 cannot add a second miss");
+ assert.equal(noShow.milestone,null);
+ assert.equal(noShow.bonusEligible,false);
+ assert.match(broadcasterReaction(noShow),/No broadcast was due/);
+ const episodes=[ep(20,.4),ep(22,.4),ep(24,.4)];
+ const third=assessBroadcastNetwork(fortnight,episodes,24)!;
+ assert.equal(third.missedConsecutively,3);
+ assert.equal(third.milestone,"WARNING");
+ const gap=assessBroadcastNetwork(fortnight,episodes,25)!;
+ assert.equal(gap.status,"OFF_WEEK");
+ assert.equal(gap.missedConsecutively,3);
+ assert.equal(gap.milestone,null);
+ const recovery=assessBroadcastNetwork(fortnight,[...episodes,ep(26,2)],26)!;
+ assert.equal(recovery.milestone,"RECOVERED");
+ assert.equal(recovery.status,"ON_TARGET");
+ const healthy=assessBroadcastNetwork(fortnight,[ep(20,2),ep(22,2)],23)!;
+ assert.equal(healthy.status,"OFF_WEEK");
+ assert.equal(healthy.missedConsecutively,0);
+ // A World with two alternating TV brands still has weekly obligations.
+ const twoSeries={...fortnight,regularSchedule:[
+  {cadenceWeeks:2,anchorWeek:20},{cadenceWeeks:2,anchorWeek:21}]};
+ assert.equal(assessBroadcastNetwork(twoSeries,[],21)!.status,"NO_TV");
+});

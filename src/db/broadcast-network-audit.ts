@@ -13,6 +13,7 @@ interface ReviewRow extends Record<string,unknown>{
  show_id:string|null;year:number|null;week:number|null;
  show_day:number|null;audience_format:"TV"|"PPV"|null;
  tv_rating:string|null;
+ regular_schedule:{cadenceWeeks:number;anchorWeek:number}[]|null;
 }
 export interface NetworkAudit{
  dealId:string;promotionId:string;promotionName:string;offerCode:string;
@@ -29,6 +30,7 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
  SELECT deal.deal_id,deal.promotion_id,p.name AS promotion_name,
   deal.offer_code,p.tier,deal.start_week_index,deal.end_week_index,
   deal.airing_day,deal.airing_hour,
+  regular.schedule AS regular_schedule,
   (SELECT max((e.payload->>'effectiveWeekIndex')::integer)
    FROM ppw_ledger_events e
    WHERE e.world_id=deal.world_id
@@ -39,6 +41,15 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
  FROM ppw_commercial_deals deal
  JOIN ppw_promotions p ON p.world_id=deal.world_id
   AND p.promotion_id=deal.promotion_id AND p.lifecycle='ACTIVE'
+ LEFT JOIN LATERAL (
+  SELECT jsonb_agg(jsonb_build_object(
+   'cadenceWeeks',s.cadence_weeks,'anchorWeek',s.anchor_week)
+   ORDER BY s.series_id) AS schedule
+  FROM (SELECT series_id,cadence_weeks,anchor_week FROM ppw_show_series
+   WHERE world_id=deal.world_id AND promotion_id=deal.promotion_id
+    AND active AND event_type='REGULAR'
+   ORDER BY series_id LIMIT 12) s
+ ) regular ON TRUE
  LEFT JOIN LATERAL (
   SELECT economics.show_id,economics.year,economics.week,draft.show_day,
    economics.audience_format,
@@ -54,7 +65,7 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
   WHERE economics.world_id=deal.world_id
    AND economics.promotion_id=deal.promotion_id
    AND (economics.year-1)*52+economics.week-1
-    BETWEEN greatest(deal.start_week_index,$2-4) AND $2
+    BETWEEN greatest(deal.start_week_index,$2-52) AND $2
   ORDER BY economics.year DESC,economics.week DESC,economics.show_id DESC LIMIT 5
  ) evidence ON true
  WHERE deal.world_id=$1 AND deal.kind='BROADCAST' AND deal.status='ACTIVE'
@@ -80,7 +91,8 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
    startWeekIndex:Math.max(first.start_week_index,
     first.last_slot_change_week??first.start_week_index),
    endWeekIndex:first.end_week_index,
-   airingDay:first.airing_day,airingHour:first.airing_hour};
+   airingDay:first.airing_day,airingHour:first.airing_hour,
+   regularSchedule:first.regular_schedule??undefined};
   // A negotiated new slot starts a fresh compliance streak; previous
   // correctly aired shows must not be retrospectively labelled off-slot.
   const review=assessBroadcastNetwork(terms,episodes.filter(x=>
