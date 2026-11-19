@@ -356,8 +356,8 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    "COALESCE((renewal.terms->>'appearanceFee')::double precision,contract.appearance_fee::double precision) AS appearance_fee,",
    "COALESCE(renewal.terms->>'creativeControl',contract.creative_control) AS creative_control",
    "FROM ppw_contracts contract",
-   "WHERE contract.world_id=$1 AND contract.person_id=chapter_cast.person_id",
    "LEFT JOIN LATERAL (SELECT r.proposed_terms AS terms FROM ppw_contract_renewal_proposals r WHERE r.world_id=contract.world_id AND r.contract_id=contract.contract_id AND r.status='ACCEPTED' AND $3 BETWEEN contract.expires_week_index+1 AND contract.expires_week_index+(r.proposed_terms->>'termWeeks')::integer ORDER BY r.proposal_id LIMIT 1) renewal ON TRUE",
+   "WHERE contract.world_id=$1 AND contract.person_id=chapter_cast.person_id",
    "AND contract.status='SIGNED' AND "+
    "((contract.start_week_index<=$3 AND contract.expires_week_index>=$3 AND (contract.family='EXCLUSIVE' OR contract.remaining_dates>0)) OR EXISTS (SELECT 1 FROM ppw_contract_renewal_proposals r WHERE r.world_id=contract.world_id AND r.contract_id=contract.contract_id AND r.status='ACCEPTED' AND $3 BETWEEN contract.expires_week_index+1 AND contract.expires_week_index+(r.proposed_terms->>'termWeeks')::integer))",
    "AND (contract.promotion_id=$2 OR EXISTS (",
