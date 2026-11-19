@@ -67,6 +67,26 @@ for(const width of [320,390]){
    .toContainText("Card submitted");
   await expect(page.locator('.ppw-calendar-occurrence[data-week="1-33"] .ppw-calendar-event-major'))
    .toContainText("Submitted for lock");
+  // Real iPhone visual regression: the PPV name is at most two lines,
+  // and the status remains on one intact line rather than SUBMITTE / D.
+  const ppvTile=week33;
+  const tileReadability=await ppvTile.evaluate(tile=>{
+   const title=tile.querySelector<HTMLElement>(".ppw-calendar-year-major")!;
+   const status=tile.querySelector<HTMLElement>(".ppw-calendar-year-edition-state")!;
+   return {titleHeight:title.getBoundingClientRect().height,
+    titleLineHeight:Number.parseFloat(getComputedStyle(title).lineHeight),
+    statusHeight:status.getBoundingClientRect().height,
+    statusLineHeight:Number.parseFloat(getComputedStyle(status).lineHeight),
+    statusScrollWidth:status.scrollWidth,statusClientWidth:status.clientWidth,
+    fullStatus:status.textContent};
+  });
+  expect(tileReadability.fullStatus).toBe("SUBMITTED");
+  expect(tileReadability.titleHeight)
+   .toBeLessThanOrEqual(tileReadability.titleLineHeight*2+1);
+  expect(tileReadability.statusHeight)
+   .toBeLessThanOrEqual(tileReadability.statusLineHeight+1);
+  expect(tileReadability.statusScrollWidth)
+   .toBeLessThanOrEqual(tileReadability.statusClientWidth+1);
   await expect(focus.getByRole("button",{name:"Review booking"})).toHaveCount(1);
   await expect(focus.getByRole("button",{name:"Book PPV"})).toHaveCount(0);
   // Real rendered calendar at actual iPhone widths, not generated mockups.
