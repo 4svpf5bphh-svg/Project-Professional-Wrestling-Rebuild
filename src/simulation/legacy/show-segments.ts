@@ -3,6 +3,7 @@
  */
 import {isSegmentCreativeBeat,type SegmentCreativeBeat} from "../../domain/segment-creative-beats.js";
 import {isAngleScene,type AngleScene} from "../../domain/angle-scene.js";
+import {isAuthoredAngleSequence,type AuthoredAngleAction} from "../../domain/angle-sequence.js";
 import {isSpecialMomentForScene,type SpecialMomentSku} from "../../domain/special-moments.js";
 export type SegmentKind="PROMO"|"INTERVIEW"|"CONFRONTATION"|"CHALLENGE"|"CELEBRATION"|"ATTACK"|"INTERRUPTION"|"RESCUE"|"POST_MATCH_ASSAULT"|"TURN"|"CONTRACT_SIGNING"|"INTERFERENCE"|
  "DEBUT"|"VIDEO_PACKAGE"|"STABLE_INVITATION"|"STABLE_EXIT"|"STABLE_RECONCILIATION";
@@ -20,6 +21,8 @@ export interface AuthoredSegment {
  videoPurpose?:VideoPurpose;
  /** Absent on historical generic angles; no unscripted response is fabricated. */
  creativeBeat?:SegmentCreativeBeat;
+ /** Ordered authored moments within this one segment. No independent settlements. */
+ scriptedActions?:readonly AuthoredAngleAction[];
  /** Booker-selected filmed scene; no automatic injuries or guaranteed score boost. */
  scene?:AngleScene;
  /** An unlocked, precisely staged spectacle (no automatic scoring bonus). */
@@ -56,6 +59,7 @@ export function validateAuthoredSegments(
     !["PROMO","INTERVIEW","CHALLENGE"].includes(s.kind)))||
    (s.creativeBeat!==undefined&&!isSegmentCreativeBeat(s.creativeBeat,s.kind))||
    (s.scene!==undefined&&!isAngleScene(s.scene,s.kind))||
+   (s.scriptedActions!==undefined&&!isAuthoredAngleSequence(s.scriptedActions,s))||
    (s.specialMoment!==undefined&&!isSpecialMomentForScene(
     s.specialMoment,s.kind,s.scene?.location,s.targetIds.length))||
    (["INTERRUPTION","RESCUE","POST_MATCH_ASSAULT"].includes(s.kind)&&!s.creativeBeat)||
@@ -92,6 +96,7 @@ export function validateAuthoredSegments(
    (["STABLE_INVITATION","STABLE_RECONCILIATION"].includes(s.kind)&&s.targetIds.length===0))
    throw new Error("Invalid authored segment");
   slots.add(s.slotId);positions.add(s.position);
-  return {...s,actorIds:[...s.actorIds],targetIds:[...s.targetIds]};
+  return {...s,actorIds:[...s.actorIds],targetIds:[...s.targetIds],
+   ...(s.scriptedActions?{scriptedActions:s.scriptedActions.map(x=>({...x}))}:{})};
  });
 }

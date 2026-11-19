@@ -2,6 +2,7 @@ import {validateAuthoredSegments,type AuthoredSegment,type SegmentKind,type Vide
 import type {SegmentCreativeBeat} from "./segment-creative-beats.js";
 import type {AngleScene} from "./angle-scene.js";
 import type {SpecialMomentSku} from "./special-moments.js";
+import type {AuthoredAngleAction} from "./angle-sequence.js";
 export const SEGMENT_BOOKING_RULES:Readonly<Record<SegmentKind,{
  minActors:number;minTargets:number;maxActors:number;allowTargets:boolean;purposes:readonly VideoPurpose[];
 }>>={
@@ -29,6 +30,7 @@ export interface SegmentBookingInput{
  targetIds:readonly string[];outcome:SegmentOutcome;durationMinutes?:number;videoPurpose?:VideoPurpose;
  targetPresence?:"MENTIONED"|"ON_SCREEN";
  creativeBeat?:SegmentCreativeBeat;scene?:AngleScene;specialMoment?:SpecialMomentSku;
+ scriptedActions?:readonly AuthoredAngleAction[];
  sourceMatchSlotId?:string;
  turnTargetAlignment?:"FACE"|"HEEL"|"TWEENER";stableId?:string;
  stableDecision?:"ACCEPTED"|"REJECTED";
