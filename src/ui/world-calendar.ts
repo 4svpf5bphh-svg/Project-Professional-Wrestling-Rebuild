@@ -597,8 +597,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
  function ownTile(s:ShowSeries,year:number,week:number,
   due:readonly ShowSeries[],owner?:string){
   const booking=calendarBookingForSeries(s,year,week,due,data?.bookings??[]);
-  const actualName=booking?.showName??
-   (s.eventType==="MAJOR"?premiumEdition(year,week)?.showName:null)??s.name;
+  const savedPremium=s.eventType==="MAJOR"?premiumEdition(year,week):null;
+  const actualName=savedPremium?.showName??booking?.showName??s.name;
   const card=eventTile(actualName,s.role,s.eventType,owner);
   // The annual calendar is a compact agenda; art remains on show/results.
   card.classList.add("ppw-calendar-event-compact");
@@ -625,6 +625,21 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
      index<=slot.endWeekIndex?"Change venue":"Change venue / day",()=>port.openPlanner?.({
      year,week,seriesId:s.seriesId,draftId:booking.draftId
     })));
+  }else if(savedPremium){
+   // Booked and certified PPVs remain real even if the short-term private
+   // booking list did not return this edition.
+   card.append(node("span",savedPremium.certified?"Certified":
+    savedPremium.status==="SUBMITTED"?"Submitted for lock":
+    savedPremium.ready?"Card ready":"Card in progress",
+    "ppw-calendar-booked-state"));
+   if(near&&data!.canEdit&&savedPremium.status==="DRAFT"){
+    if(offset===0&&port.openCard)
+     card.append(button("Open this card",()=>port.openCard?.(savedPremium.draftId)));
+    else if(port.openPlanner)
+     card.append(button("Change venue / day",()=>port.openPlanner?.({
+      year,week,seriesId:s.seriesId,draftId:savedPremium.draftId
+     })));
+   }
   }else{
    card.append(node("span",near?"Not yet booked":"Calendar announcement",
     "ppw-calendar-unbooked-state"));
