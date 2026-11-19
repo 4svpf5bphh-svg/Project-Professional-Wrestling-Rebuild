@@ -103,7 +103,7 @@ for(const width of [320,390]){
    return route.fulfill({json:{}});
   });
   await page.goto("/#/home");
-  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
   await expect(page.locator(".ppw-home-brief")).toBeVisible();
    await expect(page.locator(".ppw-home-brief")).toContainText("No management issues require attention");
   await expect(page.getByRole("heading",{name:"Company updates"})).toHaveCount(0);

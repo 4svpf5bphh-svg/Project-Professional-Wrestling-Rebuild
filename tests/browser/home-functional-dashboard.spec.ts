@@ -40,15 +40,27 @@ for(const width of [320,390]){
   });
   await page.goto("/#/home");
   await expect(page.getByRole("button",{name:/BOOKING OPEN/})).toBeVisible();
+  await expect(page.locator(".ppw-home-phase-tag")).toHaveText("WORLD OPEN");
+  await expect(page.locator(".ppw-home-period")).toHaveText("Y1 W26");
+  await expect(page.getByText("Your World")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-promotion-mark")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-promotion-name")).toHaveText("Chaotic Wrestling Alliance");
+  await expect(page.locator(".ppw-home-prestige-small .ppw-prestige-crest-shield")).toBeVisible();
+  await expect(page.locator(".ppw-home-achievement-badge")).toHaveText("4 / 47");
   const tv=page.locator(".ppw-home-show-spotlight .ppw-tv-frame");
   await expect(tv).toHaveAttribute("data-broadcast-package","luchafiesta");
   await expect(tv.locator(".ppw-tv-title")).toHaveText("Ascension");
-  await expect(page.getByRole("button",{name:/Last show/})).toBeVisible();
-  await expect(page.getByRole("button",{name:/Next show/})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Last [Ss]how/})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Next Show/})).toBeVisible();
+  await expect(page.locator(".ppw-home-show-head")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-show-controls .ppw-home-tile-copy small")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-certified-score")).toHaveCount(0);
   await expect(page.getByRole("button",{name:/Open Backstage, 5 unread messages/})).toBeVisible();
   const war=page.getByRole("region",{name:"Your current promotional competition"});
   await expect(war.locator(".ppw-home-vs-mark")).toHaveText("VS");
-  await expect(war.locator(".ppw-home-ratings-score")).toHaveText(["72/100","70/100"]);
+  await expect(war.locator(".ppw-home-ratings-score")).toHaveCount(0);
+  await expect(war.locator(".ppw-home-ratings-label")).toHaveCount(0);
+  await expect(war.locator(".ppw-home-ratings-tv")).toHaveText(["0.10 TV rating","0.10 TV rating"]);
   await expect(war.locator(".ppw-home-ratings-promotion"))
    .toHaveText(["Chaotic Wrestling Alliance","Revolution Pro"]);
   await expect(page.getByRole("heading",{name:"Notifications"})).toBeVisible();
@@ -56,6 +68,9 @@ for(const width of [320,390]){
   const notifications=page.locator(".ppw-home-brief");
   await expect(notifications).not.toContainText("Joe");
   await expect(notifications).not.toContainText("locker room");
+  await expect(notifications).not.toContainText("The agreement expires");
+  await expect(notifications.locator(".ppw-home-tile-copy small")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-backstage-action")).toBeVisible();
   expect(calls).toEqual(["overview"]);
   // Screenshot is captured from the real running PPW browser component.
   // No generated interface art, and all displayed data is fixture-labelled.
@@ -88,5 +103,6 @@ test("clearing the KP broadcast selection restores standard Home show graphics w
   .toHaveAttribute("data-broadcast-package","standard");
  await expect(page.locator(".ppw-home-standard-opening strong")).toHaveText("Ascension");
  await expect(page.locator(".ppw-home-show-spotlight .ppw-tv-frame")).toHaveCount(0);
+ await expect(page.locator(".ppw-home-ratings-pending")).toHaveCount(2);
  expect(reads).toBe(1);
 });
