@@ -386,6 +386,7 @@ test("authored spoken-only confrontation never becomes an invented drop-kick att
  const scene:CompletedShowView={...example,entries:[example.entries[0]!,{
   ...example.entries[1]!,segmentKind:"CHALLENGE",
   segmentContext:{actorNames:["Iziah Hunter"],targetNames:["Austin Gunn"],
+   videoPurpose:null,stableDecision:null,turnTargetAlignment:null,
    scriptedActions:[{action:"SPEAK",by:"hunter",to:"gunn",
     line:"I need to prove I belong in CWA!"}],
    targetPresence:"ON_SCREEN"}
