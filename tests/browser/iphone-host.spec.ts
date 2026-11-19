@@ -318,10 +318,10 @@ test("settled locker-room outcomes stay in Backstage and their original private 
  await page.getByRole("button",{name:"Open Backstage messages"}).click();
  await expect(page).toHaveURL(/#\/backstage$/);
  await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
- expect(methods).toEqual(["overview","backstage"]);
+ await expect.poll(()=>methods).toEqual(["overview","backstage"]);
  await page.getByRole("button",{name:/Victor Vale/}).click();
  await expect(page.getByRole("region",{name:"Conversation with Victor Vale"})).toBeVisible();
- expect(methods).toEqual(["overview","backstage","backstage"]);
+ await expect.poll(()=>methods).toEqual(["overview","backstage","backstage"]);
  expect(page.url()).not.toContain("p-victor");
 });
 test("iPhone clears all settled notices in one request and preserves urgent work",async({page})=>{
