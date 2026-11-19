@@ -390,3 +390,283 @@
  .ppw-home-certified-score{top:4px;right:4px;font-size:9px}
  .ppw-home-result-action .ppw-home-tile-copy{padding-right:7px}
 }
+
+
+/* Phase 57: production DOM polish. Uses existing broadcast frames, crest and
+ * repository SVG backgrounds; never rasterises a screenshot into a fake UI. */
+#game .ppw-home{max-width:1000px;min-width:0;padding-bottom:100px}
+#game .ppw-home-head{
+ display:flex;align-items:center;justify-content:flex-start;gap:11px;
+ min-height:26px;padding:0 2px 2px;margin:0 0 8px;border:0}
+#game .ppw-home-head::after{display:none}
+#game .ppw-home-phase-tag{
+ display:inline-flex;align-items:center;gap:7px;
+ font:850 10px/1.2 system-ui;letter-spacing:.12em;color:#93effb}
+#game .ppw-home-phase-tag::before{
+ content:"";width:7px;height:7px;border-radius:50%;background:#54dfb8;
+ box-shadow:0 0 10px #54dfb850;flex:none}
+#game .ppw-home-phase-tag[data-phase=due],
+#game .ppw-home-phase-tag[data-phase=locked]{color:#f2cb96}
+#game .ppw-home-phase-tag[data-phase=due]::before,
+#game .ppw-home-phase-tag[data-phase=locked]::before{background:#f2cb96}
+#game .ppw-home-phase-tag[data-phase=resolving]{color:#dec5ff}
+#game .ppw-home-phase-tag[data-phase=resolving]::before{background:#b79afa}
+#game .ppw-home-period{
+ font:850 10px/1.2 system-ui;letter-spacing:.07em;color:#e4e1f8;
+ padding-left:11px;border-left:1px solid #6d769b}
+#game .ppw-home-hero-compact{
+ display:grid;gap:10px;min-height:0;padding:14px;
+ margin:0 0 9px;border:1px solid #9574b8;border-radius:15px;
+ background:radial-gradient(ellipse at 100% 0%,#663b8552,transparent 65%),
+ linear-gradient(120deg,#202b52,#261a44);
+ box-shadow:inset 0 1px #d8b7ff19,0 8px 20px #040a1d38}
+#game .ppw-home-hero-compact .ppw-home-promotion-name{
+ display:block;max-width:none;margin:0;
+ font:italic 900 clamp(18px,5.4vw,27px)/1.12 system-ui;
+ letter-spacing:-.035em;overflow-wrap:anywhere;color:#fff3ff;
+ text-shadow:0 2px 8px #0b0d26}
+#game .ppw-home-hero-compact .ppw-home-prestige-small{
+ display:grid!important;grid-template-columns:32px minmax(0,1fr);
+ align-items:center!important;gap:9px!important;
+ width:100%;max-width:none;min-height:63px!important;margin:0;
+ padding:8px 11px!important;border-radius:11px;
+ background:linear-gradient(112deg,#252342f2,#151f39ef)!important;
+ border:1px solid #826ba6!important;
+ box-shadow:inset 0 1px #e9cdff17!important}
+#game .ppw-home-prestige-small .ppw-prestige-crest-shield{
+ display:grid!important;width:32px!important;height:38px!important;
+ min-width:32px!important;flex:0 0 32px!important}
+#game .ppw-home-prestige-small .ppw-prestige-crest-symbol{
+ font-size:16px}
+#game .ppw-home-prestige-small .ppw-prestige-crest-copy{
+ display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+ gap:3px!important;min-width:0!important;width:100%!important}
+#game .ppw-home-prestige-header{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:6px;width:100%;min-width:0}
+#game .ppw-home-prestige-small .ppw-prestige-crest-eyebrow{
+ font:850 9px/1.15 system-ui!important;letter-spacing:.01em!important;
+ color:#b7e6f0!important;overflow-wrap:normal;word-break:normal;
+ white-space:nowrap}
+#game .ppw-home-prestige-small .ppw-prestige-crest-rank{
+ font:italic 900 clamp(11px,3.4vw,15px)/1.15 system-ui!important;
+ letter-spacing:-.015em!important;white-space:normal;
+ overflow-wrap:normal;word-break:normal;color:#ffdda0!important}
+#game .ppw-home-prestige-small .ppw-prestige-crest-progress,
+#game .ppw-home-prestige-small .ppw-prestige-crest-chevron{display:none!important}
+#game .ppw-home-achievement-badge{
+ display:inline-flex;gap:4px;align-items:center;justify-content:center;
+ flex:none;padding:5px 7px;border:1px solid #8074a3;border-radius:999px;
+ background:#151b34;color:#e6d5ff;font:800 10px/1 system-ui;
+ white-space:nowrap;font-variant-numeric:tabular-nums}
+#game .ppw-home-achievement-badge::before{content:"★";color:#f4c46f;font-size:12px}
+#game .ppw-home-hero-compact .ppw-home-status-refresh{
+ margin:1px 0 0;min-height:37px;padding:8px 10px;border-radius:9px;
+ font:800 11px/1.2 system-ui;letter-spacing:.03em}
+#game .ppw-home-booking-strip{
+ display:flex;align-items:center;gap:10px;width:100%;min-height:53px;
+ margin:0 0 10px;padding:8px 11px;text-align:left;
+ border:1px solid #51dce9;border-left:4px solid #40e6ef;border-radius:12px;
+ background:linear-gradient(105deg,#093247,#0c1d36);
+ color:#f1fcff;font:inherit;cursor:pointer;
+ box-shadow:inset 0 1px #e4fcff1c,0 5px 14px #060d2838}
+#game .ppw-home-booking-icon{
+ display:grid;place-items:center;flex:none;width:32px;height:32px;
+ border-radius:8px;background:#205a71;color:#c4fcff;font-size:17px}
+#game .ppw-home-booking-copy{display:grid;gap:2px;flex:1;min-width:0}
+#game .ppw-home-booking-copy strong{
+ font-size:12px;letter-spacing:.085em;color:#a8f4ff}
+#game .ppw-home-booking-copy .ppw-home-countdown{
+ display:block!important;min-height:0!important;max-width:none!important;
+ margin:0!important;padding:0!important;background:none!important;
+ border:0!important;box-shadow:none!important;
+ font:500 11px/1.35 system-ui!important;color:#e0edf7!important}
+#game .ppw-home-booking-arrow{color:#91f4ff;font-size:21px}
+#game .ppw-home-booking-strip[data-phase=due]{border-color:#f3b175}
+#game .ppw-home-dashboard{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:0 0 9px}
+#game .ppw-home-show-spotlight{
+ min-width:0;overflow:hidden;padding:7px;
+ border:1px solid #8a75bd;border-radius:15px;
+ background:linear-gradient(140deg,#1c2b4d,#25193e);
+ box-shadow:inset 0 1px #efd2ff1a,0 8px 17px #05091b32}
+#game .ppw-home-show-spotlight .ppw-tv-frame{
+ width:100%;max-width:none;aspect-ratio:2.15;min-height:150px;
+ padding:11px 13px;margin:0;border-radius:10px;overflow:hidden;
+ box-shadow:inset 0 0 24px #ffffff13}
+#game .ppw-home-show-spotlight .ppw-tv-title{
+ font-size:clamp(25px,7.2vw,48px);line-height:1.04;max-width:100%}
+#game .ppw-home-show-spotlight .ppw-tv-centre{gap:7px}
+#game .ppw-home-standard-opening{
+ display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+ gap:8px;min-height:150px;padding:19px 15px;border:1px solid #54bfd3;
+ border-radius:10px;color:#fff;
+ background:radial-gradient(circle at 80% 10%,#ce3bd04f,transparent 65%),
+ linear-gradient(130deg,#112845,#28204c)}
+#game .ppw-home-standard-opening strong{
+ font:italic 950 clamp(26px,8vw,48px)/1 system-ui;letter-spacing:-.045em;
+ text-transform:uppercase;text-shadow:3px 3px #752f82}
+#game .ppw-home-standard-opening small,
+#game .ppw-home-standard-opening span{
+ color:#b5effe;font-size:11px;font-weight:800;letter-spacing:.1em}
+#game .ppw-home-show-controls{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:7px}
+#game .ppw-home-show-controls .ppw-home-tile{
+ display:flex;flex-direction:row;align-items:center;justify-content:space-between;
+ min-width:0;min-height:44px;gap:5px;padding:8px 10px;
+ border:1px solid #638fc0;border-radius:10px;
+ background:linear-gradient(110deg,#123650,#143257);color:#f5fbff}
+#game .ppw-home-show-controls .ppw-home-show-next{
+ border-color:#bc6aca;background:linear-gradient(110deg,#93218f,#602ca1)}
+#game .ppw-home-show-controls .ppw-home-icon{display:none!important}
+#game .ppw-home-show-controls .ppw-home-tile-copy{
+ display:flex;flex-direction:column;gap:0;min-width:0}
+#game .ppw-home-show-controls .ppw-home-tile-copy strong{
+ font:800 clamp(12px,3.5vw,16px)/1.1 system-ui;white-space:nowrap}
+#game .ppw-home-show-controls .ppw-home-arrow{
+ display:flex!important;font-size:18px;color:#b9edff}
+#game .ppw-home-dashboard>.ppw-home-backstage-action{
+ position:relative;isolation:isolate;overflow:hidden;
+ display:flex!important;align-items:center!important;flex-direction:row!important;
+ grid-column:1/-1;gap:9px;min-height:94px!important;
+ padding:11px 12px!important;border-radius:15px!important;
+ border:1px solid #8f71c1!important;border-left:4px solid #40dce9!important;
+ background:linear-gradient(90deg,#091f3df5 0%,#141d3dd1 49%,#23123942 100%),
+ url("/assets/home/backstage-hub.svg") center/cover no-repeat!important;
+ box-shadow:inset 0 1px #b9dffc20,0 7px 18px #040c2170}
+#game .ppw-home-backstage-action .ppw-home-icon{
+ display:flex!important;flex:none;width:41px;height:41px;
+ background:#5f3496e8;color:#f8eeff;font-size:21px}
+#game .ppw-home-backstage-action .ppw-home-tile-copy{
+ flex:1;align-self:center;min-width:0;max-width:320px;padding-right:12px}
+#game .ppw-home-backstage-action .ppw-home-tile-copy strong{
+ font:italic 950 clamp(19px,5.7vw,28px)/1.05 system-ui!important;
+ letter-spacing:-.025em;text-shadow:0 2px 10px #050d24}
+#game .ppw-home-backstage-action .ppw-home-tile-copy small{
+ color:#dbeafb;font:600 11px/1.3 system-ui;
+ text-shadow:0 2px 5px #030c25}
+#game .ppw-home-backstage-action .ppw-home-arrow{
+ display:flex!important;align-self:center;color:#a5f5fd;font-size:24px}
+#game .ppw-home-backstage-badge{
+ position:absolute;top:9px;right:10px;display:grid;place-items:center;
+ min-width:27px;height:25px;padding:3px 7px;border:1px solid #ffc3ef;
+ border-radius:999px;background:#ba269b;color:#fff;
+ font:900 12px/1 system-ui;box-shadow:0 0 13px #e330c477}
+#game .ppw-home-competition{
+ isolation:isolate;position:relative;display:grid;gap:9px;overflow:hidden;
+ min-width:0;margin:0 0 9px;padding:10px 9px;
+ border:1px solid #8774ba;border-radius:16px;
+ background:linear-gradient(135deg,#0a284b,#2d1645);
+ box-shadow:inset 0 1px #e0d6ff20,0 7px 18px #04091f36}
+#game .ppw-home-competition::before{
+ content:"";position:absolute;inset:0;z-index:-1;opacity:1;
+ background:url("/assets/home/ratings-arena.svg") center/cover no-repeat}
+#game .ppw-home-competition>.ppw-home-brand{
+ justify-self:center;align-self:center;padding:5px 12px;
+ border:1px solid #50cfdf;border-radius:999px;
+ background:#071d36d9;color:#a2f4ff;
+ font:850 10px/1.1 system-ui;letter-spacing:.13em;
+ text-align:center;text-shadow:0 0 10px #5cddfa77}
+#game .ppw-home-ratings-arena{
+ display:grid;grid-template-columns:minmax(0,1fr) 32px minmax(0,1fr);
+ align-items:center;gap:0;min-width:0;min-height:112px}
+#game .ppw-home-ratings-side{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ min-width:0;min-height:108px;gap:6px;padding:9px 5px;
+ border:1px solid #78d7eb91;border-radius:11px;text-align:center;
+ background:#082442bd;box-shadow:inset 0 0 16px #1c487433}
+#game .ppw-home-ratings-side:last-child{
+ border-color:#e589e09c;background:#2a143dc7}
+#game .ppw-home-ratings-promotion{
+ font:850 clamp(11px,3.25vw,18px)/1.16 system-ui;
+ overflow-wrap:anywhere;color:#f9fcff}
+#game .ppw-home-ratings-meta{
+ font:500 10px/1.2 system-ui;color:#dfd9ef;overflow-wrap:anywhere}
+#game .ppw-home-ratings-tv{
+ font:850 clamp(12px,3.4vw,18px)/1.2 system-ui;color:#a7f2ff;
+ font-variant-numeric:tabular-nums}
+#game .ppw-home-ratings-pending{
+ font:650 11px/1.3 system-ui;color:#c8dceb}
+#game .ppw-home-human-rival{
+ font:850 9px/1.1 system-ui;letter-spacing:.055em;
+ color:#e3d4fb;border:1px solid #9766c299;
+ border-radius:999px;padding:4px 7px;background:#29143cbb}
+#game .ppw-home-vs-mark{
+ display:grid;place-items:center;align-self:center;z-index:2;
+ width:45px;height:54px;margin-left:-6px;
+ font:italic 1000 31px/1 system-ui;letter-spacing:-.09em;color:#fff8fd;
+ -webkit-text-stroke:1px #f799fc;
+ text-shadow:2px 3px 0 #662a91,0 0 12px #fb35ea,0 0 20px #47e8fa;
+ transform:skew(-10deg)}
+#game .ppw-home-ratings-attendance{
+ justify-self:center;padding:5px 10px;text-align:center;
+ font:800 10px/1.25 system-ui;color:#bbf1ff;
+ border:1px solid #6389b6;border-radius:999px;background:#081e38dd}
+#game .ppw-home-competition-review{
+ justify-self:center;color:#ddd0f0;font-size:10px}
+#game .ppw-home-competition-action{
+ justify-self:center;min-height:39px;margin:0;padding:8px 20px;
+ border:1px solid #6cdaee;border-radius:999px;
+ background:#0e2c49df;box-shadow:inset 0 1px #d4faff24;
+ color:#e5faff;font:850 12px/1.2 system-ui;letter-spacing:.015em}
+#game .ppw-home-brief{
+ margin:0 0 10px;padding:10px;border:1px solid #706b9c;
+ border-radius:15px;background:linear-gradient(140deg,#162844,#251a3c)}
+#game .ppw-home-brief-title{align-items:center;gap:7px;margin-bottom:7px}
+#game .ppw-home-brief-title h3{
+ font:italic 900 17px/1.15 system-ui;
+ letter-spacing:.055em;text-transform:uppercase;color:#f5eaff}
+#game .ppw-home-notification-count{
+ display:inline-flex;align-items:center;white-space:nowrap;
+ padding:5px 8px;border:1px solid #69d8e5;border-radius:999px;
+ background:#0a3144a3;font:850 10px/1.1 system-ui;color:#adf5fd}
+#game .ppw-home-brief>.ppw-home-tile{
+ display:flex;flex-direction:row;align-items:center;
+ gap:9px;min-height:56px;padding:9px 10px;margin:7px 0;
+ border:1px solid #5e7096;border-left:4px solid #46e0ed!important;
+ border-radius:11px;background:linear-gradient(108deg,#182c4a,#171d37)!important}
+#game .ppw-home-brief>.ppw-home-action-priority{
+ border-left-color:#f6c87b!important}
+#game .ppw-home-brief>.ppw-home-tile .ppw-home-icon{
+ display:grid!important;width:32px;height:32px;border-radius:8px;
+ background:#4c3184!important;color:#e3dfff;font-size:17px}
+#game .ppw-home-brief>.ppw-home-tile .ppw-home-arrow{
+ display:flex!important;color:#a8ecfc;font-size:19px}
+#game .ppw-home-brief>.ppw-home-tile .ppw-home-tile-copy strong{
+ font:800 clamp(12px,3.4vw,15px)/1.3 system-ui;overflow-wrap:anywhere}
+#game .ppw-home-brief .ppw-home-updates{
+ margin:12px 0 0;padding:8px 0 0;border:0;
+ border-top:1px solid #566587;border-radius:0;background:transparent}
+#game .ppw-home-brief>.ppw-home-tile:focus-visible,
+#game .ppw-home-booking-strip:focus-visible,
+#game .ppw-home-show-controls button:focus-visible,
+#game .ppw-home-backstage-action:focus-visible,
+#game .ppw-home-competition-action:focus-visible,
+#game .ppw-home-hero-compact button:focus-visible{
+ outline:3px solid #f5cf7c;outline-offset:2px}
+@media(max-width:360px){
+ /* Title and real count are one line on a 320px iPhone. */
+ #game .ppw-home-brief-title{display:flex;align-items:center;flex-wrap:nowrap;
+  justify-content:space-between;gap:5px;min-width:0}
+ #game .ppw-home-brief-title h3{flex:0 0 auto;min-width:0;
+  font:italic 900 15px/1.15 system-ui!important;letter-spacing:.015em;
+  white-space:nowrap;overflow-wrap:normal;word-break:normal}
+ #game .ppw-home-notification-count{flex:none;font-size:9px;padding:4px 6px}
+ #game .ppw-home{padding-left:10px;padding-right:10px}
+ #game .ppw-home-hero-compact{padding:11px}
+ #game .ppw-home-hero-compact .ppw-home-promotion-name{font-size:18px}
+ #game .ppw-home-prestige-small .ppw-prestige-crest-rank{font-size:11px!important}
+ #game .ppw-home-show-spotlight .ppw-tv-frame{min-height:145px;padding:9px}
+ #game .ppw-home-ratings-arena{grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr)}
+ #game .ppw-home-ratings-side{padding:9px 3px}
+ #game .ppw-home-vs-mark{font-size:27px;width:39px;margin-left:-5px}
+}
+@media(min-width:700px){
+ #game .ppw-home-ratings-arena{grid-template-columns:1fr 66px 1fr}
+ #game .ppw-home-vs-mark{font-size:43px;width:76px}
+ #game .ppw-home-ratings-side{min-height:160px}
+ #game .ppw-home-backstage-action{min-height:148px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ #game .ppw-home-show-spotlight .ppw-tv-motion{animation:none!important}
+}

@@ -627,7 +627,9 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Our tag work finally came together/}).click();
   await expect(page.getByLabel("Message from Joe"))
    .toContainText("completed tag match was the kind of work we needed");
-  expect(calls.filter(x=>x==="markBackstageWorldRead")).toHaveLength(2);
+  // Thread content can paint before asynchronous owner-scoped receipts.
+  await expect.poll(()=>calls.filter(x=>x==="markBackstageWorldRead").length)
+   .toBe(2);
   expect(calls.filter(x=>x==="backstage")).toHaveLength(1);
   expect(calls.some(x=>/groq|generate|advance/i.test(x))).toBe(false);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

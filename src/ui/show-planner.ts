@@ -18,7 +18,8 @@ export interface PlannerPort {
 const node=(tag:string,text="",className="")=>{
  const x=document.createElement(tag);x.textContent=text;x.className=className;return x;};
 export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
- openUnfinishedCard=false,initialTarget?:CalendarPlanningTarget){
+ openUnfinishedCard=false,initialTarget?:CalendarPlanningTarget,
+ focusedProgrammeId?:string){
  let cardRoutePending=openUnfinishedCard;
  let focusTarget=initialTarget;
  let data:PlannerView|null=null,error="",busy=false,editing:PlannerWeek|null=null;
@@ -65,14 +66,38 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    }
    if(cardRoutePending){
     cardRoutePending=false;
-    const unfinished=data.weeks.find(w=>w.offset===0)?.shows.filter(s=>
-     s.status==="DRAFT"&&!s.ready)??[];
-    // Optional premiums cannot displace the compulsory normal broadcast.
-    const draft=unfinished.find(s=>s.bookingClass==="REGULAR")??unfinished[0];
-    if(draft&&data.canEdit){
-     navigated=true;port.openCard(draft.draftId);return;
+    // Treat broadcaster off-weeks as off-weeks. Only a saved draft or
+    // a confirmed scheduled TV/PPV may receive the next story chapter.
+    const weeks=[...data.weeks].sort((a,b)=>a.offset-b.offset);
+    const next=weeks.flatMap<{week:PlannerWeek;
+     draft?:PlannerWeek["shows"][number];seriesId:string}>(week=>{
+     if(!week.canEdit)return [];
+     const regular=week.shows.find(s=>
+      s.status==="DRAFT"&&s.bookingClass==="REGULAR");
+     const dueRegular=week.scheduled.find(s=>s.eventType==="REGULAR"&&
+      !week.shows.some(show=>show.bookingClass==="REGULAR"));
+     const premium=week.shows.find(s=>
+      s.status==="DRAFT"&&s.bookingClass==="PREMIUM");
+     const duePremium=week.scheduled.find(s=>s.eventType==="MAJOR"&&
+      !week.shows.some(show=>show.bookingClass==="PREMIUM"));
+     if(regular)return [{week,draft:regular,seriesId:regular.showSeriesId??""}];
+     if(dueRegular)return [{week,draft:undefined,seriesId:dueRegular.seriesId}];
+     if(premium)return [{week,draft:premium,seriesId:premium.showSeriesId??""}];
+     if(duePremium)return [{week,draft:undefined,seriesId:duePremium.seriesId}];
+     return [];
+    })[0];
+    if(next&&data.canEdit){
+     if(next.draft?.venueId){
+      navigated=true;port.openCard(next.draft.draftId,focusedProgrammeId);
+      return;
+     }
+     // Remain on Planner; let finally redraw when busy=false.
+     edit(next.week,next.draft,next.seriesId,focusedProgrammeId??null);
+     return;
     }
-    error="There isn't an unfinished show card this week. Check your schedule below.";
+    error="There isn't an unfinished show card this week. Check your schedule below."+
+     (focusedProgrammeId?
+      " No editable television or premium show is scheduled in this booking window.":"");
    }
   }catch(e){error=e instanceof Error?e.message:"Planner unavailable";}
   finally{busy=false;if(!navigated)draw();}
@@ -252,6 +277,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   const tiles=node("div","","ppw-planner-board-weeks");
   tiles.setAttribute("aria-label","Select a booking week");
   for(const week of snapshot.weeks){
+   const scheduled=source.weeks.find(w=>w.year===week.year&&w.week===week.week);
+   const hasTv=Boolean(scheduled?.scheduled.some(s=>s.eventType==="REGULAR")||
+    scheduled?.shows.some(s=>s.bookingClass==="REGULAR"));
+   const hasPpv=Boolean(scheduled?.scheduled.some(s=>s.eventType==="MAJOR")||
+    scheduled?.shows.some(s=>s.bookingClass==="PREMIUM"));
+   const kind=hasTv&&hasPpv?"TV + PPV":hasPpv?"PPV":hasTv?"TV":"OFF WEEK";
    const tile=button("",()=>{
     const target=root.querySelector<HTMLElement>("#ppw-planner-week-"+week.key);
     if(target){target.scrollIntoView({block:"start"});target.focus({preventScroll:true});}
@@ -259,11 +290,12 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    tile.classList.add("ppw-planner-board-tile");
    tile.dataset.state=week.state;
    tile.dataset.premium=String(week.isPremium);
+   tile.dataset.hasBoth=String(hasTv&&hasPpv);
    tile.setAttribute("aria-label","Year "+week.year+" Week "+week.week+
     ", "+(week.premiumName?"PPV "+week.premiumName+", ":"")+week.label);
    tile.replaceChildren(
     node("strong","W"+week.week),
-    node("small","Y"+week.year+(week.isPremium?" · PPV":" · TV")),
+    node("small","Y"+week.year+" · "+kind),
     node("span",week.label,"ppw-planner-board-state"));
    tiles.append(tile);
   }
@@ -543,8 +575,13 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     state==="CARD_IN_PROGRESS"?"attention":
     state==="PARTIALLY_BOOKED"?"booked":"empty";
    card.append(node("span",status,"ppw-planner-booking-state"));
+   const hasTv=week.scheduled.some(s=>s.eventType==="REGULAR")||
+    week.shows.some(show=>show.bookingClass==="REGULAR");
+   const hasPpv=week.scheduled.some(s=>s.eventType==="MAJOR")||
+    week.shows.some(show=>show.bookingClass==="PREMIUM");
    card.append(node("h2","Year "+week.year+" · Week "+week.week),
-    node("p",week.major?"Major event week":week.required?"Regular show week":"Optional show week"));
+    node("p",hasTv&&hasPpv?"TV and PPV scheduled this week":
+     hasPpv?"PPV week":hasTv?"Television week":"Optional show week"));
    const contracted=data.broadcastSlot,weekIndex=(week.year-1)*52+week.week-1;
    const dueTV=week.scheduled.find(s=>s.eventType==="REGULAR");
    if(dueTV&&contracted&&weekIndex>=contracted.startWeekIndex&&

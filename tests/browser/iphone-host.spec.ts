@@ -43,7 +43,7 @@ test("approved PPW full-screen intro is one artwork with an accessible Continue 
   await opening.getByRole("button",{name:/Continue to PPW/}).click();
   await expect(opening).toHaveCount(0);
   // The game's normal Home opens without a second intro for this session.
-  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+  await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
   await page.evaluate(()=>sessionStorage.clear());
  }
 });
@@ -72,9 +72,9 @@ test("Home stays compact and avoids duplicate statuses or empty task panels at 3
  for(const width of [320,390]){
   await page.setViewportSize({width,height:844});
   await page.goto("/#/home");
-  await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
-  await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
-  await expect(page.locator(".ppw-home-brief")).toHaveCount(0);
+  await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
+  await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
+  await expect(page.locator(".ppw-home-brief")).toBeVisible();
   await expect(page.locator(".ppw-home-tags")).toHaveCount(0);
   await expect(page.locator(".ppw-home-broadcast")).toHaveCount(0);
   const height=await page.locator(".ppw-home-hero").evaluate(el=>el.getBoundingClientRect().height);
@@ -117,7 +117,7 @@ test("iPhone signs in and opens every department through a single drawer",async(
   expect(menuBox!.height).toBeGreaterThanOrEqual(44);
   expect(menuBox!.width).toBeGreaterThanOrEqual(44);
  await expect(nav).toBeHidden();
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
  const before=methods.length;
  await menu.click();
  await expect(nav).toBeVisible();
@@ -147,7 +147,7 @@ test("iPhone signs in and opens every department through a single drawer",async(
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await page.goto("/#/home");
  await expect(nav).toBeHidden();
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
  expect(methods).toContain("overview");expect(methods).toContain("planner");
 });
 test("Home alerts open expiring agreements or pending offers directly without another lookup",async({page})=>{
@@ -207,7 +207,7 @@ test("named contract alerts give the right negotiation and expiry routes without
  await page.goto("/#/home");
  await expect(page.getByRole("button",{name:/Ada has a negotiation pending/})).toHaveCount(0);
  await expect(page.getByRole("button",{name:/Bert's contract expires in 1 week/})).toBeVisible();
- await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
  await page.getByRole("button",{name:/Bert's contract expires in 1 week/}).click();
   await expect(page).toHaveURL(/#\/contracts\/expiring$/);
  await expect(page.getByRole("button",{name:"Expiring soon"})).toHaveAttribute("aria-pressed","true");
@@ -242,9 +242,9 @@ test("named Home concerns open only the intended wrestler conversation",async({p
   }else await route.fulfill({json:method==="overview"?home:{}});
  });
  await page.goto("/#/home");
- const prompt=page.getByRole("button",{name:/Ava Adams is waiting/});
+ const prompt=page.getByRole("button",{name:/Open Backstage messages/});
  await expect(prompt).toBeVisible();
- await expect(prompt).toContainText("has a new creative idea");
+ await expect(prompt).toContainText("Ava Adams needs your decision");
  expect(methods).toEqual(["overview"]);
  await prompt.click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
@@ -257,61 +257,50 @@ test("named Home concerns open only the intended wrestler conversation",async({p
  await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  expect(methods).toHaveLength(3);
 });
-test("completed locker-room updates dismiss privately without hiding current tasks",async({page})=>{
+test("Home keeps contract updates actionable without duplicating Backstage correspondence",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const calls:string[]=[];
- let dismissed=false;
- const home=()=>({...overview,promotion:{...overview.promotion,attention:{
+ const home={...overview,promotion:{...overview.promotion,attention:{
   plannedShows:1,unpreparedShow:true,pendingBackstage:true,
   backstageRequests:[{personId:"p-adams",name:"Ava Adams",kind:"CREATIVE"}],
   expiringTalent:false,pendingContractOffers:false,
   offerResults:[{id:"offer-result:deal-7",personId:"p-smith",name:"Sam Smith",status:"ACCEPTED"}],
-  backstageResults:dismissed?[]:[{
-   id:"backstage-result:153",personId:"p-adams",name:"Ava Adams",status:"BROKEN"}]
- }}});
- await page.route("**/api/session",async route=>route.fulfill({json:current}));
- await page.route("**/api/card",async route=>{
-  const request=route.request().postDataJSON() as Record<string,unknown>;
-  const method=String(request.method);calls.push(method);
-  if(method==="dismissAttention"){
-   expect(request.attentionId).toBe("backstage-result:153");
-   dismissed=true;
-   await route.fulfill({json:{dismissed:true,firstDismissal:true}});
-  }else await route.fulfill({json:method==="overview"?home():{}});
+  backstageResults:[{id:"backstage-result:153",personId:"p-adams",name:"Ava Adams",status:"BROKEN"}]
+ }}};
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>{
+  calls.push(String(route.request().postDataJSON().method));
+  return route.fulfill({json:route.request().postDataJSON().method==="overview"?home:{}});
  });
  await page.goto("/#/home");
- await expect(page.locator(".ppw-home-updates")).toBeVisible();
- await expect(page.getByText("Promises settled")).toBeVisible();
- await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
- await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
- await expect(page.getByText(/Sam Smith has signed/)).toBeVisible();
- await page.getByRole("button",{name:"Dismiss Ava Adams's locker room update"}).click();
+ await expect(page.getByText("Sam Smith has signed")).toBeVisible();
  await expect(page.getByText("Promises settled")).toHaveCount(0);
- await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
- await expect(page.getByText(/Sam Smith has signed/)).toBeVisible();
- expect(calls).toEqual(["overview","dismissAttention"]);
+ await expect(page.getByText(/Ava Adams was left waiting/)).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Dismiss Ava Adams's locker room update"})).toHaveCount(0);
+ await expect(page.locator(".ppw-home-backstage-action")).toContainText("Ava Adams needs your decision");
+ await expect(page.getByRole("button",{name:/Finish your booking card/})).toBeVisible();
+ expect(calls).toEqual(["overview"]);
  await page.reload();
+ await expect(page.getByText("Sam Smith has signed")).toBeVisible();
  await expect(page.getByText("Promises settled")).toHaveCount(0);
- await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
- expect(calls.filter(x=>x==="overview")).toHaveLength(2);
+ expect(calls).toEqual(["overview","overview"]);
 });
-test("resolved locker-room promise opens the exact private historical thread",async({page})=>{
+test("settled locker-room outcomes stay in Backstage and their original private thread remains reachable",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];
  const home={...overview,promotion:{...overview.promotion,attention:{
   plannedShows:1,unpreparedShow:false,pendingBackstage:false,
   expiringTalent:false,pendingContractOffers:false,
-  backstageResults:[{
-   id:"backstage-result:77",personId:"p-victor",name:"Victor Vale",status:"FULFILLED"}]
+  backstageResults:[{id:"backstage-result:77",personId:"p-victor",name:"Victor Vale",status:"FULFILLED"}]
  }}};
- await page.route("**/api/session",async route=>route.fulfill({json:current}));
- await page.route("**/api/card",async route=>{
+ await page.route("**/api/session",route=>route.fulfill({json:current}));
+ await page.route("**/api/card",route=>{
   const req=route.request().postDataJSON() as Record<string,unknown>;
   const method=String(req.method);methods.push(method);
   if(method==="backstage"){
-   expect(req.personId).toBe("p-victor");
-   await route.fulfill({json:{
-    personId:"p-victor",personName:"Victor Vale",
+   if(req.personId)expect(req.personId).toBe("p-victor");
+   return route.fulfill({json:{
+    personId:req.personId??null,personName:req.personId?"Victor Vale":"",
     worldYear:1,worldWeek:5,worldRevision:4,canEdit:true,
     persona:null,history:[],documentedAlternates:[],
     recentRequests:[],nextPitchWeek:0,archetypes:[],
@@ -320,15 +309,19 @@ test("resolved locker-room promise opens the exact private historical thread",as
       status:"FULFILLED",kind:"CREATIVE",created_week_index:2}}],
     conversations:[]
    }});
-  }else await route.fulfill({json:method==="overview"?home:{}});
+  }
+  return route.fulfill({json:method==="overview"?home:{}});
  });
  await page.goto("/#/home");
- await expect(page.locator(".ppw-home-updates")).toBeVisible();
- await expect(page.getByText(/Victor Vale saw your promise kept/)).toBeVisible();
- await page.getByRole("button",{name:"Open Backstage",exact:true}).click();
+ await expect(page.getByText(/Victor Vale saw your promise kept/)).toHaveCount(0);
+ await expect(page.locator(".ppw-home-updates")).toHaveCount(0);
+ await page.getByRole("button",{name:"Open Backstage messages"}).click();
  await expect(page).toHaveURL(/#\/backstage$/);
- await expect(page.getByRole("region",{name:"Conversation with Victor Vale"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  expect(methods).toEqual(["overview","backstage"]);
+ await page.getByRole("button",{name:/Victor Vale/}).click();
+ await expect(page.getByRole("region",{name:"Conversation with Victor Vale"})).toBeVisible();
+ expect(methods).toEqual(["overview","backstage","backstage"]);
  expect(page.url()).not.toContain("p-victor");
 });
 test("iPhone clears all settled notices in one request and preserves urgent work",async({page})=>{
@@ -350,25 +343,25 @@ test("iPhone clears all settled notices in one request and preserves urgent work
   calls.push(String(request.method));
   if(request.method==="dismissAttentionBatch"){
    expect(request.attentionIds).toEqual([
-    "offer-result:one","offer-result:two","backstage-result:91"]);
+    "offer-result:one","offer-result:two"]);
    expect(request.playerId).toBeUndefined();
    cleared=true;
-   await route.fulfill({json:{dismissed:3,firstDismissals:3}});
+   await route.fulfill({json:{dismissed:2,firstDismissals:2}});
   }else await route.fulfill({json:request.method==="overview"?home():{}});
  });
  await page.goto("/#/home");
  await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByRole("button",{name:"Clear all resolved updates"})).toBeVisible();
- await expect(page.getByText(/Ava Adams was left waiting/)).toBeVisible();
+ await expect(page.getByText(/Ava Adams was left waiting/)).toHaveCount(0);
  await page.getByRole("button",{name:"Clear all resolved updates"}).click();
  await expect(page.getByText(/Lee Harper accepted the offer/)).toHaveCount(0);
  await expect(page.getByText("Promises settled")).toHaveCount(0);
  await expect(page.getByRole("button",{name:"Clear all resolved updates"})).toHaveCount(0);
- await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
- await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
+ await expect(page.locator(".ppw-home-backstage-action")).toContainText("Ava Adams needs your decision");
  expect(calls).toEqual(["overview","dismissAttentionBatch"]);
  await page.reload();
- await expect(page.getByRole("button",{name:/Ava Adams is waiting/})).toBeVisible();
+ await expect(page.locator(".ppw-home-backstage-action")).toContainText("Ava Adams needs your decision");
  await expect(page.getByText("Promises settled")).toHaveCount(0);
  expect(calls).toEqual(["overview","dismissAttentionBatch","overview"]);
 });
@@ -563,12 +556,12 @@ test("Home contract wire dismisses one resolved offer without suppressing show o
  await expect(page.getByText("Alice has signed")).toBeVisible();
  await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
- await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
  // Resolved notices belong to Recent Changes, not to the urgent tasks stack.
  await page.getByRole("button",{name:"Dismiss Alice's contract update"}).click();
  await expect(page.getByText("Alice has signed")).toHaveCount(0);
  await expect(page.getByText("Bob declined the offer")).toBeVisible();
- await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
  expect(methods).toEqual(["overview","dismissAttention"]);
 });
 
@@ -717,7 +710,7 @@ test("Home reminders open the unfinished card and unread locker room directly",a
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await expect.poll(()=>methods).toEqual(["overview","planner","load","planner"]);
  await page.goto("/#/home");
- await page.getByRole("button",{name:/Your locker room has messages/}).click();
+ await page.locator(".ppw-home-backstage-action").click();
  await expect(page).toHaveURL(/#\/backstage\/unread$/);
  await expect(page.getByRole("heading",{name:"Messages"})).toBeVisible();
  await expect(page.locator(".ppw-backstage-contact")).toHaveCount(1);
@@ -780,7 +773,7 @@ test("small iPhones have only the five department drawers at the bottom without 
  await page.goto("/#/home");
  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
  const menu=page.getByRole("button",{name:"Open World menu"});
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
  await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("alt","PPW");
  await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("src","/branding/ppw-showcase-header.webp");
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("AEW");
@@ -858,7 +851,7 @@ test("verified player can join, claim and reach World without bypassing session 
  await page.getByRole("button",{name:"Run this promotion"}).click();
  await expect(page.getByRole("heading",{name:"Make it yours"})).toBeVisible();
  await page.getByRole("button",{name:"Keep AEW"}).click();
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
  await expect(page.getByRole("button",{name:"Open World menu"})).toBeVisible();
  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
  expect(mutated).toEqual(["/api/join","/api/claim"]);
@@ -1627,7 +1620,7 @@ test("Home contract news opens the exact wrestler dossier without losing the des
  await dialog.getByRole("button",{name:"‹ Back"}).click();
  await expect(dialog).toHaveCount(0);
  await expect(page.getByText("Alice has signed")).toBeVisible();
- await expect(page.getByRole("button",{name:"Plan this week's show"})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
  expect(methods).toEqual(["overview","wrestlerProfile"]);
 });
 
@@ -1715,7 +1708,7 @@ test("two-manager claim race keeps the losing iPhone out of private desks",async
  await page.getByRole("button",{name:"Run this promotion"}).click();
  await expect(page.getByRole("heading",{name:"Make it yours"})).toBeVisible();
  await page.getByRole("button",{name:"Keep Takeover Company"}).click();
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
  expect(attempts).toBe(2);
 });
 
@@ -1738,7 +1731,7 @@ test("iPhone completes the World Lock to next-week broadcast handoff on explicit
   return route.fulfill({json:{}});
  });
  await page.goto("/#/home");
- await expect(page.getByRole("heading",{name:"Your World"})).toBeVisible();
+ await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
  await expect(page.getByText(/CARDS LOCKED/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Check World status"})).toBeVisible();
  expect(reads).toBe(1);
@@ -2093,10 +2086,10 @@ test("320/390 Home gives certified broadcast and unanswered Backstage decisions 
   await page.setViewportSize({width,height:844});
   await page.goto("/#/home");
   await expect(page.getByRole("button",{name:/LATEST CERTIFIED SHOW · Ascension/})).toBeVisible();
-  await expect(page.locator(".ppw-home-certified-score")).toHaveText("78/100 · CROWD");
+  await expect(page.locator(".ppw-home-certified-score")).toHaveCount(0);
   await expect(page.locator(".ppw-home-backstage-action"))
    .toContainText("needs your decision");
-  await expect(page.getByRole("button",{name:/Star is waiting/})).toBeVisible();
+  await expect(page.locator(".ppw-home-brief")).not.toContainText("Star");
   await expect(page.locator(".ppw-home-finances")).toHaveCount(0);
   await expect(page.getByRole("button",{name:/WORLD RANK/})).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

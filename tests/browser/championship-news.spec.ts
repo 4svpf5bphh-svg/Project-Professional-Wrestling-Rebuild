@@ -26,7 +26,7 @@ test("iPhone publishes only verified championship history and links to the title
  await expect(page.locator(".ppw-home-updates")).toBeVisible();
  await expect(page.getByRole("heading",{name:"New champions"})).toBeVisible();
  await expect(page.getByText("Alice won World Championship")).toBeVisible();
- await expect(page.getByRole("button",{name:/Plan this week's show/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Next Show/})).toBeVisible();
  expect(methods).toEqual(["overview"]);
  await page.getByRole("button",{name:"Open Championships"}).click();
  await expect(page).toHaveURL(/#\/championships$/);

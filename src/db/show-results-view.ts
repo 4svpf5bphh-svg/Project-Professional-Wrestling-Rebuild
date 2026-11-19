@@ -17,6 +17,7 @@ import {projectBroadcastIdentities,broadcastNameplate,type BroadcastIdentity}
  from "../domain/show-broadcast-personas.js";
 import type {SegmentConsequenceIntent} from "../domain/segment-consequences.js";
 import {isAngleScene,type AngleScene} from "../domain/angle-scene.js";
+import {isAuthoredAngleSequence,type AuthoredAngleAction} from "../domain/angle-sequence.js";
 import {parseVerifiedProgrammeBroadcast,type VerifiedProgrammeBroadcast}
  from "../domain/verified-programme-broadcast.js";
 import {projectVerifiedBroadcastFallout,type BroadcastFallout,
@@ -37,6 +38,8 @@ export interface CompletedAngleContext{
  /** Exact manager-authored turn direction, not implied wrestler history. */
  turnPresentation?:string|null;
  scene?:AngleScene|null;
+ /** The validated filmed sequence, not a speculative post-show narrative. */
+ scriptedActions?:readonly AuthoredAngleAction[];
 }
 export interface ShowResultEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";
@@ -376,8 +379,20 @@ export async function readCompletedShowView(
    const actorNames=(story?.actorIds??[]).map(name);
    const targetNames=(story?.targetIds??[]).map(name);
    const decision=story?.stableDecision??angle.stableDecision;
+   const cast={
+    kind:segment.kind as import("../simulation/legacy/show-segments.js").SegmentKind,
+    actorIds:Array.isArray(angle.actorIds)?angle.actorIds as string[]:[],
+    targetIds:Array.isArray(angle.targetIds)?angle.targetIds as string[]:[],
+    targetPresence:angle.targetPresence==="ON_SCREEN"?"ON_SCREEN" as const:
+     "MENTIONED" as const
+   };
+   if(angle.scriptedActions!==undefined&&
+    !isAuthoredAngleSequence(angle.scriptedActions,cast))
+    throw new Error("Invalid certified scripted angle");
+   const scriptedActions=angle.scriptedActions as AuthoredAngleAction[]|undefined;
    const segmentContext:CompletedAngleContext={
     actorNames,targetNames,
+    ...(scriptedActions?.length?{scriptedActions:scriptedActions.map(x=>({...x}))}:{}),
     targetPresence:angle.targetPresence==="MENTIONED"||
      angle.targetPresence==="ON_SCREEN"?angle.targetPresence:null,
     scene:angle.scene===undefined?null:isAngleScene(angle.scene,segment.kind)?angle.scene:null,

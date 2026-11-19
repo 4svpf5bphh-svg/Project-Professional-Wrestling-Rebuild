@@ -42,11 +42,16 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     assert.deepEqual((await listAvailablePromotions(db.pool,worldId,first,1)).map(p=>p.id),[second]);
     await joinWorld(db.pool,{worldId,playerId,requestId:"join-"+id,expectedRevision:0});
     await submitPromotionClaim(db.pool,{worldId,playerId,promotionId:first,requestId:"claim-"+id,expectedRevision:1});
+    await withWorldTransaction(db.pool,tx=>tx.query(
+     "INSERT INTO ppw_kp_broadcast_packages(player_id,style) VALUES($1,$2)",
+     [playerId,"LUCHA_FIESTA"]));
     const after=await readPlayerWorldOverview(measured,worldId,playerId);
     assert.equal(meter.assertBudget({maxQueries:2,maxResultBytes:3600}).queryCount,2);
     assert.equal(after?.membership,"ACTIVE");
     assert.equal(after?.world.revision,2);
     assert.equal(after?.promotion?.id,first);
+    assert.equal(after?.promotion?.broadcastPackageStyle,"LUCHA_FIESTA",
+     "Home uses the same player KP broadcast selection as opening titles");
     assert.equal(after?.promotion?.promoterPrestige?.rank,"ROOKIE BOOKER");
     assert.equal(after?.promotion?.promoterPrestige?.earnedCount,0);
     assert.equal(after?.promotion?.promoterPrestige?.total,47);
@@ -136,6 +141,7 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
       await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_memberships WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_promotions WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_kp_broadcast_packages WHERE player_id=$1",[playerId]);
       await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[playerId]);
       await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
     }).finally(()=>db.close());

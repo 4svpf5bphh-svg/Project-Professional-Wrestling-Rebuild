@@ -51,6 +51,16 @@ for(const width of [320,390]){
    return r.fulfill({json:{}});
   });
   await page.goto("/#/backstage");
+  const staffDisagreement=page.getByRole("button",{name:"Staff disagreements"});
+  await expect(staffDisagreement).toBeVisible();
+  const staffLayout=await staffDisagreement.evaluate(el=>{
+   const box=el.getBoundingClientRect();
+   const parent=el.parentElement!.getBoundingClientRect();
+   return {inside:box.left>=parent.left-1&&box.right<=parent.right+1,
+    textFits:el.scrollWidth<=el.clientWidth+1};
+  });
+  expect(staffLayout.inside).toBe(true);
+  expect(staffLayout.textFits).toBe(true);
   await page.getByRole("button",{name:"Storylines"}).click();
   await expect(page.locator('.ppw-backstage-world-contact[data-story-chapter="true"]'))
    .toHaveCount(2);

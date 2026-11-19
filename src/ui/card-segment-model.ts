@@ -7,6 +7,7 @@ import type {SegmentKind,SegmentOutcome,VideoPurpose}
 import {initialCreativeBeat,isSegmentCreativeBeat,type SegmentCreativeBeat} from "../domain/segment-creative-beats.js";
 import {initialAngleScene,isAngleScene,type AngleScene} from "../domain/angle-scene.js";
 import {specialMomentBySku,type SpecialMomentSku} from "../domain/special-moments.js";
+import {isAuthoredAngleSequence,type AuthoredAngleAction} from "../domain/angle-sequence.js";
 export type SegmentPerson={personId:string;contractId:string};
 export interface EditorSegment{
  slotId:string;kind:SegmentKind;actors:SegmentPerson[];targets:SegmentPerson[];
@@ -16,6 +17,7 @@ export interface EditorSegment{
  turnTargetAlignment:"FACE"|"HEEL"|"TWEENER"|null;stableId:string|null;
  stableDecision:"ACCEPTED"|"REJECTED"|null;
  targetPresence:"MENTIONED"|"ON_SCREEN";
+ scriptedActions:AuthoredAngleAction[];
 }
 export const ANGLE_TYPES:readonly {value:SegmentKind;label:string}[]=[
  {value:"PROMO",label:"Promo"},{value:"INTERVIEW",label:"Interview"},
@@ -48,7 +50,8 @@ export function newEditorSegment(slotId:string,kind:SegmentKind="PROMO"):EditorS
  return {slotId,kind,actors:[],targets:[],outcome:"HAPPENS",durationMinutes:5,videoPurpose:"WRESTLER_HYPE",programmeId:null,
   creativeBeat:initialCreativeBeat(kind),scene:initialAngleScene(kind),
   specialMoment:null,sourceMatchSlotId:null,
-  turnTargetAlignment:"HEEL",stableId:null,stableDecision:null,targetPresence:"MENTIONED"};
+  turnTargetAlignment:"HEEL",stableId:null,stableDecision:null,targetPresence:"MENTIONED",
+  scriptedActions:[]};
 }
 export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Invalid segment");
@@ -65,6 +68,13 @@ export function restoreEditorSegment(slotId:string,raw:unknown):EditorSegment{
   targets:find(p.targetIds),
   targetPresence:p.targetPresence==="ON_SCREEN"?"ON_SCREEN":"MENTIONED",
   durationMinutes:typeof p.durationMinutes==="number"&&Number.isSafeInteger(p.durationMinutes)&&p.durationMinutes>=1&&p.durationMinutes<=30?p.durationMinutes:5,
+  scriptedActions:p.scriptedActions===undefined?[]:
+   isAuthoredAngleSequence(p.scriptedActions,{kind,
+    actorIds:Array.isArray(p.actorIds)?p.actorIds as string[]:[],
+    targetIds:Array.isArray(p.targetIds)?p.targetIds as string[]:[],
+    targetPresence:p.targetPresence==="ON_SCREEN"?"ON_SCREEN":"MENTIONED"})?
+    p.scriptedActions.map(step=>({...step})):
+    (()=>{throw new Error("Invalid saved angle sequence")})(),
   sourceMatchSlotId:typeof p.sourceMatchSlotId==="string"&&p.sourceMatchSlotId.trim()?
    p.sourceMatchSlotId:null,
   creativeBeat:p.creativeBeat===undefined?null:
@@ -119,6 +129,7 @@ export function buildEditorSegment(s:EditorSegment):BookedSegmentPayload{
   ...(s.kind==="VIDEO_PACKAGE"?{videoPurpose:s.videoPurpose}:{}),
   ...(s.creativeBeat?{creativeBeat:s.creativeBeat}:{}),
   ...(s.scene?{scene:s.scene}:{}),
+  ...(s.scriptedActions.length?{scriptedActions:s.scriptedActions}:{}),
   ...(s.specialMoment?{specialMoment:s.specialMoment}:{}),
   ...(s.kind==="POST_MATCH_ASSAULT"&&s.sourceMatchSlotId?
    {sourceMatchSlotId:s.sourceMatchSlotId}:{}),

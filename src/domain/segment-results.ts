@@ -1,6 +1,7 @@
 import {normalizeBookedSegment} from "./segment-booking.js";
 import {specialMomentNarrative,specialMomentBySku} from "./special-moments.js";
 import {angleSceneLocationPhrase,initialAngleScene,angleSceneLabel} from "./angle-scene.js";
+import {describeAngleSequenceStep} from "./angle-sequence.js";
 import type {AuthoredSegment} from "../simulation/legacy/show-segments.js";
 import type {SegmentKind,SegmentOutcome} from "../simulation/legacy/show-segments.js";
 export interface SegmentResult{
@@ -205,7 +206,11 @@ export function describeAuthoredSegment(payload:AuthoredSegment,
  const spectacle=segment.specialMoment?specialMomentBySku(segment.specialMoment):null;
  const spectacular=segment.outcome==="HAPPENS"&&spectacle?
   " "+specialMomentNarrative(spectacle.sku,subject,object):"";
- const summary=segment.outcome==="HAPPENS"?base+"."+(ending?" "+ending:"")+spectacular+severity+
+ const screenplay=segment.outcome==="HAPPENS"&&segment.scriptedActions?.length?
+  " The action unfolded: "+segment.scriptedActions.map((step,index)=>
+   (index+1)+". "+describeAngleSequenceStep(step,names)+".").join(" "):"";
+ const summary=segment.outcome==="HAPPENS"?base+"."+screenplay+
+  (ending?" "+ending:"")+spectacular+severity+
   (!repeatedSeparation&&visual?" "+visual:"")+intention:
   segment.outcome==="REFUSED"?`The planned moment does not happen: ${base}.`:
   `The moment is interrupted before completion: ${base}.`;
