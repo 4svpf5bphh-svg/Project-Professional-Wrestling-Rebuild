@@ -612,7 +612,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][slot.day-1]+" "+
     String(slot.hour).padStart(2,"0")+":00","ppw-calendar-tv-slot"));
   const offset=weekIndex(year,week)-weekIndex(data!.year,data!.week);
-  const near=offset>=0&&offset<6;
+  const near=offset>=0&&offset<=6;
   if(booking){
    card.append(node("span",calendarBookingState(booking),
     "ppw-calendar-booked-state"),
@@ -718,7 +718,7 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    }
    upcoming.append(filters);
    let rendered=0;
-   for(const w of data.weeks.slice(0,6)){
+   for(const w of data.weeks.slice(0,7)){
     const shows=ppvOnly?w.shows.filter(s=>s.eventType==="MAJOR"):w.shows;
     if(!shows.length)continue;
     const article=node("article","","ppw-calendar-occurrence"+
