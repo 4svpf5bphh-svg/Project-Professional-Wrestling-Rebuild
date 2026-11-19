@@ -189,6 +189,7 @@ test("book an actual retaliation scene from Programme Desk with signed participa
    }:method==="save"?{status:"APPLIED",result:{showId:"weekly"}}:{}});
  });
  await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"Plan",exact:true}).click();
  await page.getByRole("button",{name:"Strike back"}).click();
  await expect(page.locator(".ppw-card-rivalry-launch")).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
