@@ -1557,3 +1557,18 @@ body>.ppw-card-edit-shade .ppw-angle-sequence-field select{
  /* Who and Target stay on one row at 320px; Action stays full-width. */
  .ppw-angle-sequence-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 }
+
+/* Phase 61: compact game UI without losing real wrestler/ensemble controls. */
+body>.ppw-card-edit-shade .ppw-guide-booking{gap:7px;padding:0 0 7px}
+body>.ppw-card-edit-shade .ppw-guide-booking h3{font-size:18px}
+body>.ppw-card-edit-shade .ppw-side{padding:9px 10px!important;margin:7px 0!important;border-radius:12px!important}
+body>.ppw-card-edit-shade .ppw-side h3{font-size:14px!important;margin:0 0 5px!important;line-height:1.25}
+body>.ppw-card-edit-shade .ppw-side .ppw-elimination-row{margin:4px 0;padding:5px 0;gap:5px}
+body>.ppw-card-edit-shade .ppw-side .ppw-angle-cast-button,
+body>.ppw-card-edit-shade .ppw-side .ppw-angle-cast-faction{min-height:44px;padding:7px 10px;margin:4px 0}
+body>.ppw-card-edit-shade .ppw-field:has(>select[aria-label="Storyline (optional)"]){display:grid;grid-column:1/-1;width:100%;max-width:none;min-width:0}
+body>.ppw-card-edit-shade .ppw-field select[aria-label="Storyline (optional)"]{display:block;width:100%!important;min-width:0;max-width:100%!important}
+/* 16px is essential: iOS Safari otherwise zooms and traps players in the editor. */
+body>.ppw-card-edit-shade input,body>.ppw-card-edit-shade select,
+body>.ppw-card-edit-shade textarea{font-size:16px!important}
+body>.ppw-card-edit-shade .ppw-angle-sequence-note textarea{min-height:52px;line-height:1.4}
