@@ -131,6 +131,17 @@ test("book an actual retaliation scene from Programme Desk with signed participa
  let saved:{slotId:string;kind:"SEGMENT"|"MATCH";position:number;payload:any}[]=[];
  const joe={personId:"joe",contractId:"c-joe",name:"Samoa Joe"};
  const mistico={personId:"mistico",contractId:"c-mistico",name:"Místico"};
+ // Keep an already-booked match on the card: PPW correctly refuses to save
+ // an angle-only weekly show, and should not invent an extra match for us.
+ const joePick={personId:joe.personId,contractId:joe.contractId};
+ const misticoPick={personId:mistico.personId,contractId:mistico.contractId};
+ saved=[{slotId:"already-booked-bout",position:0,kind:"MATCH",payload:{
+  matchType:"SINGLES",family:"INDIVIDUAL",participants:[joePick,misticoPick],
+  sides:[{sideId:"A",participants:[joePick]},
+   {sideId:"B",participants:[misticoPick]}],
+  scriptedWinnerSide:"B",plannedFinish:"CLEAN_PIN",
+  intent:"COMPETITIVE",plannedLengthMinutes:18
+ }}];
  const feud={programmeId:"joe-mistico",label:"Samoa Joe vs Místico",
   heat:62,repetition:42,activityCount:2,segmentCount:1,
   lastChapter:{kind:"MATCH",weekIndex:3,segmentKind:null,crowd:76},
@@ -146,6 +157,10 @@ test("book an actual retaliation scene from Programme Desk with signed participa
    saves++;
    const matches=req.matches as {slotId:string;payload:any}[];
    const segments=req.segments as {slotId:string;payload:any;programmeId?:string}[];
+   expect(matches).toHaveLength(1);
+   expect(matches[0]?.payload.scriptedWinnerSide).toBe("B");
+   expect(matches[0]?.payload.sides.map((side:any)=>side.participants[0]?.personId))
+    .toEqual(["joe","mistico"]);
    const attack=segments.find(x=>x.payload.kind==="ATTACK");
    expect(attack?.programmeId).toBe("joe-mistico");
    expect(attack?.payload.actorIds).toEqual(["mistico"]);

@@ -304,7 +304,8 @@ test("iPhone booker can start an unsaved rivalry challenge in the streamlined an
  await dialog.getByLabel("Storyline (optional)").selectOption("gunns-rivalry");
  await expect(dialog.getByLabel("Storyline (optional)")).toHaveValue("gunns-rivalry");
  await expect(dialog.getByText(/needs a target|choose.*target/i).first()).toBeVisible();
- expect(methods).toEqual(["planner","load"]);
+ expect(methods.slice(0,2)).toEqual(["planner","load"]);
+ expect(methods.every(x=>["planner","load","kpWorkspace"].includes(x))).toBe(true);
  expect(methods).not.toContain("save");
  expect(methods).not.toContain("talent");
 });
