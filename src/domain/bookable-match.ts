@@ -9,6 +9,28 @@ import {readBookedInterference} from "../simulation/legacy/match-interference.js
 import {readMatchStipulation,permittedStipulationFinishes,
  defaultStipulationFinish,stipulationMinimumMinutes,type MatchStipulation} from "./match-stipulations.js";
 
+/** Strictly bounded, booker-directed finish props. Existing match JSON stores
+ * presentation choices; the original scoring and contract rules still decide. */
+export const FINISH_PROPS=[
+ {value:"STEEL_CHAIR",label:"Steel chair"},
+ {value:"BRASS_KNUCKLES",label:"Brass knuckles"},
+ {value:"CHAMPIONSHIP_BELT",label:"Championship belt"},
+ {value:"KENDO_STICK",label:"Kendo stick"},
+ {value:"STEEL_CHAIN",label:"Steel chain"},
+ {value:"RING_BELL",label:"Ring bell"},
+ {value:"SCREWDRIVER",label:"Screwdriver"}
+] as const;
+export type FinishProp=(typeof FINISH_PROPS)[number]["value"];
+export const REFEREE_SPOTS=[
+ {value:"DISTRACTED",label:"Referee distracted"},
+ {value:"REF_BUMP",label:"Referee knocked down"}
+] as const;
+export type RefereeSpot=(typeof REFEREE_SPOTS)[number]["value"];
+export const finishPropLabel=(value:FinishProp)=>
+ FINISH_PROPS.find(x=>x.value===value)!.label.toLowerCase();
+const validProps=new Set<string>(FINISH_PROPS.map(x=>x.value));
+const validRefSpots=new Set<string>(REFEREE_SPOTS.map(x=>x.value));
+
 const intents=new Set(["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
  "HIGH_RISK","STORY","PROTECTIVE","EPIC"]);
 const multiFinishes=new Set(["CLEAN_PIN","FLASH_PIN","SUBMISSION","PROTECTED_FINISH"]);
@@ -30,6 +52,8 @@ export interface BookableMatch {
  interference?:unknown;
  style?:unknown;
  cheatingWrestlerId?:string;
+ finishProp?:FinishProp;
+ refereeSpot?:RefereeSpot;
  stipulation?:MatchStipulation;
 }
 export function normalizeBookableMatch(input:unknown):BookableMatch{
@@ -64,6 +88,14 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
    finish==="OVER_THE_TOP_ROPE":format==="TRIPLE_THREAT"||format==="FOUR_WAY"?
    multiFinishes.has(finish):isBookableMatchFinish(finish))))
   throw new Error("This finish is not legal for the chosen stipulation");
+ if(raw.finishProp!==undefined&&(
+  finish!=="FOREIGN_OBJECT"||typeof raw.finishProp!=="string"||
+  !validProps.has(raw.finishProp)))
+  throw new Error("Choose a valid foreign-object finish prop");
+ if(raw.refereeSpot!==undefined&&(
+  !["FOREIGN_OBJECT","PROTECTED_FINISH"].includes(finish)||
+  typeof raw.refereeSpot!=="string"||!validRefSpots.has(raw.refereeSpot)))
+  throw new Error("Referee direction requires a disputed finish");
  if((format!=="SINGLES"&&format!=="TAG")&&
   (raw.interference!==undefined||raw.style!==undefined||
    raw.cheatingWrestlerId!==undefined))
@@ -108,6 +140,8 @@ export function normalizeBookableMatch(input:unknown):BookableMatch{
   ...(raw.tournamentId===undefined?{}:{tournamentId:raw.tournamentId as string,
    tournamentBoutNo:raw.tournamentBoutNo as 1|2|3|4|5|6|7}),
   ...(interference?{interference}:{}),
+  ...(raw.finishProp?{finishProp:raw.finishProp as FinishProp}:{}),
+  ...(raw.refereeSpot?{refereeSpot:raw.refereeSpot as RefereeSpot}:{}),
  };
  if(raw.style!==undefined)result.style=normalizeMatchStyle(raw.style as never);
  if(raw.cheatingWrestlerId!==undefined){

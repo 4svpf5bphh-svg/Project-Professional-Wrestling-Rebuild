@@ -1,3 +1,4 @@
+import {FINISH_PROPS,REFEREE_SPOTS,type FinishProp,type RefereeSpot} from "../domain/bookable-match.js";
 /** Mobile-first PWA card editor, with no new runtime/framework dependency.
  * Host supplies authenticated RPC methods; browser cannot supply playerId.
  * Draws on the original PPW card's compact, expandable running-order design.
@@ -1861,7 +1862,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Finish",selector(m.plannedFinish,
      permittedStipulationFinishes(m.stipulation??"STANDARD",simFormat)
       .map(x=>[x,nice(x)]),
-      v=>edit(m,{plannedFinish:v,cheatingWrestlerId:undefined}),!mutable())));
+      v=>edit(m,{plannedFinish:v,cheatingWrestlerId:undefined,
+       finishProp:undefined,refereeSpot:undefined}),!mutable())));
+    if(m.plannedFinish==="FOREIGN_OBJECT")
+     controls.append(field("Weapon used",selector(m.finishProp??"",
+      [["","Choose the object"],...FINISH_PROPS.map(x=>[x.value,x.label])],
+      v=>edit(m,{finishProp:v?v as FinishProp:undefined}),!mutable())));
+    if(["FOREIGN_OBJECT","PROTECTED_FINISH"].includes(m.plannedFinish))
+     controls.append(field("Referee spot",selector(m.refereeSpot??"",
+      [["","Standard officiating"],...REFEREE_SPOTS.map(x=>[x.value,x.label])],
+      v=>edit(m,{refereeSpot:v?v as RefereeSpot:undefined}),!mutable())));
     const cheatingSide=m.plannedFinish==="FOREIGN_OBJECT"?m.winnerSide:
      m.plannedFinish==="DISQUALIFICATION"?1-m.winnerSide:-1;
     if(m.format==="SINGLES"&&cheatingSide>=0){
