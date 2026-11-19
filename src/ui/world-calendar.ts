@@ -10,6 +10,7 @@ import type {CalendarBooking,PremiumCalendarEdition}
  from "../db/calendar-workspace.js";
 import {calendarBookingForSeries,calendarBookingLocation,calendarBookingState}
  from "./calendar-booked-show.js";
+import {yearWeekEvents} from "./calendar-week-agenda.js";
 import {calendarSeriesPreview,setSeriesCadence,SERIES_CADENCES}
  from "./calendar-series-preview.js";
 export interface CalendarPlanningTarget {
@@ -343,44 +344,106 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
    const grid=node("div","","ppw-calendar-week-grid");
    for(let i=1;i<=13;i++){
     const week=quarter*13+i,edition=dated.get(week);
-    const booked=premiumEdition(chosen.year,week);
-    const show=edition?series.get(edition.seriesId):
-     booked?series.get(booked.showSeriesId??""):null;
-    // The actual saved draft/certified title outranks the calendar preview.
-    const showName=booked?.showName??edition?.name??show?.name;
-    const picked=week===yearActiveWeek;
+    const scheduled=yearWeekEvents({year:chosen.year,week,series:data.series,
+     annualEvents:events,annualConfirmed:chosen.confirmed,
+     bookings:data.bookings??[],premiumEditions:data.premiumEditions??[]});
+    const ppv=scheduled.find(e=>e.eventType==="MAJOR");
+    const television=scheduled.filter(e=>e.eventType==="REGULAR");
+    const booked=ppv?.booked??false,showName=ppv?.name;
     const date=button("W"+String(week).padStart(2,"0"),()=>{
      yearActiveWeek=week;render();
     },busy);
     date.classList.add("ppw-calendar-week-button");
-    date.dataset.hasEvent=String(!!showName);
-    date.dataset.booked=String(!!booked);
-    if(booked)date.dataset.status=booked.certified?"CERTIFIED":
-     booked.status==="SUBMITTED"?"SUBMITTED":"DRAFT";
-    date.setAttribute("aria-pressed",String(picked));
-    if(showName)date.append(node("small",showName,
-     "ppw-calendar-year-major"));
-    if(booked)date.append(node("small",booked.certified?"CERTIFIED":
-     booked.status==="SUBMITTED"?"SUBMITTED":"BOOKED",
+    date.dataset.hasEvent=String(Boolean(showName));
+    date.dataset.booked=String(booked);
+    date.dataset.hasTelevision=String(television.length>0);
+    date.dataset.hasCard=String(scheduled.some(e=>e.booked));
+    date.dataset.hasBoth=String(Boolean(showName)&&television.length>0);
+    if(ppv?.booked)date.dataset.status=ppv.status;
+    date.setAttribute("aria-pressed",String(week===yearActiveWeek));
+    if(showName)date.append(node("small",showName,"ppw-calendar-year-major"));
+    if(ppv?.booked)date.append(node("small",
+     ppv.status==="CERTIFIED"?"CERTIFIED":
+      ppv.status==="SUBMITTED"?"SUBMITTED":"BOOKED",
      "ppw-calendar-year-edition-state"));
-    const tv=data!.broadcastSlot,idx=weekIndex(chosen.year,week);
-    const dueTv=data!.series.filter(s=>s.eventType==="REGULAR"&&
-     seriesDue(s,idx));
-    date.dataset.hasTelevision=String(dueTv.length>0);
-    const appearances=[showName,...dueTv.map(x=>x.name)].filter(Boolean);
+    const tv=data.broadcastSlot,idx=weekIndex(chosen.year,week);
+    const appearances=[showName,...television.map(e=>e.name)].filter(Boolean);
     date.setAttribute("aria-label","Year "+chosen.year+" week "+week+" — "+
      (appearances.length?appearances.join(" + "):"no shows due"));
-    for(const regular of dueTv.slice(0,2)){
+    for(const regular of television.slice(0,2)){
      const validSlot=tv&&idx>=tv.startWeekIndex&&idx<=tv.endWeekIndex;
-     date.append(node("small",regular.name+
+     date.append(node("small","TV"+
       (validSlot?" · "+["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][tv.day-1]:""),
       "ppw-calendar-ppv-week-tv"));
     }
+    if(television.some(e=>e.booked)&&!ppv?.booked)
+     date.append(node("small","CARD BOOKED","ppw-calendar-year-tv-booked"));
     grid.append(date);
    }
    part.append(grid);quarters.append(part);
   }
   rootSection.append(quarters);
+  // Selecting any week exposes exactly the due broadcast(s), annual PPV
+  // and owner-private saved draft without another Calendar or Planner read.
+  const focusWeek=yearActiveWeek??(chosen.year===data.year?data.week:null);
+  if(focusWeek!==null){
+   const idx=weekIndex(chosen.year,focusWeek);
+   const offset=idx-weekIndex(data.year,data.week);
+   const inBookingWindow=offset>=0&&offset<=6;
+   const items=yearWeekEvents({year:chosen.year,week:focusWeek,
+    series:data.series,annualEvents:events,annualConfirmed:chosen.confirmed,
+    bookings:data.bookings??[],premiumEditions:data.premiumEditions??[]});
+   const focus=node("section","","ppw-calendar-week-focus");
+   focus.setAttribute("aria-label","Week "+focusWeek+" shows and booking");
+   const focusHead=node("div","","ppw-calendar-week-focus-head");
+   focusHead.append(node("strong","YEAR "+chosen.year+" · WEEK "+focusWeek),
+    ...(offset===0?[node("span","THIS WEEK","ppw-calendar-now")]:[]));
+   focus.append(focusHead);
+   if(!items.length)focus.append(node("p","Off week · no television or PPV due.",
+    "ppw-calendar-week-focus-empty"));
+   for(const item of items){
+    const line=node("div","",
+     "ppw-calendar-week-focus-event "+
+     (item.eventType==="MAJOR"?"ppw-calendar-week-focus-ppv":"ppw-calendar-week-focus-tv"));
+    line.dataset.eventType=item.eventType;
+    line.dataset.booked=String(item.booked);
+    line.append(node("span",item.eventType==="MAJOR"?"PPV / SPECIAL":"TELEVISION",
+     "ppw-calendar-week-focus-kind"),
+     node("strong",item.name,"ppw-calendar-week-focus-title"));
+    const description=item.status==="CERTIFIED"?"Certified":
+     item.status==="SUBMITTED"?"Card submitted":
+     item.booked?(item.ready?"Card ready":"Card in progress"):
+     item.status==="SUGGESTED"?"Suggested annual date":
+     "Scheduled · not yet booked";
+    line.append(node("span",description,"ppw-calendar-week-focus-status"));
+    if(item.eventType==="REGULAR"&&data.broadcastSlot&&
+     idx>=data.broadcastSlot.startWeekIndex&&idx<=data.broadcastSlot.endWeekIndex){
+     const tv=data.broadcastSlot;
+     line.append(node("span",tv.networkName+" · "+
+      ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][tv.day-1]+" "+
+      String(tv.hour).padStart(2,"0")+":00 · Contracted slot",
+      "ppw-calendar-week-focus-airtime"));
+    }
+    if(item.venueName)line.append(node("small",item.venueName,
+     "ppw-calendar-week-focus-location"));
+    if(inBookingWindow&&data.canEdit&&item.status==="DRAFT"&&item.draftId){
+     if(offset===0&&port.openCard)line.append(button("Edit card",
+      ()=>port.openCard?.(item.draftId!)));
+     else if(port.openPlanner&&item.seriesId)line.append(button("Review booking",
+      ()=>port.openPlanner?.({year:chosen.year,week:focusWeek,
+       seriesId:item.seriesId,draftId:item.draftId!})));
+    }else if(inBookingWindow&&data.canEdit&&!item.booked&&
+     item.announced&&item.seriesId&&port.openPlanner){
+     line.append(button(item.eventType==="MAJOR"?"Book PPV":"Plan TV show",
+      ()=>port.openPlanner?.({year:chosen.year,week:focusWeek,
+       seriesId:item.seriesId})));
+    }else if(!item.booked&&item.announced&&offset>6)
+     line.append(node("small","Booking opens within the next six World weeks.",
+      "ppw-calendar-week-focus-location"));
+    focus.append(line);
+   }
+   rootSection.append(focus);
+  }
   const selectedBooking=yearActiveWeek===null?null:
    premiumEdition(chosen.year,yearActiveWeek);
   if(yearActiveWeek!==null&&canEdit&&!selectedBooking){
