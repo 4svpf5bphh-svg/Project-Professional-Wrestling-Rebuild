@@ -270,7 +270,7 @@ test("iPhone booker can author a Face or Heel turn for a contracted wrestler wit
  expect(methods).not.toContain("wrestlerProfile");
 });
 
-test("iPhone booker can add an unsaved feud-linked recommended angle without auto-casting",async({page})=>{
+test("iPhone booker can start an unsaved rivalry challenge in the streamlined angle editor",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];
  await page.route("**/api/session",r=>r.fulfill({json:session}));
@@ -293,16 +293,14 @@ test("iPhone booker can add an unsaved feud-linked recommended angle without aut
  });
  await page.goto("/#/planner");
  await page.getByRole("button",{name:"Edit card"}).click();
- const stories=page.locator(".ppw-card-rivalry-launch");
- await expect(stories).toBeVisible();
- await stories.getByRole("button",{name:"Call for the rematch"}).click();
+ await expect(page.locator(".ppw-card-rivalry-launch")).toHaveCount(0);
+ await page.getByRole("button",{name:"+ Add angle"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
- await expect(dialog).toBeVisible();
- await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Challenge");
- await dialog.getByRole("button",{name:"← Match or scene type"}).click();
- await expect(dialog.locator(".ppw-angle-category-tiles")
-  .getByRole("button",{name:"Challenges"})).toHaveAttribute("aria-pressed","true");
+ await expect(dialog.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
+ await dialog.locator(".ppw-angle-category-tiles")
+  .getByRole("button",{name:"Challenges"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Challenge");
  await expect(dialog.getByLabel("Storyline (optional)")).toHaveValue("gunns-rivalry");
  await expect(dialog.getByText(/needs a target|choose.*target/i).first()).toBeVisible();
  expect(methods).toEqual(["planner","load"]);
