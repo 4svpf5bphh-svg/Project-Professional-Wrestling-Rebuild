@@ -182,7 +182,15 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     prestige.earnedCount+" / "+prestige.total);
    awards.setAttribute("aria-label",
     prestige.earnedCount+" of "+prestige.total+" achievements earned");
-   crest.append(awards);
+   // Keep rank copy full width on small iPhones: the badge shares the
+   // eyebrow row rather than stealing a third grid column.
+   const copy=crest.querySelector(".ppw-prestige-crest-copy");
+   const eyebrow=copy?.querySelector(".ppw-prestige-crest-eyebrow");
+   if(copy&&eyebrow){
+    const header=el("span","ppw-home-prestige-header");
+    eyebrow.replaceWith(header);
+    header.append(eyebrow,awards);
+   }else crest.append(awards);
    hero.append(crest);
   }
   if(!bookingOpen){
