@@ -363,3 +363,13 @@
   grid-template-columns:minmax(0,1fr)}
  .ppw-calendar-week-focus-status{text-align:left}
 }
+
+/* Tentative annual dates are not yet real PPV obligations. */
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-suggested=true]{
+ border-style:dashed;border-color:#b9a77c;
+ background:linear-gradient(145deg,#343b47,#2a303c)}
+.ppw-calendar-week-grid>.ppw-calendar-week-button[data-suggested=true]
+ .ppw-calendar-year-major{color:#d8cbb1!important}
+.ppw-calendar-quarter>.ppw-calendar-week-focus{
+ margin:13px 2px 4px;padding:11px;border-color:#79a8c2}
+.ppw-calendar-quarter>.ppw-calendar-year-picker{margin:9px 2px 4px}

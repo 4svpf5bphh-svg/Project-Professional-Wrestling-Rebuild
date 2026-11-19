@@ -48,6 +48,9 @@ for(const width of [320,390]){
    name:"Year 1 week 33 — The Lottery + CWA Ascension"});
   await expect(week33).toHaveAttribute("data-has-both","true");
   await week33.click();
+  // The details sit in the selected quarter, not below the entire year.
+  await expect(page.locator(".ppw-calendar-quarter").nth(2)
+   .locator(".ppw-calendar-week-focus")).toBeVisible();
   const focus=page.getByRole("region",{name:"Week 33 shows and booking"});
   await expect(focus.locator(".ppw-calendar-week-focus-event")).toHaveCount(2);
   await expect(focus.locator('[data-event-type="REGULAR"]'))
@@ -62,6 +65,8 @@ for(const width of [320,390]){
    .toContainText("The Lottery");
   await expect(focus.locator('[data-event-type="MAJOR"]'))
    .toContainText("Card submitted");
+  await expect(page.locator('.ppw-calendar-occurrence[data-week="1-33"] .ppw-calendar-event-major'))
+   .toContainText("Submitted for lock");
   await expect(focus.getByRole("button",{name:"Review booking"})).toHaveCount(1);
   await expect(focus.getByRole("button",{name:"Book PPV"})).toHaveCount(0);
   await page.getByRole("button",{name:"Year 1 week 30 — no shows due"}).click();
