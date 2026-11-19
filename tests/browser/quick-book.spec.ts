@@ -125,7 +125,7 @@ test("Quick Book completes a team match and a tag-team turn using the ordinary s
  await expect(dialog.getByRole("group",{name:"Booking approach"})).toHaveCount(0);
 });
 
-test("book a feud match and retaliation scene with signed participants, one save and no talent search",async({page})=>{
+test("book an actual retaliation scene from Programme Desk with signed participants, one save and no talent search",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  let revision=4,saves=0;
  let saved:{slotId:string;kind:"SEGMENT"|"MATCH";position:number;payload:any}[]=[];
@@ -153,10 +153,6 @@ test("book a feud match and retaliation scene with signed participants, one save
    expect(attack?.payload.scene?.purpose).toBe("SEEK_REVENGE");
    expect(attack?.payload.scene?.location).toBe("BACKSTAGE");
    expect(attack?.payload.outcome).toBe("HAPPENS");
-   const bout=matches.find(x=>x.payload.family==="INDIVIDUAL");
-   expect(bout?.payload.sides.map((side:any)=>side.participants[0]?.personId))
-    .toEqual(["joe","mistico"]);
-   expect(bout?.payload.scriptedWinnerSide).toBe("B");
    const order=req.runningOrder as string[];
    saved=order.map((slotId:string,position:number)=>{
     const match=matches.find(x=>x.slotId===slotId);
@@ -165,7 +161,20 @@ test("book a feud match and retaliation scene with signed participants, one save
    });
    revision++;
   }
-  return route.fulfill({json:method==="planner"?{...planner,weeks:[
+  return route.fulfill({json:method==="programmes"?{
+   year:1,week:5,worldRevision:revision,canEdit:true,people:[],teams:[],
+   championships:[],programmes:[{
+    programmeId:"joe-mistico",status:"ACTIVE",heat:62,repetition:42,
+    activityCount:2,matchCount:1,segmentCount:1,sideAWins:1,sideBWins:0,
+    draws:0,championshipId:null,startedWeekIndex:1,endedWeekIndex:null,
+    sideA:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
+    sideB:[{kind:"PERSON",refId:"mistico",name:"Místico"}],
+    recentActivity:[],plannedActivity:[],medicalHolds:[],
+    eligibleCreativePeople:[],creativeAgreements:[],wrestlerChanges:[],
+    latestFollowUp:{choice:"PLAN_RETALIATION",laterAngleRecorded:false,
+     nextAngleWeekIndex:null},creativeIntent:null,blueprintProgress:null,finale:null
+   }]
+  }:method==="planner"?{...planner,weeks:[
    {...planner.weeks[0],shows:[{...planner.weeks[0]!.shows[0],slots:saved.length}]}]}:
    method==="load"?{
     showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:revision,
@@ -179,13 +188,11 @@ test("book a feud match and retaliation scene with signed participants, one save
     slots:saved
    }:method==="save"?{status:"APPLIED",result:{showId:"weekly"}}:{}});
  });
- await page.goto("/#/planner");
- await page.getByRole("button",{name:"Edit card"}).click();
- const stories=page.locator(".ppw-card-rivalry-launch");
- await expect(stories.getByRole("button",{name:"Book rivalry match"})).toBeVisible();
+ await page.goto("/#/programmes");
+ await page.getByRole("button",{name:"Strike back"}).click();
+ await expect(page.locator(".ppw-card-rivalry-launch")).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
- await stories.getByRole("button",{name:"Strike back"}).click();
  let dialog=page.getByRole("dialog",{name:"Edit angle"});
  await expect(dialog.getByText("STEP 2 OF 4 · CAST")).toBeVisible();
  await expect(dialog.locator(".ppw-guide-angle-context")).toContainText("Attack");
@@ -202,13 +209,7 @@ test("book a feud match and retaliation scene with signed participants, one save
  await dialog.getByRole("button",{name:"Complete angle"}).click();
  await expect(page.locator(".ppw-angle-card .ppw-card-booked-facts"))
   .toContainText("Samoa Joe vs Místico");
- await stories.getByRole("button",{name:"Book rivalry match"}).click();
- dialog=page.getByRole("dialog",{name:"Edit match"});
- await expect(dialog.getByText("STEP 3 OF 4 · SCRIPT")).toBeVisible();
- await expect(dialog.getByText(/default winner is not a creative recommendation/)).toBeVisible();
- await dialog.locator(".ppw-winner-choice").nth(1).click();
- await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
- await dialog.getByRole("button",{name:"Complete match"}).click();
+ await expect(page.getByRole("button",{name:"+ Add match"})).toBeVisible();
  await page.getByRole("button",{name:"Save changes"}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saves).toBe(1);
@@ -263,9 +264,7 @@ test("Programme Desk selects the real unfinished show before opening the focusse
  });
  await page.goto("/#/programmes");
  await page.getByRole("button",{name:"Book next chapter"}).first().click();
- await expect(page.locator(".ppw-card-rivalry-launch")).toBeVisible();
- await expect(page.locator('.ppw-card-rivalry-pick[aria-pressed="true"]'))
-  .toContainText("Samoa Joe vs Místico");
+ await expect(page.locator(".ppw-card-rivalry-launch")).toHaveCount(0);
  await expect(page.getByRole("button",{name:"+ Add match"})).toHaveCount(1);
  expect(calls).toEqual(["programmes","planner","load"]);
 });
