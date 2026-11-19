@@ -92,6 +92,7 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   return identify(matches.find(x=>x.m.position===position),fallback);
  };
  const worstLabel=poorExecution?boutName(poorExecution.m.position):"the match";
+ const crowdedBout=(poorExecution?.f.participantNames?.length??0)>=3;
  const concern=injuries>0?
   (voice==="FRANK"?"First priority: we've got an injury to deal with. ":
    "We need to check on the injured talent. ")+
@@ -103,7 +104,8 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
     "We can protect the booked match and still keep a better eye on the clock.":
   poorExecution?
    "I'd look again at "+worstLabel+". The work never found a comfortable rhythm. "+
-    "If you use that pairing again, give them a simpler match to settle into.":
+   (crowdedBout?"The multi-person exchanges never settled into a clear shape.":
+    "The execution did not match the wrestlers' potential."):
   lowChem?
    "I wasn't convinced by the chemistry in "+boutName(lowChem.m.position)+
     ". No need to blame anyone, but I wouldn't ask them to go longer next time.":
@@ -116,7 +118,9 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
    "Before the next show, review the timing of "+boutName(ranLong.m.position)+
    ". Give a longer bout the time it needs on the running sheet and tighten only unbooked transitions; don't sacrifice another scripted scene.":
   poorExecution?
-   "If you revisit "+worstLabel+", give the wrestlers a cleaner, shorter structure. Let them build confidence before adding extra spots.":
+   crowdedBout?
+    "For "+worstLabel+", keep two wrestlers in focus at a time, plan clear handovers between exchanges, and reserve one clean closing stretch. Shorten the structure before adding more spots.":
+    "If you revisit "+worstLabel+", give the wrestlers a cleaner, shorter structure: one opening exchange, one momentum swing and a clear finish. Let them build confidence before adding extra spots.":
   lowChem?
    "Give the wrestlers from "+boutName(lowChem.m.position)+
    " a fresh programme beat or different opponents before asking them to carry a longer rematch.":
@@ -131,7 +135,7 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   voice==="PATIENT"?" Small improvements next week will add up.":
   voice==="ECCENTRIC"?" And give them one moment they'll argue about on the way out.":
   voice==="AMBITIOUS"?" Next week we raise the bar.":
-  voice==="LOYAL"?" And make sure the locker room knows who delivered.":"";
+  voice==="LOYAL"?"":"";
  const headline=voice==="FRANK"?"Here's what worked, and what didn't":
   voice==="ECCENTRIC"?"A word from behind the curtain":
   voice==="PATIENT"?"Building on tonight":
