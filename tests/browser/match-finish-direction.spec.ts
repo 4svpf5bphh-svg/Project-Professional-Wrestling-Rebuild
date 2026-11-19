@@ -57,7 +57,7 @@ for(const width of [320,390]){
   await dialog.getByLabel("Referee spot").selectOption("REF_BUMP");
   await expect(dialog.getByLabel("Weapon used")).toHaveValue("SCREWDRIVER");
   await expect(dialog.getByLabel("Referee spot")).toHaveValue("REF_BUMP");
-  await expect(dialog.locator(".ppw-guide-extra")).not.toContainText("Weapon used");
+  await expect(dialog.getByLabel("Weapon used")).toBeVisible();
   await dialog.getByRole("button",{name:"Next · Staff briefing"}).click();
   await dialog.getByRole("button",{name:"Complete match"}).click();
   await page.getByRole("button",{name:/Save card|Save changes/}).click();
