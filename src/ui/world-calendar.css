@@ -304,8 +304,17 @@
    Do not advertise a proposed name as if the card was silently rewritten. */
 .ppw-calendar-week-button[data-booked="true"]{
  border-color:#e0bc83!important}
-.ppw-calendar-year-edition-state{font-size:9px!important;letter-spacing:.1em;
+.ppw-calendar-year-edition-state{
+ /* A submitted PPV must not display as SUBMITTE / D at 320px. */
+ display:block;max-width:100%;white-space:nowrap;overflow-wrap:normal;
+ word-break:normal;letter-spacing:0!important;
+ font-size:clamp(7px,2.3vw,9px)!important;line-height:1.2!important;
  font-weight:850;color:#ffe1ab!important}
+.ppw-calendar-year-major{
+ /* Keep annual tiles compact while retaining the complete accessible title. */
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+ line-clamp:2;max-height:2.65em;overflow:hidden;
+ word-break:normal;overflow-wrap:break-word;line-height:1.25!important}
 .ppw-calendar-year-name-warning{padding:9px 10px;
  border-radius:9px;border:1px solid #a77d52;color:#ffe4ba!important;
  background:#4a3125;font-size:12px;line-height:1.45}
