@@ -63,6 +63,7 @@ test("renewal and capacity errors resolve to specific safe actions",()=>{
   ["service capacity exceeded","OFFER_CAPACITY"],
   ["Invalid contract terms","OFFER_TERMS"],
   ["Renewal source is no longer available","RENEWAL_SOURCE"],
+  ["Invalid renewal source contract","RENEWAL_SOURCE"],
   ["Changing contract family requires a new agreement","OFFER_TERMS"],
   ["Renewal must be an exclusive or non-exclusive term agreement","OFFER_TERMS"]
  ] as const){
