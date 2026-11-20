@@ -62,6 +62,12 @@ for(const width of [320,390]){
   await expect(card.locator(".ppw-contract-renegotiate")).toBeVisible();
   await expect(card.getByLabel("Weekly guarantee ($) for Matt Riddle"))
    .toHaveValue("1200");
+  await card.getByLabel("New contract type for Matt Riddle").selectOption("EXCLUSIVE");
+  await expect(card.locator(".ppw-contract-exclusive-floor"))
+   .toContainText("Minimum exclusive weekly guarantee: $2,000/week");
+  await expect(card.getByLabel("Weekly guarantee ($) for Matt Riddle"))
+   .toHaveValue("2000");
+  await expect(card.getByLabel("Appearance fee ($) for Matt Riddle")).toBeDisabled();
   await card.getByRole("button",{name:"Send negotiated renewal"}).click();
   await expect(page.getByText(/Renewal offer sent/)).toBeVisible();
   await expect(page.getByRole("navigation",{name:"Contract Desk sections"}))
@@ -73,6 +79,8 @@ for(const width of [320,390]){
   await expect(card).toContainText("Matt Riddle");
   expect(submitted).toHaveLength(1);
   expect(submitted[0]?.sourceContractId).toBe("riddle-current");
+  expect(submitted[0]?.terms).toMatchObject({family:"EXCLUSIVE",weeklyGuarantee:2000,
+   appearanceFee:0,dateEntitlement:52});
   expect(submitted[0]?.expectedRevision).toBe(8);
   expect(reads).toBe(2); // One refresh; no extra Neon read to restore context
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
