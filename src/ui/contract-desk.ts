@@ -3,6 +3,7 @@
  */
 import type {readContractDesk} from "../db/contract-desk-workspace.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
+import {minimumExclusiveWeeklyGuarantee} from "../domain/contract-economics.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {forecastContractCost} from "../domain/contract-cost-forecast.js";
 import {remainingRosterExposure} from "../domain/remaining-contract-exposure.js";
@@ -74,6 +75,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
  let search="",focusApplied=false;
  let amounts=new Map<string,{dates:number;payment:number}>();
  const expandedRenewals=new Set<string>();
+ const renewalDrafts=new Map<string,OfferTerms>();
  // Native <details> state must survive negotiation, save and World revision
  // refresh, otherwise the manager is thrown back to the roster each time.
  const openContracts=new Set<string>();
@@ -94,6 +96,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    view=await port.load();notice=ok;clear(key);
    if(key.startsWith("negotiated:")){
     const contractId=key.slice("negotiated:".length);
+    renewalDrafts.delete(contractId);
     const selected=view.roster.find(c=>c.contractId===contractId);
     openContracts.add(contractId);
     expandedRenewals.delete(contractId);
@@ -460,29 +463,32 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      negotiate.append(el("h4","","New contract terms"),
       el("p","ppw-muted",
        "If accepted, the new package starts when the current agreement ends."));
-     const family=c.family as OfferTerms["family"];
-     const fixed=family==="EXCLUSIVE"||family==="ONE_OFF";
+     const originalFamily=c.family as OfferTerms["family"];
      const nextWeek=c.expiresWeekIndex+1;
-     const suggestion=view?.talentManager&&family==="LIMITED_NON_EXCLUSIVE"?
+     const market=c.estimatedWeeklyValue;
+     const exclusiveMinimum=typeof market==="number"&&Number.isSafeInteger(market)&&market>0?
+      minimumExclusiveWeeklyGuarantee(market):null;
+     const suggestion=view?.talentManager&&originalFamily==="LIMITED_NON_EXCLUSIVE"?
       recommendTalentOffer({personId:c.personId,name:c.name,
        marketWeeklyValue:c.estimatedWeeklyValue??9000,
        popularity:c.popularity??null,recognition:c.recognition??null,
        morale:c.morale??null,careerStage:c.careerStage,
        interest:"INTERESTED"},view.talentManager):null;
-     const draft:OfferTerms={
-      family,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
-      creativeControl:family==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
-      startWeekIndex:nextWeek,termWeeks:family==="ONE_OFF"?1:52,
-      dateEntitlement:family==="ONE_OFF"?1:family==="EXCLUSIVE"?52:40,
-      weeklyGuarantee:family==="ONE_OFF"?0:c.weeklyGuarantee,
-      appearanceFee:family==="EXCLUSIVE"?0:c.appearanceFee,
+     const draft:OfferTerms=renewalDrafts.get(c.contractId)??{
+      family:originalFamily,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
+      creativeControl:c.creativeControl as OfferTerms["creativeControl"],
+      startWeekIndex:nextWeek,termWeeks:52,
+      dateEntitlement:originalFamily==="EXCLUSIVE"?52:40,
+      weeklyGuarantee:c.weeklyGuarantee,
+      appearanceFee:originalFamily==="EXCLUSIVE"?0:c.appearanceFee,
       signingBonus:c.signingBonus
      };
      const recommended:OfferTerms|null=suggestion?{
       ...suggestion.terms,startWeekIndex:nextWeek
      }:null;
-     if(recommended)Object.assign(draft,recommended);
-     if(suggestion&&recommended){
+     if(recommended&&!renewalDrafts.has(c.contractId))Object.assign(draft,recommended);
+     renewalDrafts.set(c.contractId,draft);
+     if(suggestion&&recommended&&draft.family==="LIMITED_NON_EXCLUSIVE"){
       const opinion=el("div","ppw-contract-manager-recommendation");
       opinion.append(el("small","ppw-contract-manager-tag",
        suggestion.managerName+" · TALENT MANAGER"),
@@ -491,27 +497,51 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       const restore=btn("Use recommended terms",()=>{
        Object.assign(draft,recommended);
        pending.delete("negotiated:"+c.contractId);
-       // Updating the existing elements, rather than recreating the contract,
-       // preserves the selected wrestler and World command identity.
-       for(const [key,value] of [
-        ["termWeeks",draft.termWeeks],["dateEntitlement",draft.dateEntitlement],
-        ["weeklyGuarantee",draft.weeklyGuarantee],
-        ["appearanceFee",draft.appearanceFee],["signingBonus",draft.signingBonus]
-       ] as const){
-        const input=negotiate.querySelector<HTMLInputElement>(
-         '[data-term-key="'+key+'"]');
-        if(input)input.value=String(value);
-       }
-       updateQuote();refreshPreset();
+       paint();
       });
       restore.className+=" ppw-contract-recommend-apply";
       opinion.append(restore);negotiate.append(opinion);
      }
+     const familyLabel=el("label","ppw-contract-family-choice","New contract type");
+     const familySelect=document.createElement("select");
+     familySelect.setAttribute("aria-label","New contract type for "+c.name);
+     for(const [key,name] of [
+      ["LIMITED_NON_EXCLUSIVE","Non-exclusive · purchased dates"],
+      ["EXCLUSIVE","Exclusive · unlimited appearances"]
+     ] as const){
+      const option=document.createElement("option");option.value=key;option.textContent=name;
+      familySelect.append(option);
+     }
+     familySelect.value=draft.family;
+     familySelect.onchange=()=>{
+      const next=familySelect.value as "LIMITED_NON_EXCLUSIVE"|"EXCLUSIVE";
+      if(next===draft.family)return;
+      if(next==="EXCLUSIVE"){
+       draft.dateEntitlement=draft.termWeeks;draft.appearanceFee=0;
+       if(exclusiveMinimum!==null)
+        draft.weeklyGuarantee=Math.max(draft.weeklyGuarantee,exclusiveMinimum);
+      }else{
+       draft.dateEntitlement=Math.min(draft.termWeeks,40);
+       draft.appearanceFee=c.appearanceFee;
+      }
+      draft.family=next;
+      pending.delete("negotiated:"+c.contractId);
+      paint();
+     };
+     familyLabel.append(familySelect);negotiate.append(familyLabel);
      const quote=el("section","ppw-contract-cost-quote");
      const managerNote=el("div","ppw-contract-manager-take");
      const panel=el("div","ppw-contract-renegotiate-fields");
      const updateQuote=()=>{
       packageQuote(quote,draft);
+      if(draft.family==="EXCLUSIVE"){
+       const meets=exclusiveMinimum!==null&&draft.weeklyGuarantee>=exclusiveMinimum;
+       const floor=el("p","ppw-contract-exclusive-floor",
+        exclusiveMinimum===null?"Exclusive minimum wage unavailable for this wrestler.":
+         "Minimum exclusive weekly guarantee: "+money(exclusiveMinimum)+"/week. "+
+         (meets?"Required wage floor met.":"Raise the weekly guarantee before offering."));
+       floor.dataset.valid=String(meets);quote.append(floor);
+      }
       managerNote.replaceChildren();
       if(!view?.hasTalentManager)return;
       if(![draft.termWeeks,draft.dateEntitlement,draft.weeklyGuarantee,
@@ -551,12 +581,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      const timing=el("div","ppw-contract-renegotiate-fields");
      const buttons=new Map<string,HTMLButtonElement>();
      const refreshPreset=()=>{
-      const selected=selectedContractTermPreset(family,draft.termWeeks,draft.dateEntitlement);
+      const selected=selectedContractTermPreset(draft.family,draft.termWeeks,draft.dateEntitlement);
       for(const [key,control] of buttons)
        control.setAttribute("aria-pressed",String(key===selected));
      };
      for(const choice of CONTRACT_TERM_PRESETS){
-      const plan=applyContractTermPreset(family,choice.id);
+      const plan=applyContractTermPreset(draft.family,choice.id);
       const control=btn(choice.label,()=>{
        draft.termWeeks=plan.weeks;draft.dateEntitlement=plan.dates;
        const weeks=timing.querySelector<HTMLInputElement>('[data-renew-weeks="yes"]');
@@ -568,7 +598,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       },!editable());
       control.className+=" ppw-contract-term-choice";
       control.append(el("small","",plan.weeks+" weeks · "+
-       (family==="EXCLUSIVE"?"Unlimited dates":plan.dates+" dates")));
+       (draft.family==="EXCLUSIVE"?"Unlimited dates":plan.dates+" dates")));
       presetRow.append(control);buttons.set(choice.id,control);
      }
      const numeric=(name:string,key:"termWeeks"|"dateEntitlement"|"weeklyGuarantee"|"appearanceFee"|"signingBonus",
@@ -582,7 +612,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        if(input.value==="")return;
        draft[key]=Number(input.value);
        if(key==="termWeeks"){
-        if(family==="EXCLUSIVE")draft.dateEntitlement=Number(input.value);
+        if(draft.family==="EXCLUSIVE")draft.dateEntitlement=Number(input.value);
         else draft.dateEntitlement=Math.min(draft.dateEntitlement,Number(input.value));
         const dates=timing.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
         if(dates)dates.value=String(draft.dateEntitlement);
@@ -593,12 +623,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       if(key==="dateEntitlement")input.dataset.renewDates="yes";
       label.append(input);destination.append(label);
      };
-     numeric("New term (weeks)","termWeeks",1,52,family==="ONE_OFF",timing);
-     numeric("Purchased dates","dateEntitlement",1,52,fixed,timing);
+     numeric("New term (weeks)","termWeeks",1,52,false,timing);
+     numeric("Purchased dates","dateEntitlement",1,52,draft.family==="EXCLUSIVE",timing);
      advanced.append(timing);refreshPreset();
      negotiate.append(presetRow,advanced);
-     numeric("Weekly guarantee ($)","weeklyGuarantee",0,1000000000,family==="ONE_OFF");
-     numeric("Appearance fee ($)","appearanceFee",0,1000000000,family==="EXCLUSIVE");
+     numeric("Weekly guarantee ($)","weeklyGuarantee",0,1000000000);
+     numeric("Appearance fee ($)","appearanceFee",0,1000000000,draft.family==="EXCLUSIVE");
      numeric("Signing bonus ($)","signingBonus",0,1000000000);
      const dropdown=<T extends string>(name:string,options:readonly T[],initial:T,set:(v:T)=>void)=>{
       const label=el("label","",name),select=document.createElement("select");
@@ -613,7 +643,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      dropdown("Roster role",["DEVELOPMENTAL","REGULAR","FEATURED","UPPER_CARD",
       "MAIN_EVENT","SPECIAL_ATTRACTION"] as const,draft.roleExpectation,
       value=>{draft.roleExpectation=value;});
-     if(family!=="ONE_OFF")dropdown("Creative control",
+     dropdown("Creative control",
       ["NONE","CONSULTATION","PROTECTED_FINISHES","FULL_APPROVAL"] as const,
       draft.creativeControl,value=>{draft.creativeControl=value;});
      negotiate.append(managerNote,quote,panel);
@@ -626,9 +656,16 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       if(!numbers.every(v=>Number.isSafeInteger(v)&&v>=0)||
        draft.termWeeks<1||draft.termWeeks>52||
        draft.dateEntitlement<1||draft.dateEntitlement>104||
-       (family==="EXCLUSIVE"&&draft.dateEntitlement!==draft.termWeeks)||
-       (family!=="EXCLUSIVE"&&draft.dateEntitlement>draft.termWeeks)){
+       (draft.family==="EXCLUSIVE"&&
+        (draft.dateEntitlement!==draft.termWeeks||draft.appearanceFee!==0))||
+       (draft.family!=="EXCLUSIVE"&&draft.dateEntitlement>draft.termWeeks)){
        error="Review the proposed duration, dates and payment values.";
+       render();return;
+      }
+      if(draft.family==="EXCLUSIVE"&&
+       (exclusiveMinimum===null||draft.weeklyGuarantee<exclusiveMinimum)){
+       error=exclusiveMinimum===null?"Exclusive wage minimum unavailable. Refresh the contract desk.":
+        "Exclusive minimum weekly guarantee is "+money(exclusiveMinimum)+"/week.";
        render();return;
       }
       void action("negotiated:"+c.contractId,m=>port.negotiatedRenewal({
