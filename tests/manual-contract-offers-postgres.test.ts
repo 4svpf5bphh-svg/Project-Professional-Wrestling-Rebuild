@@ -146,12 +146,12 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   assert.equal(renewed.status,"APPLIED");
   assert.equal(renewed.result.accepted,1);
   const reservation=await withWorldTransaction(db.pool,tx=>tx.query<{status:string;proposed_terms:{
-    creativeControl:string;weeklyGuarantee:number;termWeeks:number}}>(`SELECT status,proposed_terms
+    creativeControl:string;weeklyGuarantee:number;termWeeks:number;family:string}}>(`SELECT status,proposed_terms
     FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND contract_id=$2`,[world,source]));
   assert.equal(reservation[0]!.status,"ACCEPTED");
   assert.equal(reservation[0]!.proposed_terms.weeklyGuarantee,12000);
   assert.equal(reservation[0]!.proposed_terms.termWeeks,13);
-  assert.equal((reservation[0]!.proposed_terms as {family:string}).family,"EXCLUSIVE");
+  assert.equal(reservation[0]!.proposed_terms.family,"EXCLUSIVE");
   const beforeExpiry=await withWorldTransaction(db.pool,tx=>tx.query<{
    family:string;weekly_guarantee:string;remaining_dates:number|null}>(
    "SELECT family,weekly_guarantee,remaining_dates FROM ppw_contracts WHERE world_id=$1 AND contract_id=$2",
