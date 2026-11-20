@@ -85,7 +85,7 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  const manager=offer.locator(".ppw-directory-adviser");
  await expect(manager).toBeVisible();
  await expect(manager).toHaveAttribute("data-risk","watch");
- await expect(manager).toContainText("Unsustainable on current cash");
+ await expect(manager).toContainText("Large cash-only exposure");
  await expect(offer.locator(".ppw-directory-affordability")).toHaveAttribute("data-risk","true");
  await offer.getByLabel("Appearance fee ($)").fill("12500");
  const stress=offer.locator(".ppw-directory-cash-stress");
