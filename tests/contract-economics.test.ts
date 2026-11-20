@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {marketWeeklyValue,canAcceptTerms,canAddDates,offerUtility,
+import {marketWeeklyValue,minimumExclusiveWeeklyGuarantee,canAcceptTerms,canAddDates,offerUtility,
  type PersonEconomics,type OfferTerms} from "../src/domain/contract-economics.js";
 
 const person:PersonEconomics={recognition:80,popularity:70,inRingQuality:80,matchCraft:80,
@@ -11,7 +11,10 @@ const limited:OfferTerms={family:"LIMITED_NON_EXCLUSIVE",roleExpectation:"MAIN_E
 test("original market formula and exclusive minimum guarantee",()=>{
  const avg=(person.inRingQuality+person.matchCraft+person.presentation)/3;
  assert.equal(marketWeeklyValue(person),Math.round(500+person.recognition*50+person.popularity*30+avg*25));
- assert.match(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",dateEntitlement:13,weeklyGuarantee:1,appearanceFee:0},[],0)??"",/minimum/);
+ const minimum=minimumExclusiveWeeklyGuarantee(marketWeeklyValue(person));
+ assert.equal(minimum,Math.ceil(marketWeeklyValue(person)/2));
+ assert.match(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",dateEntitlement:13,weeklyGuarantee:minimum-1,appearanceFee:0},[],0)??"",/minimum/);
+ assert.equal(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",dateEntitlement:13,weeklyGuarantee:minimum,appearanceFee:0},[],0),null);
  assert.equal(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",dateEntitlement:13,weeklyGuarantee:marketWeeklyValue(person),appearanceFee:0},[],0),null);
 });
 test("future non-exclusive service capacity accounts for unused dates not historical purchases",()=>{
