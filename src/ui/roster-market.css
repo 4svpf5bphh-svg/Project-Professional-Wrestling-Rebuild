@@ -350,3 +350,10 @@
  .ppw-directory-filters{padding:10px}
  .ppw-directory-card .ppw-directory-interest{margin-top:3px}
 }
+
+/* Phase 62: show the hard wage minimum before submission, on mobile. */
+.ppw-directory-exclusive-minimum:not([hidden]){display:grid;gap:5px;padding:10px 12px;
+ border:1px solid #5b9bb9;border-radius:10px;background:#123348;color:#e9f9ff;margin:8px 0}
+.ppw-directory-exclusive-minimum[data-shortfall="true"]{border-color:#edb659;background:#3c2c32}
+.ppw-directory-exclusive-minimum small{font-size:12px;line-height:1.45}
+.ppw-directory-exclusive-minimum button{justify-self:start;min-height:42px}
