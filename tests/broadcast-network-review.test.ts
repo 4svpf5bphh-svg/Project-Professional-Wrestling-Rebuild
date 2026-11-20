@@ -124,7 +124,10 @@ test("long-cycle regular schedules use the same valid 260-week cadence as the ca
   regularSchedule:[{cadenceWeeks:104,anchorWeek:1}]};
  assert.equal(assessBroadcastNetwork(rare,[],0)!.status,"OFF_WEEK");
  assert.equal(assessBroadcastNetwork(rare,[ep(1,2)],1)!.status,"ON_TARGET");
- assert.equal(assessBroadcastNetwork(rare,[],2)!.missedConsecutively,0);
+ assert.equal(assessBroadcastNetwork(rare,[ep(1,2)],2)!.missedConsecutively,0,
+  "An off-week does not erase a duly certified previous broadcast");
+ assert.equal(assessBroadcastNetwork(rare,[],2)!.missedConsecutively,1,
+  "A genuinely missed scheduled episode remains missed on the off-week");
  assert.throws(()=>assessBroadcastNetwork({...rare,regularSchedule:[
-  {cadenceWeeks:4,anchorWeek:4}]},[],1),/Invalid/);
+  {cadenceWeeks:0,anchorWeek:4}]},[],1),/Invalid/);
 });

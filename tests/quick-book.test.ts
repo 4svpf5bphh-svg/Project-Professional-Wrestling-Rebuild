@@ -5,7 +5,10 @@ import {isQuickBookField} from "../src/ui/quick-book.js";
 test("Quick Book keeps scripted match essentials visible without duplicating the model",()=>{
  for(const field of ["Winner","Stipulation","Finish","Championship","Minutes"])
   assert.equal(isQuickBookField("MATCH",field),true,field);
- for(const field of ["Intent","Who uses the foreign object?","Technical wrestling"])
+ for(const field of ["Weapon used","Referee spot","Who uses the foreign object?",
+  "Who gets caught cheating?"])
+  assert.equal(isQuickBookField("MATCH",field),true,field);
+ for(const field of ["Intent","Technical wrestling"])
   assert.equal(isQuickBookField("MATCH",field),false,field);
 });
 
