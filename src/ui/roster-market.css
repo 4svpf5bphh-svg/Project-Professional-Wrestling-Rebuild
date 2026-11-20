@@ -350,3 +350,8 @@
  .ppw-directory-filters{padding:10px}
  .ppw-directory-card .ppw-directory-interest{margin-top:3px}
 }
+
+.ppw-directory-exclusive-floor{margin:8px 0 2px;padding:9px 11px;
+ border-left:3px solid #72c8e9;background:rgba(20,60,79,.6);
+ color:#d6f0ff;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.ppw-directory-exclusive-floor[data-valid="false"]{border-color:#e4aa63;color:#ffd4a2}
