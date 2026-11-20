@@ -127,8 +127,14 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
    requestId:"overcapacity-"+id,expectedRevision:9,
    additionalDates:12,additionalPayment:0}),/extra appearances fit/);
 
-  const renewalTerms:OfferTerms={...limited,startWeekIndex:13,termWeeks:13,
-   weeklyGuarantee:12000,appearanceFee:5000,signingBonus:2000};
+  const renewalTerms:OfferTerms={...exclusive,startWeekIndex:13,termWeeks:13,
+    weeklyGuarantee:12000,appearanceFee:0,signingBonus:2000};
+   // A pending exclusive replacement must honour the minimum and must not
+   // change the old signed non-exclusive contract.
+   await assert.rejects(submitManualContractOffer(db.pool,{worldId:world,playerId:playerA,
+    promotionId:pA,personId:addendumPerson,sourceContractId:source,
+    requestId:"below-minimum-"+id,expectedRevision:9,
+    terms:{...renewalTerms,weeklyGuarantee:1}}),/minimum weekly guarantee/);
   const renew="renegotiate-"+id;
   // Exercise the authenticated HTTP routing layer as well as contract SQL:
   // a missing sourceContractId used to turn this valid renewal into a
@@ -148,6 +154,7 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   assert.equal(reservation[0]!.status,"ACCEPTED");
   assert.equal(reservation[0]!.proposed_terms.weeklyGuarantee,12000);
   assert.equal(reservation[0]!.proposed_terms.termWeeks,13);
+   assert.equal((reservation[0]!.proposed_terms as {family:string}).family,"EXCLUSIVE");
   const final=await readContractDesk(db.pool,world,playerA,pA);
   assert.equal(final.summary.pendingOffers,0);
   assert.equal(final.roster[0]!.weeklyGuarantee,100);
