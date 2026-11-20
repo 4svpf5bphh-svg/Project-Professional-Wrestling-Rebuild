@@ -160,3 +160,41 @@ test("Contract Desk compares ten genuine annual signings with cash, without anot
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+for(const width of [320,390]){
+ test("exclusive minimum is actionable before Talent Market offer at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:844});
+  let offer:Record<string,unknown>|null=null;
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const m=r.request().postDataJSON() as Record<string,unknown>;
+   if(m.method==="wrestlerDirectory")return r.fulfill({json:market});
+   if(m.method==="submitContractOffer"){
+    offer=m.terms as Record<string,unknown>;
+    return r.fulfill({json:{status:"APPLIED",result:{offerId:"star-offer"}}});
+   }
+   return r.fulfill({json:{}});
+  });
+  await page.goto("/#/market");
+  const talent=page.locator(".ppw-directory-card").first();
+  await talent.locator("summary").click();
+  await talent.getByRole("button",{name:"Make contract offer"}).click();
+  const editor=page.locator(".ppw-directory-offer");
+  await editor.getByRole("button",{name:"Customise this offer"}).click();
+  await editor.getByLabel("Contract type").selectOption("EXCLUSIVE");
+  const minimum=editor.locator(".ppw-directory-exclusive-minimum");
+  await expect(minimum).toContainText("Exclusive wage minimum · $5,000/week");
+  await expect(minimum).toHaveAttribute("data-shortfall","true");
+  await editor.getByRole("button",{name:"Use minimum $5,000"}).click();
+  await expect(minimum).toHaveAttribute("data-shortfall","false");
+  await expect(editor.getByLabel("Weekly guarantee ($)")).toHaveValue("5000");
+  await editor.getByRole("button",{name:"Submit offer"}).click();
+  await expect(page.getByText(/Offer sent/)).toBeVisible();
+  expect(offer).toMatchObject({
+   family:"EXCLUSIVE",weeklyGuarantee:5000,appearanceFee:0
+  });
+  expect(offer?.dateEntitlement).toBe(offer?.termWeeks);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
