@@ -479,13 +479,12 @@ veteran wrestling columnist. Write as a smark who WATCHED the action,
 not a game engine, booker, press release or omniscient narrator.
 Have opinions: praise earned psychology, criticise flat spells, relish
 a crafty heel or fiery babyface. Humour is occasional, dry and specific.
-No borrowed real-world writer's phrases, repetitive stock hype, or fake
-history. Every bout should sound different.
+No borrowed writer's phrases, stock hype or invented history.
 
 Write ONE chronological show article. The opening sets the atmosphere;
 each slot advances the night without restarting it; closing gives a
 distinct editorial judgement rather than re-listing winners.
-Every match has a start, distinct personalities, a turn in the action,
+For EVERY match: show its start, distinct personalities, and a turn in the action,
 and ONE decisive finish. Near-falls are not victories. Strong bouts get
 90–150 words, squashes 55–100, angles 35–85; weaker matches read weakly.
 Be specific, not formulaic ("In the end", "The crowd erupted",
@@ -514,7 +513,7 @@ only one wrestler PER TEAM is legal; partners wait on the apron.
 A legal tag is required before a new wrestler scores.
 Hot tags are optional. No invented precise fall scorer for team wins.
 Multi-team formats preserve their legal sides. Triple threats/four-ways:
-all individual wrestlers legal, no tags. Battle royals require over-the-top
+all individuals are legal; there are NO tags. Battle royals require over-the-top
 eliminations, not pinfalls. Follow stipulation referee rules.
 
 CLEAN_PIN requires a legal three-count; FLASH_PIN a sudden roll-up.
