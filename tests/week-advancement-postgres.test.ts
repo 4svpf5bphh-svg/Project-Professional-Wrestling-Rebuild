@@ -53,10 +53,15 @@ test("week cannot advance until each active promotion is resolved and certified;
        [worldId,promoA,promoB]);
       await tx.query(`INSERT INTO ppw_contract_renewal_proposals(world_id,proposal_id,
        contract_id,promotion_id,person_id,status,created_week_index,proposed_terms)
-       VALUES($1,'renewal','renew-contract',$2,'renewing','ACCEPTED',48,$3::jsonb)`,
-       [worldId,promoA,JSON.stringify({family:"LIMITED_NON_EXCLUSIVE",termWeeks:13,
-        dateEntitlement:5,weeklyGuarantee:250,appearanceFee:20,roleExpectation:"REGULAR",
-        creativeControl:"NONE",signingBonus:0})]);
+
+       VALUES($1,'renewal','renew-contract',$2,'renewing','ACCEPTED',48,$3::jsonb),
+        ($1,'renewal-inverse','expire-contract',$4,'expiring','ACCEPTED',48,$5::jsonb)`,
+       [worldId,promoA,JSON.stringify({family:"EXCLUSIVE",termWeeks:13,
+        dateEntitlement:13,weeklyGuarantee:250,appearanceFee:0,roleExpectation:"REGULAR",
+        creativeControl:"NONE",signingBonus:0}),promoB,
+        JSON.stringify({family:"LIMITED_NON_EXCLUSIVE",termWeeks:13,
+         dateEntitlement:5,weeklyGuarantee:500,appearanceFee:125,
+         roleExpectation:"MAIN_EVENT",creativeControl:"NONE",signingBonus:0})]);
       await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,'arena-a','A'),($1,'arena-b','B')",[worldId]);
       // This fixture tests advancement, not certification production.
       await tx.query("INSERT INTO ppw_week_resource_clearances(world_id,year,week,eligible_promotions,inspected_slots,command_request_id) VALUES($1,1,52,2,2,'fixture-clear')",[worldId]);
@@ -141,9 +146,10 @@ test("week cannot advance until each active promotion is resolved and certified;
       const rows=await tx.query<{promotion_id:string;cash:string;last_weekly_net:string|null;
        runway_weeks:number|null;financial_distress:string|null}>(
         "SELECT promotion_id,cash,last_weekly_net,runway_weeks,financial_distress FROM ppw_promotions WHERE world_id=$1 ORDER BY promotion_id",[worldId]);
-      const contracts=await tx.query<{contract_id:string;status:string;start_week_index:number;
-       expires_week_index:number;remaining_dates:number|null;weekly_guarantee:string}>(
-        "SELECT contract_id,status,start_week_index,expires_week_index,remaining_dates,weekly_guarantee FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]);
+      const contracts=await tx.query<{contract_id:string;status:string;family:string;start_week_index:number;
+       expires_week_index:number;remaining_dates:number|null;weekly_guarantee:string;
+       date_entitlement:number;appearance_fee:string}>(
+        "SELECT contract_id,status,family,start_week_index,expires_week_index,remaining_dates,weekly_guarantee,date_entitlement,appearance_fee FROM ppw_contracts WHERE world_id=$1 ORDER BY contract_id",[worldId]);
       const status=await tx.query<{status:string}>(
         "SELECT status FROM ppw_contract_renewal_proposals WHERE world_id=$1",[worldId]);
       return {rows,contracts,status};
@@ -162,13 +168,27 @@ test("week cannot advance until each active promotion is resolved and certified;
     assert.equal(b.financial_distress,"WATCH");
     assert.equal(inactive.last_weekly_net,null);
     assert.equal(inactive.financial_distress,null);
-    assert.equal(finance.contracts[0]!.status,"EXPIRED");
-    assert.equal(finance.contracts[1]!.status,"SIGNED");
-    assert.equal(finance.contracts[1]!.start_week_index,52);
-    assert.equal(finance.contracts[1]!.expires_week_index,64);
-    assert.equal(finance.contracts[1]!.remaining_dates,5);
-    assert.equal(Number(finance.contracts[1]!.weekly_guarantee),250);
-    assert.equal(finance.status[0]!.status,"ACTIVATED");
+    // Both directions must activate only after the paid old term. Neither
+    // family was changed before this full, certified World advancement.
+    const formerlyExclusive=finance.contracts.find(c=>c.contract_id==="expire-contract")!;
+    assert.equal(formerlyExclusive.status,"SIGNED");
+    assert.equal(formerlyExclusive.family,"LIMITED_NON_EXCLUSIVE");
+    assert.equal(formerlyExclusive.start_week_index,52);
+    assert.equal(formerlyExclusive.expires_week_index,64);
+    assert.equal(formerlyExclusive.remaining_dates,5);
+    assert.equal(formerlyExclusive.date_entitlement,5);
+    assert.equal(Number(formerlyExclusive.weekly_guarantee),500);
+    assert.equal(Number(formerlyExclusive.appearance_fee),125);
+    const formerlyLimited=finance.contracts.find(c=>c.contract_id==="renew-contract")!;
+    assert.equal(formerlyLimited.status,"SIGNED");
+    assert.equal(formerlyLimited.family,"EXCLUSIVE");
+    assert.equal(formerlyLimited.start_week_index,52);
+    assert.equal(formerlyLimited.expires_week_index,64);
+    assert.equal(formerlyLimited.remaining_dates,null);
+    assert.equal(formerlyLimited.date_entitlement,13);
+    assert.equal(Number(formerlyLimited.weekly_guarantee),250);
+    assert.equal(Number(formerlyLimited.appearance_fee),0);
+    assert.deepEqual(finance.status.map(r=>r.status),["ACTIVATED","ACTIVATED"]);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
       await tx.query("DELETE FROM ppw_ledger_events WHERE world_id=$1",[worldId]);
