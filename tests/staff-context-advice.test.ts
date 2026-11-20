@@ -198,7 +198,7 @@ test("Talent Manager flags cash-only shortfall for oversized annual deals even b
   existingRosterExposure:1_000_000,pendingOfferExposure:200_000
  },crew);
  assert.ok(large.some(n=>n.level==="WATCH"&&
-  n.title==="Large cash-only exposure"&&n.message.includes("future TV")));
+  n.title==="Large cash-only exposure"&&/future TV/i.test(n.message)));
  assert.ok(!large.some(n=>n.title==="Offer fits the current plan"));
 });
 
