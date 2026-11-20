@@ -248,3 +248,42 @@ test("Ratings war keeps a lower-ranked owner visible and ignores legacy PPV rows
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+test("320px VibeFlix honours fortnightly slots without disguising an earlier missed episode",async({page})=>{
+ await page.setViewportSize({width:320,height:720});
+ const owner={world:{revision:8,name:"Genesis",year:1,week:5,phase:"OPEN",
+  nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
+  membership:"ACTIVE",promotion:{id:"cwa",name:"CWA",tier:"LOCAL",cash:500000,debt:0}};
+ const view={name:"CWA",tier:"LOCAL",year:1,week:5,worldRevision:8,phase:"OPEN",
+  homeMarketName:"Midlands",mediaReach:80,cash:500000,debt:0,standing:null,
+  weeklyMediaIncome:10000,weeklySponsorIncome:0,
+  weeklyFixedOverhead:2000,weeklyGuarantees:3000,weeklyStaffPayroll:0,
+  recurringMargin:5000,lastWeeklyNet:0,runwayWeeks:null,financialDistress:"HEALTHY",
+  shows:[],territories:[],recentTransactions:[],
+  rollingFourWeeks:{income:0,spending:0,net:0,byCategory:[]},
+  commercialOffers:[],commercialAgreements:[{
+   dealId:"deal-vibeflix",kind:"BROADCAST",offerCode:"BROADCAST_GROWTH",
+   weeklyIncome:10000,baselineIncome:0,reachIncrease:8,source:"HUMAN",
+   startWeekIndex:2,endWeekIndex:30,airingDay:5,airingHour:20,
+   regularSchedule:[{cadenceWeeks:2,anchorWeek:2}],
+   networkReview:{dealId:"deal-vibeflix",offerCode:"BROADCAST_GROWTH",
+    reviewWeekIndex:3,target:0.11,rating:null,showId:null,
+    status:"OFF_WEEK",missedConsecutively:1,previousMisses:1,
+    milestone:null,bonusEligible:false}
+  }]};
+ await page.route("**/api/session",route=>route.fulfill({json:{
+  worldId:"genesis",playerId:"owner",csrfToken:"opaque",overview:owner,
+  availablePromotions:[]}}));
+ await page.route("**/api/card",route=>route.fulfill({json:view}));
+ await page.goto("/#/commercials");
+ const slot=page.locator(".ppw-commercial-slot").first();
+ await expect(slot).toContainText("Friday at 20:00 · Every other week");
+ await expect(slot).not.toContainText("Weekly shows fixed");
+ const review=page.locator(".ppw-commercial-partner-review");
+ await expect(review).toContainText("SCHEDULED OFF WEEK");
+ await expect(review).toContainText("No new episode was due");
+ await expect(review).toContainText("Earlier missed broadcasts still count");
+ await expect(review).not.toContainText("Performance bonus not earned this week");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});

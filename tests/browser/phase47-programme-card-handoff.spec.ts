@@ -57,8 +57,8 @@ for(const width of [320,390])test(`Phase 47 ${width}px: wrestler-led rivalry ent
  await page.getByRole("button",{name:"Book next chapter"}).click();
  await expect.poll(()=>page.evaluate(()=>location.hash)).toBe("#/card");
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
- const selected=page.locator(".ppw-card-rivalry-pick[aria-pressed='true']");
- await expect(selected).toHaveText("Samoa Joe vs Matt Riddle");
+ await expect(page.locator(".ppw-card-rivalry-launch")).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Add angle/})).toBeVisible();
  expect(calls).toContain("planner");
  expect(calls).toContain("load");
  expect(calls).not.toContain("save");
@@ -70,10 +70,8 @@ for(const width of [320,390])test(`Phase 47 ${width}px: wrestler-led rivalry ent
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await page.goForward();
  await expect.poll(()=>page.evaluate(()=>location.hash)).toBe("#/card");
- await expect(page.locator(".ppw-card-rivalry-pick[aria-pressed='true']"))
-  .toHaveText("Samoa Joe vs Matt Riddle");
+ await expect(page.locator(".ppw-card-rivalry-launch")).toHaveCount(0);
  await page.reload();
- await expect(page.locator(".ppw-card-rivalry-pick[aria-pressed='true']"))
-  .toHaveText("Samoa Joe vs Matt Riddle");
+ await expect(page.locator(".ppw-card-rivalry-launch")).toHaveCount(0);
  expect(calls).not.toContain("save");
 });

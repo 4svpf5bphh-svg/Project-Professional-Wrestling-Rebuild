@@ -3,11 +3,13 @@
  * broadcaster's published opinion respond to delivery and ratings.
  */
 import {broadcasterRatingTarget,COMMERCIAL_COMPANIES} from "./commercial-offers.js";
-export type BroadcastDelivery="ON_TARGET"|"WATCH"|"BELOW_TARGET"|"OFF_SLOT"|"NO_TV"|"LEGACY";
+export type BroadcastDelivery="ON_TARGET"|"WATCH"|"BELOW_TARGET"|"OFF_SLOT"|"NO_TV"|"LEGACY"|"OFF_WEEK";
 export type BroadcastMilestone="WARNING"|"FINAL_WARNING"|"RECOVERED"|null;
 export interface BroadcastNetworkTerms{
  dealId:string;offerCode:string;tier:string;startWeekIndex:number;endWeekIndex:number;
  airingDay:number|null;airingHour:number|null;
+ /** Contracted regular-show recurrence (same rows used by the PPW calendar). */
+ regularSchedule?:readonly {cadenceWeeks:number;anchorWeek:number}[];
 }
 export interface CertifiedNetworkWeek{
  weekIndex:number;showId:string;showDay:number|null;
@@ -19,9 +21,24 @@ export interface BroadcastNetworkReview{
  missedConsecutively:number;previousMisses:number;milestone:BroadcastMilestone;
  bonusEligible:boolean;
 }
+/** Human wording for the very same regular TV series that drive reviews. */
+export function broadcastScheduleLabel(series:BroadcastNetworkTerms["regularSchedule"]|null){
+ if(!series?.length)return "Weekly TV";
+ if(series.length>1)return "Multiple TV series";
+ const cadence=series[0]!.cadenceWeeks;
+ return cadence===1?"Weekly TV":cadence===2?"Every other week":
+  "Every "+cadence+" weeks";
+}
 const missed=(s:BroadcastDelivery)=>s==="BELOW_TARGET"||s==="OFF_SLOT"||s==="NO_TV";
+function scheduled(terms:BroadcastNetworkTerms,index:number){
+ const series=terms.regularSchedule;
+ // Legacy deals without imported show series retain original weekly rules.
+ return !series?.length||series.some(s=>index>=s.anchorWeek&&
+  (index-s.anchorWeek)%s.cadenceWeeks===0);
+}
 function delivery(terms:BroadcastNetworkTerms,e:CertifiedNetworkWeek|undefined,
- target:number):BroadcastDelivery{
+ target:number,weekIndex:number):BroadcastDelivery{
+ if(!scheduled(terms,weekIndex))return "OFF_WEEK";
  if(!e||e.audienceFormat==="PPV")return "NO_TV";
  if(terms.airingDay!==null&&e.showDay!==terms.airingDay)return "OFF_SLOT";
  if(e.audienceFormat===null||e.rating===null)return "LEGACY";
@@ -38,7 +55,11 @@ export function assessBroadcastNetwork(terms:BroadcastNetworkTerms,
   (terms.airingDay!==null&&(!Number.isInteger(terms.airingDay)||
    terms.airingDay<1||terms.airingDay>7))||
   (terms.airingHour!==null&&(!Number.isInteger(terms.airingHour)||
-   terms.airingHour<0||terms.airingHour>23)))
+   terms.airingHour<0||terms.airingHour>23))||
+  (terms.regularSchedule!==undefined&&(!Array.isArray(terms.regularSchedule)||
+   terms.regularSchedule.length>16||terms.regularSchedule.some(s=>
+    !Number.isSafeInteger(s.cadenceWeeks)||s.cadenceWeeks<1||s.cadenceWeeks>260||
+    !Number.isSafeInteger(s.anchorWeek)||s.anchorWeek<0))))
   throw new Error("Invalid broadcast obligations");
  if(reviewWeekIndex<terms.startWeekIndex||reviewWeekIndex>terms.endWeekIndex)return null;
  const target=broadcasterRatingTarget(terms.offerCode,terms.tier);
@@ -46,7 +67,7 @@ export function assessBroadcastNetwork(terms:BroadcastNetworkTerms,
  for(const e of episodes){
   if(!Number.isSafeInteger(e.weekIndex)||!e.showId||
    e.showId.length>200||e.weekIndex<terms.startWeekIndex||
-   e.weekIndex>reviewWeekIndex||e.weekIndex<reviewWeekIndex-4||
+   e.weekIndex>reviewWeekIndex||e.weekIndex<reviewWeekIndex-52||
    (e.showDay!==null&&(!Number.isInteger(e.showDay)||
     e.showDay<1||e.showDay>7))||
    (e.rating!==null&&(!Number.isFinite(e.rating)||e.rating<0||e.rating>10))||
@@ -55,22 +76,26 @@ export function assessBroadcastNetwork(terms:BroadcastNetworkTerms,
  }
  const streak=(at:number)=>{
   let n=0;
-  for(let w=at;w>=Math.max(terms.startWeekIndex,at-4);w--){
-   if(!missed(delivery(terms,evidence.get(w),target)))break;
+  // Count scheduled TV deliveries, not empty calendar weeks; at most five
+  // due episodes over the last year. The DB remains bounded to five receipts.
+  for(let w=at;w>=Math.max(terms.startWeekIndex,at-52)&&n<5;w--){
+   if(!scheduled(terms,w))continue;
+   if(!missed(delivery(terms,evidence.get(w),target,w)))break;
    n++;
   }
   return n;
  };
  const current=evidence.get(reviewWeekIndex);
- const status=delivery(terms,current,target);
+ const status=delivery(terms,current,target,reviewWeekIndex);
  const missedConsecutively=streak(reviewWeekIndex);
  const previousMisses=reviewWeekIndex===terms.startWeekIndex?0:
   streak(reviewWeekIndex-1);
- const milestone:BroadcastMilestone=missedConsecutively===3?"WARNING":
-  missedConsecutively===5?"FINAL_WARNING":
+ const milestone:BroadcastMilestone=status==="OFF_WEEK"?null:
+  missedConsecutively===3&&previousMisses<3?"WARNING":
+  missedConsecutively===5&&previousMisses<5?"FINAL_WARNING":
   status==="ON_TARGET"&&previousMisses>=3?"RECOVERED":null;
  return {dealId:terms.dealId,offerCode:terms.offerCode,reviewWeekIndex,
-  target,rating:status==="LEGACY"||status==="NO_TV"?null:current?.rating??null,
+  target,rating:["LEGACY","NO_TV","OFF_WEEK"].includes(status)?null:current?.rating??null,
   showId:current?.showId??null,status,missedConsecutively,previousMisses,
   milestone,bonusEligible:["ON_TARGET","WATCH","LEGACY"].includes(status)};
 }
@@ -110,7 +135,8 @@ export function broadcasterReaction(r:BroadcastNetworkReview):string{
  const p=voices[r.offerCode];
  if(!p)return COMMERCIAL_COMPANIES[r.offerCode]?.voice??
   "We will review the confirmed audience and schedule.";
- return r.milestone==="RECOVERED"?p.return:
+ return r.status==="OFF_WEEK"?"No broadcast was due under our agreed schedule. We'll review the next scheduled episode.":
+  r.milestone==="RECOVERED"?p.return:
   r.milestone==="WARNING"||r.milestone==="FINAL_WARNING"?p.warning:
   r.status==="OFF_SLOT"?p.slot:
   r.status==="BELOW_TARGET"||r.status==="NO_TV"?p.low:

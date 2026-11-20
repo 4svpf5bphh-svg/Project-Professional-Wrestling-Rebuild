@@ -32,6 +32,17 @@ for(const width of [320,390]){
   await page.route("**/api/card",r=>{
    const body=r.request().postDataJSON() as Record<string,unknown>;
    const method=String(body.method);calls.push(method);
+   if(method==="programmes")return r.fulfill({json:{
+    year:1,week:7,worldRevision:revision,canEdit:true,people:[],teams:[],
+    championships:[],programmes:[{programmeId:"solo-joe",programmeFormat:"SOLO",
+     status:"ACTIVE",heat:null,repetition:0,activityCount:0,matchCount:0,
+     segmentCount:0,sideAWins:0,sideBWins:0,draws:0,championshipId:null,
+     startedWeekIndex:6,endedWeekIndex:null,creativeIntent:null,
+     blueprintProgress:null,sideA:[{kind:"PERSON",refId:"joe",name:"Samoa Joe"}],
+     sideB:[],recentActivity:[],plannedActivity:[],medicalHolds:[],
+     eligibleCreativePeople:[],creativeAgreements:[],wrestlerChanges:[],
+     latestFollowUp:null,finale:null}]
+   }});
    if(method==="planner")return r.fulfill({json:planner});
    if(method==="load")return r.fulfill({json:{
     showId:"weekly",year:1,week:7,canEdit:true,ready:false,worldRevision:revision,
@@ -59,8 +70,10 @@ for(const width of [320,390]){
    if(method==="kpWorkspace")return r.fulfill({json:{entitlements:[]}});
    throw Error("Unexpected method "+method);
   });
-  await page.goto("/#/planner");
-  await page.getByRole("button",{name:"Edit card"}).click();
+  // Programme Desk is the one source of creative chapter starters now;
+  // the Card no longer repeats its recommendations above actual booking.
+  await page.goto("/#/programmes");
+  await page.getByRole("button",{name:"Plan",exact:true}).click();
   await page.getByRole("button",{name:"Introduce their ambition"}).click();
   let dialog=page.getByRole("dialog",{name:"Edit angle"});
   await expect(dialog.getByText("CAST YOUR STORY")).toBeVisible();

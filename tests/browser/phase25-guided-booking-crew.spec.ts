@@ -225,7 +225,7 @@ test("390px: an angle also has a meaningful Creative team review before completi
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.locator(".ppw-angle-category-tiles").getByRole("button",{name:"Turns"}).click();
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
- await dialog.getByRole("button",{name:"+ Add performer"}).click();
+ await dialog.getByRole("button",{name:"+ Add wrestler"}).click();
  const picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await picker.locator(".ppw-wrestler-card").nth(1).click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
@@ -517,7 +517,7 @@ test("390px: Creative can tighten a weak long promo without altering the scripte
  await page.getByRole("button",{name:"+ Add angle"}).click();
  const dialog=page.getByRole("dialog",{name:"Edit angle"});
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
- await dialog.getByRole("button",{name:"+ Add performer"}).click();
+ await dialog.getByRole("button",{name:"+ Add wrestler"}).click();
  const picker=page.getByRole("dialog",{name:"Choose wrestler"});
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.locator(".ppw-wrestler-card").first().click();

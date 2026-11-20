@@ -1,7 +1,7 @@
 /** Browser-neutral card editor state, adapted from the original PPW card
  * running-order and wrestler-picker interactions. Server validates final saves.
  */
-import {normalizeBookableMatch,type BookableMatch} from "../domain/bookable-match.js";
+import {normalizeBookableMatch,type BookableMatch,type FinishProp,type RefereeSpot} from "../domain/bookable-match.js";
 import {readCanonicalMatchLayout,sideIdAt} from "../domain/match-sides.js";
 import {defaultMatchStyleForIntent,normalizeMatchStyle,evaluateMatchStyleLoad,
  assessMatchStyleReadiness,
@@ -26,6 +26,7 @@ export interface EditorMatch{
  programmeId?:string|null;
  interference?:BookedInterference;style?:unknown;
  cheatingWrestlerId?:string;
+ finishProp?:FinishProp;refereeSpot?:RefereeSpot;
  stipulation?:MatchStipulation;
 }
 export const FORMATS:readonly {value:Format;label:string}[]=[
@@ -93,7 +94,9 @@ export function restoreEditorMatch(slotId:string,payload:unknown):EditorMatch{
   ...(raw.interference===undefined?{}:{interference:readBookedInterference(raw)??undefined}),
   ...(raw.style===undefined?{}:{style:raw.style}),
   ...(typeof raw.cheatingWrestlerId==="string"?
-   {cheatingWrestlerId:raw.cheatingWrestlerId}:{})};
+   {cheatingWrestlerId:raw.cheatingWrestlerId}:{}),
+  ...(typeof raw.finishProp==="string"?{finishProp:raw.finishProp as FinishProp}:{}),
+  ...(typeof raw.refereeSpot==="string"?{refereeSpot:raw.refereeSpot as RefereeSpot}:{})};
 }
 /** These are the existing match-scoring styles, not estimated new ratings. */
 const matchIntents=new Set(["COMPETITIVE","SHOWCASE","DOMINANT","TECHNICAL",
@@ -124,7 +127,7 @@ export function changeMatchStipulation(match:EditorMatch,
  return {...match,stipulation,
   plannedLengthMinutes:Math.max(match.plannedLengthMinutes,stipulationMinimumMinutes(stipulation)),
   plannedFinish:defaultStipulationFinish(stipulation),
-  cheatingWrestlerId:undefined,
+  cheatingWrestlerId:undefined,finishProp:undefined,refereeSpot:undefined,
   ...(stipulation==="STANDARD"||stipulation==="HARDCORE"?{}:{interference:undefined})};
 }
 export function bookedMatchHeadline(match:EditorMatch,
@@ -294,6 +297,8 @@ export function buildBookedMatch(match:EditorMatch):BookableMatch{
   ...(match.interference?{interference:match.interference}:{}),
   ...(match.style?{style:match.style}:{}),
   ...(match.cheatingWrestlerId?{cheatingWrestlerId:match.cheatingWrestlerId}:{}),
+  ...(match.finishProp?{finishProp:match.finishProp}:{}),
+  ...(match.refereeSpot?{refereeSpot:match.refereeSpot}:{}),
  };
  return normalizeBookableMatch(raw);
 }

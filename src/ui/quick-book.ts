@@ -2,7 +2,9 @@
 export type QuickBookKind="MATCH"|"ANGLE";
 const matchFields=new Set([
  "Winner","Stipulation","Finish","Championship","Minutes",
- "Storyline (optional)"
+ "Storyline (optional)",
+ "Weapon used","Referee spot","Who uses the foreign object?",
+ "Who gets caught cheating?"
 ]);
 const angleFields=new Set([
  "Creative direction","Angle type","Angle duration (minutes)",

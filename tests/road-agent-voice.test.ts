@@ -110,3 +110,17 @@ test("Road Agent names actual performers and cites verified bout duration and ra
  assert.match(report.concern,/Konosuke Takeshita vs Samoa Joe/);
  assert.match(report.recommendation,/Konosuke Takeshita vs Samoa Joe/);
 });
+
+test("multi-person opener feedback is a practical structure note, not generic pairing advice",()=>{
+ const multi=[...facts.map((fact,i)=>({...fact,
+  participantNames:i===1?["Iziah Hunter","Juice Robinson","Cara Noir","Jack Cartwheel"]:
+   ["Mr. Perfect","Josh Alexander"],plannedMinutes:18,actualMinutes:18,
+  chemistryModifier:0,executionQuality:i===1?33:85}))];
+ const report=deriveRoadAgentReport(receipt,multi,null);
+ assert.match(report.concern,/comfortable rhythm/);
+ assert.match(report.concern,/multi-person/);
+ assert.doesNotMatch(report.concern,/If you use that pairing again/);
+ assert.match(report.recommendation,/two wrestlers in focus/);
+ assert.match(report.recommendation,/clear handovers/);
+ assert.doesNotMatch(report.recommendation,/pairing/);
+});

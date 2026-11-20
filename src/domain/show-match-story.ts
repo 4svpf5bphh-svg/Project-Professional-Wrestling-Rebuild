@@ -1,3 +1,4 @@
+import {finishPropLabel,type FinishProp,type RefereeSpot} from "./bookable-match.js";
 
 /** Deterministic wrestling result copy derived from the finished match only.
  * No hallucinated signature moves, crowd events or surprise stipulations.
@@ -5,6 +6,7 @@
 export function describeMatchFinish(input:{
  actualFinish:string;actualWinnerSide:string|null;
  winnerNames:readonly string[];participants:readonly string[];
+ finishProp?:FinishProp;refereeSpot?:RefereeSpot;
 }):{headline:string;summary:string}{
  const winners=input.winnerNames;
  const finish=input.actualFinish;
@@ -15,7 +17,7 @@ export function describeMatchFinish(input:{
   FLASH_PIN:"A sudden flash pin turned the match on its head.",
   SUBMISSION:"A submission forced the deciding tap-out.",
   DISQUALIFICATION:"The referee called for a disqualification.",
-  FOREIGN_OBJECT:"A foreign object brought a controversial finish.",
+  FOREIGN_OBJECT:"A concealed weapon contributed to a controversial finish while the referee was unaware.",
   PROTECTED_FINISH:"A protected finish ended the contest without a clean decision.",
   INJURY_STOPPAGE:"The match was stopped because of an injury.",
   OVER_THE_TOP_ROPE:"The last elimination settled the battle royal.",
@@ -28,8 +30,13 @@ export function describeMatchFinish(input:{
   FIRST_BLOOD:"The match ended when the first bleeding opponent was declared the loser.",
   CASKET_CLOSE:"The casket lid was closed on the defeated opponent.",
  };
- const base=descriptions[finish]??"The bout reached its official finish: "+
-  finish.toLowerCase().replaceAll("_"," ")+".";
+ const base=(finish==="FOREIGN_OBJECT"&&input.finishProp?
+  "An illegal "+finishPropLabel(input.finishProp)+
+  " was used out of the referee's sight to secure a controversial result.":
+  descriptions[finish]??"The bout reached its official finish: "+
+  finish.toLowerCase().replaceAll("_"," ")+".")+
+  (["FOREIGN_OBJECT","PROTECTED_FINISH"].includes(finish)&&
+   input.refereeSpot==="REF_BUMP"?" The referee was knocked down before the decision.":"");
  if(finish==="INJURY_STOPPAGE")return {headline,summary:base};
  if(!winners.length)return {headline,summary:base};
  return {headline,summary:base+" "+winners.join(" & ")+

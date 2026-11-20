@@ -6,7 +6,6 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {projectShowBreakdown} from "./show-breakdown.js";
 import {segmentTemperature} from "../domain/segment-temperature.js";
-import {describeAngleSequenceStep} from "../domain/angle-sequence.js";
 import {programmeBroadcastRecap,programmeManagementNote}
  from "../domain/verified-programme-broadcast.js";
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
@@ -450,21 +449,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   const narrative=node("div","ppw-ringside-slot");
   narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
   append(body,narrative);
-  if(entry.type==="SEGMENT"&&entry.outcome==="HAPPENS"&&
-   entry.segmentContext?.scriptedActions?.length){
-   const scripted=document.createElement("details");
-   scripted.className="ppw-result-script-sequence";
-   scripted.open=false;
-   scripted.append(node("summary","",
-    "ON-SCREEN SEQUENCE · "+entry.segmentContext.scriptedActions.length+" MOMENTS"));
-   const ordered=document.createElement("ol");
-   const names=new Map<string,string>();
-   entry.actorIds.forEach((id,i)=>names.set(id,entry.segmentContext?.actorNames[i]??id));
-   entry.targetIds.forEach((id,i)=>names.set(id,entry.segmentContext?.targetNames[i]??id));
-   for(const moment of entry.segmentContext.scriptedActions)
-    ordered.append(node("li","",describeAngleSequenceStep(moment,names)));
-   scripted.append(ordered);body.append(scripted);
-  }
+  // The narrative already tells the authenticated, ordered angle script.
+  // Do not show a second, mechanical on-screen moments panel.
   // Official finish remains verifiable without repeating the result in a huge box.
   const finish=replayVerifiedMatchFinish(entry);
   if(finish){
@@ -670,7 +656,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(gorilla.crowdAdjustment>0)position.append(node("p","",
    "Production recovered its rhythm, and the building responded."));
  }
- // All three chapters reuse one immutable completed show; no extra reads.
+ // The full chronological broadcast and its post-show desk are the only
+ // visible screens; the obsolete Headlines recap is no longer an end screen.
+ // Both reuse one immutable completed show and make no extra reads.
  const headlines=node("section","ppw-results-page");headlines.dataset.page="headlines";
  let premiumOpening:HTMLElement|null=null;
  let televisionOpening:HTMLElement|null=null;
@@ -871,19 +859,17 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   action.type="button";action.onclick=openPress;
   press.append(action);after.append(press);
  }
- const pages=[headlines,full,after];
+ const pages=[full,after];
  const goButton=(label:string,dest:0|1|2)=>{
   const button=node("button","ppw-results-next",label) as HTMLButtonElement;
   button.type="button";button.onclick=()=>changePage(dest);return button;
  };
- headlines.append(goButton("Read the Full Show",1));
- if(reactions.length||wrestlerPosts.length)
-  headlines.append(goButton("HOT TAG · After the Bell",2));
  full.append(goButton("Read Post-show Brief",2));
- after.append(goButton("Return to Headlines",0));
+ after.append(goButton("Back to Full Show",1));
  root.replaceChildren(...pages);
  changePage=(index:0|1|2)=>{
-  for(const [i,page] of pages.entries())page.hidden=i!==index;
+  full.hidden=index!==1;
+  after.hidden=index!==2;
   // Images for the compact rundown are not fetched while headlines or
   // HOT TAG are on screen. Source links select the narrative first.
   if(index===1)setBreakdown(compactFullShow);

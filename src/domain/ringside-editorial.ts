@@ -1,3 +1,4 @@
+import {finishPropLabel} from "./bookable-match.js";
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
@@ -155,6 +156,20 @@ function assertReferencedPromoTargetStayedOffScreen(
 }
 
 
+/** Do not let Groq turn a speech-only booked chapter into a surprise brawl.
+ * Explicit scripted beats are authoritative; stage business is optional colour,
+ * not permission to add unbooked wrestling moves or lasting consequences. */
+function assertSpokenAngleStayedSpoken(source:ShowResultEntry,prose:string):void{
+ const actions=source.segmentContext?.scriptedActions;
+ if(source.type!=="SEGMENT"||!actions?.length||
+  actions.some(a=>["ATTACK","FIGHT_BACK","RESCUE","BETRAY"].includes(a.action)))return;
+ let body=prose;
+ // Exact booker-written lines may quote a threat of violence, not enact it.
+ for(const a of actions)if(a.line)body=body.replaceAll(a.line,"");
+ if(/\b(?:series|flurry|exchange|barrage|succession|combination) of[^.!?]{0,55}\b(?:drop[ -]?kicks?|superkicks?|punches|strikes|suplexes|clotheslines|slams)\b|\b(?:hit|landed|delivered|launched|performed|executed|unleashed|connected with|drilled|levelled|stunned|flattened)[^.!?]{0,65}\b(?:drop[ -]?kicks?|superkicks?|suplexes|clotheslines|powerbombs?|DDTs?|chair shots?|punches|body slams?)\b/i.test(body))
+  throw new Error("Ringside invented physical wrestling in a talk-only booked angle");
+}
+
 /** Remove only identical repeated sentences locally, no second Groq call.
  * No judgement of paraphrases or simulated finish reconstruction.
  */
@@ -249,6 +264,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
   assertReferencedPromoTargetStayedOffScreen(source,prose);
+  assertSpokenAngleStayedSpoken(source,prose);
   // A declared turn against a rival is not proof the two were partners.
   // A saved betrayal direction is necessary for on-air ally history.
   if(source.type==="SEGMENT"&&source.segmentKind==="TURN"&&
@@ -439,6 +455,8 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
       "build to one legal finish"
     }}:{}),
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
+    ...(e.matchContext.finishProp?{bookedWeapon:finishPropLabel(e.matchContext.finishProp)}:{}),
+    ...(e.matchContext.refereeSpot?{refereeSpot:e.matchContext.refereeSpot}:{}),
     titleContested:e.matchContext.championshipContested,
     ...(verifiedStipulationNote(e.matchContext.format,e.outcome)?{
      stipulationRules:verifiedStipulationNote(e.matchContext.format,e.outcome)}:{})}}:{}),
@@ -461,27 +479,24 @@ veteran wrestling columnist. Write as a smark who WATCHED the action,
 not a game engine, booker, press release or omniscient narrator.
 Have opinions: praise earned psychology, criticise flat spells, relish
 a crafty heel or fiery babyface. Humour is occasional, dry and specific.
-No borrowed real-world writer's phrases, repetitive stock hype, or fake
-history. Every bout should sound different.
+No borrowed writer's phrases, stock hype or invented history.
 
 Write ONE chronological show article. The opening sets the atmosphere;
 each slot advances the night without restarting it; closing gives a
 distinct editorial judgement rather than re-listing winners.
-For EVERY match: provide beginning, contrasting personalities and
-styles, a believable shift or memorable exchange, then ONE decisive finish
-near the end. A near-fall is not a second victory.
-Give 90–150 words to strong matches (one or two paragraphs), 55–100 to
-squashes; angle scenes 35–85. Short matches are not epic wars. Poor
-matches should read poorly, not like five-star classics.
-Avoid formulaic openings such as "In the end", "The crowd erupted",
-"Fans were treated to" and constant "momentum shifted".
-Use concrete ring action and a specific editorial verdict. Do not
-repeat decisive moves, final falls, full sentences or openings across
-multiple bouts. Reader sees a continuous card.
+For EVERY match: show its start, distinct personalities, and a turn in the action,
+and ONE decisive finish. Near-falls are not victories. Strong bouts get
+90–150 words, squashes 55–100, angles 35–85; weaker matches read weakly.
+Be specific, not formulaic ("In the end", "The crowd erupted",
+"momentum shifted"). Never recycle sentences, moves or finishes.
 
 The slot records are AUTHORITATIVE: participant names, match format,
 winner, winning method, title movement, injured wrestlers, interference,
-angle outcomes and audience mood. Match.wrestlingIQ gives the legal
+angle outcomes and audience mood. If slot.fallout.title.changed is false,
+slot.fallout.title.winnerName names the MATCH winner, not necessarily the
+champion. The priorHolderName retains the belt when different from the
+match winner; with no prior holder the title stays vacant. Only changed:true
+certifies a new champion. Do not call a challenger's DQ win a title defence. Match.wrestlingIQ gives the legal
 format and psychology; slot.match.stipulationRules gives the real
 winning condition and suggested dramatic beats. Those beats and
 possibleSpots are creative possibilities, NOT certified event records.
@@ -493,28 +508,22 @@ Treat one wrestler's repertoire as available moves, never proof a
 particular move caused the finish. Never assign another wrestler's
 signature move. Use official audience mood qualitatively.
 
-For normal singles, two legal opponents compete. No tags or tag partners.
-For tag matches, only one wrestler PER TEAM is legal; a partner waits
-on the apron and needs a legal tag to wrestle or score a fall. An earned
-hot tag is optional, NOT mandatory; squashes may end without one.
-Do not invent a precise fall scorer when only the winning team is
-certified. Trios also tag. Multi-team formats need correct legal teams,
-not an invented rotation or elimination rule. In triple threats and
-four-ways there are NO tags: all individual competitors are legal.
-Battle royals are about over-the-top-rope eliminations, not pinfalls.
-Keep referee conduct consistent with the booked stipulation.
+Singles: only two wrestlers. No tags or tag partners. Tags/trios:
+only one wrestler PER TEAM is legal; partners wait on the apron.
+A legal tag is required before a new wrestler scores.
+Hot tags are optional. No invented precise fall scorer for team wins.
+Multi-team formats preserve their legal sides. Triple threats/four-ways:
+all individuals are legal; there are NO tags. Battle royals require over-the-top
+eliminations, not pinfalls. Follow stipulation referee rules.
 
-Finish discipline matters more than clever prose. CLEAN_PIN means
-a legitimate cover and three-count. FLASH_PIN means a sudden roll-up
-or cradle, not a giant impact finisher. SUBMISSION means tap-out or
-referee stoppage, not pinfall. A submission finisher like Samoa Joe's
-Coquina Clutch cannot score a pin; his Muscle Buster may lead to a
-cover. A hold may set up an independent pin later, but never claim
-the submission ITSELF forced a clean pin.
-DISQUALIFICATION never becomes a clean pin. FOREIGN_OBJECT allows
-a plausible discreet named prop, not a generic "foreign object";
-PROTECTED_FINISH does not imply automatic weapons or outsiders.
-INJURY_STOPPAGE is not a pin or submission.
+CLEAN_PIN requires a legal three-count; FLASH_PIN a sudden roll-up.
+SUBMISSION is a tap/stoppage, NOT a pin. Samoa Joe's Coquina Clutch
+cannot score a pin; Muscle Buster may precede one. An earlier hold can
+set up a separate pin, but cannot ITSELF score it.
+DISQUALIFICATION is not a pin. FOREIGN_OBJECT: use ONLY the verified
+match.bookedWeapon, if present. No invented substitute. Otherwise say
+concealed cheating, without naming a weapon. PROTECTED_FINISH implies
+no automatic outsider or weapon. INJURY_STOPPAGE is no pin/submission.
 I QUIT requires actual verbal surrender, often into a referee's
 microphone, never a tap or pin. The pressure should visibly escalate
 through resistance before one final "I quit"; no automatic blood,
@@ -530,6 +539,10 @@ stipulationRules if present.
 
 Angles are filmed scenes, not bouts. Use verified initiator, victim,
 location, outcome, scene purpose and visible scripted aftermath.
+angle.scriptedActions are the ONLY directed beats: narrate them IN ORDER,
+preserving exact quoted lines. With spoken-only actions, NO wrestling moves, strikes, dropkicks or brawls.
+Presence alone does not imply contact; only explicit ATTACK, FIGHT_BACK,
+RESCUE or BETRAY allows it, without unrelated moves or new outcomes.
 In a PROMO, actorNames are speakers. The verified angle.targetPresence
 field decides whether targetNames are merely MENTIONED or ON_SCREEN.
 If MENTIONED (or unrecorded legacy presence), the named target must NOT

@@ -63,9 +63,8 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeHidden();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(page.getByRole("heading",{name:"HOT TAG"})).toBeVisible();
-  await page.getByRole("button",{name:"Return to Headlines"}).click();
+  await page.getByRole("button",{name:"Back to Full Show"}).click();
   await expect(page.locator(".ppw-breakdown-portraits")).toHaveCount(0);
-  await page.getByRole("button",{name:"Read the Full Show"}).click();
   await page.getByRole("button",{name:"Show Breakdown",exact:true}).click();
   await expect(page.locator(".ppw-show-breakdown")).toBeVisible();
   await expect(page.locator(".ppw-breakdown-portraits")).toHaveCount(1);
@@ -606,15 +605,15 @@ for(const width of [320,390]){
   const opening=page.locator(".ppw-tv-opening-wrap");
   await expect(opening).toBeVisible();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await page.getByRole("button",{name:"Return to Headlines"}).click();
   await expect(opening).toBeHidden();
+  await page.getByRole("button",{name:"Back to Full Show"}).click();
+  await expect(opening).toBeVisible();
   await expect(opening.locator(".ppw-tv-frame")).toHaveAttribute("data-broadcast-package","prizefight");
   await expect(opening.locator(".ppw-tv-title")).toHaveText("Dynamite");
   await expect(opening.locator(".ppw-tv-promotion")).toHaveText("AEW");
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await expect(opening.getByRole("button",{name:"Skip opening"})).toHaveCount(0);
-  await page.getByRole("button",{name:"Read the Full Show"}).click();
-  await expect(opening).toBeVisible();
+
   await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   await expect(page.locator(".ppw-result-entry").first()).toContainText("Kenny Omega");
@@ -757,7 +756,7 @@ test("A certified HOT TAG wrestler post opens focused Programmes without booking
 });
 
 for(const width of [320,390]){
- test("Broadcast opening has one show title, then headlines without a duplicate oversized hero at "+width+"px",async({page})=>{
+ test("Broadcast opening has one real show title and returns to Full Show at "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:width===320?720:844});
   const named={...show,showName:"Ascension",broadcastPackage:"MIDNIGHT_FREQUENCY"};
   await page.route("**/api/session",r=>r.fulfill({json:session}));
@@ -777,17 +776,17 @@ for(const width of [320,390]){
   await expect(opening).toBeVisible();
   await expect(opening).toContainText("Ascension");
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await page.getByRole("button",{name:"Return to Headlines"}).click();
   await expect(opening).toBeHidden();
-  await expect(page.locator(".ppw-result-hero")).toHaveCount(0);
-  await expect(page.locator(".ppw-headlines-show-name")).toHaveText("Ascension");
-  await expect(page.locator(".ppw-broadcast-highlights")).toBeVisible();
-  await page.getByRole("button",{name:"Read the Full Show"}).click();
+  await page.getByRole("button",{name:"Back to Full Show"}).click();
   await expect(opening).toBeVisible();
+  await expect(page.locator(".ppw-result-hero")).toHaveCount(0);
+  await expect(page.locator(".ppw-headlines-show-name")).toHaveCount(0);
+  await expect(page.locator(".ppw-broadcast-highlights")).toHaveCount(0);
+
   // The real broadcaster graphic owns the show title in Full Show.
   // Do not require a redundant h1 alongside its verified OPEN frame.
   await expect(opening.locator(".ppw-tv-title")).toHaveText("Ascension");
-  await expect(page.locator(".ppw-headlines-show-name")).toBeHidden();
+  await expect(page.locator(".ppw-headlines-show-name")).toHaveCount(0);
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);

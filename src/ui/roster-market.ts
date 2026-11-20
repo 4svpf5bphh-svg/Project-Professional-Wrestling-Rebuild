@@ -53,7 +53,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
  let filter:DirectoryFilter={view:initialView,search:focus?.name.slice(0,70)??"",division:"ALL",
   availability:"ALL",role:"ALL",contract:"ALL",interest:"ALL",sort:initialView==="MARKET"?"INTEREST":"NAME",minPopularity:undefined,limit:25,offset:0};
  let view:WrestlerDirectoryData|null=null,error="",success="",loading=false,
-  sending=false,pendingKey="",activeOffer:string|null=focus?.personId??null;
+  // A failed network response keeps this wrestler's idempotent retry token,
+  // but cannot reuse it for another wrestler's entirely different offer.
+  sending=false,pendingKey="",pendingPersonId:string|null=null,
+  activeOffer:string|null=focus?.personId??null;
  let choices=new Map<string,TermsDraft>();
  const openAdvancedTerms=new Set<string>();
  // The player chooses when detailed scouting filters are visible. Persist
@@ -130,6 +133,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    terms.weeklyGuarantee>1e9||terms.appearanceFee>1e9||terms.signingBonus>1e9){
    error="Review the term length, dates and non-negative payment amounts.";render();return;
   }
+  if(pendingPersonId!==personId){pendingKey="";pendingPersonId=personId;}
   const requestId=pendingKey||crypto.randomUUID();pendingKey=requestId;
   sending=true;error="";success="";render();
   try{
@@ -138,7 +142,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    if(result&&typeof result==="object"&&"status" in result&&
     (result as {status:unknown}).status==="STALE")
     throw new Error("The terms or deadline have changed. Review the latest details before offering.");
-   pendingKey="";activeOffer=null;
+   pendingKey="";pendingPersonId=null;activeOffer=null;
    success="Offer sent. The wrestler will respond at the end of the week.";
    await load();
   }catch(e){error=e instanceof Error?e.message:"Offer could not be sent";}
@@ -659,7 +663,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      "Your offer is awaiting a response."));
     else if(p.availability!=="EXCLUSIVE_ELSEWHERE"&&view.canEdit)
      detail.append(btn(activeOffer===p.personId?"Close proposal":"Make contract offer",
-      ()=>{activeOffer=activeOffer===p.personId?null:p.personId;render();}));
+      ()=>{if(pendingPersonId&&pendingPersonId!==p.personId){
+       pendingKey="";pendingPersonId=null;}
+       activeOffer=activeOffer===p.personId?null:p.personId;render();}));
     if(activeOffer===p.personId&&view.canEdit&&
       p.availability!=="EXCLUSIVE_ELSEWHERE"&&!p.pendingOffer)
      detail.append(offerEditor(p.personId));

@@ -19,7 +19,8 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
  const people=[
   {personId:"austin",name:"Austin Gunn"},{personId:"colten",name:"Colten Gunn"},
   {personId:"joe",name:"Samoa Joe"},{personId:"mistico",name:"Mistico"},
-  {personId:"mox",name:"Jon Moxley"},{personId:"danielson",name:"Bryan Danielson"}];
+  {personId:"mox",name:"Jon Moxley"},{personId:"danielson",name:"Bryan Danielson"},
+  {personId:"robinson",name:"Juice Robinson"}];
  const original=[
   {personId:"austin",contractId:"old-austin"},
   {personId:"colten",contractId:"old-colten"},
@@ -61,10 +62,19 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
     ["renew-austin","austin",2,25],
     ["renew-colten","colten",2,25],
     ["deal-joe","joe",0,25],["deal-mistico","mistico",0,25],
-    ["deal-mox","mox",0,25],["deal-danielson","danielson",0,25]
+    ["deal-mox","mox",0,25],["deal-danielson","danielson",0,25],
+    ["robinson-old","robinson",0,1]
    ] as const)
     await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,start_week_index,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',10,$5,$6)",
      [world,c[0],c[1],promotion,c[2],c[3]]);
+   // One already ACCEPTED future renewal is a signed booking commitment,
+   // but the old paid term is NOT extended until the certified World rollover.
+   await tx.query(`INSERT INTO ppw_contract_renewal_proposals
+     (world_id,proposal_id,contract_id,promotion_id,person_id,status,created_week_index,proposed_terms)
+     VALUES($1,'future-robinson','robinson-old',$2,'robinson','ACCEPTED',0,$3::jsonb)`,
+    [world,promotion,JSON.stringify({family:"LIMITED_NON_EXCLUSIVE",termWeeks:12,
+     dateEntitlement:5,weeklyGuarantee:1100,appearanceFee:9200,
+     roleExpectation:"UPPER_CARD",creativeControl:"NONE",signingBonus:0})]);
    await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,start_week_index,expires_week_index) VALUES($1,'private-deal','private','rival','LIMITED_NON_EXCLUSIVE','SIGNED',10,0,25)",[world]);
    await tx.query("INSERT INTO ppw_tag_teams(world_id,team_id,name,status) VALUES($1,'gunns','The Gunns','ACTIVE')",[world]);
    await tx.query("INSERT INTO ppw_tag_team_members(world_id,team_id,person_id) VALUES($1,'gunns','austin'),($1,'gunns','colten')",[world]);
@@ -136,6 +146,33 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
   assert.equal(booked.sides.length,3);
   assert.equal(booked.championshipId,"tag-belt");
   assert.equal(booked.scriptedWinnerSide,"A");
+  // Real playtest regression: when the signed next term begins in Week 3,
+  // the booked show can use it while the World is still in Week 1.
+  const prospect=await cardTalentAsActor(context,world,promotion,show,"Robinson",null,40);
+  assert.equal(prospect.talent.length,1);
+  assert.equal(prospect.talent[0]?.contractId,"robinson-old");
+  assert.equal(prospect.talent[0]?.available,true);
+  assert.equal(prospect.talent[0]?.remainingDates,5);
+  assert.equal(prospect.talent[0]?.appearanceFee,9200);
+  const pre=await withWorldTransaction(db.pool,tx=>tx.query<{
+   expires_week_index:number;start_week_index:number}>(`
+   SELECT expires_week_index,start_week_index FROM ppw_contracts
+   WHERE world_id=$1 AND contract_id='robinson-old'`,[world]));
+  assert.deepEqual(pre,[{expires_week_index:1,start_week_index:0}],
+   "The booked future renewal must not activate current payroll or reset expiry");
+  const futureCard={matchType:"SINGLES",family:"INDIVIDUAL",
+   participants:[{personId:"robinson",contractId:"robinson-old"},original[2]!],
+   sides:[{sideId:"A",participants:[{personId:"robinson",contractId:"robinson-old"}]},
+    {sideId:"B",participants:[original[2]!]}],
+   scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",
+   plannedLengthMinutes:14};
+  const futureSave=await saveCardEditorAsActor(context,{...scope,
+   requestId:"future-accepted-robinson",expectedRevision:withTitle.worldRevision,
+   matches:[{slotId:"main",payload:futureCard}],runningOrder:["main"]});
+  assert.equal(futureSave.status,"APPLIED");
+  const futureRead=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(futureRead.selectedPeople.find(x=>x.personId==="robinson")?.contractId,"robinson-old");
+  assert.equal(futureRead.selectedPeople.find(x=>x.personId==="robinson")?.appearanceFee,9200);
   const rival={pool:db.pool,actor:{playerId:other}};
   await assert.rejects(showCardEditorAsActor(rival,world,promotion,show),/not accessible/);
   await assert.rejects(cardTalentAsActor(rival,world,promotion,show,"Gunn",null,10),/not accessible/);
@@ -143,7 +180,8 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_command_receipts","ppw_card_slots","ppw_booking_drafts",
-    "ppw_tag_team_members","ppw_tag_teams","ppw_championships","ppw_contracts","ppw_people",
+    "ppw_tag_team_members","ppw_tag_teams","ppw_championships",
+    "ppw_contract_renewal_proposals","ppw_contracts","ppw_people",
     "ppw_venues","ppw_promotion_controls","ppw_memberships","ppw_promotions","ppw_markets"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[[owner,other]]);

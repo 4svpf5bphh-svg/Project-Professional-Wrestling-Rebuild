@@ -1,3 +1,4 @@
+import {finishPropLabel} from "./bookable-match.js";
 /** Succinct, result-compatible match colour when a Groq report is unavailable. */
 import type {ShowResultEntry} from "../db/show-results-view.js";
 const choice=(items:readonly string[],seed:string,salt:number)=>{
@@ -5,7 +6,6 @@ const choice=(items:readonly string[],seed:string,salt:number)=>{
  for(const c of seed){hash^=c.charCodeAt(0);hash=Math.imul(hash,16777619)}
  return items[(hash>>>0)%items.length]!;
 };
-const submissionMove=(s:string)=>/clutch|crossface|choke|sleeper|sharpshooter|armbar|anaconda|vise/i.test(s);
 export function shortResultColour(entry:ShowResultEntry,showId:string):string{
  const key=showId+":"+entry.slotId;
  if(entry.type==="SEGMENT"){
@@ -18,25 +18,20 @@ export function shortResultColour(entry:ShowResultEntry,showId:string):string{
    " took the microphone and ":" took centre stage and ")+mood+".";
  }
  const winner=entry.matchContext?.winnerNames.join(" & ")||"The winner";
- const identities=(entry.performerIdentities??[]).filter(p=>
-  entry.matchContext?.winnerNames.includes(p.ringName));
- const moves=identities.flatMap(p=>[...p.finishingMoves,...p.signatureMoves]);
- const impact=moves.find(m=>!submissionMove(m)),hold=moves.find(submissionMove);
+
  const mood=entry.crowdResponse>=80?choice(["The building erupted.","The crowd roared its approval."],key,1):
   entry.crowdResponse<46?choice(["The crowd was hard to win over.","The finish drew a muted reaction."],key,2):
   choice(["The reaction said plenty.","That gave the crowd something to talk about."],key,3);
  let story:string;
  switch(entry.outcome){
-  case "CLEAN_PIN":story=impact?
-   winner+" hit the "+impact+" and kept the shoulders down for three.":
-   winner+" seized an opening and scored the three-count.";break;
+  case "CLEAN_PIN":story=winner+" seized an opening and scored the decisive three-count.";break;
   case "FLASH_PIN":story=winner+" stole it with "+
    choice(["a quick inside cradle","a desperate roll-up","a flash counter"],key,4)+".";break;
-  case "SUBMISSION":story=winner+" forced the tap with "+
-   (hold?"the "+hold:"a tightly applied hold")+".";break;
-  case "FOREIGN_OBJECT":story=(entry.fallout?.finishCheaterName??winner)+" slipped in a "+
-   choice(["steel chair shot","strike with the ring bell","shot with a length of chain","kendo stick strike"],key,5)+
-   " out of the referee's sight. "+winner+" left with the decision.";break;
+  case "SUBMISSION":story=winner+" locked in a submission and forced the decisive tap.";break;
+  case "FOREIGN_OBJECT":story=(entry.fallout?.finishCheaterName??winner)+
+   " used "+(entry.matchContext?.finishProp?"a "+finishPropLabel(entry.matchContext.finishProp):
+    "a concealed weapon")+" out of the referee's sight. "+winner+
+   " left with the decision.";break;
   case "PROTECTED_FINISH":story=winner+
    " got the decision, but the ending left the other side with plenty to complain about.";break;
   case "DISQUALIFICATION":story="The official called for the bell. "+
@@ -46,5 +41,22 @@ export function shortResultColour(entry:ShowResultEntry,showId:string):string{
   case "OVER_THE_TOP_ROPE":story=winner+" survived the final elimination.";break;
   default:story=winner+" got the win.";
  }
- return story+" "+mood;
+ const consequences:string[]=[];
+ const title=entry.fallout?.title;
+ if(title){
+  if(title.changed)consequences.push(title.winnerName+
+   " is the new "+title.name+" champion.");
+  else if(!title.priorHolderName)consequences.push("The "+title.name+" remains vacant.");
+  else if(title.priorHolderName===title.winnerName)
+   consequences.push(title.priorHolderName+" retained the "+title.name+".");
+  else consequences.push(title.priorHolderName+" kept the "+title.name+
+   " despite the result. No championship changed hands.");
+ }
+ const runIn=entry.fallout?.interference;
+ if(runIn?.outcome==="SUCCESS")consequences.push(
+  (runIn.personName??"A ringside participant")+
+  " made a decisive intervention at ringside.");
+ else if(runIn?.outcome==="THWARTED")consequences.push(
+  "An attempted ringside intervention was stopped before it could decide the finish.");
+ return [story,...consequences,mood].join(" ");
 }

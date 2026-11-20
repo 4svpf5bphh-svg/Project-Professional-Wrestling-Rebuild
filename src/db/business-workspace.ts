@@ -37,7 +37,8 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     weeklyIncome:number;baselineIncome:number;reachIncrease:number;
     startWeekIndex:number;endWeekIndex:number;source:"HUMAN"|"AI";
     airingDay:number|null;airingHour:number|null;
-    lastSlotChange:number|null}[];
+    lastSlotChange:number|null;
+    regularSchedule:{cadenceWeeks:number;anchorWeek:number}[]|null}[];
    world_partner_claims:{offerCode:string;promotionId:string;promotionName:string;
     endWeekIndex:number;kind:"BROADCAST"|"SPONSOR"}[];
   }>(`
@@ -92,6 +93,13 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
        coalesce(d.agreed_reach-d.baseline_reach,0) AS "reachIncrease",
        d.start_week_index AS "startWeekIndex",d.end_week_index AS "endWeekIndex",
        d.source,d.airing_day AS "airingDay",d.airing_hour AS "airingHour",
+       (SELECT jsonb_agg(jsonb_build_object(
+        'cadenceWeeks',series.cadence_weeks,'anchorWeek',series.anchor_week)
+        ORDER BY series.series_id)
+        FROM (SELECT series_id,cadence_weeks,anchor_week FROM ppw_show_series
+         WHERE world_id=d.world_id AND promotion_id=d.promotion_id
+          AND active AND event_type='REGULAR'
+         ORDER BY series_id LIMIT 16) series) AS "regularSchedule",
        (SELECT max((e.payload->>'effectiveWeekIndex')::integer)
         FROM ppw_ledger_events e
         WHERE e.world_id=d.world_id AND e.event_type='BROADCAST_SLOT_CHANGED'
@@ -335,10 +343,11 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
       startWeekIndex:Math.max(deal.startWeekIndex,
        deal.lastSlotChange??deal.startWeekIndex),
       endWeekIndex:deal.endWeekIndex,
-      airingDay:deal.airingDay,airingHour:deal.airingHour
+      airingDay:deal.airingDay,airingHour:deal.airingHour,
+      regularSchedule:deal.regularSchedule??undefined
      },shows.filter(show=>show.booking_class==="REGULAR"&&
       (show.year-1)*52+show.week-1>=Math.max(deal.startWeekIndex,
-       deal.lastSlotChange??deal.startWeekIndex,lastWeek-4)&&
+       deal.lastSlotChange??deal.startWeekIndex,lastWeek-52)&&
       (show.year-1)*52+show.week-1<=lastWeek).map(show=>({
        weekIndex:(show.year-1)*52+show.week-1,
        showId:show.show_id,showDay:show.show_day,

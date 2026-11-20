@@ -7,7 +7,8 @@ import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
 import {recommendPromotionBudgets,type BudgetRisk} from "../domain/financial-adviser.js";
-import {broadcasterReaction} from "../domain/broadcast-network-review.js";
+import {broadcasterReaction,broadcastScheduleLabel}
+ from "../domain/broadcast-network-review.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
@@ -964,19 +965,26 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      })));
     if(deal.networkReview){
      const review=deal.networkReview;
-     const status=review.missedConsecutively>=3?"AT RISK":
+     const status=review.status==="OFF_WEEK"?"SCHEDULED OFF WEEK":
+      review.missedConsecutively>=3?"AT RISK":
       review.status==="OFF_SLOT"?"OFF-SLOT BROADCAST":
       review.status==="NO_TV"?"NO CERTIFIED TV":
       review.status==="BELOW_TARGET"?"AUDIENCE BELOW TARGET":
       review.status==="WATCH"?"NEAR TARGET":
       review.status==="LEGACY"?"AUDIENCE NOT REPORTED":"ON TARGET";
      const line=el("div","ppw-commercial-partner-review");
-     line.dataset.status=review.missedConsecutively>=3?"warning":review.status;
+     line.dataset.status=review.status==="OFF_WEEK"?"OFF_WEEK":
+      review.missedConsecutively>=3?"warning":review.status;
      line.append(el("strong","",status),
-      el("small","",review.rating===null?"Last week · Rating not reported":
+      el("small","",review.status==="OFF_WEEK"?"Last week · No TV scheduled":
+       review.rating===null?"Last week · Rating not reported":
        "Last week · "+formatTvRating(review.rating)+" TV / "+
         review.target.toFixed(2)+" partner target"));
-     if(review.missedConsecutively>=2)
+     if(review.status==="OFF_WEEK")
+      line.append(el("small","",review.missedConsecutively>0?
+       "No new episode was due. Earlier missed broadcasts still count until delivery improves.":
+       "No episode was due. The broadcaster reviews the next scheduled show."));
+     else if(review.missedConsecutively>=2)
       line.append(el("small","",
        review.missedConsecutively+" consecutive missed network requirements"+
        (review.missedConsecutively>=3?
@@ -992,7 +1000,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     if(deal.kind==="BROADCAST"&&typeof deal.airingDay==="number"&&typeof deal.airingHour==="number"){
      item.append(el("span","ppw-commercial-slot",
       "Your contracted TV night · "+(day[deal.airingDay-1]??"Weekly")+
-       " at "+String(deal.airingHour).padStart(2,"0")+":00 · Weekly shows fixed"));
+       " at "+String(deal.airingHour).padStart(2,"0")+":00 · "+
+       broadcastScheduleLabel(deal.regularSchedule)));
      if(port.requestBroadcastDay&&deal.source==="HUMAN"){
       const open=requestingDayFor===deal.dealId;
       item.append(button(open?"Cancel day request":"Request a different broadcast day",()=>{

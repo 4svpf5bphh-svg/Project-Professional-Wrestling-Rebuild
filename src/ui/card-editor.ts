@@ -1,3 +1,4 @@
+import {FINISH_PROPS,REFEREE_SPOTS,type FinishProp,type RefereeSpot} from "../domain/bookable-match.js";
 /** Mobile-first PWA card editor, with no new runtime/framework dependency.
  * Host supplies authenticated RPC methods; browser cannot supply playerId.
  * Draws on the original PPW card's compact, expandable running-order design.
@@ -172,7 +173,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let focusedPerson=port.focusWrestler??null,focusBusy=false;
  let focusedChallenge=port.focusTitleChallenge??null;
  let formatChoice:Format="SINGLES";
- let focusedRivalryId:string|null=port.focusProgrammeId??null;
  let rivalryIdeasOpen=Boolean(port.focusProgrammeId);
  let initialProgrammeFocusDone=false;
  const openStyles=new Set<string>();
@@ -1168,70 +1168,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    root.append(tournament);
   }
-  // One optional feud picker. It must not compete with the core Add Match /
-  // Add Angle buttons or repeat the Programme Desk's long creative reports.
-  if(view.programmes.length){
-   const suggestions=el("section","ppw-card-rivalry-launch");
-   const head=el("div","ppw-card-rivalry-launch-head");
-   head.append(el("strong","",
-    ((view.programmes.find(p=>p.programmeId===focusedRivalryId)??
-     view.programmes[0]!).programmeFormat??"RIVALRY")==="RIVALRY"?
-     "Add a rivalry chapter":"Add a story chapter"));
-   if(port.openProgrammes)head.append(button("Manage stories",()=>{
-    port.openProgrammes?.();
-   },false,"ppw-card-rivalry-manage"));
-   suggestions.append(head);
-   const selected=view.programmes.find(p=>p.programmeId===focusedRivalryId)??
-    view.programmes[0]!;
-   focusedRivalryId=selected.programmeId;
-   const picks=el("div","ppw-card-rivalry-picks");
-   picks.setAttribute("role","group");
-   picks.setAttribute("aria-label",
-    (selected.programmeFormat??"RIVALRY")==="RIVALRY"?
-     "Choose a rivalry to book":"Choose a storyline to book");
-   for(const feud of view.programmes){
-    const pick=button(feud.label,()=>{
-     focusedRivalryId=feud.programmeId;render();
-    },false,"ppw-card-rivalry-pick");
-    pick.setAttribute("aria-pressed",String(feud.programmeId===selected.programmeId));
-    picks.append(pick);
-   }
-   suggestions.append(picks);
-   const actions=el("div","ppw-card-rivalry-shortcuts");
-   const occupied=new Set([...matches.values()].flatMap(assignedIds));
-   const isRivalry=(selected.programmeFormat??"RIVALRY")==="RIVALRY";
-   const matchReady=isRivalry?programmeMatchStarter(selected,"preview",occupied):null;
-   if(matchReady?.ok){
-    actions.append(button("Book rivalry match",()=>{
-     const id="match-"+crypto.randomUUID();
-     const start=programmeMatchStarter(selected,id,
-      new Set([...matches.values()].flatMap(assignedIds)));
-     if(!start.ok){error=start.reason;render();return;}
-     matches.set(id,start.value);order.push(id);expanded=id;
-     slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"OUTCOME");
-     startWizard(id);
-    },!mutable(),"ppw-card-rivalry-match"));
-   }
-   for(const idea of recommendProgrammeAngles(selected).slice(0,3)){
-    const action=button(idea.title,()=>{
-     const id="angle-"+crypto.randomUUID();
-     segments.set(id,programmeAngleIdeaStarter(selected,id,idea));
-     if(selected.cast?.some(x=>x.side==="A")&&
-      (selected.cast?.some(x=>x.side==="B")||!isRivalry)){
-      slotBookingModes.set(id,"QUICK");slotBookingSteps.set(id,"CAST");
-     }
-     order.push(id);expanded=id;startWizard(id);
-    },!mutable(),"ppw-card-rivalry-add");
-    action.title=idea.kind.replaceAll("_"," ").toLowerCase()+" · "+idea.reason;
-    actions.append(action);
-   }
-   if(!matchReady?.ok&&actions.childElementCount===0)
-    suggestions.append(el("p","ppw-card-story-availability","Book the cast manually."));
-   if(!isRivalry)suggestions.append(el("p","ppw-card-story-availability",
-    "Book a real match and link it under Storyline when scripting. No opponent or winner is chosen for you."));
-   suggestions.append(actions);
-   root.append(suggestions);
-  }
+  // Blueprint scene options live in the Programme Desk, not on the show card.
   const list=el("section","ppw-card-list");
   let editShade:HTMLElement|null=null;
   for(const [i,slotId] of order.entries()){
@@ -1692,7 +1629,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     }
     if(!SEGMENT_BOOKING_RULES[segment.kind].allowTargets)
      body.append(el("p","ppw-angle-guidance ppw-angle-direct-target",
-      "Want someone to be confronted or called out? Set Creative direction to Challenge or Confrontation, then choose the rival under Targets. A standalone promo or interview has no on-screen target."));
+      "To address someone directly, choose Challenge or Confrontation and select a target."));
 
     body.append(el("h3","ppw-angle-workflow-title","1 · Who is involved?"));
     for(const role of ["actors","targets"] as const){
@@ -1705,7 +1642,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       segment.kind==="POST_MATCH_ASSAULT"?role==="actors"?"Attacker":"Victim from the match":
       role==="actors"?segment.kind==="INTERVIEW"?"Speaker":
        ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?"Attacker":
-       segment.kind==="CHALLENGE"?"Challenger":"Initiator / featured wrestler":
+       segment.kind==="CHALLENGE"?"Challenger":"Who appears":
        segment.kind==="STABLE_EXIT"&&segment.creativeBeat?.kind==="STABLE_EXIT"&&
         ["EXPULSION_SCENE","BEATDOWN"].includes(segment.creativeBeat.departure)?
          "Member being expelled":
@@ -1727,7 +1664,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        specialist?(segment.actors.length?"rescuer":"attacker"):
         segment.kind==="INTERRUPTION"?"interrupter":
         ["ATTACK","POST_MATCH_ASSAULT"].includes(segment.kind)?"attacker":
-        segment.kind==="INTERVIEW"?"speaker":"performer":
+        segment.kind==="INTERVIEW"?"speaker":"wrestler":
        specialist?"person being rescued":
         segment.kind==="INTERRUPTION"?"speaker":
         segment.kind==="POST_MATCH_ASSAULT"?"wrestler from the match":
@@ -1925,7 +1862,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Finish",selector(m.plannedFinish,
      permittedStipulationFinishes(m.stipulation??"STANDARD",simFormat)
       .map(x=>[x,nice(x)]),
-      v=>edit(m,{plannedFinish:v,cheatingWrestlerId:undefined}),!mutable())));
+      v=>edit(m,{plannedFinish:v,cheatingWrestlerId:undefined,
+       finishProp:undefined,refereeSpot:undefined}),!mutable())));
+    if(m.plannedFinish==="FOREIGN_OBJECT")
+     controls.append(field("Weapon used",selector(m.finishProp??"",
+      [["","Choose the object"],...FINISH_PROPS.map(x=>[x.value,x.label])],
+      v=>edit(m,{finishProp:v?v as FinishProp:undefined}),!mutable())));
+    if(["FOREIGN_OBJECT","PROTECTED_FINISH"].includes(m.plannedFinish))
+     controls.append(field("Referee spot",selector(m.refereeSpot??"",
+      [["","Standard officiating"],...REFEREE_SPOTS.map(x=>[x.value,x.label])],
+      v=>edit(m,{refereeSpot:v?v as RefereeSpot:undefined}),!mutable())));
     const cheatingSide=m.plannedFinish==="FOREIGN_OBJECT"?m.winnerSide:
      m.plannedFinish==="DISQUALIFICATION"?1-m.winnerSide:-1;
     if(m.format==="SINGLES"&&cheatingSide>=0){

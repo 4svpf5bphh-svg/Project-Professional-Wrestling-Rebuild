@@ -59,3 +59,70 @@ test("a dirty finish never claims that the referee caught an unnoticed weapon",(
  assert.match(replay.description,/concealed weapon/);
  assert.doesNotMatch(replay.description,/caught bringing|foreign object|simulation/i);
 });
+
+test("selected finish object and referee bump survive the certified result and medical override",()=>{
+ const entry=match("FOREIGN_OBJECT");
+ entry.matchContext={...entry.matchContext!,finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"};
+ entry.fallout={injuries:[],eliminations:[],finishCheaterName:"Alice"};
+ const replay=replayVerifiedMatchFinish(entry)!;
+ assert.match(replay.description,/screwdriver/i);
+ assert.match(replay.description,/knocked down/);
+ assert.match(replay.description,/Alice/);
+ const later=match("INJURY_STOPPAGE");
+ later.matchContext={...later.matchContext!,finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"};
+ assert.doesNotMatch(replayVerifiedMatchFinish(later)!.description,/screwdriver|knocked down/i);
+});
+
+test("fallback finish labels use the saved object, never a randomly invented prop",async()=>{
+ const {shortResultColour}=await import("../src/domain/show-result-colour.js");
+ const entry=match("FOREIGN_OBJECT");
+ entry.matchContext={...entry.matchContext!,finishProp:"SCREWDRIVER",refereeSpot:"REF_BUMP"};
+ const text=shortResultColour(entry,"fixed-show");
+ assert.match(text,/screwdriver/i);
+ assert.doesNotMatch(text,/chair|kendo|ring bell/i);
+ const legacy=shortResultColour(match("FOREIGN_OBJECT"),"legacy-show");
+ assert.match(legacy,/concealed weapon/);
+ assert.doesNotMatch(legacy,/chair|bell|chain|kendo|screwdriver/i);
+ const clean=match("CLEAN_PIN");
+ clean.performerIdentities=[{personId:"a",ringName:"Alice",character:"Cocky challenger",style:null,
+  signatureMoves:["Imaginary Finish"],finishingMoves:["Never Booked"],source:"WORLD_RECORD"}];
+ assert.doesNotMatch(shortResultColour(clean,"one"),/Imaginary Finish|Never Booked/);
+});
+
+test("offline main-event copy carries certified title defence and actual ringside help",async()=>{
+ const {shortResultColour}=await import("../src/domain/show-result-colour.js");
+ const entry=match("FOREIGN_OBJECT");
+ entry.fallout={injuries:[],eliminations:[],
+  title:{name:"CWA Intercontinental Championship",winnerName:"Alice",
+   priorHolderName:"Alice",changed:false},
+  interference:{personName:"Manager",outcome:"SUCCESS"}};
+ const story=shortResultColour(entry,"title-main");
+ assert.match(story,/Alice retained the CWA Intercontinental Championship/);
+ assert.match(story,/Manager made a decisive intervention/);
+ assert.doesNotMatch(story,/kendo|ring bell|steel chair|screwdriver/i);
+ entry.fallout.interference!.outcome="ABORTED";
+ assert.doesNotMatch(shortResultColour(entry,"title-main"),/decisive intervention/i);
+});
+
+test("offline title fallout distinguishes winning the match from retaining the championship",async()=>{
+ const {shortResultColour}=await import("../src/domain/show-result-colour.js");
+ const noTransfer=match("DISQUALIFICATION");
+ noTransfer.fallout={injuries:[],eliminations:[],
+  title:{name:"CWA Heavyweight Title",winnerName:"Alice",
+   priorHolderName:"Bob",changed:false}};
+ const result=shortResultColour(noTransfer,"dq-challenge");
+ assert.match(result,/Alice took the win by disqualification/);
+ assert.match(result,/Bob kept the CWA Heavyweight Title/);
+ assert.doesNotMatch(result,/Alice retained|Alice is the new/);
+ const vacant=match("FOREIGN_OBJECT");
+ vacant.fallout={injuries:[],eliminations:[],
+  title:{name:"CWA Women's Title",winnerName:"Alice",
+   priorHolderName:null,changed:false}};
+ assert.match(shortResultColour(vacant,"vacant-dq"),/CWA Women's Title remains vacant/);
+ assert.doesNotMatch(shortResultColour(vacant,"vacant-dq"),/retained/);
+ const transfer=match("CLEAN_PIN");
+ transfer.fallout={injuries:[],eliminations:[],
+  title:{name:"CWA Women's Title",winnerName:"Alice",
+   priorHolderName:"Bob",changed:true}};
+ assert.match(shortResultColour(transfer,"title-win"),/Alice is the new CWA Women's Title champion/);
+});

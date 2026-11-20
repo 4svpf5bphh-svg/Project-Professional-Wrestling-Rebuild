@@ -1,3 +1,4 @@
+import {finishPropLabel} from "./bookable-match.js";
 /** Finish replay uses a sealed result, not generated moves or speculation.
  * These are the factual headlines the eventual AI enhancement must preserve.
  */
@@ -45,12 +46,20 @@ export function replayVerifiedMatchFinish(entry:ShowResultEntry):FinishReplay|nu
  const affected=method==="INJURY_STOPPAGE"&&injury?
   " Medical stoppage: "+injury.personName+" ("+injury.severity.toLowerCase()+" injury).":"";
  const cheater=entry.fallout?.finishCheaterName;
+ const prop=method==="FOREIGN_OBJECT"&&entry.matchContext?.finishProp?
+  " The weapon was a "+finishPropLabel(entry.matchContext.finishProp)+".":"";
+ const referee=["FOREIGN_OBJECT","PROTECTED_FINISH"].includes(method)&&
+  entry.matchContext?.refereeSpot==="REF_BUMP"?
+   " The referee was knocked down, then recovered to make the decision.":
+  ["FOREIGN_OBJECT","PROTECTED_FINISH"].includes(method)&&
+   entry.matchContext?.refereeSpot==="DISTRACTED"?
+   " The official was looking elsewhere when the shortcut happened.":"";
  const dirtyDetail=cheater&&method==="DISQUALIFICATION"?
   " "+cheater+" was the recorded disqualified wrestler.":
   cheater&&method==="FOREIGN_OBJECT"?
   " "+cheater+" brought the weapon into play.":"";
  const runIn=entry.fallout?.interference?.outcome==="SUCCESS"?
   " There was also a ringside run-in.":"";
- return {title:result.title,description:result.description+dirtyDetail+affected+runIn,
+ return {title:result.title,description:result.description+prop+referee+dirtyDetail+affected+runIn,
   tone:result.tone,winnerLabel:winner};
 }

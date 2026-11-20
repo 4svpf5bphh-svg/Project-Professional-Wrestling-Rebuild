@@ -755,3 +755,22 @@
  margin:10px 0 0;color:#eaf5ff}
 .ppw-result-script-sequence li{padding-left:3px;
  font:500 12px/1.5 system-ui;overflow-wrap:anywhere}
+
+/* Certified HEAT / COLD belongs in the broadcast, not a tiny grey status chip.
+ * No extra counters or derived gameplay: this is the same settled 0–5 rating. */
+.ppw-results .ppw-segment-temperature{
+ display:inline-flex;align-items:center;gap:5px;min-height:31px;
+ padding:5px 10px;border-width:2px;border-radius:8px;
+ font:950 11px/1.2 system-ui;letter-spacing:.055em;white-space:nowrap;
+ box-shadow:inset 0 1px 0 #ffffff22,0 2px 7px #050a1b50}
+.ppw-results .ppw-segment-temperature::before{
+ content:"✦";font-size:15px;line-height:1;flex:none}
+.ppw-results .ppw-segment-temperature:is([data-temperature="cold"],[data-temperature="cool"])::before{content:"❄"}
+.ppw-results .ppw-segment-temperature:is([data-temperature="warm"],[data-temperature="hot"],[data-temperature="boiling"])::before{content:"🔥"}
+.ppw-results .ppw-segment-temperature[data-temperature="cold"]{
+ background:linear-gradient(115deg,#133c68,#1a2e57);border-color:#6ad6ff;color:#d5f5ff}
+.ppw-results .ppw-segment-temperature[data-temperature="hot"],
+.ppw-results .ppw-segment-temperature[data-temperature="boiling"]{
+ background:linear-gradient(115deg,#7c302e,#b14433);border-color:#ffc26a;color:#fff5d5}
+@media(max-width:390px){.ppw-results .ppw-segment-temperature{
+ font-size:10px;min-height:30px;padding:5px 8px}}

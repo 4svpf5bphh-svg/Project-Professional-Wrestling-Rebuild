@@ -726,7 +726,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    else if((p.medicalHolds??[]).length)
     advice.append(element("p","ppw-programme-booked-short",
      "A wrestler is medically unavailable. Revisit the plan after clearance or choose a safe alternative; a match cannot be assumed."));
-   else{
+   else if(!savedBlueprint){
     for(const idea of recommendProgrammeAngles(p).slice(0,3)){
      const pick=button(idea.title,()=>port.openPlanner?.(p.programmeId,idea.kind),working);
      advice.append(pick);
