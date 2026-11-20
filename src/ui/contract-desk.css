@@ -241,3 +241,12 @@
 @media(max-width:360px){.ppw-contract-tabs{gap:5px}
  .ppw-contract-tabs .ppw-contract-button{font-size:11px;padding:7px 4px}
  .ppw-contract-filter-pills .ppw-contract-button{padding:7px 9px}}
+
+.ppw-contract-family-choice{display:grid;gap:7px;margin:12px 0;
+ color:#c5e1ed;font-size:13px;font-weight:750}
+.ppw-contract-family-choice select{width:100%;min-width:0;min-height:44px;
+ background:#071927;border:1px solid #537084;border-radius:9px;
+ padding:9px;color:#ecf9ff;font-size:16px}
+.ppw-contract-exclusive-floor{padding:9px 11px;border-left:3px solid #72c8e9;
+ background:rgba(20,60,79,.6);color:#d6f0ff;font-size:13px;line-height:1.5}
+.ppw-contract-exclusive-floor[data-valid="false"]{border-color:#e4aa63;color:#ffd4a2}
