@@ -164,13 +164,13 @@ test("Contract Desk compares ten genuine annual signings with cash, without anot
 for(const width of [320,390]){
  test("exclusive minimum is actionable before Talent Market offer at "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:844});
-  let offer:Record<string,unknown>|null=null;
+  const offers:Record<string,unknown>[]=[];
   await page.route("**/api/session",r=>r.fulfill({json:session}));
   await page.route("**/api/card",r=>{
    const m=r.request().postDataJSON() as Record<string,unknown>;
    if(m.method==="wrestlerDirectory")return r.fulfill({json:market});
    if(m.method==="submitContractOffer"){
-    offer=m.terms as Record<string,unknown>;
+    offers.push(m.terms as Record<string,unknown>);
     return r.fulfill({json:{status:"APPLIED",result:{offerId:"star-offer"}}});
    }
    return r.fulfill({json:{}});
@@ -190,10 +190,10 @@ for(const width of [320,390]){
   await expect(editor.getByLabel("Weekly guarantee ($)")).toHaveValue("5000");
   await editor.getByRole("button",{name:"Submit offer"}).click();
   await expect(page.getByText(/Offer sent/)).toBeVisible();
-  expect(offer).toMatchObject({
+  expect(offers[0]).toMatchObject({
    family:"EXCLUSIVE",weeklyGuarantee:5000,appearanceFee:0
   });
-  expect(offer?.dateEntitlement).toBe(offer?.termWeeks);
+  expect(offers[0]?.dateEntitlement).toBe(offers[0]?.termWeeks);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

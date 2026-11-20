@@ -82,7 +82,7 @@ for(const width of [320,390]){
  test("a paid current non-exclusive deal can become exclusive next term at "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:844});
   let revision=8,pending=false,reads=0;
-  let submitted:{sourceContractId?:string;terms?:Record<string,unknown>}|null=null;
+  const submissions:{sourceContractId?:string;terms?:Record<string,unknown>}[]=[];
   const source={
    personId:"riddle",contractId:"riddle-current",name:"Matt Riddle",
    family:"LIMITED_NON_EXCLUSIVE",status:"SIGNED",
@@ -109,7 +109,7 @@ for(const width of [320,390]){
       renewalEligible:!pending,needsAttention:!pending}],
      offers:pending?[{offer_id:"riddle-future",person_id:"riddle",
       person_name:"Matt Riddle",source_contract_id:"riddle-current",
-      status:"PENDING",terms:submitted?.terms}]:[],
+      status:"PENDING",terms:submissions[0]?.terms}]:[],
      requests:[],renewals:[],resolvedOffers:[],dateDecisions:[],
      summary:{signed:1,expiringSoon:pending?0:1,noDates:0,
       pendingNegotiations:0,pendingRenewals:0,pendingOffers:pending?1:0,
@@ -117,8 +117,8 @@ for(const width of [320,390]){
     }});
    }
    if(m.method==="submitContractOffer"){
-    submitted={sourceContractId:String(m.sourceContractId),
-     terms:m.terms as Record<string,unknown>};
+    submissions.push({sourceContractId:String(m.sourceContractId),
+     terms:m.terms as Record<string,unknown>});
     pending=true;revision++;
     return r.fulfill({json:{status:"APPLIED",result:{offerId:"riddle-future"}}});
    }
@@ -144,12 +144,12 @@ for(const width of [320,390]){
   await expect(card.getByLabel("Signing bonus ($) for Matt Riddle")).toHaveValue("0");
   await card.getByRole("button",{name:"Send negotiated renewal"}).click();
   await expect(page.getByText("Renewal offer sent.",{exact:false})).toBeVisible();
-  expect(submitted?.sourceContractId).toBe("riddle-current");
-  expect(submitted?.terms).toMatchObject({
+  expect(submissions[0]?.sourceContractId).toBe("riddle-current");
+  expect(submissions[0]?.terms).toMatchObject({
    family:"EXCLUSIVE",startWeekIndex:22,
    appearanceFee:0,weeklyGuarantee:2000,signingBonus:0
   });
-  expect(submitted?.terms?.dateEntitlement).toBe(submitted?.terms?.termWeeks);
+  expect(submissions[0]?.terms?.dateEntitlement).toBe(submissions[0]?.terms?.termWeeks);
   expect(reads).toBe(2);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
@@ -157,7 +157,7 @@ for(const width of [320,390]){
 
  test("exclusive can become non-exclusive only after expiry at "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:844});
-  let submitted:Record<string,unknown>|null=null;
+  const submissions:Record<string,unknown>[]=[];
   const current={personId:"riddle",contractId:"exclusive-current",name:"Matt Riddle",
    family:"EXCLUSIVE",status:"SIGNED",remainingDates:null,startWeekIndex:0,
    expiresWeekIndex:25,weeksRemaining:7,dateEntitlement:26,
@@ -180,7 +180,7 @@ for(const width of [320,390]){
      pendingRenewals:0,pendingOffers:0,weeklyGuarantees:6000}
    }});
    if(m.method==="submitContractOffer"){
-    submitted=m.terms as Record<string,unknown>;
+    submissions.push(m.terms as Record<string,unknown>);
     return r.fulfill({json:{status:"APPLIED"}});
    }
    throw Error("Unexpected request "+String(m.method));
@@ -196,9 +196,9 @@ for(const width of [320,390]){
   await card.getByLabel("Appearance fee ($) for Matt Riddle").fill("2500");
   await card.getByRole("button",{name:"Send negotiated renewal"}).click();
   await expect(page.getByText(/Renewal offer sent/)).toBeVisible();
-  expect(submitted).toMatchObject({family:"LIMITED_NON_EXCLUSIVE",
+  expect(submissions[0]).toMatchObject({family:"LIMITED_NON_EXCLUSIVE",
    startWeekIndex:26,appearanceFee:2500,weeklyGuarantee:6000});
-  expect(Number(submitted?.dateEntitlement)).toBeLessThanOrEqual(
-   Number(submitted?.termWeeks));
+  expect(Number(submissions[0]?.dateEntitlement)).toBeLessThanOrEqual(
+   Number(submissions[0]?.termWeeks));
  });
 }
