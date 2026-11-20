@@ -68,7 +68,7 @@ export function deskErrorCode(message:string,method:string):DeskErrorCode|null{
  const domain=cardActionDomain(method);
  if(domain==="contracts"){
   if(/renewal already arranged|renewal already reserved/i.test(message))return "RENEWAL_ARRANGED";
-  if(/manual negotiation required|invalid renewal source contract/i.test(message))return "RENEWAL_MANUAL";
+  if(/manual negotiation required/i.test(message))return "RENEWAL_MANUAL";
   if(/contract already expired/i.test(message))return "CONTRACT_EXPIRED";
   if(/offer to this wrestler is already pending/i.test(message))return "OFFER_PENDING";
   if(/exclusive offer overlaps|exclusive contract blocks outside work|overlapping signed agreement/i.test(message))return "OFFER_OVERLAP";
