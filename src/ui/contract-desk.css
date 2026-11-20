@@ -241,3 +241,12 @@
 @media(max-width:360px){.ppw-contract-tabs{gap:5px}
  .ppw-contract-tabs .ppw-contract-button{font-size:11px;padding:7px 4px}
  .ppw-contract-filter-pills .ppw-contract-button{padding:7px 9px}}
+
+/* Phase 62: visible renewal conversion and original exclusive wage floor. */
+.ppw-contract-family-choice{display:grid;gap:7px;min-width:0;margin:10px 0}
+.ppw-contract-family-choice select{width:100%;min-width:0;max-width:100%;font-size:16px}
+.ppw-contract-exclusive-minimum:not([hidden]){display:grid;gap:5px;padding:10px 12px;
+ border:1px solid #5b9bb9;border-radius:10px;background:#123348;color:#e9f9ff;margin:8px 0}
+.ppw-contract-exclusive-minimum[data-shortfall="true"]{border-color:#edb659;background:#3c2c32}
+.ppw-contract-exclusive-minimum small{font-size:12px;line-height:1.45}
+.ppw-contract-exclusive-minimum button{justify-self:start;min-height:42px}
