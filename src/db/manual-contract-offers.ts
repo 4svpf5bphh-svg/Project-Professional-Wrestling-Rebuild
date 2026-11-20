@@ -67,8 +67,8 @@ export async function submitManualContractOffer(pool:TransactionPool,input:Manua
     ||sourceRow.expires_week_index<current)throw new Error("Invalid renewal source contract");
    if(input.terms.startWeekIndex!==sourceRow.expires_week_index+1)
     throw new Error("Renewal must start after the current contract expires");
-   // The original paid term is not overwritten before its final week.
-   if(input.terms.family!==sourceRow.family)throw new Error("Changing contract family requires a new agreement");
+   // Changing family is allowed only as a future renewal. The signed current
+   // contract and its agreed wage/dates remain in force through expiry.
    const accepted=await tx.query<{proposal_id:string}>(`SELECT proposal_id FROM ppw_contract_renewal_proposals
     WHERE world_id=$1 AND contract_id=$2 AND status IN ('ACCEPTED','PENDING') LIMIT 1`,
     [input.worldId,source]);

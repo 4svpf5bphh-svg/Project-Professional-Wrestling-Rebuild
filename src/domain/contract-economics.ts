@@ -54,6 +54,12 @@ export function marketWeeklyValue(p:PersonEconomics):number {
  const mult=p.careerStage==="SPECIAL_ATTRACTION"?1.35:p.careerStage==="VETERAN"?1.1:p.careerStage==="PROSPECT"?0.75:1;
  return Math.round((500+p.recognition*50+p.popularity*30+skill*25)*mult);
 }
+/** Minimum wage used by both offers and future exclusive employment. */
+export function minimumExclusiveWeeklyGuarantee(marketValue:number):number {
+ if(!Number.isSafeInteger(marketValue)||marketValue<1)
+  throw new Error("Exclusive minimum wage unavailable");
+ return Math.max(1,Math.ceil(marketValue*.5));
+}
 export function serviceCapacityDatesPerWeek(p:PersonEconomics):number {
  const base=p.careerStage==="PRIME"?1.9:p.careerStage==="PROSPECT"?1.55:p.careerStage==="VETERAN"?1.4:1;
  return base*(.8+p.stamina/250)*Math.max(.65,1-p.fatigue/200);
@@ -61,8 +67,9 @@ export function serviceCapacityDatesPerWeek(p:PersonEconomics):number {
 export function canAcceptTerms(p:PersonEconomics,t:OfferTerms,contracts:readonly ExistingCommitment[],
  currentWeek:number,ignoreContractId:string|null=null):string|null {
  validateOfferTerms(t,currentWeek);requireEconomics(p);
- if(t.family==="EXCLUSIVE"&&t.weeklyGuarantee<Math.max(1,Math.ceil(marketWeeklyValue(p)*.5)))
-  return "exclusive guarantee below the original minimum wage";
+ if(t.family==="EXCLUSIVE"&&t.weeklyGuarantee<minimumExclusiveWeeklyGuarantee(marketWeeklyValue(p)))
+  return "exclusive minimum weekly guarantee is $"+
+   minimumExclusiveWeeklyGuarantee(marketWeeklyValue(p)).toLocaleString("en-GB")+"/week";
  const end=t.startWeekIndex+t.termWeeks-1;
  const overlapping=contracts.filter(c=>c.status==="SIGNED"&&c.contractId!==ignoreContractId
  &&c.startWeekIndex<=end&&c.expiresWeekIndex>=t.startWeekIndex);
