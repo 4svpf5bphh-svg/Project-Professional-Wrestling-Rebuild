@@ -99,7 +99,7 @@ export function deskErrorMessage(code:unknown):string|null{
   OFFER_PENDING:"You already have an offer awaiting this wrestler. Open Contract Desk → Offers before sending another.",
   OFFER_OVERLAP:"These terms conflict with an existing exclusive contract. Try a shorter or later agreement.",
   OFFER_MINIMUM:"The exclusive weekly wage is below the wrestler’s minimum. Review the guarantee.",
-  OFFER_START:"The start week is no longer valid. Reopen the offer and review its dates.",
+  OFFER_START:"The offer cannot begin in that week. Reopen the offer and review its dates.",
   OFFER_CAPACITY:"That wrestler cannot commit to this many appearances alongside their other contracts. Reduce purchased dates or try an exclusive agreement when available.",
   OFFER_TERMS:"Those terms are not valid for this contract type. Review its length, dates, wage and appearance fee.",
   RENEWAL_SOURCE:"The current agreement is no longer eligible for renewal. Refresh Contract Desk and review the wrestler's latest contract.",
