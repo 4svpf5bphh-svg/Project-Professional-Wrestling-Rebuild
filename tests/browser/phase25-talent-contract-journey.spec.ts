@@ -98,6 +98,16 @@ test("320px Talent Market keeps talent visible, remembers scouting filters, and 
  // recommendation: $114,400 wages + $500,000 on 40 dates = $614,400.
  await expect(offer.locator(".ppw-directory-contract-estimate")).toContainText("$614,400");
  await expect(offer.locator(".ppw-directory-cash-only")).toContainText("$3,385,600 remaining");
+ await offer.getByLabel("Contract type").selectOption("EXCLUSIVE");
+ await expect(offer.locator(".ppw-directory-exclusive-floor"))
+  .toContainText("Minimum exclusive weekly guarantee: $5,000/week");
+ await expect(offer.getByLabel("Weekly guarantee ($)")).toHaveValue("5000");
+ await offer.getByLabel("Weekly guarantee ($)").fill("4999");
+ await expect(offer.locator(".ppw-directory-exclusive-floor"))
+  .toHaveAttribute("data-valid","false");
+ await offer.getByRole("button",{name:"Submit offer"}).click();
+ await expect(offer.locator(".ppw-directory-exclusive-floor"))
+  .toContainText("Raise the weekly guarantee");
  expect(filters.length).toBe(4); // one initial read, two refinements, one clear
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
