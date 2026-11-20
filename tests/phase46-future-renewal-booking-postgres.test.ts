@@ -180,9 +180,9 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_command_receipts","ppw_card_slots","ppw_booking_drafts",
-    "ppw_tag_team_members","ppw_tag_teams","ppw_championships","ppw_contracts","ppw_people",
-    "ppw_venues","ppw_promotion_controls","ppw_memberships","ppw_promotions","ppw_markets",
-    "ppw_contract_renewal_proposals"])
+    "ppw_tag_team_members","ppw_tag_teams","ppw_championships",
+    "ppw_contract_renewal_proposals","ppw_contracts","ppw_people",
+    "ppw_venues","ppw_promotion_controls","ppw_memberships","ppw_promotions","ppw_markets"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[[owner,other]]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
