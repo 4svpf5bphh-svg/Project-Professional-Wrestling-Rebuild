@@ -2,7 +2,7 @@ import test from "node:test";
 import {projectShowAudience} from "../src/domain/show-audience.js";
 import {broadcasterRatingTarget,formatTvRating} from "../src/domain/commercial-offers.js";
 import assert from "node:assert/strict";
-import {assessBroadcastNetwork,broadcasterReaction,
+import {assessBroadcastNetwork,broadcasterReaction,broadcastScheduleLabel,
  type BroadcastNetworkTerms,type CertifiedNetworkWeek}
  from "../src/domain/broadcast-network-review.js";
 const deal:BroadcastNetworkTerms={dealId:"tv-a",offerCode:"BROADCAST_TV",
@@ -130,4 +130,14 @@ test("long-cycle regular schedules use the same valid 260-week cadence as the ca
   "A genuinely missed scheduled episode remains missed on the off-week");
  assert.throws(()=>assessBroadcastNetwork({...rare,regularSchedule:[
   {cadenceWeeks:0,anchorWeek:4}]},[],1),/Invalid/);
+});
+
+test("network desk describes actual recurrence without implying an off-week violation",()=>{
+ const {regularSchedule}=({regularSchedule:[{cadenceWeeks:2,anchorWeek:20}]});
+ assert.equal(broadcastScheduleLabel(regularSchedule),"Every other week");
+ assert.equal(broadcastScheduleLabel([{cadenceWeeks:1,anchorWeek:20}]),"Weekly TV");
+ assert.equal(broadcastScheduleLabel([{cadenceWeeks:5,anchorWeek:20}]),"Every 5 weeks");
+ assert.equal(broadcastScheduleLabel([{cadenceWeeks:2,anchorWeek:20},
+  {cadenceWeeks:2,anchorWeek:21}]),"Multiple TV series");
+ assert.equal(broadcastScheduleLabel(undefined),"Weekly TV");
 });

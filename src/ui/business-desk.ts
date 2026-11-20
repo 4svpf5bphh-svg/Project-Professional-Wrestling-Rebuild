@@ -7,7 +7,8 @@ import {assessPromotionSpendingPlan,type PromotionSpendingPlan}
  from "../domain/promotion-spending-plan.js";
 import type {previewHumanPromotionRestructure} from "../db/human-promotion-restructuring.js";
 import {recommendPromotionBudgets,type BudgetRisk} from "../domain/financial-adviser.js";
-import {broadcasterReaction} from "../domain/broadcast-network-review.js";
+import {broadcasterReaction,broadcastScheduleLabel}
+ from "../domain/broadcast-network-review.js";
 export type BusinessView=Awaited<ReturnType<typeof readBusinessWorkspace>>;
 export type RescueView=NonNullable<Awaited<ReturnType<typeof previewHumanPromotionRestructure>>>;
 export interface BusinessPort{
@@ -980,7 +981,9 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
        "Last week · "+formatTvRating(review.rating)+" TV / "+
         review.target.toFixed(2)+" partner target"));
      if(review.status==="OFF_WEEK")
-      line.append(el("small","","No delivery missed. The broadcaster reviews the next contracted episode."));
+      line.append(el("small","",review.missedConsecutively>0?
+       "No new episode was due. Earlier missed broadcasts still count until delivery improves.":
+       "No episode was due. The broadcaster reviews the next scheduled show."));
      else if(review.missedConsecutively>=2)
       line.append(el("small","",
        review.missedConsecutively+" consecutive missed network requirements"+
@@ -997,7 +1000,8 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     if(deal.kind==="BROADCAST"&&typeof deal.airingDay==="number"&&typeof deal.airingHour==="number"){
      item.append(el("span","ppw-commercial-slot",
       "Your contracted TV night · "+(day[deal.airingDay-1]??"Weekly")+
-       " at "+String(deal.airingHour).padStart(2,"0")+":00 · Weekly shows fixed"));
+       " at "+String(deal.airingHour).padStart(2,"0")+":00 · "+
+       broadcastScheduleLabel(deal.regularSchedule)));
      if(port.requestBroadcastDay&&deal.source==="HUMAN"){
       const open=requestingDayFor===deal.dealId;
       item.append(button(open?"Cancel day request":"Request a different broadcast day",()=>{

@@ -21,6 +21,14 @@ export interface BroadcastNetworkReview{
  missedConsecutively:number;previousMisses:number;milestone:BroadcastMilestone;
  bonusEligible:boolean;
 }
+/** Human wording for the very same regular TV series that drive reviews. */
+export function broadcastScheduleLabel(series:BroadcastNetworkTerms["regularSchedule"]|null){
+ if(!series?.length)return "Weekly TV";
+ if(series.length>1)return "Multiple TV series";
+ const cadence=series[0]!.cadenceWeeks;
+ return cadence===1?"Weekly TV":cadence===2?"Every other week":
+  "Every "+cadence+" weeks";
+}
 const missed=(s:BroadcastDelivery)=>s==="BELOW_TARGET"||s==="OFF_SLOT"||s==="NO_TV";
 function scheduled(terms:BroadcastNetworkTerms,index:number){
  const series=terms.regularSchedule;

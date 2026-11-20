@@ -509,8 +509,9 @@ Treat one wrestler's repertoire as available moves, never proof a
 particular move caused the finish. Never assign another wrestler's
 signature move. Use official audience mood qualitatively.
 
-Singles: only two wrestlers, NO tags. Tags/trios: one legal wrestler per
-team, partners on apron; a tag is required before a new wrestler scores.
+Singles: only two wrestlers. No tags or tag partners. Tags/trios:
+only one wrestler PER TEAM is legal; partners wait on the apron.
+A legal tag is required before a new wrestler scores.
 Hot tags are optional. No invented precise fall scorer for team wins.
 Multi-team formats preserve their legal sides. Triple threats/four-ways:
 all individual wrestlers legal, no tags. Battle royals require over-the-top
