@@ -5,6 +5,7 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {readWrestlerDirectory,DirectoryFilter,DirectoryView}
  from "../db/wrestler-directory.js";
 import type {OfferTerms} from "../domain/contract-economics.js";
+import {minimumExclusiveWeeklyGuarantee} from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {createTalentFilterFrame} from "./talent-filter-controls.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
@@ -133,6 +134,16 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    terms.weeklyGuarantee>1e9||terms.appearanceFee>1e9||terms.signingBonus>1e9){
    error="Review the term length, dates and non-negative payment amounts.";render();return;
   }
+  if(exclusive){
+   const market=view.people.find(p=>p.personId===personId)?.estimatedWeeklyValue;
+   const floor=typeof market==="number"&&Number.isSafeInteger(market)&&market>0?
+    minimumExclusiveWeeklyGuarantee(market):null;
+   if(floor===null||terms.weeklyGuarantee<floor){
+    error=floor===null?"Exclusive wage minimum unavailable. Refresh the wrestler's scouting data.":
+     "Exclusive minimum weekly guarantee is "+money(floor)+"/week.";
+    render();return;
+   }
+  }
   if(pendingPersonId!==personId){pendingKey="";pendingPersonId=personId;}
   const requestId=pendingKey||crypto.randomUUID();pendingKey=requestId;
   sending=true;error="";success="";render();
@@ -167,6 +178,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    bonus:proposed.terms.signingBonus
   }:null;
   const draft=choices.get(personId)??fromProposal??offerDefaults();
+  const marketValue=prospect?.estimatedWeeklyValue;
+  const exclusiveMinimum=typeof marketValue==="number"&&Number.isSafeInteger(marketValue)&&marketValue>0?
+   minimumExclusiveWeeklyGuarantee(marketValue):null;
   choices.set(personId,draft);
   const editor=el("div","ppw-directory-offer");
   editor.append(el("h3","","Make an offer"));
@@ -238,7 +252,10 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    else if(prior==="ONE_OFF"){
     const plan=applyContractTermPreset(next,"SHORT");
     draft.weeks=plan.weeks;draft.dates=plan.dates;
-   }else if(next==="EXCLUSIVE")draft.dates=draft.weeks;
+   }else if(next==="EXCLUSIVE"){
+    draft.dates=draft.weeks;
+    if(exclusiveMinimum!==null)draft.weekly=Math.max(draft.weekly,exclusiveMinimum);
+   }
    else draft.dates=Math.min(draft.dates,draft.weeks);
    pendingKey="";openAdvancedTerms.add(personId);render();
   }));
@@ -276,6 +293,14 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
       "Guaranteed wages + signing bonus: "+
       money(projection.guaranteedWages+projection.oneTimeBonus)));
     quote.append(costHeading);
+    if(draft.family==="EXCLUSIVE"){
+     const meets=exclusiveMinimum!==null&&guarantee>=exclusiveMinimum;
+     const floor=el("p","ppw-directory-exclusive-floor",
+      exclusiveMinimum===null?"Exclusive minimum wage is unavailable for this wrestler.":
+       "Minimum exclusive weekly guarantee: "+money(exclusiveMinimum)+"/week. "+
+       (meets?"Required wage floor met.":"Raise the weekly guarantee before offering."));
+     floor.dataset.valid=String(meets);quote.append(floor);
+    }
     const breakdown=el("div","ppw-directory-contract-breakdown");
     const costRow=(title:string,amount:number)=>{
      const row=el("div","ppw-directory-contract-cost-row");
