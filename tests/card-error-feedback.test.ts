@@ -57,3 +57,17 @@ test("contract offer errors explain actionable limits without exposing server de
  }
  assert.equal(deskErrorCode("sensitive SQL error query 42","submitContractOffer"),null);
 });
+
+test("renewal and capacity errors resolve to specific safe actions",()=>{
+ for(const [reason,code] of [
+  ["service capacity exceeded","OFFER_CAPACITY"],
+  ["Invalid contract terms","OFFER_TERMS"],
+  ["Renewal source is no longer available","RENEWAL_SOURCE"],
+  ["Invalid renewal source contract","RENEWAL_SOURCE"],
+  ["Changing contract family requires a new agreement","OFFER_TERMS"],
+  ["Renewal must be an exclusive or non-exclusive term agreement","OFFER_TERMS"]
+ ] as const){
+  assert.equal(deskErrorCode(reason,"submitContractOffer"),code);
+  assert.ok(deskErrorMessage(code)?.length);
+ }
+});

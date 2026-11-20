@@ -62,17 +62,21 @@ export function cardActionDomain(method:string):
 }
 export type DeskErrorCode="KP_BALANCE"|"ALREADY_OWNED"|"ART_PENDING"|"LEGEND_LOCKED"|
  "RENEWAL_ARRANGED"|"RENEWAL_MANUAL"|"CONTRACT_EXPIRED"|"STORY_CHANGED"|
- "OFFER_PENDING"|"OFFER_OVERLAP"|"OFFER_MINIMUM"|"OFFER_START";
+ "OFFER_PENDING"|"OFFER_OVERLAP"|"OFFER_MINIMUM"|"OFFER_START"|
+ "OFFER_CAPACITY"|"OFFER_TERMS"|"RENEWAL_SOURCE";
 export function deskErrorCode(message:string,method:string):DeskErrorCode|null{
  const domain=cardActionDomain(method);
  if(domain==="contracts"){
   if(/renewal already arranged|renewal already reserved/i.test(message))return "RENEWAL_ARRANGED";
-  if(/manual negotiation required|invalid renewal source contract/i.test(message))return "RENEWAL_MANUAL";
+  if(/manual negotiation required/i.test(message))return "RENEWAL_MANUAL";
   if(/contract already expired/i.test(message))return "CONTRACT_EXPIRED";
   if(/offer to this wrestler is already pending/i.test(message))return "OFFER_PENDING";
   if(/exclusive offer overlaps|exclusive contract blocks outside work|overlapping signed agreement/i.test(message))return "OFFER_OVERLAP";
   if(/exclusive guarantee below/i.test(message))return "OFFER_MINIMUM";
   if(/Recruitment offer must start|offer start has passed|Renewal must start after/i.test(message))return "OFFER_START";
+  if(/service capacity exceeded/i.test(message))return "OFFER_CAPACITY";
+  if(/invalid contract terms|exclusive employment has unlimited|purchased appearances cannot exceed|one-off agreements|renewal must be an exclusive|changing contract family|invalid contract offer/i.test(message))return "OFFER_TERMS";
+  if(/renewal source is no longer available|contract not found|invalid renewal source/i.test(message))return "RENEWAL_SOURCE";
   return null;
  }
  if(method==="chooseBackstageStoryFollowUp"&&/story chapter can no longer|already received a reply|storyline has already/i.test(message))return "STORY_CHANGED";
@@ -95,7 +99,10 @@ export function deskErrorMessage(code:unknown):string|null{
   OFFER_PENDING:"You already have an offer awaiting this wrestler. Open Contract Desk → Offers before sending another.",
   OFFER_OVERLAP:"These terms conflict with an existing exclusive contract. Try a shorter or later agreement.",
   OFFER_MINIMUM:"The exclusive weekly wage is below the wrestler’s minimum. Review the guarantee.",
-  OFFER_START:"The agreement cannot begin in this week. Reopen the offer and review its start date.",
+  OFFER_START:"The offer cannot begin in that week. Reopen the offer and review its dates.",
+  OFFER_CAPACITY:"That wrestler cannot commit to this many appearances alongside their other contracts. Reduce purchased dates or try an exclusive agreement when available.",
+  OFFER_TERMS:"Those terms are not valid for this contract type. Review its length, dates, wage and appearance fee.",
+  RENEWAL_SOURCE:"The current agreement is no longer eligible for renewal. Refresh Contract Desk and review the wrestler's latest contract.",
   STORY_CHANGED:"That chapter is no longer awaiting a decision. Reopen Backstage to review the latest story."
  };
  return typeof code==="string"&&Object.prototype.hasOwnProperty.call(map,code)?

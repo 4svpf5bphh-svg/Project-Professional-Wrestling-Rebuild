@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {marketWeeklyValue,canAcceptTerms,canAddDates,offerUtility,
+import {marketWeeklyValue,minimumExclusiveWeeklyGuarantee,
+ canAcceptTerms,canAddDates,offerUtility,
  type PersonEconomics,type OfferTerms} from "../src/domain/contract-economics.js";
 
 const person:PersonEconomics={recognition:80,popularity:70,inRingQuality:80,matchCraft:80,
@@ -48,4 +49,16 @@ test("limited deals and addenda never sell more dates than calendar weeks",()=>{
   status:"SIGNED",remainingDates:3,startWeekIndex:0,expiresWeekIndex:5};
  assert.equal(canAddDates(person,contract,1,[],2),null);
  assert.match(canAddDates(person,contract,2,[],2)??"",/contract weeks/);
+});
+
+test("exclusive hard minimum is visible and exactly matches the original accepted weekly guarantee",()=>{
+ const value=marketWeeklyValue(person);
+ const minimum=minimumExclusiveWeeklyGuarantee(value);
+ assert.equal(minimum,Math.ceil(value/2));
+ assert.equal(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",
+  dateEntitlement:13,appearanceFee:0,weeklyGuarantee:minimum-1},[],0),
+  "exclusive guarantee below the original minimum wage");
+ assert.equal(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",
+  dateEntitlement:13,appearanceFee:0,weeklyGuarantee:minimum},[],0),null);
+ assert.throws(()=>minimumExclusiveWeeklyGuarantee(NaN),/Invalid wrestler/);
 });

@@ -4,7 +4,8 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
  */
 import type {readWrestlerDirectory,DirectoryFilter,DirectoryView}
  from "../db/wrestler-directory.js";
-import type {OfferTerms} from "../domain/contract-economics.js";
+import {minimumExclusiveWeeklyGuarantee,type OfferTerms}
+ from "../domain/contract-economics.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {createTalentFilterFrame} from "./talent-filter-controls.js";
 import {contractStaffNotes} from "../domain/staff-context-advice.js";
@@ -118,6 +119,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const draft=choices.get(personId)??offerDefaults();
   const exclusive=draft.family==="EXCLUSIVE";
   const oneOff=draft.family==="ONE_OFF";
+  const marketValue=view?.people.find(p=>p.personId===personId)?.estimatedWeeklyValue;
+  const floor=marketValue===null||marketValue===undefined?null:
+   minimumExclusiveWeeklyGuarantee(marketValue);
   const terms:OfferTerms={
    family:draft.family,roleExpectation:draft.role,creativeControl:
     oneOff?"NONE":draft.creative,
@@ -135,6 +139,11 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   }
   if(pendingPersonId!==personId){pendingKey="";pendingPersonId=personId;}
   const requestId=pendingKey||crypto.randomUUID();pendingKey=requestId;
+  if(terms.family==="EXCLUSIVE"&&floor!==null&&terms.weeklyGuarantee<floor){
+   error="Exclusive contracts require at least "+money(floor)+
+    " per week for this wrestler. Increase the guarantee before submitting.";
+   render();return;
+  }
   sending=true;error="";success="";render();
   try{
    const result=await port.offer({personId,requestId,
@@ -150,6 +159,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
  }
  function offerEditor(personId:string){
   const prospect=view?.people.find(p=>p.personId===personId);
+  const floor=prospect?.estimatedWeeklyValue===null||
+   prospect?.estimatedWeeklyValue===undefined?null:
+   minimumExclusiveWeeklyGuarantee(prospect.estimatedWeeklyValue);
   const manager=view?.offerBudget?.talentManager;
   const proposed=prospect&&manager?recommendTalentOffer({
    personId,name:prospect.name,
@@ -252,6 +264,26 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    ["PROTECTED_FINISHES","Protected finishes"],
    ["FULL_APPROVAL","Full approval"]
   ] as const,draft.creative,next=>{draft.creative=next;pendingKey="";}));
+  const minimumNotice=el("div","ppw-directory-exclusive-minimum");
+  const updateMinimum=()=>{
+   minimumNotice.replaceChildren();
+   minimumNotice.hidden=draft.family!=="EXCLUSIVE";
+   if(draft.family!=="EXCLUSIVE")return;
+   if(floor===null){
+    minimumNotice.append(el("span","","Exclusive wage minimum unavailable. Review the wage before offering."));
+    return;
+   }
+   const shortfall=Math.max(0,floor-draft.weekly);
+   minimumNotice.dataset.shortfall=String(shortfall>0);
+   minimumNotice.append(el("strong","",
+    "Exclusive wage minimum · "+money(floor)+"/week"),
+    el("small","",shortfall>0?
+     "Your guarantee is "+money(shortfall)+" below the minimum. The offer would be refused.":
+     "Minimum met. Acceptance still depends on interest, competition and other terms."));
+   if(shortfall>0)minimumNotice.append(btn("Use minimum "+money(floor),()=>{
+    draft.weekly=floor;pendingKey="";render();
+   }));
+  };
   const fields=el("div","ppw-directory-offer-fields");
    const quote=el("section","ppw-directory-contract-estimate");
    const affordability=el("section","ppw-directory-affordability");
@@ -387,7 +419,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   advanced.append(timing);
   if(custom)editor.append(advanced);
   if(draft.family!=="ONE_OFF")numbers(fields,"Weekly guarantee ($)",
-   draft.weekly,0,1e9,n=>{draft.weekly=n;pendingKey="";updateQuote();});
+   draft.weekly,0,1e9,n=>{draft.weekly=n;pendingKey="";updateMinimum();updateQuote();});
   if(draft.family!=="EXCLUSIVE")numbers(fields,"Appearance fee ($)",
    draft.appearance,0,1e9,n=>{draft.appearance=n;pendingKey="";updateQuote();});
   numbers(fields,"Signing bonus ($)",draft.bonus,0,1e9,
@@ -395,7 +427,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   // First the suggested deal, then affordability. Detailed term editing is
   // an explicit choice and never another nested disclosure.
   if(custom)editor.append(fields);
-  editor.append(adviser,quote,affordability);
+  updateMinimum();
+  editor.append(minimumNotice,adviser,quote,affordability);
   if(port.openBusiness)editor.append(btn("Check company finances →",()=>port.openBusiness?.()));
   editor.append(btn(sending?"Sending…":"Submit offer",
    ()=>void send(personId),sending));

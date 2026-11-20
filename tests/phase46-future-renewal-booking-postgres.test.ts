@@ -20,7 +20,8 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
   {personId:"austin",name:"Austin Gunn"},{personId:"colten",name:"Colten Gunn"},
   {personId:"joe",name:"Samoa Joe"},{personId:"mistico",name:"Mistico"},
   {personId:"mox",name:"Jon Moxley"},{personId:"danielson",name:"Bryan Danielson"},
-  {personId:"robinson",name:"Juice Robinson"}];
+  {personId:"robinson",name:"Juice Robinson"},
+  {personId:"convert",name:"Exclusive Candidate"}];
  const original=[
   {personId:"austin",contractId:"old-austin"},
   {personId:"colten",contractId:"old-colten"},
@@ -63,7 +64,8 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
     ["renew-colten","colten",2,25],
     ["deal-joe","joe",0,25],["deal-mistico","mistico",0,25],
     ["deal-mox","mox",0,25],["deal-danielson","danielson",0,25],
-    ["robinson-old","robinson",0,1]
+    ["robinson-old","robinson",0,1],
+    ["convert-old","convert",0,1]
    ] as const)
     await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,start_week_index,expires_week_index) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE','SIGNED',10,$5,$6)",
      [world,c[0],c[1],promotion,c[2],c[3]]);
@@ -74,6 +76,15 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
      VALUES($1,'future-robinson','robinson-old',$2,'robinson','ACCEPTED',0,$3::jsonb)`,
     [world,promotion,JSON.stringify({family:"LIMITED_NON_EXCLUSIVE",termWeeks:12,
      dateEntitlement:5,weeklyGuarantee:1100,appearanceFee:9200,
+     roleExpectation:"UPPER_CARD",creativeControl:"NONE",signingBonus:0})]);
+   // A different already accepted renewal converts a limited booking contract
+   // into exclusive employment starting Week 3, without early activation.
+   await tx.query(`INSERT INTO ppw_contract_renewal_proposals
+     (world_id,proposal_id,contract_id,promotion_id,person_id,status,
+      created_week_index,proposed_terms)
+     VALUES($1,'future-convert','convert-old',$2,'convert','ACCEPTED',0,$3::jsonb)`,
+    [world,promotion,JSON.stringify({family:"EXCLUSIVE",termWeeks:12,
+     dateEntitlement:12,weeklyGuarantee:2500,appearanceFee:0,
      roleExpectation:"UPPER_CARD",creativeControl:"NONE",signingBonus:0})]);
    await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,start_week_index,expires_week_index) VALUES($1,'private-deal','private','rival','LIMITED_NON_EXCLUSIVE','SIGNED',10,0,25)",[world]);
    await tx.query("INSERT INTO ppw_tag_teams(world_id,team_id,name,status) VALUES($1,'gunns','The Gunns','ACTIVE')",[world]);
@@ -173,6 +184,30 @@ test("Week 3 Gunn renewals: roster picker, team shortcuts and saved future card 
   const futureRead=await showCardEditorAsActor(context,world,promotion,show);
   assert.equal(futureRead.selectedPeople.find(x=>x.personId==="robinson")?.contractId,"robinson-old");
   assert.equal(futureRead.selectedPeople.find(x=>x.personId==="robinson")?.appearanceFee,9200);
+  // The new exclusive term is bookable now for a Week 3 show and has no
+  // purchased-date limit or appearance fee. The stored current agreement
+  // must stay non-exclusive with its old weeks until certified advancement.
+  const converted=await cardTalentAsActor(context,world,promotion,show,"Exclusive Candidate",null,40);
+  assert.equal(converted.talent.length,1);
+  assert.equal(converted.talent[0]?.contractId,"convert-old");
+  assert.equal(converted.talent[0]?.available,true);
+  assert.equal(converted.talent[0]?.remainingDates,null);
+  assert.equal(converted.talent[0]?.appearanceFee,0);
+  const currentDeal=await withWorldTransaction(db.pool,tx=>tx.query<{
+   family:string;start_week_index:number;expires_week_index:number;remaining_dates:number|null}>(
+   "SELECT family,start_week_index,expires_week_index,remaining_dates FROM ppw_contracts WHERE world_id=$1 AND contract_id='convert-old'",[world]));
+  assert.deepEqual(currentDeal,[{
+   family:"LIMITED_NON_EXCLUSIVE",start_week_index:0,expires_week_index:1,remaining_dates:10
+  }]);
+  const convertedCast=[{personId:"convert",contractId:"convert-old"},original[2]!];
+  const signedFuture=await saveCardEditorAsActor(context,{...scope,
+   requestId:"future-exclusive-convert",expectedRevision:futureRead.worldRevision,
+   matches:[{slotId:"main",payload:{...futureCard,participants:convertedCast,
+    sides:[{sideId:"A",participants:[convertedCast[0]!]},{sideId:"B",participants:[convertedCast[1]!]}]}}],
+   runningOrder:["main"]});
+  assert.equal(signedFuture.status,"APPLIED");
+  const convertedRead=await showCardEditorAsActor(context,world,promotion,show);
+  assert.equal(convertedRead.selectedPeople.find(x=>x.personId==="convert")?.appearanceFee,0);
   const rival={pool:db.pool,actor:{playerId:other}};
   await assert.rejects(showCardEditorAsActor(rival,world,promotion,show),/not accessible/);
   await assert.rejects(cardTalentAsActor(rival,world,promotion,show,"Gunn",null,10),/not accessible/);

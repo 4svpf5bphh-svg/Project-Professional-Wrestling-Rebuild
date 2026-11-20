@@ -68,7 +68,8 @@ export async function submitManualContractOffer(pool:TransactionPool,input:Manua
    if(input.terms.startWeekIndex!==sourceRow.expires_week_index+1)
     throw new Error("Renewal must start after the current contract expires");
    // The original paid term is not overwritten before its final week.
-   if(input.terms.family!==sourceRow.family)throw new Error("Changing contract family requires a new agreement");
+   if(input.terms.family==="ONE_OFF")
+    throw new Error("A renewal must be an exclusive or non-exclusive term agreement");
    const accepted=await tx.query<{proposal_id:string}>(`SELECT proposal_id FROM ppw_contract_renewal_proposals
     WHERE world_id=$1 AND contract_id=$2 AND status IN ('ACCEPTED','PENDING') LIMIT 1`,
     [input.worldId,source]);
@@ -179,7 +180,8 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
    if(t.startWeekIndex<current)reason="offer start has passed";
    const source=b.source_contract_id?existing.find(c=>c.contract_id===b.source_contract_id):null;
    if(b.source_contract_id&&(!source||source.status!=="SIGNED"||source.expires_week_index<current
-    ||t.startWeekIndex!==source.expires_week_index+1))reason="renewal source is no longer available";
+    ||t.startWeekIndex!==source.expires_week_index+1||t.family==="ONE_OFF"))
+    reason="renewal source is no longer available";
    if(!reason)reason=canAcceptTerms(p,t,signed,current);
    if(!reason&&t.family==="EXCLUSIVE"&&signed.some(c=>c.status==="SIGNED"&&
      c.startWeekIndex<=t.startWeekIndex+t.termWeeks-1&&c.expiresWeekIndex>=t.startWeekIndex))

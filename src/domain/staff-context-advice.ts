@@ -254,12 +254,12 @@ export function contractStaffNotes(input:{weeklyGuarantee:number;weeks:number;
  if(Number.isFinite(planned)&&planned>cashRoom){
   const severe=planned>input.cash||planned>cashRoom*2;
   notes.push(note("TALENT_MANAGER","WATCH",
-   severe?"Unsustainable on current cash":"Cash-only funding gap",
+   severe?"Large cash-only exposure":"Cash-only funding gap",
    "This offer could cost $"+Math.round(planned).toLocaleString("en-GB")+
    " across the term, but only $"+Math.round(cashRoom).toLocaleString("en-GB")+
    " of today's cash is unallocated after signed commitments, other offers and reserve. "+
    "That is a $"+Math.round(planned-cashRoom).toLocaleString("en-GB")+
-   " shortfall without future income. Reduce the term, dates or payments."));
+   " cash-only difference across the full term. Future TV, sponsorship and ticket income are excluded, and this is not an immediate charge or a rejection. Review the term, dates and payment mix."));
  }
  const room=input.wageLimit===null?null:
   input.wageLimit-input.weeklyGuarantees-input.weeklyGuarantee;

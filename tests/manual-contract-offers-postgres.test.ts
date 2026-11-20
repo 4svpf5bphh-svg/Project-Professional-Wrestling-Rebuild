@@ -127,8 +127,11 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
    requestId:"overcapacity-"+id,expectedRevision:9,
    additionalDates:12,additionalPayment:0}),/extra appearances fit/);
 
-  const renewalTerms:OfferTerms={...limited,startWeekIndex:13,termWeeks:13,
-   weeklyGuarantee:12000,appearanceFee:5000,signingBonus:2000};
+  // Convert the signed limited contract to EXCLUSIVE on its NEXT paid term.
+  // It must remain limited while this World is still in Week 1.
+  const renewalTerms:OfferTerms={...limited,family:"EXCLUSIVE",
+   startWeekIndex:13,termWeeks:13,dateEntitlement:13,
+   weeklyGuarantee:12000,appearanceFee:0,signingBonus:2000};
   const renew="renegotiate-"+id;
   // Exercise the authenticated HTTP routing layer as well as contract SQL:
   // a missing sourceContractId used to turn this valid renewal into a
@@ -143,11 +146,19 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   assert.equal(renewed.status,"APPLIED");
   assert.equal(renewed.result.accepted,1);
   const reservation=await withWorldTransaction(db.pool,tx=>tx.query<{status:string;proposed_terms:{
-    creativeControl:string;weeklyGuarantee:number;termWeeks:number}}>(`SELECT status,proposed_terms
+    creativeControl:string;weeklyGuarantee:number;termWeeks:number;family:string}}>(`SELECT status,proposed_terms
     FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND contract_id=$2`,[world,source]));
   assert.equal(reservation[0]!.status,"ACCEPTED");
   assert.equal(reservation[0]!.proposed_terms.weeklyGuarantee,12000);
   assert.equal(reservation[0]!.proposed_terms.termWeeks,13);
+  assert.equal(reservation[0]!.proposed_terms.family,"EXCLUSIVE");
+  const beforeExpiry=await withWorldTransaction(db.pool,tx=>tx.query<{
+   family:string;weekly_guarantee:string;remaining_dates:number|null}>(
+   "SELECT family,weekly_guarantee,remaining_dates FROM ppw_contracts WHERE world_id=$1 AND contract_id=$2",
+   [world,source]));
+  assert.equal(beforeExpiry[0]!.family,"LIMITED_NON_EXCLUSIVE");
+  assert.equal(Number(beforeExpiry[0]!.weekly_guarantee),100);
+  assert.equal(beforeExpiry[0]!.remaining_dates,2);
   const final=await readContractDesk(db.pool,world,playerA,pA);
   assert.equal(final.summary.pendingOffers,0);
   assert.equal(final.roster[0]!.weeklyGuarantee,100);
