@@ -155,7 +155,7 @@ test("certified rivalry history reaches matches and angles in the existing five-
  const match=result.entries[0]!;
  const angle=result.entries[1]!;
  assert.deepEqual(match.programmeChapters,[{
-  programmeId:"joe-riddle",sideA:"Star",sideB:"Rival",
+  programmeId:"joe-riddle",sideA:"Star",sideB:"Rival",programmeFormat:"RIVALRY",
   precedingMatches:2,precedingAngles:1,previousWinner:"B",
   previousMatchWeek:52,currentWinner:"A"
  }]);
