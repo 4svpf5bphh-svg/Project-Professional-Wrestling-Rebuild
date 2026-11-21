@@ -5,9 +5,10 @@ import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
-// Updated editorial is versioned independently. Published v4 remains immutable.
-export const RINGSIDE_PROMPT_VERSION="ringside-v9";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v7";
+// New writing guidance is independently versioned. Previously published
+// reports stay immutable; an old completed show never needs a fresh API call.
+export const RINGSIDE_PROMPT_VERSION="ringside-v10";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v9";
 export const RINGSIDE_OLDER_VERSION="ringside-v6";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
