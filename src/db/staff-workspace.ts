@@ -4,6 +4,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {STAFF_ROLES,worldTalentManagers,staffBuyout,type StaffRole} from "../domain/world-staff.js";
+import {staffMeetingAgenda} from "../domain/staff-meeting-agenda.js";
 import {STAFF_ALUMNI_JSON_SQL,worldStaffWithAlumni} from "../domain/alumni-staff-catalog.js";
 import type {GorillaPolicy} from "../domain/gorilla-position.js";
 import {selectScoutRecommendations,type ScoutProspect} from "../domain/talent-scout.js";
@@ -156,7 +157,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    LEFT JOIN LATERAL (
     SELECT programme_id,heat FROM ppw_programmes programme
     WHERE programme.world_id=w.world_id AND programme.promotion_id=$3
-     AND programme.status='ACTIVE'
+     AND programme.status='ACTIVE' AND programme.programme_format='RIVALRY'
     ORDER BY programme.heat DESC NULLS LAST,
      programme.started_week_index DESC NULLS LAST,programme.programme_id LIMIT 1
    ) spotlight ON TRUE
@@ -294,68 +295,26 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    notices.push({department:e.role.replaceAll("_"," "),target:"staff",
     message:e.name+"'s contract expires in "+e.weeksRemaining+" week"+
      (e.weeksRemaining===1?"":"s")+"."});
-  const meetingContent:Record<StaffRole,{message:string;target:"staff"|"roster"|"contracts"|"programmes"|"gorilla"}>={
-   TALENT_MANAGER:{target:"contracts",message:renewals.length?
-    renewals.length+" signed talent deal"+(renewals.length===1?"":"s")+
-     " coming due; "+renewals[0]!.personName+" is first on my list.":
-    "No signed wrestler contracts are due within the next twelve weeks."},
-   ROAD_AGENT:{target:"gorilla",message:current.recent_matches?
-    "We've worked "+current.recent_matches+" matches recently. My card plan: open with a competitive bout, put a five-minute interview in the middle, then protect a fresh main-event payoff. "+
-     "Check the exact time allowance and planned finish at Gorilla before we go on air.":
-    "We haven't put a match in the books recently. Bring me a card with a clear finish, "+
-     "and make sure the Gorilla instructions reflect how you want me to handle surprises."},
-   MEDICAL:{target:"roster",message:current.medical_risks?
-    current.medical_risks+" contracted wrestlers are unavailable. "+
-     "Check their clearance dates rather than assuming they can work.":
-    "No contracted wrestlers currently have an active medical restriction on record."},
-   CREATIVE:{target:"programmes",message:current.repeated_programmes?
-    "I've spotted "+current.repeated_programmes+" rivalry"+(current.repeated_programmes===1?"":"ies")+" repeating recent beats. "+
-     "Pause another straight rematch: have the trailing side cut a six-minute interview, then let their opponents answer on the following show.":
-    current.active_programmes?
-     "We have "+current.active_programmes+" active rivalries. I'd give the strongest recent one a challenge or face-to-face first, "+
-      "then build to a properly advertised match. Save the other stories for another week.":
-     "Nothing is running as an active rivalry yet. Pick two people with a reason to clash, "+
-      "and build something the audience can follow from one show to the next."},
-   COMMENTATOR:{target:"programmes",message:current.active_programmes?
-    "We have "+current.active_programmes+" active stories. Give commentary one actual result and one clear hook for the next scene. "+
-     "An advertised interview or an open challenge tells viewers exactly what to watch for.":
-    "We're short on ongoing stories to call. A clear challenge or a meaningful result "+
-     "gives commentary something to carry into the next show."},
-   REFEREE:{target:"staff",message:current.recent_disqualifications?
-    current.recent_disqualifications+" disqualification finishes in the last nine weeks. If you book another, "+
-     "tell me whose interference is seen and what causes the DQ. I won't invent a different finish.":
-    "No DQ finishes recently. If an outsider gets involved next time, decide whether I catch them or miss it. "+
-     "That should be specified before the card is locked."},
-   PRODUCTION:{target:"staff",message:current.recent_shows?
-    "We've delivered "+current.recent_shows+" recent shows. "+
-     "Keep your event layout clear and make sure the next venue and date are confirmed early. "+
-     "Nothing about the future card is being changed for you.":
-    "We have no recent finished broadcasts to review. Start with a confirmed date and venue; "+
-     "the rest of the production schedule can follow your booking."},
-   SCOUT:{target:"roster",message:hiredScout?
-    scoutReport.length?
-     "I've identified "+scoutReport.length+" unattached prospect"+
-      (scoutReport.length===1?"":"s")+" worth investigating. No signing guarantees.":
-     "No unattached young prospects appear in my current shortlist.":
-    "Hire a Talent Scout for reports on available young wrestlers."},
-   TRAINER:{target:"roster",message:current.fatigue_concerns?
-    current.fatigue_concerns+" roster members have high recorded fatigue. "+
-     "A trainer's limited recovery support never bypasses medical clearance.":
-    "No active contracted wrestlers currently exceed the high-fatigue watch threshold."}
+  // Every department's role, personality and specialist judgement comes
+  // from the same bounded snapshot. A vacant office cannot impersonate a
+  // paid expert; House retains essential injury/contract reminders.
+  const evidence={
+   contractsDue:renewals,activeProgrammes:current.active_programmes,
+   repeatedProgrammes:current.repeated_programmes,
+   medicalRisks:current.medical_risks,medicalExample:current.medical_example,
+   fatigueConcerns:current.fatigue_concerns,recentShows:current.recent_shows,
+   recentMatches:current.recent_matches,
+   recentDisqualifications:current.recent_disqualifications,
+   scoutProspects:scoutReport.map(p=>({name:p.name})),
+   featured:{creative:observations.creative??null,
+    commentary:observations.commentary??null,
+    roadAgent:observations.roadAgent??null}
   };
-  // Personality still controls the voice in the UI; the facts stay grounded
-  // in one settled programme. No staff member can book a follow-up here.
-  if(observations.creative)meetingContent.CREATIVE.message=observations.creative+
-   " My next-card pitch: interview "+current.featured_programme!.sideA+
-   " about "+current.featured_programme!.sideB+" for six minutes. Let their answer set up the match.";
-  if(observations.commentary)meetingContent.COMMENTATOR.message=observations.commentary+
-   " I'll recap the last recorded winner before their next entrance, then call the new angle as it happens.";
-  if(observations.roadAgent)meetingContent.ROAD_AGENT.message=observations.roadAgent+
-   " Don't rush another opening-match rematch. Check their slot, time allowance and finish at Gorilla.";
   const meetings=STAFF_ROLES.map(role=>{
    const member=officeRole(role);
    return {role,staffName:member?.name??null,
-    personality:member?.personality??null,...meetingContent[role]};
+    personality:member?.personality??null,specialism:member?.specialism??null,
+    ...staffMeetingAgenda(role,evidence,member??null)};
   });
   const venues=await tx.query<{venue_id:string;name:string;
    capacity:number|null;weekly_hire_cost:string|null}>(`
