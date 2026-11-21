@@ -129,7 +129,10 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "EXACTLY; do not substitute 'my opponent' or 'they' for the name. "+
   "Only without a named opponent, reference the verified match "+
   "stipulation or angle event. Make the line personal to THIS result, "+
-  "not a generic 'I always win' boast. For a verbal-surrender finish, "+
+  "not a generic 'I always win' boast. The first-person speaker is "+
+  "EXACTLY wrestler.displayName: never say 'I, [opponent]' or "+
+  "'as [opponent]', never narrate the winner as the beaten wrestler. "+
+  "For a verbal-surrender finish, "+
   "describe the opponent giving up without putting the losing wrestler's "+
   "words in the winner's mouth. For turns, debuts and attacks "+
   "without a named target, refer to the certified event rather than "+
@@ -248,7 +251,9 @@ function wrestlerClaimsOpponentIdentity(post:string,source:PostShowVoiceBrief):b
   const escaped=[...name.trim()].map(ch=>
    "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
   const claimed=new RegExp(
-   "\\b(?:I['’]?m|I\\s+am|my\\s+name\\s+is|this\\s+is)\\s+"+
+   "(?:\\b(?:I['’]?m|I\\s+am|my\\s+name\\s+is|this\\s+is|"+
+   "speaking\\s+as)\\s+|"+
+   "\\bI\\s*[,—–:-]\\s*)"+
    escaped+"(?=$|[\\s,.!?;:])","iu");
   if(claimed.test(post))return true;
  }
@@ -266,7 +271,7 @@ function wrestlerIssue(post:string,source:PostShowVoiceBrief,
  if(wrestlerMisattributesSurrender(post,source))return "SELF_SURRENDER";
  if(!/\b(?:I|I'm|I've|my|we|our|me)\b/i.test(post))
   return "NO_FIRST_PERSON";
- if(/\b(?:I (?:lost|got pinned|tapped out|was beaten)|we (?:lost|got pinned))\b/i.test(post))
+ if(/\b(?:I (?:lost|got pinned|tapped out|was beaten|couldn't keep up|could not keep up|was outclassed|was defeated)|we (?:lost|got pinned))\b/i.test(post))
   return "FALSE_LOSS";
  if(post===source.wrestler.recordedPost)return "DUPLICATE";
  return null;
