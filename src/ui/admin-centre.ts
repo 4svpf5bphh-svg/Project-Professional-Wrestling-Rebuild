@@ -371,19 +371,19 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    const energy=el("div","ppw-lab-flags");
    energy.setAttribute("role","group");
    energy.setAttribute("aria-label","Ringside writing energy");
-   const energyControls=([
-    ["Grounded",0.65],["Balanced",0.82],["Bold",1.05]
-   ] as const).map(([name,value])=>{
+   const energyControls:HTMLButtonElement[]=[];
+   const energyPresets=[["Grounded",0.65],["Balanced",0.82],["Bold",1.05]] as const;
+   for(const [name,value] of energyPresets){
     const control=el("button","ppw-lab-chip",name) as HTMLButtonElement;
     control.type="button";
     control.onclick=()=>{
      benchmarkEnergyChoice=value;
      energyControls.forEach((button,i)=>
-      button.setAttribute("aria-pressed",String([0.65,0.82,1.05][i]===value)));
+      button.setAttribute("aria-pressed",String(energyPresets[i]![1]===value)));
     };
     control.setAttribute("aria-pressed",String(value===benchmarkEnergyChoice));
-    energy.append(control);return control;
-   });
+    energyControls.push(control);energy.append(control);
+   }
    const benchmarkStatus=el("p","ppw-admin-message",lastBenchmarkNotice);
    const runBenchmark=el("button","ppw-admin-primary","Run Wrestling IQ benchmark") as HTMLButtonElement;
    runBenchmark.type="button";
