@@ -282,6 +282,26 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
    // actually pinned/submitted the recorded winner is not.
    const winners=source.matchContext?.winnerNames??[];
    const opponents=source.matchContext?.sides.flat()??[];
+   // The referee must not count three on the official WINNER'S shoulders.
+   // This inversion appeared in a published Místico/Regal foreign-object
+   // recap even though the names and finish otherwise passed validation.
+   if(["CLEAN_PIN","FLASH_PIN","FOREIGN_OBJECT","PROTECTED_FINISH"].includes(source.outcome)){
+    for(const winner of winners){
+     const escaped=winner.replace(/[.*+?^{}()|[\]\\$]/g,"\\   const winners=source.matchContext?.winnerNames??[];
+   const opponents=source.matchContext?.sides.flat()??[];
+   const language=prose.toLowerCase();");
+     const badPin=new RegExp(
+      "(?:count(?:ed|s|ing)?\\s+(?:the\\s+)?(?:full\\s+)?three|"+
+      "(?:three[-\\s]?count|pinfall|pinned|covered|cover(?:ed)?\\s+for\\s+three))"+
+      "[^.!?]{0,95}\\b(?:on|over|against)\\s+"+
+      escaped+"[’']s\\s+shoulders\\b","iu");
+     const reversedCover=new RegExp(
+      "\\b(?:count(?:ed|s)?\\s+(?:the\\s+)?three|pinned|covered)"+
+      "[^.!?]{0,35}\\b"+escaped+"\\s+for\\s+(?:the\\s+)?(?:three|pin)","iu");
+     if(badPin.test(prose)||reversedCover.test(prose))
+      throw new Error("Ringside counted a pin on the official winner's shoulders");
+    }
+   }
    const language=prose.toLowerCase();
    for(const loser of opponents.filter(name=>!winners.includes(name))){
     for(const winner of winners){
@@ -516,6 +536,10 @@ Multi-team formats preserve their legal sides. Triple threats/four-ways:
 all individuals are legal; there are NO tags. Battle royals require over-the-top
 eliminations, not pinfalls. Follow stipulation referee rules.
 
+In a pinfall, ONLY the losing wrestler's shoulders are counted down. Never
+write that the referee counted three on the official WINNER's shoulders,
+even in a disputed or foreign-object finish. Recheck winner, defeated
+wrestler, cover and method before writing the last sentence.
 CLEAN_PIN requires a legal three-count; FLASH_PIN a sudden roll-up.
 SUBMISSION is a tap/stoppage, NOT a pin. Samoa Joe's Coquina Clutch
 cannot score a pin; Muscle Buster may precede one. An earlier hold can
