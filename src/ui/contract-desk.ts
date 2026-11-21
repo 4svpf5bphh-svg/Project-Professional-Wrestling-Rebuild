@@ -473,7 +473,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        marketWeeklyValue:c.estimatedWeeklyValue??9000,
        popularity:c.popularity??null,recognition:c.recognition??null,
        morale:c.morale??null,careerStage:c.careerStage,
-       interest:"INTERESTED"},view.talentManager):null;
+       interest:"INTERESTED",
+       remainingServiceDensityPerWeek:c.nextTermServiceDensity},view.talentManager):null;
      const initialDraft:OfferTerms={
       family:originalFamily,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
       creativeControl:originalFamily==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
@@ -486,7 +487,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       // Previous signing bonuses have been paid. Do not quote them again.
       signingBonus:0
      };
-     const recommended:OfferTerms|null=suggestion?{
+     const recommended:OfferTerms|null=suggestion?.feasible?{
       ...suggestion.terms,startWeekIndex:nextWeek
      }:null;
      if(recommended&&!renewalDrafts.has(c.contractId))Object.assign(initialDraft,recommended);
@@ -494,27 +495,47 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      renewalDrafts.set(c.contractId,draft);
      const family=draft.family;
      const fixed=family==="EXCLUSIVE"||family==="ONE_OFF";
-     if(suggestion&&recommended){
+     if(suggestion){
       const opinion=el("div","ppw-contract-manager-recommendation");
       opinion.append(el("small","ppw-contract-manager-tag",
        suggestion.managerName+" · TALENT MANAGER"),
        el("p","",suggestion.voice),
        el("small","",suggestion.rationale));
-      const restore=btn("Use recommended terms",()=>{
-       Object.assign(draft,recommended);
-       pending.delete("negotiated:"+c.contractId);
-       paint();
-      });
-      restore.className+=" ppw-contract-recommend-apply";
-      opinion.append(restore);negotiate.append(opinion);
+      if(recommended){
+       const restore=btn("Use recommended terms",()=>{
+        Object.assign(draft,recommended);
+        pending.delete("negotiated:"+c.contractId);
+        paint();
+       });
+       restore.className+=" ppw-contract-recommend-apply";
+       opinion.append(restore);
+      }
+      negotiate.append(opinion);
      }
      const quote=el("section","ppw-contract-cost-quote");
      const managerNote=el("div","ppw-contract-manager-take");
      const minimumNotice=el("div","ppw-contract-exclusive-minimum");
+     const capacityNotice=el("div","ppw-contract-renew-hint");
      const panel=el("div","ppw-contract-renegotiate-fields");
      const updateQuote=()=>{
       packageQuote(quote,draft);
       minimumNotice.replaceChildren();
+      capacityNotice.replaceChildren();
+      const fit=c.nextTermServiceDensity===null?null:Math.max(0,
+       Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks));
+      if(family!=="EXCLUSIVE"&&fit!==null&&fit<draft.dateEntitlement){
+       capacityNotice.append(el("strong","","Not enough available dates"),
+        el("p","","Their other signed contracts leave room for at most "+fit+
+         " appearances at these terms. The wrestler cannot commit to "+
+         draft.dateEntitlement+" dates. Reduce the dates before sending."));
+       if(fit>0)capacityNotice.append(btn("Use "+fit+" available dates",()=>{
+        draft.dateEntitlement=fit;
+        const input=negotiate.querySelector<HTMLInputElement>(
+         '[data-term-key="dateEntitlement"]');
+        if(input)input.value=String(fit);
+        pending.delete("negotiated:"+c.contractId);updateQuote();
+       }));
+      }
       minimumNotice.hidden=family!=="EXCLUSIVE";
       if(family==="EXCLUSIVE"&&exclusiveFloor!==null){
        const shortfall=Math.max(0,exclusiveFloor-draft.weeklyGuarantee);
@@ -666,7 +687,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      if(family!=="ONE_OFF")dropdown("Creative control",
       ["NONE","CONSULTATION","PROTECTED_FINISHES","FULL_APPROVAL"] as const,
       draft.creativeControl,value=>{draft.creativeControl=value;});
-     negotiate.append(minimumNotice,managerNote,quote,panel);
+     negotiate.append(minimumNotice,capacityNotice,managerNote,quote,panel);
      const note=el("p","ppw-contract-renew-hint",
       "Proposed start: Y"+(Math.floor(nextWeek/52)+1)+
       " W"+(nextWeek%52+1)+". Acceptance is not guaranteed.");
@@ -679,6 +700,14 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        (family==="EXCLUSIVE"&&draft.dateEntitlement!==draft.termWeeks)||
        (family!=="EXCLUSIVE"&&draft.dateEntitlement>draft.termWeeks)){
        error="Review the proposed duration, dates and payment values.";
+       render();return;
+      }
+      const scheduleCap=c.nextTermServiceDensity===null?null:Math.max(0,
+       Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks));
+      if(family==="LIMITED_NON_EXCLUSIVE"&&scheduleCap!==null&&
+       draft.dateEntitlement>scheduleCap){
+       error=c.name+" can commit to at most "+scheduleCap+
+        " dates alongside other signed agreements. Reduce the purchased dates.";
        render();return;
       }
       if(family==="EXCLUSIVE"&&exclusiveFloor!==null&&
