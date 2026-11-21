@@ -447,8 +447,41 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
 }
 
 /** Atmospheric description for the writer; the UI retains canonical numbers. */
-const crowdMood=(n:number)=>n>=84?"electric":n>=70?"loud":n>=56?"engaged":
+const crowdMood=(n:number)=>n>=84?"strongly responsive":n>=70?"loud":n>=56?"engaged":
  n>=42?"divided":n>=28?"muted":"quiet";
+/** One truthful editorial angle per slot. The previous round-robin cue
+ * encouraged the model to invent "shifting allegiance" in unrelated matches.
+ * These are writing priorities, never new canonical event facts.
+ */
+export function ringsideEditorialLens(e:ShowResultEntry):string{
+ if(e.type==="SEGMENT"){
+  if(["INTERVIEW","PROMO","CHALLENGE"].includes(e.segmentKind??""))
+   return "one clear character point; quote only scripted words; no invented entrance";
+  if(["ATTACK","POST_MATCH_ASSAULT","RESCUE"].includes(e.segmentKind??""))
+   return "who acted, what was actually shown and the on-screen response";
+  return "one visible development; no promised outcome or unseen consequence";
+ }
+ if(e.outcome==="FOREIGN_OBJECT")
+  return "referee sightline, actual cheating and who won; avoid a reversed cover";
+ if(e.outcome==="DISQUALIFICATION")
+  return "observed foul, referee decision and whose victory the decision awarded";
+ if(e.outcome==="VERBAL_SURRENDER")
+  return "resistance, escalation and one spoken surrender; never a tap or pin";
+ if(e.outcome==="RETRIEVAL"||e.outcome==="MOST_FALLS")
+  return "stipulation pressure and the certified winning condition";
+ const minutes=e.fallout?.actualMinutes??e.matchContext?.plannedMinutes??0;
+ const rating=e.fallout?.ratingStars;
+ if(minutes>0&&minutes<=6)
+  return "a brief, decisive contest; no invented epic comeback or long exchanges";
+ if(typeof rating==="number"&&rating<2.5)
+  return "one credible moment and what fell flat; no false standing ovation";
+ if(typeof rating==="number"&&rating>=4)
+  return "one distinctive exchange that earns the strong reaction; precise finish";
+ const format=wrestlingMatchIQ(e)?.format;
+ if(format==="TAG"||format==="MULTI_TEAM")
+  return "legal tags and team pacing, not an invented precise fall scorer";
+ return "tactical contrast, a real turning point and the recorded finish";
+}
 
 /** Send relevant certified facts once, without redundant IDs and analytics. */
 export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
@@ -456,9 +489,7 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   audienceMood:crowdMood(show.crowdResponse),
   slots:show.entries.map((e,i)=>({
-   editorialLens:["ring psychology","shifting crowd allegiance","pacing and the finishing stretch",
-    "the wrestlers\u0027 distinct personalities","wrestling spectacle"][
-     (i+[...show.showId].reduce((sum,ch)=>sum+ch.charCodeAt(0),0))%5],
+   editorialLens:ringsideEditorialLens(e),
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
    ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
