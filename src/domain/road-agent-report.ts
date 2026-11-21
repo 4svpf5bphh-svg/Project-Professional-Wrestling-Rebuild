@@ -44,13 +44,13 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
  const opener=matches.reduce((min,item)=>Math.min(min,item.m.position),Infinity);
  const identify=(match:typeof matches[number]|undefined,fallback:string)=>{
   const names=match?.f.participantNames?.filter(Boolean)??[];
-  return names.length>=2?names.join(" vs ")+" ("+fallback+")":fallback;
+  return names.length>=2?names.join(" vs "):fallback;
  };
  const place=best?.m.position===finalMatch?
   identify(best,"the closing bout"):best?.m.position===opener?
   identify(best,"the opener"):identify(best,"a match in the middle of the card");
- const bestDetail=best?" The "+best.f.actualMinutes+"-minute bout earned "+
-  best.f.ratingStars.toFixed(2)+" stars.":"";
+ // The public Show Breakdown already lists minutes and star ratings;
+ // a colleague shouldn't read the scoreboard back to the promoter.
 
  const bestFinish=best?.m.actualFinish??null;
  const finishPoint=bestFinish==="SUBMISSION"?"The submission was a decisive finish.":
@@ -122,8 +122,8 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
     "For "+worstLabel+", keep two wrestlers in focus at a time, plan clear handovers between exchanges, and reserve one clean closing stretch. Shorten the structure before adding more spots.":
     "If you revisit "+worstLabel+", give the wrestlers a cleaner, shorter structure: one opening exchange, one momentum swing and a clear finish. Let them build confidence before adding extra spots.":
   lowChem?
-   "Give the wrestlers from "+boutName(lowChem.m.position)+
-   " a fresh programme beat or different opponents before asking them to carry a longer rematch.":
+   "I would split up "+boutName(lowChem.m.position)+
+   " for the next show. Try different opponents or change what each wrestler is asked to do before you revisit that match.":
   linked===0&&matches.length?
    "Follow "+place+" with a clear challenge or rivalry. A strong match means more when something is at stake.":
   highChem?
@@ -143,6 +143,6 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   voice==="LOYAL"?"Credit where it's due":
   bestCrowd>=75?"A show to build on":"A few notes before next week";
  return {reporter,staffId:agent?.staffId??null,
-  headline,praise:praise+bestDetail,concern,recommendation:recommendation+parting,
+  headline,praise,concern,recommendation:recommendation+parting,
   strongestMatchId:best?.m.matchId??null,reviewedMatches:matches.length};
 }
