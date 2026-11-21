@@ -345,9 +345,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    }
    const lastCertifiedMatch=p.recentActivity.find(x=>x.kind==="MATCH");
    const sideAName=p.sideA.map(x=>x.name).join(" & ");
-   const sideBName=p.sideB.map(x=>x.name).join(" & ")||
-    "their opponents";
-   const latestLabel=latestBeat?describeProgrammeChapter(latestBeat,sideAName,sideBName):null;
+   const sideBName=p.sideB.map(x=>x.name).join(" & ");
+   const latestLabel=latestBeat?describeProgrammeChapter(latestBeat,sideAName,sideBName,storyKind(p)):null;
    glance.append(element("small","ppw-programme-glance-age",
     (ageNow===null?"Active story":ageNow+" weeks active")+
     (p.championshipId?" · Championship stakes":"")));
@@ -553,7 +552,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     chapterPicker.append(element("span","","Final chapter"));
     const chapterSelect=document.createElement("select");
     chapterSelect.setAttribute("aria-label","Choose finale chapter for "+
-      p.sideA.map(x=>x.name).join(" & ")+" vs "+p.sideB.map(x=>x.name).join(" & "));
+      storyLabel(p));
     for(const x of available){
      const opt=document.createElement("option");opt.value=x.key;
      opt.textContent=x.chapter.showName+(x.chapter.premium?" · PPV":"")+" · Y"+x.chapter.year+
@@ -588,7 +587,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       expectedRevision:view!.worldRevision,programmeId:p.programmeId,
       showId:chosen.chapter.showId,slotId:chosen.chapter.slotId,
       payoff:edit.payoff}),
-      "Finale planned. Only the certified event can end this rivalry.");
+      "Finale planned. Only an on-screen chapter can finish this story.");
     },working));
    }else if(view.canEdit)payoffPanel.append(element("p","ppw-muted",
     "No finale chapter booked yet. Link any real match or angle to this storyline and save its card first."));
@@ -597,7 +596,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      void run(()=>port.planFinale({requestId:crypto.randomUUID(),
       expectedRevision:view!.worldRevision,programmeId:p.programmeId,
       showId:null,slotId:null,payoff:null}),
-      "Finale plan removed. Rivalry remains active.");
+      "Finale plan removed. The story remains active.");
     },working));
    finaleLane.append(payoffPanel);
    // The player's decisions and the verified match record form one visible
@@ -619,7 +618,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      const week=activity.weekIndex%52+1;
      const item=element("div","ppw-programme-history-entry");
      const details=element("div","ppw-programme-history-detail");
-     const chapter=describeProgrammeChapter(activity,sideAName,sideBName);
+     const chapter=describeProgrammeChapter(activity,sideAName,sideBName,storyKind(p));
      item.dataset.chapter=chapter.kind;
      details.append(element("small","","YEAR "+year+" · WEEK "+week),
       element("strong","",chapter.headline),element("span","",
@@ -970,7 +969,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(selectedArchiveId){
     history.classList.add("ppw-programme-retrospective");
    }else{
-    history.append(element("h2","","Past rivalries · "+concluded.length));
+    history.append(element("h2","","Past stories · "+concluded.length));
     for(const item of concluded){
      const label=storyLabel(item);
      const open=button(label,()=>{
@@ -985,8 +984,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    }
    for(const p of concluded.filter(x=>x.programmeId===selectedArchiveId)){
     const aName=p.sideA.map(x=>x.name).join(" & ");
-    const bName=p.sideB.map(x=>x.name).join(" & ")||
-     "their opponents";
+    const bName=p.sideB.map(x=>x.name).join(" & ");
     const archive=document.createElement("article");
     archive.className="ppw-programme-archive-card";
     const heading=element("header","ppw-programme-archive-hero");
@@ -1042,7 +1040,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
       " · "+p.segmentCount+" on-screen "+(p.segmentCount===1?"chapter":"chapters")));
     const outcome=readProgrammeContinuity({sideAName:aName,sideBName:bName,
      recentActivity:p.recentActivity,latestFollowUp:p.latestFollowUp});
-    if(outcome.lastBell)
+    if(storyKind(p)==="RIVALRY"&&outcome.lastBell)
      archive.append(element("p","ppw-programme-archive-final-bell",outcome.lastBell));
     if(p.finale?.resolvedWeekIndex!=null){
      const f=p.finale;
@@ -1052,14 +1050,15 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
      archive.append(element("p","ppw-programme-archive-payoff",
       "ON-SCREEN PAYOFF · "+f.payoff.replaceAll("_"," ")+
       " · "+when+
-      (f.resolvedWinnerSide?" · Side "+f.resolvedWinnerSide+" prevailed":"")));
+      (storyKind(p)==="RIVALRY"&&f.resolvedWinnerSide?
+       " · Side "+f.resolvedWinnerSide+" prevailed":"")));
     }
     if(p.recentActivity.length){
      archive.append(element("h3","","On-screen history"));
      const timeline=element("div","ppw-programme-archive-timeline");
      for(const activity of [...p.recentActivity].reverse()){
       const item=element("div","ppw-programme-archive-event");
-      const description=describeProgrammeChapter(activity,aName,bName);
+      const description=describeProgrammeChapter(activity,aName,bName,storyKind(p));
       const when="Y"+(Math.floor(activity.weekIndex/52)+1)+
        " W"+(activity.weekIndex%52+1);
       item.append(element("small","",when+" · "+
