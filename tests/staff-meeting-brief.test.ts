@@ -47,7 +47,7 @@ test("staff decisions are anchored in named contracts, injury, fatigue, and even
  assert.equal(doctor.urgency,"ACTION");
  assert.match(doctor.message,/Samoa Joe/);
  assert.match(doctor.nextStep,/clearance/);
- assert.match(staffMeetingBrief("CREATIVE",facts).nextStep,/different on-screen development/);
+ assert.match(staffMeetingBrief("CREATIVE",facts).nextStep,/fresh motivation/);
  assert.match(staffMeetingBrief("REFEREE",facts).message,/3 disqualification/);
  assert.match(staffMeetingBrief("SCOUT",facts).message,/Rising Technician/);
  assert.match(staffMeetingBrief("TRAINER",facts).nextStep,/recovery/);
