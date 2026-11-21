@@ -259,3 +259,20 @@ test("shared Results prompt stays compact without sacrificing certified fixture 
  assert.ok(reserved>1000&&reserved<6000,
   "The existing safety ledger must still reserve completion tokens");
 });
+
+test("AI Lab surfaces a non-blocking human style warning when one stock phrase survives factual validation",()=>{
+ const {show}=getWrestlingBenchmark("singles-technical")!;
+ const slotId=show.entries[0]!.slotId;
+ const assessed=assessWrestlingBenchmark("singles-technical",{
+  showHeadline:"Pierce wins the main event",
+  opening:"The audience filled the building.",
+  closing:"The contest rewarded careful pacing.",
+  slots:[{slotId,headline:"Pierce secures the victory",
+   recap:"The electric crowd followed Rowan Pierce's technical exchanges. "+
+    "After several counters, Pierce caught Kira Vale in a clean pinfall."}]
+ });
+ assert.equal(assessed.certifiedFactsValidated,true);
+ assert.ok(assessed.editorialWarnings.includes("electric crowd"));
+ assert.equal(assessed.humanReviewRequired,true);
+ assert.equal(assessed.diagnosticCues.length>=0,true);
+});

@@ -1,6 +1,6 @@
 /** Protected operator desk. All sensitive reads and writes are server-authorised;
  * this client never stores an API key, resets a World or runs a timer. */
-import type {RingsideSettings} from "../domain/ringside-settings.js";
+import {DEFAULT_RINGSIDE_SETTINGS,type RingsideSettings} from "../domain/ringside-settings.js";
 type ActionPlan={
  year:number;week:number;action:string;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
@@ -390,11 +390,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      const result=await request("/api/admin-preview","POST",ctx.csrfToken,{
       benchmarkId:chosen.id,previewProvider:benchmarkProvider.value,
       settings:{model:benchmarkModel.value,voice:"MARTY",detail:"BALANCED",
-       reasoning:"low",creativity:0.92,additionalGuidance:""}
+       reasoning:"low",creativity:DEFAULT_RINGSIDE_SETTINGS.creativity,additionalGuidance:""}
      }) as {labRunId:string;metrics:{durationMs:number;providerCalls:number;
       inputTokens:number|null;outputTokens:number|null;compatibilityJson?:boolean};
       benchmark?:{certifiedFactsValidated:boolean;diagnosticCues:string[];
-       humanReviewRequired:boolean}};
+       humanReviewRequired:boolean;editorialWarnings?:string[]}};
      lastBenchmarkNotice="Saved "+chosen.name+" · "+
       (benchmarkProviderChoice==="GROQ"?
        (benchmarkModelChoice==="openai/gpt-oss-20b"?"20B":"120B"):
@@ -405,7 +405,10 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       (result.metrics.inputTokens===null?"tokens not reported":
        (result.metrics.inputTokens+(result.metrics.outputTokens??0)).toLocaleString("en-GB")+" tokens")+
       ". Basic result checks passed; assess psychology and tone yourself. "+
-      (result.benchmark?.diagnosticCues.join("; ")??"");
+      (result.benchmark?.diagnosticCues.join("; ")??"")+
+      (result.benchmark?.editorialWarnings?.length?
+       " Watch for stock wording: "+result.benchmark.editorialWarnings.join(", ")+
+       ". A human still judges the overall storytelling.":"");
      labData=null;
      await loadLab();
     }catch(e){

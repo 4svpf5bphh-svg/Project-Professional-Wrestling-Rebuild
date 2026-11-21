@@ -429,3 +429,100 @@ test("the booked weapon reaches Groq as an authoritative match detail",()=>{
  assert.equal(matchBrief?.refereeSpot,"REF_BUMP");
  assert.match(RINGSIDE_STYLE_GUIDE,/bookedWeapon/);
 });
+
+test("a locked submission hold cannot magically secure a clean pinfall",()=>{
+ const article=(recap:string)=>({...valid,slots:[
+  {...valid.slots[0]!,recap},valid.slots[1]!]});
+ const impossible="Omega trapped his opponent in an armbar. "+
+  "The referee's hand struck the mat for a clean pin while the armbar remained locked.";
+ assert.throws(()=>validateRingsideCopy(article(impossible),example),
+  /submission hold remained locked/);
+ const lawful="Omega trapped the opponent in an armbar, but then released the hold. "+
+  "Later he rolled the opponent into a cradle. The referee counted three for the clean pinfall.";
+ assert.doesNotThrow(()=>validateRingsideCopy(article(lawful),example));
+});
+
+test("a referee looking away cannot award a clean flash pin without watching the count",()=>{
+ const card={...example,entries:[{...example.entries[0]!,outcome:"FLASH_PIN"},
+  example.entries[1]!]};
+ const article=(recap:string)=>({...valid,slots:[
+  {...valid.slots[0]!,recap},valid.slots[1]!]});
+ assert.throws(()=>validateRingsideCopy(article(
+  "The referee's back was turned. Omega slipped a flash-pin roll-up, "+
+  "and the referee counted three for the clean pin."),card),
+ /referee was looking away/);
+ assert.doesNotThrow(()=>validateRingsideCopy(article(
+  "The referee's back was turned during the first scramble. "+
+  "The referee returned to count three after Omega caught the opponent in a quick cradle."),card));
+});
+
+test("Marty Vale cannot invent direct speech not present in the booked angle",()=>{
+ const segment:CompletedShowView={...example,entries:[{
+  ...example.entries[1]!,segmentKind:"PROMO",outcome:"HAPPENS",
+  segmentContext:{actorNames:["William Regal"],targetNames:[],
+   videoPurpose:null,stableDecision:null,turnTargetAlignment:null,
+   scriptedActions:[]}
+ }]};
+ const quote="I, William Regal, have come to this company to deal with all of these scallywags.";
+ const article=(recap:string)=>({showHeadline:"Regal arrives",
+  opening:"The arena was ready.",closing:"Regal's next appearance remains undecided.",
+  slots:[{slotId:"angle-1",headline:"Regal calls out the roster",recap}]});
+ assert.throws(()=>validateRingsideCopy(article(
+  "Regal stepped out with a microphone and declared, “"+quote+"”."),segment),
+  /direct quotation/);
+ const scripted={...segment,entries:[{...segment.entries[0]!,
+  segmentContext:{...segment.entries[0]!.segmentContext!,
+   scriptedActions:[{action:"SPEAK" as const,by:"regal",line:quote}]}
+ }]};
+ assert.doesNotThrow(()=>validateRingsideCopy(article(
+  "Regal stepped out with a microphone and delivered the line, “"+quote+"”."),scripted));
+ assert.doesNotThrow(()=>validateRingsideCopy(article(
+  "Regal addressed the roster and criticised the company's standards, drawing a mixed response."),segment));
+});
+
+test("stock metaphors stacked in one real slot are rejected without banning one flourish",()=>{
+ const article=(recap:string)=>({...valid,slots:[
+  {...valid.slots[0]!,recap},valid.slots[1]!]});
+ assert.throws(()=>validateRingsideCopy(article(
+  "The electric crowd witnessed a looming threat as the bout ended with a clean pinfall."),example),
+  /stock metaphors/);
+ assert.doesNotThrow(()=>validateRingsideCopy(article(
+  "The electric crowd followed Omega's counters. He secured a clean pinfall after a hard-fought finish."),example));
+});
+
+test("factual rescue uses wrestlers and match method, not placeholders pretending to be journalism",()=>{
+ const many:CompletedShowView={...example,showName:"Wrestling Review",
+  entries:Array.from({length:6},(_,i)=>({...example.entries[0]!,
+   slotId:"bout-"+i,position:i}))};
+ const candidate={showHeadline:"An event",
+  opening:"The show opened.",closing:"The crowd headed home.",
+  slots:many.entries.map((e,i)=>({
+   slotId:e.slotId,headline:"Omega outlasts the rival",
+   recap:i===3?"Omega won by submission.":
+    "In bout "+(i+1)+", Omega worked the opponent's arm before securing the clean pinfall."
+  }))};
+ const report=recoverRingsideCopy(candidate,many);
+ assert.equal(report?.replaced,1);
+ const corrected=report!.review.slots[3]!;
+ assert.match(corrected.recap,/Kenny Omega/);
+ assert.match(corrected.recap,/Opponent/);
+ assert.match(corrected.recap,/clean pinfall/);
+ assert.doesNotMatch(corrected.recap,/The decision in the ring|result settled the contest/);
+ assert.equal(report?.review.slots[2]!.recap,candidate.slots[2]!.recap);
+});
+
+test("match journalism cannot expose the simulator's protected-victory terminology",()=>{
+ for(const phrase of [
+  "The referee called it a protected victory, with the actual finish left vague.",
+  "The referee carried out an official-approved distraction before Omega won.",
+  "Omega had the booked winner's place in the final sequence.",
+  "The certified finish went to Kenny Omega after a technical exchange."
+ ]){
+  const article={...valid,slots:[{...valid.slots[0]!,recap:phrase},valid.slots[1]!]};
+  assert.throws(()=>validateRingsideCopy(article,example),/technical simulation terminology/);
+ }
+ assert.doesNotThrow(()=>validateRingsideCopy({...valid,slots:[
+  {...valid.slots[0]!,recap:"The referee watched Omega catch the opponent in a cradle and counted three."},
+  valid.slots[1]!
+ ]},example));
+});

@@ -45,6 +45,11 @@ test("Staff Office sounds like distinct named colleagues, and opening advice nev
  await notes.nth(2).locator("summary").click();
  await expect(notes.nth(2).locator(".ppw-staff-dialogue")).toContainText(
   "House office note");
+ await expect(notes.nth(2).locator(".ppw-staff-meeting-context"))
+  .toContainText("Hiring adds:");
+ await notes.nth(2).getByRole("button",{name:"Recruit Road Agent"}).click();
+ await expect(page.getByRole("heading",{name:"Staff Market"})).toBeVisible();
+ await expect(page.getByText("No free candidates in this department")).toBeVisible();
  expect(reads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);

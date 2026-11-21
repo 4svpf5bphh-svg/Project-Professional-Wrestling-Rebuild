@@ -79,6 +79,14 @@ const validationHint=(message:string)=>message.includes("unowned signature")?
  "Only use a named signature or finisher in the entry containing its owner; otherwise use generic move descriptions.":
  message.includes("Untrusted ringside review shape")||message.includes("changed card order")?
  "Do not omit a segment, and keep all requested headlines and recaps substantial.":
+ message.includes("stock metaphors")?
+ "Cut the melodrama. Use concrete in-ring action, one believable crowd observation and a specific wrestling judgement instead of stock hype.":
+ message.includes("direct quotation")?
+ "Never make up wrestler dialogue. Paraphrase the scene unless the exact line exists in the authored actions.":
+ message.includes("submission hold remained")?
+ "A hold must be released before a separate clean pin. Never make a locked armbar score a three-count.":
+ message.includes("referee was looking away")?
+ "The referee must be watching to count a clean fall. If the referee was distracted, report the actual certified finish without inventing a count.":
  message.includes("repeated")?
  "Your slots sounded identical. Vary the first exchange, viewpoint and final judgement between bouts; do not reuse any sentence from another card entry.":
  message.includes("winner")?"Never reverse the officially recorded winners.":
@@ -204,7 +212,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     console.warn("Ringside validator:",reason,"attempt",attempt+1);
     // Prefer one corrective pass over a bland canonical substitution for
     // repetition. We still permit only the existing two provider attempts.
-    const rescued=reason.includes("Ringside repeated")&&attempt===0?null:
+    const rescued=(reason.includes("Ringside repeated")||
+     reason.includes("Ringside stacked"))&&attempt===0?null:
      recoverRingsideCopy(candidate,show);
     if(rescued){
      if(rescued.replaced)console.warn("Ringside preserved valid article slots; replaced",

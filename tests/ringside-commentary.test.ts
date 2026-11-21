@@ -22,7 +22,7 @@ test("Groq requires one fixed, immutable slot per booked match and validates fac
   assert.deepEqual(body.response_format.json_schema.schema.properties.slots.required,["card_0"]);
   assert.equal(body.response_format.json_schema.schema.properties.slots.additionalProperties,false);
   assert.equal(body.reasoning_effort,"low");
-  assert.equal(body.temperature,0.92);
+  assert.equal(body.temperature,0.72);
   assert.ok(body.max_completion_tokens>=900);
   assert.match(body.messages[0].content,/Marty Vale/);
   assert.match(body.messages[1].content,/One Winged Angel/);
@@ -260,4 +260,26 @@ test("Groq response headers report real account RPD and model TPM, never inferre
  actual.set("x-ratelimit-remaining-requests","978");
  actual.set("x-ratelimit-remaining-tokens","impossible");
  assert.equal(groqResponseLimits(actual),null);
+});
+
+test("two-attempt Groq budget improves an over-written match rather than publishing stock prose",async()=>{
+ let calls=0;
+ const transport:typeof fetch=async (_url,init)=>{
+  calls++;
+  const body=JSON.parse(String(init?.body));
+  if(calls===2)assert.match(body.messages[1].content,
+   /Cut the melodrama/);
+  const recap=calls===1?
+   "The electric crowd watched a looming threat seize the canvas, before Omega captured a clean pinfall.":
+   "Omega worked the opponent down, countered a late strike and secured the official pinfall with a legal cover.";
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"Omega gets his victory",opening:"The house was ready.",
+   closing:"The win kept Omega in the picture.",
+   slots:{card_0:{headline:"Omega's clean decision",recap}}
+  })}}]}));
+ };
+ const result=await generateGroqReview(show,"fixture",transport);
+ assert.equal(calls,2,"One bounded editorial correction, never a paid third attempt");
+ assert.match(result.slots[0]!.recap,/countered a late strike/);
+ assert.doesNotMatch(result.slots[0]!.recap,/electric crowd|looming threat/);
 });
