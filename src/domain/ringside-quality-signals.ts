@@ -6,7 +6,7 @@ import type {CompletedShowView} from "../db/show-results-view.js";
 import type {RingsideCopy} from "./ringside-editorial.js";
 
 export type RingsideQualityCode=
- "GENERIC_HYPE"|"MECHANICAL_FALLBACK"|"THIN_MAIN_BOUT"|"SQUASH_OVERWRITTEN"|
+ "GENERIC_HYPE"|"REPEATED_HYPE"|"MECHANICAL_FALLBACK"|"THIN_MAIN_BOUT"|"SQUASH_OVERWRITTEN"|
  "NO_IN_RING_DETAIL"|"OVERSOLD_QUIET_CROWD"|"THIN_CHARACTER_SCENE";
 export interface RingsideQualityWarning{
  code:RingsideQualityCode;slotId:string;description:string;
@@ -46,6 +46,17 @@ export function ringsideQualitySignals(show:CompletedShowView,copy:RingsideCopy)
    /\b(?:crowd erupted|standing ovation|crowd went wild|building shook|everyone rose to their feet)\b/i.test(prose))
    add(slot.slotId,"OVERSOLD_QUIET_CROWD","Reaction contradicts the recorded quiet audience");
  }
+ // Across an entire multi-segment show, perfectly valid single sentences
+ // can still create the same synthetic voice. This specifically catches the
+ // repeated 'electric / erupted / looming' vocabulary in stored PPW v9 articles.
+ const full=[copy.opening,...copy.slots.map(x=>x.recap),copy.closing].join(" ");
+ const stock=["electric","erupted","looming","inevitable","unstoppable"];
+ const repetition=stock.map(word=>({
+  word,count:(full.match(new RegExp("\\b"+word+"\\b","gi"))??[]).length
+ })).filter(x=>x.count>=3);
+ if(copy.slots.length>=3&&repetition.length)
+  add("show","REPEATED_HYPE","The same atmospheric vocabulary dominates this show: "+
+   repetition.map(x=>x.word+" ("+x.count+")").join(", "));
  const unique=new Set(warnings.map(w=>w.code));
  return {warningCount:warnings.length,flagTypes:[...unique].sort(),
   warnings,requiresHumanReview:true as const};
