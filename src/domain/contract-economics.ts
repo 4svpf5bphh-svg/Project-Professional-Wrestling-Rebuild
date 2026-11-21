@@ -62,7 +62,7 @@ export function minimumExclusiveWeeklyGuarantee(marketValue:number):number{
   throw new Error("Invalid wrestler market value");
  return Math.max(1,Math.ceil(marketValue*.5));
 }
-export function serviceCapacityDatesPerWeek(p:PersonEconomics):number {
+export function serviceCapacityDatesPerWeek(p:Pick<PersonEconomics,"careerStage"|"stamina"|"fatigue">):number {
  const base=p.careerStage==="PRIME"?1.9:p.careerStage==="PROSPECT"?1.55:p.careerStage==="VETERAN"?1.4:1;
  return base*(.8+p.stamina/250)*Math.max(.65,1-p.fatigue/200);
 }
