@@ -38,6 +38,21 @@ test("a specific physical story with a named finish needs no artificial prose fl
  assert.deepEqual(result.warnings,[]);
  assert.equal(result.requiresHumanReview,true);
 });
+test("multiple individually plausible slots still flag repeated atmosphere across a show",()=>{
+ const {show,article}=example("singles-technical","A counter drew an electric response.");
+ const many={...show,entries:Array.from({length:5},(_,i)=>({
+  ...show.entries[0]!,slotId:"bout-"+i,position:i
+ }))};
+ const full={...article,slots:many.entries.map(e=>({
+  slotId:e.slotId,headline:"An actual fight",
+  recap:"A clean takedown shifted the pace, with an electric crowd watching as the winner found another cover."
+ }))};
+ const result=ringsideQualitySignals(many,full);
+ assert.ok(result.flagTypes.includes("REPEATED_HYPE"));
+ assert.match(result.warnings.find(x=>x.code==="REPEATED_HYPE")?.description??"",
+  /electric \(5\)/);
+ assert.equal(result.requiresHumanReview,true);
+});
 test("quiet crowds and short contests get honest emphasis, not an invented epic",()=>{
  const {show,article}=example("singles-squash","A short match went wild. "+
   "The crowd erupted into a standing ovation. ".repeat(75));
