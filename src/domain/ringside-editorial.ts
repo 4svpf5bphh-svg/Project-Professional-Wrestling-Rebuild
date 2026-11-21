@@ -404,32 +404,40 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  if(!raw||!Array.isArray(raw.slots)||raw.slots.length!==show.entries.length||
   show.entries.length<4)return null;
  const maxFallback=Math.min(2,Math.floor(show.entries.length/3));
- const ordinals=["opening","second","third","fourth","fifth","sixth",
-  "seventh","eighth","ninth","tenth","eleventh","twelfth",
-  "thirteenth","fourteenth","fifteenth","sixteenth","seventeenth",
-  "eighteenth","nineteenth","twentieth","twenty-first","twenty-second",
-  "twenty-third","twenty-fourth","twenty-fifth","twenty-sixth",
-  "twenty-seventh","twenty-eighth","twenty-ninth","thirtieth"];
- const ordinal=(n:number)=>ordinals[n]??"later";
+ // When one AI slot fails, report its actual wrestlers and official method
+ // instead of printing the old "decision in the ring" non-story. These
+ // sentences contain no invented moves, dialogue, feud outcome or scorer.
  const base:RingsideCopy={
   showHeadline:"Ringside: "+(show.showName??"The show").slice(0,90),
-  opening:"The crowd gathered for a full night of wrestling.",
-  closing:"The final bell gave the audience plenty to discuss.",
-  slots:show.entries.map((entry,i)=>{
+  opening:(show.promotionName??"The promotion")+" presented "+
+   (show.showName??"its next card")+". Every finish below comes from the show.",
+  closing:"The bell has sounded. What the promotion does with those results remains to be seen.",
+  slots:show.entries.map(entry=>{
    if(entry.type==="SEGMENT"){
-    const angleIndex=show.entries.slice(0,i).filter(e=>e.type==="SEGMENT").length;
-    const result=entry.outcome==="REFUSED"?"was refused":
-     entry.outcome==="INTERRUPTED"?"was interrupted":"took place";
-    return {slotId:entry.slotId,headline:"A moment outside the ring",
-     recap:"The "+ordinal(angleIndex)+" segment of the evening, "+
-      entry.headline.replace(/[.!?]+$/,"")+", "+result+
-      ". The audience has seen the outcome, whatever the intent."};
+    const context=entry.segmentContext;
+    const speaker=context?.actorNames.join(" & ")??"";
+    const targets=context?.targetNames.join(" & ")??"";
+    const segment=(entry.segmentKind??"SEGMENT").replaceAll("_"," ").toLowerCase();
+    const people=targets&&context?.targetPresence==="ON_SCREEN"?
+     speaker+" and "+targets:speaker;
+    const action=entry.outcome==="REFUSED"?
+     "The proposal was refused on air.":
+     entry.outcome==="INTERRUPTED"?
+      "The scene was interrupted before its planned end.":
+      "The segment aired without a reported change to the match card.";
+    const names=targets&&context?.targetPresence==="MENTIONED"?
+     " "+targets+" was named but did not appear on camera.": "";
+    return {slotId:entry.slotId,
+     headline:(entry.headline||((people||"The cast")+"'s "+segment)).slice(0,140),
+     recap:((people||"The participants")+" took part in a "+segment+
+      " on "+(show.showName??"the show")+". "+action+names).slice(0,1600)};
    }
+   const sides=entry.matchContext?.sides??[];
    const names=entry.matchContext?.winnerNames??[];
-   const winner=names.length?names.join(" & "):"The winning side";
-   // Recovered editorial must preserve every unusual certified finish, not
-   // collapse I Quit, Casket, Iron Man or other stipulations to "won the match".
-   // This is pure local fallback: no second model call or history query.
+   const winner=names.length?names.join(" & "):"The contest";
+   const opponents=sides.filter(side=>!side.some(n=>names.includes(n)))
+    .flat().filter(Boolean).slice(0,5).join(" & ");
+   const format=(entry.matchContext?.format??"match").replaceAll("_"," ").toLowerCase();
    const finish:Record<string,string>={
     CLEAN_PIN:"secured a clean pinfall",FLASH_PIN:"snatched a sudden pinfall",
     SUBMISSION:"earned a submission victory",
@@ -445,11 +453,20 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
     VERBAL_SURRENDER:"won when the opponent verbally surrendered, saying 'I quit'",
     FIRST_BLOOD:"won after the opponent was the first to bleed",
     CASKET_CLOSE:"won by shutting the casket lid on the opponent"};
-   const boutIndex=show.entries.slice(0,i).filter(e=>e.type==="MATCH").length;
-   return {slotId:entry.slotId,headline:"The decision in the ring",
-    recap:"The "+ordinal(boutIndex)+" bout belonged to "+winner+", who "+
-     (finish[entry.outcome]??"won the match")+
-     ". The result settled the contest in front of the crowd."};
+   const result=names.length?winner+" "+(finish[entry.outcome]??"won the match"):
+    "The contest ended without a recorded winning side";
+   const reaction=entry.crowdResponse>=75?
+    "The crowd responded strongly to the decision.":
+    entry.crowdResponse<45?"The response was noticeably quiet.":
+     "The reaction was mixed.";
+   const matchup=sides.length>=2?sides.map(side=>side.join(" & ")).join(" against "):
+    (opponents?winner+" against "+opponents:winner);
+   const when=entry.fallout?.actualMinutes!==undefined&&
+    entry.fallout.actualMinutes!==null?
+    " After "+entry.fallout.actualMinutes+" minutes, ":" ";
+   return {slotId:entry.slotId,
+    headline:(entry.headline||winner+(opponents?" defeats "+opponents:" wins")).slice(0,140),
+    recap:(matchup+" met in a "+format+"." +when+result+". "+reaction).slice(0,1750)};
   })
  };
  try{validateRingsideCopy(base,show);}catch{return null;}
