@@ -202,3 +202,58 @@ for(const width of [320,390]){
    Number(submissions[0]?.termWeeks));
  });
 }
+
+for(const width of [320,390]){
+ test("Takeshita-style competing commitment caps a Talent Manager proposal at "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:844});
+  let submissions=0;
+  const takeshita={
+   personId:"takeshita",contractId:"takeshita-cwa",name:"Konosuke Takeshita",
+   family:"LIMITED_NON_EXCLUSIVE",status:"SIGNED",remainingDates:5,
+   startWeekIndex:18,expiresWeekIndex:30,weeksRemaining:2,
+   dateEntitlement:10,weeklyGuarantee:2200,appearanceFee:7600,signingBonus:0,
+   roleExpectation:"FEATURED",creativeControl:"NONE",
+   needsAttention:true,expiringSoon:true,renewalEligible:true,
+   additionalDatesEligible:false,reason:null,pendingNegotiation:false,
+   pendingRenewal:false,pendingRenewalOffer:false,renewalArranged:false,
+   careerStage:"PRIME",popularity:84,recognition:78,morale:64,
+   estimatedWeeklyValue:8800,nextTermServiceDensity:.475,
+   nextTermHasOverlap:true
+  };
+  await page.route("**/api/session",r=>r.fulfill({json:session}));
+  await page.route("**/api/card",r=>{
+   const data=r.request().postDataJSON() as Record<string,unknown>;
+   if(data.method==="contracts")return r.fulfill({json:{
+    year:1,week:29,currentWeekIndex:28,worldRevision:8,canEdit:true,
+    hasTalentManager:true,spendingPlan:null,
+    talentManager:{staffId:"shaw",name:"Rowan Shaw",insight:85},
+    talentBudget:{cash:7500000,currentGuarantees:2200},
+    roster:[takeshita],requests:[],renewals:[],offers:[],
+    resolvedOffers:[],dateDecisions:[],
+    summary:{signed:1,expiringSoon:1,noDates:0,pendingNegotiations:0,
+     pendingRenewals:0,pendingOffers:0,weeklyGuarantees:2200}
+   }});
+   if(data.method==="submitContractOffer"){submissions++;return r.fulfill({
+    json:{status:"APPLIED"}
+   });}
+   throw Error("Unexpected "+String(data.method));
+  });
+  await page.goto("/#/contracts");
+  const card=page.locator(".ppw-contract-card").first();
+  await card.locator("summary").click();
+  await card.getByRole("button",{name:"Negotiate a new package"}).click();
+  await expect(card.locator(".ppw-contract-manager-recommendation"))
+   .toContainText("52 weeks, 24 dates");
+  await card.getByRole("button",{name:"Use recommended terms"}).click();
+  const dates=card.getByLabel("Purchased dates for Konosuke Takeshita");
+  await expect(dates).toHaveValue("24");
+  await dates.fill("40");
+  await expect(card.locator(".ppw-contract-renew-hint"))
+   .toContainText("at most 24");
+  await card.getByRole("button",{name:"Send negotiated renewal"}).click();
+  expect(submissions).toBe(0,"Impossible competing commitments are caught before a bad offer");
+  await expect(page.getByText(/can commit to at most 24 dates/).first()).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
