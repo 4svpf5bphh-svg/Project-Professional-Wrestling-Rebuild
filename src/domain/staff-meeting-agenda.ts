@@ -137,8 +137,16 @@ export function staffMeetingAgenda(role:StaffRole,facts:StaffMeetingEvidence,
    if(facts.repeatedProgrammes>0)return {target,priority:"ACTION",
     message:count(facts.repeatedProgrammes,"active story has","active stories have")+
      " repeated recent beats. "+(spotlight?trimmed(spotlight,210)+" ":"")+action};
-   if(spotlight)return {target,priority:"WATCH",
-    message:trimmed(spotlight,280)+" "+action};
+   if(spotlight){
+    const next=proposal({
+     FRANK:"Give the next chapter one clear decision; cut any speech that does not change what the audience understands.",
+     PATIENT:"A brief scene can reveal a new side of this character without rushing their next big moment.",
+     AMBITIOUS:"Choose stakes now that could earn a bigger scene later, rather than promising an unbooked match.",
+     LOYAL:"Give the performer something real to express, not a role or rivalry nobody has actually shown.",
+     ECCENTRIC:"Try a fresh setting or an unexpected point of view; the scene still needs a simple purpose."
+    },"Give the next chapter a specific on-air purpose.");
+    return {target,priority:"WATCH",message:trimmed(spotlight,280)+" "+next};
+   }
    return {target,priority:facts.activeProgrammes?"WATCH":"CLEAR",
     message:facts.activeProgrammes?
      count(facts.activeProgrammes,"story is","stories are")+" active. "+
