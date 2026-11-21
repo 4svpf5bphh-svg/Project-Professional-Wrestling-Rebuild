@@ -4,13 +4,13 @@
  * provider call or punishing an intentional wrestling character gimmick.
  */
 const cliches:readonly [RegExp,string][]=[
- [/electric (?:crowd|atmosphere|audience)/gi,"electric crowd"],
- [/(?:dark |long |looming )?shadow (?:loom(?:s|ed|ing)?|hangs?|cast|over)|looming (?:shadow|threat|storm|authority figure)/gi,"looming menace"],
- [/(?:eyes? (?:shone|shining|glistened|sparkled|burned|burning)|(?:shining|glittering) eyes?)/gi,"ornamental eyes"],
- [/(?:raw power|pure dominance|aura of (?:dominance|power|fear|mystery)|unstoppable aura)/gi,"empty powerhouse hype"],
- [/(?:paint(?:s|ed|ing)? (?:a|the) picture|written in the stars|weight of (?:his|her|their|the) persona)/gi,"metaphorical filler"],
- [/(?:the (?:crowd|audience) erupted|collective gasp|hush fell over|atmosphere (?:was|became) electric)/gi,"stock crowd response"],
- [/(?:a chess match|chess-like (?:match|exchange)|a study in (?:styles|contrasts)|a simmering storm)/gi,"stock match metaphor"]
+ [/\belectric (?:crowd|atmosphere|audience)\b/gi,"electric crowd"],
+ [/\b(?:dark |long |looming )?shadow (?:loom(?:s|ed|ing)?|hangs?|cast|over)\b|\blooming (?:shadow|threat|storm|authority figure)\b/gi,"looming menace"],
+ [/\b(?:eyes? (?:shone|shining|glistened|sparkled|burned|burning)|(?:shining|glittering) eyes?)\b/gi,"ornamental eyes"],
+ [/\b(?:raw power|pure dominance|aura of (?:dominance|power|fear|mystery)|unstoppable aura)\b/gi,"empty powerhouse hype"],
+ [/\b(?:paint(?:s|ed|ing)? (?:a|the) picture|written in the stars|weight of (?:his|her|their|the) persona)\b/gi,"metaphorical filler"],
+ [/\b(?:the (?:crowd|audience) erupted|collective gasp|hush fell over|atmosphere (?:was|became) electric)\b/gi,"stock crowd response"],
+ [/\b(?:a chess match|chess-like (?:match|exchange)|a study in (?:styles|contrasts)|a simmering storm)\b/gi,"stock match metaphor"]
 ];
 export function ringsideClicheSignals(text:string):string[]{
  const signals:string[]=[];
