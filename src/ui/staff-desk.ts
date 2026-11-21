@@ -3,6 +3,7 @@
  */
 import type {readStaffWorkspace} from "../db/staff-workspace.js";
 import {STAFF_ROLES,type StaffRole} from "../domain/world-staff.js";
+import {STAFF_DEPARTMENT_PURPOSES} from "../domain/staff-meeting-agenda.js";
 import {GORILLA_POLICIES,type GorillaPolicy} from "../domain/gorilla-position.js";
 import {staffMeetingDialogue} from "./staff-meeting-voice.js";
 import {staffOfficeThemeClass} from "../domain/staff-office-themes.js";
@@ -163,17 +164,33 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    el("p","ppw-staff-muted",
     "Your people, their opinions and the decisions that matter. Open a department for its full report."));
   const attendees=el("div","ppw-staff-meeting-grid");
-  for(const brief of view.meetings??[]){
+  // The pressing, evidenced calls get airtime before routine updates;
+  // changing this display order neither changes authority nor re-reads Neon.
+  const urgency={ACTION:0,WATCH:1,CLEAR:2,VACANT:3} as const;
+  const briefs=[...(view.meetings??[])].sort((a,b)=>
+   (urgency[a.priority??"CLEAR"]??2)-(urgency[b.priority??"CLEAR"]??2));
+  for(const brief of briefs){
    const slot=el("details","ppw-staff-meeting-brief");
    const lead=el("summary","");
    const caption=el("div","");
    caption.append(el("span","ppw-staff-kicker",roles(brief.role)),
-    el("strong","",brief.staffName??"Position vacant · house cover"));
+    el("strong","",brief.staffName??"Position vacant · basic cover"));
+   if(brief.staffName&&brief.specialism)
+    caption.append(el("small","",brief.specialism));
    lead.append(caption);slot.append(lead);
+   const purpose=STAFF_DEPARTMENT_PURPOSES[brief.role];
    slot.append(el("p","ppw-staff-dialogue",
     staffMeetingDialogue({role:brief.role,staffName:brief.staffName,
      personality:brief.personality,message:brief.message})));
-   // Each specialist provides practical context rather than a generic alert.
+   if(!brief.staffName){
+    slot.append(el("p","ppw-staff-meeting-context",
+     "Hiring adds: "+purpose.does),
+     button("Recruit "+roles(brief.role),()=>{
+      department=brief.role;pane="MARKET";render();
+     }));
+    attendees.append(slot);continue;
+   }
+   // A hired colleague offers a real department service, not just prose.
    if(brief.role==="TALENT_MANAGER")slot.append(el("p","ppw-staff-meeting-context",
     "Contract renewals: "+(view.autoRenewSameTerms?"automatic same-terms offers enabled":"manager approval required")+
     ". Check future show dates before rebooking talent."));
@@ -385,8 +402,11 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   };
   if(member.formerWrestlerId)profile.append(el("p","",
    "Former wrestler · "+(member.careerNote??"Verified career history")));
+  const purpose=STAFF_DEPARTMENT_PURPOSES[member.role];
   profile.append(el("p","",temperament[member.personality]),
-   el("p","",roles(member.role)+" specialist · "+member.specialism));
+   el("p","",roles(member.role)+" specialist · "+member.specialism),
+   el("p","",purpose.does),
+   el("p","ppw-staff-muted",purpose.limit));
   const attributes=el("div","ppw-staff-attribute-list");
   for(const [name,score] of [["Craft",member.craft],
     ["People",member.people],["Reliability",member.reliability]] as const){
