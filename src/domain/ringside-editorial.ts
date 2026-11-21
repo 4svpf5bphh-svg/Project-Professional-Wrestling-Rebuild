@@ -508,6 +508,14 @@ and ONE decisive finish. Near-falls are not victories. Strong bouts get
 90–150 words, squashes 55–100, angles 35–85; weaker matches read weakly.
 Be specific, not formulaic ("In the end", "The crowd erupted",
 "momentum shifted"). Never recycle sentences, moves or finishes.
+Sound like a sharp wrestling journalist who watched this particular show,
+not a fantasy novelist or an omniscient simulator. Favour clean verbs and
+in-ring actions over "looming storms", "unstoppable auras", "hushed reverence",
+"electric crowds" or invented camera directions. Do not describe every
+interview as "stark", every reaction as "erupting", or a booking as
+"inevitable". Characters can be mysterious; facts must be grounded.
+Show how a real performer changed the moment, without declaring that
+an unseen feud, relationship or personal motive has already happened.
 
 The slot records are AUTHORITATIVE: participant names, match format,
 winner, winning method, title movement, injured wrestlers, interference,
