@@ -11,6 +11,8 @@ export interface RingsideStoryThread{
   pairing:string;previousMatches:number;previousAngles:number;
   lastMatch:string|null;lastWinner:string|null;
  };
+ characterStory?:{format:"SOLO"|"RELATIONSHIP"|"FACTION";cast:string;
+  priorChapters:number};
  previousSharedMatch?:{when:string;winner:string|null;finish:string};
  earlierOnThisCard?:{card:number;kind:"MATCH"|"SEGMENT"};
 }
@@ -51,16 +53,22 @@ export function verifiedSlotStoryThreads(
   const prev=chapter?used.get(chapter.programmeId):undefined;
   const thread:RingsideStoryThread={};
   if(chapter){
-   const lastWinner=chapter.previousWinner==="A"?name(chapter.sideA):
-    chapter.previousWinner==="B"?name(chapter.sideB):null;
-   thread.rivalry={
-    pairing:name(chapter.sideA)+" vs "+name(chapter.sideB),
-    previousMatches:chapter.precedingMatches,
-    previousAngles:chapter.precedingAngles,
-    lastMatch:chapter.previousMatchWeek===null?null:
-     priorWeek(chapter.previousMatchWeek),
-    lastWinner
-   };
+   if(chapter.programmeFormat&&chapter.programmeFormat!=="RIVALRY"){
+    thread.characterStory={format:chapter.programmeFormat,
+     cast:name(chapter.sideA),priorChapters:
+      chapter.precedingMatches+chapter.precedingAngles};
+   }else{
+    const lastWinner=chapter.previousWinner==="A"?name(chapter.sideA):
+     chapter.previousWinner==="B"?name(chapter.sideB):null;
+    thread.rivalry={
+     pairing:name(chapter.sideA)+" vs "+name(chapter.sideB),
+     previousMatches:chapter.precedingMatches,
+     previousAngles:chapter.precedingAngles,
+     lastMatch:chapter.previousMatchWeek===null?null:
+      priorWeek(chapter.previousMatchWeek),
+     lastWinner
+    };
+   }
    if(prev)thread.earlierOnThisCard=prev;
   }
   // The old history feed is deliberately unlinked. It can show a shared
