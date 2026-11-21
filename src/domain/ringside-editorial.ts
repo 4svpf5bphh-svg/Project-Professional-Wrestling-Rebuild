@@ -264,7 +264,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
  const voiceFailure=ringsideProseQualityFailure({
   opening:v.opening as string,closing:v.closing as string,slots});
  if(voiceFailure)throw new Error(voiceFailure);
- if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result)\b/i.test(fullStory))
+ if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result|protected victory|official-approved distraction|certified finish|certified decision|booked winner|booked result)\b/i.test(fullStory))
   throw new Error("Ringside leaked technical simulation terminology");
  if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b|\b[0-5](?:\.\d{1,2})?[\s\-\u2010-\u2015]*stars?\b/i.test(fullStory))
   throw new Error("Ringside leaked numerical score into editorial");
