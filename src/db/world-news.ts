@@ -564,7 +564,7 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
   INSERT INTO ppw_world_news_items(world_id,year,week,story_key,desk,certainty,
    promotion_id,promotion_name,show_id,title,summary,source_kind)
   SELECT $1,$2,$3,x.story_key,x.desk,x.certainty,x.promotion_id,
-   x.promotion_name,x.show_id,x.title,x.summary,x.source_kind
+   x.promotion_name,NULLIF(x.show_id,''),x.title,x.summary,x.source_kind
   FROM jsonb_to_recordset($4::jsonb) AS x(story_key text,desk text,certainty text,
    promotion_id text,promotion_name text,show_id text,title text,
    summary text,source_kind text)`,[worldId,year,week,
