@@ -248,7 +248,8 @@ for(const width of [320,390]){
   const dates=card.getByLabel("Purchased dates for Konosuke Takeshita");
   await expect(dates).toHaveValue("24");
   await dates.fill("40");
-  await expect(card.locator(".ppw-contract-renew-hint"))
+  await expect(card.locator(".ppw-contract-renegotiate .ppw-contract-renew-hint")
+   .filter({hasText:"Not enough available dates"}))
    .toContainText("at most 24");
   await card.getByRole("button",{name:"Send negotiated renewal"}).click();
   expect(submissions).toBe(0);
