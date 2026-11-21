@@ -808,6 +808,14 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0154_programme_story_formats.sql
+      - name: Enable true off-show World News without fabricated match linkage
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0155_offshow_public_world_news.sql
+      - name: Verify off-show World News migration is repeatable
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0155_offshow_public_world_news.sql
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test
