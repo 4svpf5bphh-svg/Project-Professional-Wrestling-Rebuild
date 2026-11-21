@@ -211,7 +211,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    if(brief.staffName)slot.append(el("small","ppw-staff-voice",
     "— "+brief.staffName+" · "+roles(brief.role)));
    if(!brief.staffName)slot.append(button("Browse staff for this role",()=>{
-    selectedRole=brief.role;pane="MARKET";render();
+    department=brief.role;pane="MARKET";render();
    }));
    if(brief.target==="contracts"&&port.openContracts)
     slot.append(button("Review contracts",()=>port.openContracts?.()));
