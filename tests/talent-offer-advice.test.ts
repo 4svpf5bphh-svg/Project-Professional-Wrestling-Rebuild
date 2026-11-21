@@ -30,3 +30,19 @@ test("higher Talent Manager skill narrows estimation error without exposing the 
  assert.equal(weak.confidence,"SPECULATIVE");
  assert.equal(expert.confidence,"CONFIDENT");
 });
+
+test("Talent Manager reduces purchased dates when a rival employer owns the wrestler's schedule",()=>{
+ const manager={staffId:"expert",name:"Morgan Keane",insight:95};
+ const crowded=recommendTalentOffer({...candidate,
+  remainingServiceDensityPerWeek:.475},manager);
+ assert.equal(crowded.feasible,true);
+ assert.equal(crowded.terms.termWeeks,52);
+ assert.equal(crowded.terms.dateEntitlement,24);
+ assert.match(crowded.voice,/reduced the dates because other signed commitments/i);
+ const unavailable=recommendTalentOffer({...candidate,
+  remainingServiceDensityPerWeek:0},manager);
+ assert.equal(unavailable.feasible,false);
+ assert.match(unavailable.voice,/would not offer/);
+ assert.equal(recommendTalentOffer(candidate,manager).terms.dateEntitlement,40,
+  "A fully available wrestler keeps the original recommendation");
+});
