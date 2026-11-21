@@ -501,7 +501,7 @@ a crafty heel or fiery babyface. Humour is occasional, dry and specific.
 No borrowed writer's phrases, stock hype or invented history.
 
 Write ONE chronological article: atmosphere, advancing slots, an opinionated
-closing, not a winner list. Every match needs its start, personalities,
+closing, not a winner list. For EVERY match, show its start, personalities,
 a turn and ONE decisive finish; near-falls are not victories.
 Strong bouts 90–150 words, squashes 55–100, angles 35–85.
 Avoid stock "In the end", "The crowd erupted", "momentum shifted",
@@ -531,7 +531,7 @@ signature move. Use official audience mood qualitatively.
 Singles: two wrestlers. No tags or tag partners.
 Tags/trios: only one wrestler PER TEAM is legal; apron partners must tag
 before scoring; hot tags optional. Never invent a team fall scorer.
-Preserve multi-team sides. Triple/four-way: no tags.
+Preserve multi-team sides. Triple/four-way: there are NO tags.
 Battle royals: over-the-top eliminations, not pins. Follow referee rules.
 
 In a pinfall, ONLY the losing wrestler's shoulders are counted down. Never
