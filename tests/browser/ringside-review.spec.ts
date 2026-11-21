@@ -223,7 +223,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"Check roster"}).click();
   await expect(page).toHaveURL(/#\/roster$/);
  });
- test(`Post-show handoff ${width}px gives a useful route for a strong clean card`,async({page})=>{
+ test(`Post-show handoff ${width}px keeps clean-card evidence without inventing a booking task`,async({page})=>{
   await page.setViewportSize({width,height:844});
   const one={...show,entries:[{...show.entries[0],
    fallout:{...show.entries[0]!.fallout,programmeSignal:null}
@@ -241,8 +241,11 @@ for(const width of [320,390]){
    .toContainText("4.50★");
   await expect(page.getByText(/4.50 verified stars/)).toHaveCount(0);
   await expect(page.locator(".ppw-next-show-choice")).toHaveCount(0);
-  await page.getByRole("button",{name:"Plan",exact:true}).click();
-  await expect(page).toHaveURL(/#\/planner$/);
+  await expect(page.getByRole("button",{name:"Open show planner"})).toHaveCount(0);
+  await expect(page.getByRole("heading",{name:"The night in numbers"})).toBeVisible();
+  await expect(page.locator(".ppw-post-show-road-agent"))
+   .toContainText("The main event delivered.");
+  await expect(page).toHaveURL(/#\/results$/);
  });
 }
 
