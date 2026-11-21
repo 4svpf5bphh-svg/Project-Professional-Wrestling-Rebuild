@@ -394,6 +394,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      }) as {labRunId:string;metrics:{durationMs:number;providerCalls:number;
       inputTokens:number|null;outputTokens:number|null;compatibilityJson?:boolean};
       benchmark?:{certifiedFactsValidated:boolean;diagnosticCues:string[];
+       qualityWarnings?:{code:string;slotId:string;description:string}[];
        humanReviewRequired:boolean}};
      lastBenchmarkNotice="Saved "+chosen.name+" · "+
       (benchmarkProviderChoice==="GROQ"?
@@ -404,8 +405,12 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       " provider call(s) · "+
       (result.metrics.inputTokens===null?"tokens not reported":
        (result.metrics.inputTokens+(result.metrics.outputTokens??0)).toLocaleString("en-GB")+" tokens")+
-      ". Basic result checks passed; assess psychology and tone yourself. "+
-      (result.benchmark?.diagnosticCues.join("; ")??"");
+      ". Certified facts passed; real writing quality still needs a human read. "+
+      (result.benchmark?.diagnosticCues.join("; ")??"")+
+      (result.benchmark?.qualityWarnings?.length?
+       " · EDITORIAL WATCH: "+result.benchmark.qualityWarnings
+        .map(w=>w.description).slice(0,3).join("; "):
+       " · No automatic prose warnings (not a quality guarantee).");
      labData=null;
      await loadLab();
     }catch(e){
