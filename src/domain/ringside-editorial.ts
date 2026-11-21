@@ -287,9 +287,8 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
    // recap even though the names and finish otherwise passed validation.
    if(["CLEAN_PIN","FLASH_PIN","FOREIGN_OBJECT","PROTECTED_FINISH"].includes(source.outcome)){
     for(const winner of winners){
-     const escaped=winner.replace(/[.*+?^{}()|[\]\\$]/g,"\\   const winners=source.matchContext?.winnerNames??[];
-   const opponents=source.matchContext?.sides.flat()??[];
-   const language=prose.toLowerCase();");
+     const escaped=[...winner].map(ch=>
+      "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
      const badPin=new RegExp(
       "(?:count(?:ed|s|ing)?\\s+(?:the\\s+)?(?:full\\s+)?three|"+
       "(?:three[-\\s]?count|pinfall|pinned|covered|cover(?:ed)?\\s+for\\s+three))"+
