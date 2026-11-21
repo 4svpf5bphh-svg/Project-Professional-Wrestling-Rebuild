@@ -132,8 +132,9 @@ const literalPattern=(value:string)=>[...value].map(ch=>
  "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
 function assertReferencedPromoTargetStayedOffScreen(
  source:ShowResultEntry,prose:string):void{
- if(source.type!=="SEGMENT"||source.segmentKind!=="PROMO"||
-  !source.segmentContext||
+ if(source.type!=="SEGMENT"||
+  !["PROMO","INTERVIEW","CHALLENGE","CONTRACT_SIGNING","VIDEO_PACKAGE"].includes(
+   source.segmentKind??"")||!source.segmentContext||
   source.segmentContext.targetPresence==="ON_SCREEN")return;
  const actors=new Set(source.segmentContext.actorNames.map(x=>x.toLocaleLowerCase()));
  for(const name of source.segmentContext.targetNames){
@@ -143,7 +144,7 @@ function assertReferencedPromoTargetStayedOffScreen(
    "(?:^|[^\\p{L}\\p{N}])"+target+
    "(?:\\s+|['’]s\\s+)"+
    "(?:answered|replied|responded|interrupted|stepped|walked|ran|"+
-   "charged|stood|approached|entered|arrived|appeared|performed|"+
+   "charged|stood|approached|entered|arrived|appeared|emerged|came\\s+(?:down|out|to)|performed|"+
    "executed|landed|hit|launched|gestured|watched|stared|smirked|"+
    "loomed|grabbed|raised|lifted|attacked|struck|climbed)\\b","iu");
   const physical=new RegExp(
@@ -457,33 +458,33 @@ const crowdMood=(n:number)=>n>=84?"strongly responsive":n>=70?"loud":n>=56?"enga
 export function ringsideEditorialLens(e:ShowResultEntry):string{
  if(e.type==="SEGMENT"){
   if(["INTERVIEW","PROMO","CHALLENGE"].includes(e.segmentKind??""))
-   return "one clear character point; quote only scripted words; no invented entrance";
+   return "character point; no invented entrance";
   if(["ATTACK","POST_MATCH_ASSAULT","RESCUE"].includes(e.segmentKind??""))
-   return "who acted, what was actually shown and the on-screen response";
-  return "one visible development; no promised outcome or unseen consequence";
+   return "booked action and response";
+  return "filmed beat; no unseen change";
  }
  if(e.outcome==="FOREIGN_OBJECT")
-  return "referee sightline, actual cheating and who won; avoid a reversed cover";
+  return "referee sightline; cheating; winner";
  if(e.outcome==="DISQUALIFICATION")
-  return "observed foul, referee decision and whose victory the decision awarded";
+  return "DQ foul; awarded winner";
  if(e.outcome==="VERBAL_SURRENDER")
-  return "resistance, escalation and one spoken surrender; never a tap or pin";
+  return "resistance; spoken surrender, no tap";
  if(e.outcome==="RETRIEVAL"||e.outcome==="MOST_FALLS")
-  return "stipulation pressure and the certified winning condition";
+  return "stipulation pressure; certified win";
  const minutes=e.fallout?.actualMinutes??e.matchContext?.plannedMinutes??0;
  const rating=e.fallout?.ratingStars;
  if(minutes>0&&minutes<=6)
-  return "a brief, decisive contest; no invented epic comeback or long exchanges";
+  return "brief, decisive action";
  const format=wrestlingMatchIQ(e)?.format;
  if(format==="TAG"||format==="MULTI_TEAM")
   return typeof rating==="number"&&rating<2.5?
-   "legal tags and the awkward pacing; do not invent a standout performance":
-   "legal tags and team pacing, not an invented precise fall scorer";
+   "legal tags; awkward pacing":
+   "legal tags; team pacing";
  if(typeof rating==="number"&&rating<2.5)
-  return "one credible moment and what fell flat; no false standing ovation";
+  return "what fell flat; no false ovation";
  if(typeof rating==="number"&&rating>=4)
-  return "one distinctive exchange that earns the strong reaction; precise finish";
- return "tactical contrast, a real turning point and the recorded finish";
+  return "strong exchange; precise finish";
+ return "tactics; certified finish";
 }
 
 /** Send relevant certified facts once, without redundant IDs and analytics. */
@@ -535,7 +536,7 @@ or finish that explains why THIS match was worth seeing. Criticise flat bouts.
 Dry humour sparingly; never just list moves or announce crowd approval.
 
 Write ONE chronological article, not separate reports. For EVERY match,
-give tactical contrast, a turning point and ONE decisive certified finish;
+give tactical contrast, a turning point and ONE decisive finish;
 vary rhythm and emphasis. Near-falls are not victories.
 Strong bouts 90–150 words, squashes 55–100, angles 35–85.
 Let standout contests breathe; don't claim every bout stole the show.
