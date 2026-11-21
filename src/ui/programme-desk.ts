@@ -952,8 +952,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    else root.append(createDetails);
   }
   const concluded=view.programmes.filter(p=>p.status!=="ACTIVE");
+  const rivalryArchiveOnly=concluded.every(p=>storyKind(p)==="RIVALRY");
+  const archiveLabel=rivalryArchiveOnly?"Past rivalries":"Past stories";
   if(concluded.length&&!archiveView){
-   const portal=button("Past rivalries · "+concluded.length,()=>{
+   const portal=button(archiveLabel+" · "+concluded.length,()=>{
     archiveView=true;selectedArchiveId=null;render();
    },working);
    portal.className="ppw-programme-past-entry";
@@ -961,7 +963,8 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   }
   if(archiveView){
    const history=element("section","ppw-programme-history");
-   history.append(button(selectedArchiveId?"← Past rivalries":"← Active rivalries",()=>{
+   history.append(button(selectedArchiveId?"← "+archiveLabel:
+    "← "+(rivalryArchiveOnly?"Active rivalries":"Active stories"),()=>{
     if(selectedArchiveId)selectedArchiveId=null;
     else archiveView=false;
     render();
@@ -969,7 +972,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    if(selectedArchiveId){
     history.classList.add("ppw-programme-retrospective");
    }else{
-    history.append(element("h2","","Past stories · "+concluded.length));
+    history.append(element("h2","",archiveLabel+" · "+concluded.length));
     for(const item of concluded){
      const label=storyLabel(item);
      const open=button(label,()=>{
