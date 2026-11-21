@@ -7,7 +7,7 @@ import type {CompletedShowView} from "../db/show-results-view.js";
 
 export type NextStepDestination="roster"|"championships"|"programmes"|"planner"|"staff";
 export interface PostShowNextStep{
- key:"medical"|"title"|"cooling"|"hot"|"standout"|"production";
+ key:"medical"|"title"|"cooling"|"hot"|"production";
  eyebrow:string;headline:string;detail:string;
  destination:NextStepDestination;action:string;
  /** Which completed match supports this suggestion; never a current booking ID. */
@@ -73,15 +73,8 @@ export function postShowHandoff(show:CompletedShowView):PostShowHandoff{
   strong.headline+" earned "+strong.fallout!.ratingStars!.toFixed(2)+
   " verified stars. Consider how to follow that performance, rather than repeating the same match immediately.":
   null;
- if(strong&&strong.fallout!.ratingStars!>=4&&!hot&&!cool){
-  priorities.push({key:"standout",eyebrow:"BUILD ON THE SHOW",
-   headline:"Give the standout a follow-up",
-   detail:standout!,
-   destination:"planner",action:"Open show planner",evidenceSlotId:strong.slotId,
-   ...(strong.matchContext?.winnerNames.length===1?{
-    personId:recordedPerson(strong,strong.matchContext.winnerNames[0]!)
-   }:{})});
- }
+ // A high-rated match belongs in the Show Breakdown and Road Agent report,
+ // not a separate generic 'build on the show' decision card.
  if(show.gorillaLog?.incidents.length)
   priorities.push({key:"production",eyebrow:"PRODUCTION",
    headline:"Review curtain decisions",
