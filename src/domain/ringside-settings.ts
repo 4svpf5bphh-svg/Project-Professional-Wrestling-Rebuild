@@ -9,7 +9,7 @@ export interface RingsideSettings{
 }
 export const DEFAULT_RINGSIDE_SETTINGS:RingsideSettings={
  model:"openai/gpt-oss-120b",voice:"MARTY",detail:"BALANCED",
- creativity:0.92,reasoning:"low",additionalGuidance:"",version:0
+ creativity:0.72,reasoning:"low",additionalGuidance:"",version:0
 };
 export function validateRingsideSettings(value:unknown):Omit<RingsideSettings,"version">{
  if(!value||typeof value!=="object"||Array.isArray(value))
