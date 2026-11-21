@@ -521,8 +521,12 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       packageQuote(quote,draft);
       minimumNotice.replaceChildren();
       capacityNotice.replaceChildren();
-      const fit=c.nextTermServiceDensity===null?null:Math.max(0,
+      const fit=c.nextTermServiceDensity==null?null:Math.max(0,
        Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks));
+      if(family==="EXCLUSIVE"&&c.nextTermHasOverlap){
+       capacityNotice.append(el("strong","","Exclusive terms blocked"),
+        el("p","","This wrestler has another signed agreement that overlaps the next term. You cannot offer exclusivity until those commitments have ended."));
+      }
       if(family!=="EXCLUSIVE"&&fit!==null&&fit<draft.dateEntitlement){
        capacityNotice.append(el("strong","","Not enough available dates"),
         el("p","","Their other signed contracts leave room for at most "+fit+
@@ -702,7 +706,11 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        error="Review the proposed duration, dates and payment values.";
        render();return;
       }
-      const scheduleCap=c.nextTermServiceDensity===null?null:Math.max(0,
+      if(family==="EXCLUSIVE"&&c.nextTermHasOverlap){
+       error=c.name+" has another signed agreement covering the proposed term. Wait for that commitment to finish before offering exclusivity.";
+       render();return;
+      }
+      const scheduleCap=c.nextTermServiceDensity==null?null:Math.max(0,
        Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks));
       if(family==="LIMITED_NON_EXCLUSIVE"&&scheduleCap!==null&&
        draft.dateEntitlement>scheduleCap){
