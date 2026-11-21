@@ -96,7 +96,7 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
   .getByRole("button",{name:"Grounded"}).click();
  await expect(page.getByRole("group",{name:"Ringside writing energy"})
   .getByRole("button",{name:"Grounded"})).toHaveAttribute("aria-pressed","true");
- expect(generated).toBe(0,"Changing editorial style must never trigger an API request");
+ expect(generated).toBe(0);
  await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
  await expect(page.getByText(/Saved Tag · conventional 2v2/)).toBeVisible();
  await expect(page.getByText(/1 provider call\(s\)/)).toBeVisible();
