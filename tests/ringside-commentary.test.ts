@@ -22,7 +22,7 @@ test("Groq requires one fixed, immutable slot per booked match and validates fac
   assert.deepEqual(body.response_format.json_schema.schema.properties.slots.required,["card_0"]);
   assert.equal(body.response_format.json_schema.schema.properties.slots.additionalProperties,false);
   assert.equal(body.reasoning_effort,"low");
-  assert.equal(body.temperature,0.92);
+  assert.equal(body.temperature,0.72);
   assert.ok(body.max_completion_tokens>=900);
   assert.match(body.messages[0].content,/Marty Vale/);
   assert.match(body.messages[1].content,/One Winged Angel/);
