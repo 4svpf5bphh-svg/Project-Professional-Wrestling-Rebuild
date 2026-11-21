@@ -31,7 +31,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    employed_staff_id:string|null;employment_id:string|null;
    manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];alumni_staff:unknown;
    staff_aliases:Record<string,string>;staff_office_theme:string|null;
-   featured_programme:StaffRivalryEvidence|null;
+   featured_programme:(StaffRivalryEvidence&{
+    programmeFormat:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION"})|null;
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
     p.cash::text AS promotion_cash,
@@ -40,8 +41,10 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
       WHERE a.world_id=w.world_id AND a.promotion_id=$3
        AND a.player_id=$2),'{}'::jsonb) AS staff_aliases,
     CASE WHEN spotlight.programme_id IS NULL THEN NULL ELSE jsonb_build_object(
-     'sideA',coalesce(sides.side_a,'Side A'),
-     'sideB',coalesce(sides.side_b,'Side B'),
+     'programmeFormat',spotlight.programme_format,
+     'sideA',coalesce(sides.side_a,'No assigned lead'),
+     'sideB',CASE WHEN spotlight.programme_format='RIVALRY'
+       THEN coalesce(sides.side_b,'No assigned opponent') ELSE '' END,
      'heat',spotlight.heat,'lastKind',beat.kind,
      'lastWeekIndex',beat.week_index,'lastWinnerSide',beat.winner_side,
      'lastMatchWinnerSide',last_match.winner_side,
@@ -155,9 +158,9 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    -- One named active programme per promotion, picked by heat.
    -- Each lateral lookup is bounded to that programme using existing indexes.
    LEFT JOIN LATERAL (
-    SELECT programme_id,heat FROM ppw_programmes programme
+    SELECT programme_id,heat,programme_format FROM ppw_programmes programme
     WHERE programme.world_id=w.world_id AND programme.promotion_id=$3
-     AND programme.status='ACTIVE' AND programme.programme_format='RIVALRY'
+     AND programme.status='ACTIVE'
     ORDER BY programme.heat DESC NULLS LAST,
      programme.started_week_index DESC NULLS LAST,programme.programme_id LIMIT 1
    ) spotlight ON TRUE
@@ -256,7 +259,23 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     craft:Number(p.match_craft??50),presentation:Number(p.presentation??50),
     popularity:Number(p.popularity??50)
    } satisfies ScoutProspect)),{...hiredScout,weekIndex}):[];
-  const observations=deriveStaffRivalryObservations(current.featured_programme);
+  const featured=current.featured_programme;
+  const observations=deriveStaffRivalryObservations(
+   featured?.programmeFormat==="RIVALRY"?featured:null);
+  // Solo, relationship and faction stories are real on-air programmes, not
+  // feuds with a manufactured opposing side. The same bounded spotlight
+  // contains enough certified history for a Creative or Commentary note.
+  const characterNote=featured&&featured.programmeFormat!=="RIVALRY"&&
+   featured.sideA.trim()?
+    featured.sideA+" leads an active "+
+     (featured.programmeFormat==="SOLO"?"solo character story":
+      featured.programmeFormat==="RELATIONSHIP"?"relationship story":
+      "faction story")+". "+
+     (featured.lastKind==="SEGMENT"?
+      "An on-screen chapter has aired; the next scene needs a different purpose.":
+      featured.lastKind==="MATCH"?
+       "A match chapter has been recorded; the next direction remains open.":
+       "No completed on-air chapter has been recorded yet.") :null;
   const notices:{department:string;message:string;target:"contracts"|"programmes"|"staff"|"roster"|"market"}[]=[];
   const officeRole=(role:StaffRole)=>employees.find(e=>e.role===role);
   const voice=(role:StaffRole,fallback:string)=>{
@@ -306,8 +325,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    recentMatches:current.recent_matches,
    recentDisqualifications:current.recent_disqualifications,
    scoutProspects:scoutReport.map(p=>({name:p.name})),
-   featured:{creative:observations.creative??null,
-    commentary:observations.commentary??null,
+   featured:{creative:observations.creative??characterNote,
+    commentary:observations.commentary??characterNote,
     roadAgent:observations.roadAgent??null}
   };
   const meetings=STAFF_ROLES.map(role=>{
