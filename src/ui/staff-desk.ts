@@ -190,15 +190,13 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
      "No specialist has been hired for this department."));
    }
    slot.append(el("small","ppw-staff-meeting-boundary",remit.boundary));
-   // Each specialist provides practical context rather than a generic alert.
-   if(brief.role==="TALENT_MANAGER"&&brief.staffName)slot.append(el("p","ppw-staff-meeting-context",
-    "Contract renewals: "+(view.autoRenewSameTerms?"automatic same-terms offers enabled":"manager approval required")+
-    ". Check future show dates before rebooking talent."));
-   if(brief.role==="ROAD_AGENT"&&brief.staffName)slot.append(el("p","ppw-staff-meeting-context",
-    "Gorilla policy: "+gorillaPolicy.replaceAll("_"," ").toLowerCase()+
-    ". Your scripted winners and finishes remain protected."));
-   if(brief.role==="SCOUT"&&brief.staffName)slot.append(el("p","ppw-staff-meeting-context",
-    (view.scoutReport?.length??0)+" specific scouting leads currently available."));
+   // Keep standing permissions visible without repeating the report.
+   if(brief.role==="TALENT_MANAGER"&&brief.staffName)
+    slot.append(el("small","ppw-staff-meeting-policy",
+     "Same-terms renewal delegation: "+(view.autoRenewSameTerms?"enabled":"disabled")));
+   if(brief.role==="ROAD_AGENT"&&brief.staffName)
+    slot.append(el("small","ppw-staff-meeting-policy",
+     "Standing Gorilla policy: "+gorillaPolicy.replaceAll("_"," ").toLowerCase()));
    if(brief.role==="SCOUT"&&brief.staffName&&view.scoutReport?.length){
     for(const prospect of view.scoutReport){
      const item=el("div","ppw-staff-scout-pick");
@@ -213,13 +211,13 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    if(!brief.staffName)slot.append(button("Browse staff for this role",()=>{
     department=brief.role;pane="MARKET";render();
    }));
-   if(brief.target==="contracts"&&port.openContracts)
+   if(brief.staffName&&brief.target==="contracts"&&port.openContracts)
     slot.append(button("Review contracts",()=>port.openContracts?.()));
-   if(brief.target==="roster"&&port.openRoster)
+   if(brief.staffName&&brief.target==="roster"&&port.openRoster)
     slot.append(button("Review roster",()=>port.openRoster?.()));
-   if(brief.target==="programmes"&&port.openProgrammes)
+   if(brief.staffName&&brief.target==="programmes"&&port.openProgrammes)
     slot.append(button("Review programmes",()=>port.openProgrammes?.()));
-   if(brief.target==="gorilla"&&port.openGorilla)
+   if(brief.staffName&&brief.target==="gorilla"&&port.openGorilla)
     slot.append(button("Open Gorilla Position",()=>port.openGorilla?.()));
    attendees.append(slot);
   }
