@@ -118,7 +118,9 @@ test("World-resolution integration: pending offer blocks publication, is settled
   assert.equal(Number(rows.p[0]!.cash),97000);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_promotion_talent_trust","ppw_backstage_promotion_trust",
+   for(const table of ["ppw_world_moments","ppw_world_news_items",
+    "ppw_world_news_awards","ppw_world_news_weeks",
+    "ppw_promotion_talent_trust","ppw_backstage_promotion_trust",
     "ppw_contract_renewal_proposals","ppw_ledger_events","ppw_contract_offers",
     "ppw_week_resolution_seals","ppw_week_resource_clearances","ppw_completed_shows",
     "ppw_show_resolutions","ppw_command_receipts","ppw_booking_drafts","ppw_venues",
