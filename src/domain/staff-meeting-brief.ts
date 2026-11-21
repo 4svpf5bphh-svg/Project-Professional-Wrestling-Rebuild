@@ -1,0 +1,165 @@
+/** Staff advice is a decision aid, not a simulated employee activity.
+ * One pure projection of facts already returned by Staff Office: zero
+ * additional SQL, model calls, invented story beats or automatic bookings.
+ */
+import type {StaffRole,WorldStaffMember} from "./world-staff.js";
+import {deriveStaffRivalryObservations,type StaffRivalryEvidence}
+ from "./verified-wrestler-rivalry-memory.js";
+
+export type StaffMeetingTarget="contracts"|"programmes"|"roster"|"staff"|"gorilla"|"market";
+export interface StaffMeetingFacts{
+ renewals:readonly {personName:string;weeksRemaining:number}[];
+ activeProgrammes:number;repeatedProgrammes:number;
+ featuredProgramme:StaffRivalryEvidence|null;
+ medicalRisks:number;medicalExample:string|null;fatigueConcerns:number;
+ recentMatches:number;recentShows:number;recentDisqualifications:number;
+ scoutLeads:readonly {name:string}[];
+}
+export interface StaffMeetingBrief{
+ message:string;nextStep:string;target:StaffMeetingTarget;
+ urgency:"ACTION"|"WATCH"|"CLEAR";
+}
+/** These are actual working mechanics, not promises about future results. */
+export const STAFF_PURPOSE:Record<StaffRole,{
+ responsibility:string;effect:string;boundary:string
+}>={
+ TALENT_MANAGER:{responsibility:"Contracts and talent relations",
+  effect:"Estimates realistic terms and can prepare same-terms renewals when delegated.",
+  boundary:"An offer is not an acceptance; existing wrestler commitments still apply."},
+ ROAD_AGENT:{responsibility:"Match structure and Gorilla Position",
+  effect:"Reviews match pacing and execution; a skilled agent modestly helps live presentation.",
+  boundary:"Never changes your scripted winners or the booked finish."},
+ MEDICAL:{responsibility:"Fitness, availability and workload",
+  effect:"Flags recorded injuries, fatigue and risky physical booking.",
+  boundary:"Cannot declare an injured wrestler cleared or remove an actual injury."},
+ CREATIVE:{responsibility:"Storylines, characters and on-screen chapters",
+  effect:"Reviews aired storyline progress and warns about repetition.",
+  boundary:"A suggested turn, alliance or payoff is not a booked or certified event."},
+ COMMENTATOR:{responsibility:"Broadcast voice and continuity",
+  effect:"Helps live presentation and keeps calls aligned with aired events.",
+  boundary:"Does not invent a rivalry, announce a title change or change match outcomes."},
+ REFEREE:{responsibility:"Match legality and finish execution",
+  effect:"Briefs complex layouts and difficult finishes; can modestly improve live presentation.",
+  boundary:"A referee does not choose a winner or overturn the booked decision."},
+ PRODUCTION:{responsibility:"Show costs and delivery",
+  effect:"A skilled producer can reduce existing production costs by up to 6%.",
+  boundary:"Venue, date and broadcast rights still require a real booking or agreement."},
+ TRAINER:{responsibility:"Conditioning and recovery",
+  effect:"Adds a limited fatigue-recovery benefit to eligible contracted wrestlers.",
+  boundary:"Does not increase innate ring skill or bypass medical clearance."},
+ SCOUT:{responsibility:"Discovering affordable talent",
+  effect:"Shortlists two or three real available prospects using scouting specialism.",
+  boundary:"A scout never signs somebody or guarantees their future potential."}
+};
+const count=(n:number)=>Math.max(0,Math.trunc(n));
+/** A report must tell the booker what was actually observed AND what to do.
+ * Clear desks can say so without manufacturing an issue for their salary.
+ */
+export function staffMeetingBrief(role:StaffRole,f:StaffMeetingFacts):StaffMeetingBrief{
+ const story=deriveStaffRivalryObservations(f.featuredProgramme);
+ const repeated=count(f.repeatedProgrammes),active=count(f.activeProgrammes);
+ const injuries=count(f.medicalRisks),tired=count(f.fatigueConcerns);
+ const leads=f.scoutLeads.slice(0,3);
+ switch(role){
+ case "TALENT_MANAGER":{
+  const first=f.renewals[0];
+  return first?{target:"contracts",urgency:"ACTION",
+   message:first.personName+" is first of "+f.renewals.length+
+    " signed deals due within twelve weeks.",
+   nextStep:"Check the next show date against their current and proposed contract. "+
+    "Quote only appearance dates they can actually commit to; then decide whether to send the renewal."}:
+   {target:"contracts",urgency:"CLEAR",
+    message:"No signed wrestler agreement is due in the next twelve weeks.",
+    nextStep:"There's no urgent renewal to chase. Leave the terms alone unless your next card needs extra dates."};
+ }
+ case "ROAD_AGENT":
+  return story.roadAgent?{target:"gorilla",urgency:"WATCH",
+   message:story.roadAgent,
+   nextStep:"If these wrestlers meet again, I'll review pacing and the planned finish at Gorilla. "+
+    "A new slot or a different opponent is your decision, not mine."}:
+   {target:"gorilla",urgency:count(f.recentMatches)>0?"WATCH":"CLEAR",
+    message:count(f.recentMatches)>0?
+     "We've completed "+count(f.recentMatches)+" matches in the recent show window.":
+     "There isn't a completed match to review yet.",
+    nextStep:"Bring me the next actual match card. I'll check its time, legal finish and pacing, "+
+     "without changing the winner you booked."};
+ case "MEDICAL":
+  return injuries?{target:"roster",urgency:"ACTION",
+   message:injuries+" contracted wrestler"+(injuries===1?" is":"s are")+
+    " medically unavailable"+(f.medicalExample?", including "+f.medicalExample:"")+".",
+   nextStep:"Check the recorded clearance dates before booking any physical work. "+
+    "We can't make the injury disappear by writing a different angle."}:
+   tired?{target:"roster",urgency:"WATCH",
+    message:tired+" contracted wrestler"+(tired===1?" is":"s are")+
+     " above the high-fatigue watch threshold. They are not necessarily injured.",
+    nextStep:"Review their coming physical appearances; a shorter match or a lighter week "+
+     "is safer than assuming full fitness."}:
+   {target:"roster",urgency:"CLEAR",
+    message:"No recorded medical absence or high-fatigue threshold currently needs intervention.",
+    nextStep:"No emergency briefing. I'll reassess when a demanding stipulation or workload is booked."};
+ case "CREATIVE":
+  return story.creative?{target:"programmes",urgency:repeated?"ACTION":"WATCH",
+   message:story.creative,
+   nextStep:repeated?
+    "We've also repeated "+repeated+" active programme"+(repeated===1?"":"s")+
+    ". I'd write one different on-screen development before booking another identical scene.":
+    "Pick a next beat that changes what the audience knows. It can stay a solo story; "+
+    "a new opponent is optional, never assumed."}:
+   repeated?{target:"programmes",urgency:"ACTION",
+    message:repeated+" active programme"+(repeated===1?" has":"s have")+
+     " repeated recent chapters without enough change.",
+    nextStep:"Choose a fresh motivation, a new kind of scene or a booked ending, "+
+     "not the same confrontation with a new headline."}:
+   {target:"programmes",urgency:"CLEAR",
+    message:active?active+" active stories are running. No repetition alert is recorded.":
+     "There isn't an active story to develop yet.",
+    nextStep:active?
+     "Follow up one actual aired chapter; don't promise a result before it's booked.":
+     "A character interview, relationship or faction story can start without forcing a rivalry."};
+ case "COMMENTATOR":
+  return story.commentary?{target:"programmes",urgency:"WATCH",
+   message:story.commentary,
+   nextStep:"Give the next broadcast one honest callback to the actual scene; "+
+    "let the new action earn its own reaction, instead of explaining an imaginary history."}:
+   {target:"programmes",urgency:"CLEAR",
+    message:active?active+" active stories give our broadcast continuity to track.":
+     "No active storyline is established for commentary to recall.",
+    nextStep:"Call the booked people and the actual finish. We'll build context as events air."};
+ case "REFEREE":
+  return count(f.recentDisqualifications)?{target:"gorilla",urgency:"WATCH",
+   message:count(f.recentDisqualifications)+" disqualification finish"+
+    (f.recentDisqualifications===1?"":"es")+" in the recent nine-week window.",
+   nextStep:"For another DQ or referee bump, tell us exactly who the official sees "+
+    "and how the decision happens. We won't improvise a different winner."}:
+   {target:"gorilla",urgency:"CLEAR",
+    message:"No recent completed disqualification needs a follow-up.",
+    nextStep:"If the next card has interference, a referee bump or multiple legal wrestlers, "+
+     "brief the exact finish before showtime."};
+ case "PRODUCTION":
+  return {target:"staff",urgency:count(f.recentShows)>0?"WATCH":"CLEAR",
+   message:count(f.recentShows)>0?
+    "We've delivered "+count(f.recentShows)+" shows in the recent nine-week window.":
+    "There is no completed show in the recent production window.",
+   nextStep:"Confirm venue, date and broadcast requirements on the real card. "+
+    "My production efficiencies save costs; they don't reserve a venue for you."};
+ case "TRAINER":
+  return tired?{target:"roster",urgency:"WATCH",
+   message:tired+" roster member"+(tired===1?" is":"s are")+
+    " above the high-fatigue watch threshold.",
+   nextStep:"My recovery work helps a little between weeks. A lighter physical schedule "+
+    "does more than asking a tired wrestler for another marathon."}:
+   {target:"roster",urgency:"CLEAR",
+    message:"No active contracted wrestler is above the high-fatigue watch threshold.",
+    nextStep:"Conditioning continues, but there is no recorded crisis to invent this week."};
+ case "SCOUT":
+  return leads.length?{target:"market",urgency:"WATCH",
+   message:"I have "+leads.length+" actual available prospect"+
+    (leads.length===1?"":"s")+" on my shortlist: "+
+    leads.map(x=>x.name).join(", ")+".",
+   nextStep:"Compare their strongest skill with your next roster need, "+
+    "then check their real contract demands in the Talent Market. Nobody has agreed to sign."}:
+   {target:"market",urgency:"CLEAR",
+    message:"No unattached young prospect qualifies for this week's scout shortlist.",
+    nextStep:"No invented hot tip. Check again when the available market changes."};
+ }
+}

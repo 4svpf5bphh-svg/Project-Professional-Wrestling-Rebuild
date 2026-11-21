@@ -100,6 +100,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  let benchmarkScenarioChoice="";
  let benchmarkModelChoice:"openai/gpt-oss-120b"|"openai/gpt-oss-20b"="openai/gpt-oss-120b";
  let benchmarkProviderChoice:"GROQ"|"OPENAI"="GROQ";
+ let benchmarkEnergyChoice:0.65|0.82|1.05=0.82;
  const tabs:readonly ("WORLD"|"AI"|"PLAYTESTS")[]=
   ctx.benchmarkOnly?["AI"]:["WORLD","AI","PLAYTESTS"];
  const navButtons=tabs.map(tab=>{
@@ -338,7 +339,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     "No 20B voice tests yet. Run one to see all accepted voices here."));
    const benchmark=el("div","ppw-lab-benchmark");
    benchmark.append(el("h3","","Wrestling IQ Benchmarks"),
-    el("p","ppw-admin-small","Repeat the same fictional match with different models. No World, contracts or published Results change. Each run uses the shared AI allowance."));
+    el("p","ppw-admin-small","Compare the same fictional match or angle across models and writing energy. Every manual run spends one shared AI allowance; no World or published Result changes."));
    const scenarios=data.scenarios??[];
    const scenarioPick=selectControl(scenarios.map(x=>[x.id,x.name]),
     scenarios.some(x=>x.id===benchmarkScenarioChoice)?
@@ -367,6 +368,22 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     benchmarkModelChoice=benchmarkModel.value as typeof benchmarkModelChoice;
    };
    scenarioDescription();
+   const energy=el("div","ppw-lab-flags");
+   energy.setAttribute("role","group");
+   energy.setAttribute("aria-label","Ringside writing energy");
+   const energyControls:HTMLButtonElement[]=[];
+   const energyPresets=[["Grounded",0.65],["Balanced",0.82],["Bold",1.05]] as const;
+   for(const [name,value] of energyPresets){
+    const control=el("button","ppw-lab-chip",name) as HTMLButtonElement;
+    control.type="button";
+    control.onclick=()=>{
+     benchmarkEnergyChoice=value;
+     energyControls.forEach((button,i)=>
+      button.setAttribute("aria-pressed",String(energyPresets[i]![1]===value)));
+    };
+    control.setAttribute("aria-pressed",String(value===benchmarkEnergyChoice));
+    energyControls.push(control);energy.append(control);
+   }
    const benchmarkStatus=el("p","ppw-admin-message",lastBenchmarkNotice);
    const runBenchmark=el("button","ppw-admin-primary","Run Wrestling IQ benchmark") as HTMLButtonElement;
    runBenchmark.type="button";
@@ -390,22 +407,28 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      const result=await request("/api/admin-preview","POST",ctx.csrfToken,{
       benchmarkId:chosen.id,previewProvider:benchmarkProvider.value,
       settings:{model:benchmarkModel.value,voice:"MARTY",detail:"BALANCED",
-       reasoning:"low",creativity:0.92,additionalGuidance:""}
+       reasoning:"low",creativity:benchmarkEnergyChoice,additionalGuidance:""}
      }) as {labRunId:string;metrics:{durationMs:number;providerCalls:number;
       inputTokens:number|null;outputTokens:number|null;compatibilityJson?:boolean};
       benchmark?:{certifiedFactsValidated:boolean;diagnosticCues:string[];
+       qualityWarnings?:{code:string;slotId:string;description:string}[];
        humanReviewRequired:boolean}};
      lastBenchmarkNotice="Saved "+chosen.name+" · "+
       (benchmarkProviderChoice==="GROQ"?
        (benchmarkModelChoice==="openai/gpt-oss-20b"?"20B":"120B"):
        "OpenAI")+" · "+
       (result.metrics.compatibilityJson?"20B JSON mode · ":"")+
+      "writing energy "+benchmarkEnergyChoice+" · "+
       result.metrics.durationMs+"ms · "+result.metrics.providerCalls+
       " provider call(s) · "+
       (result.metrics.inputTokens===null?"tokens not reported":
        (result.metrics.inputTokens+(result.metrics.outputTokens??0)).toLocaleString("en-GB")+" tokens")+
-      ". Basic result checks passed; assess psychology and tone yourself. "+
-      (result.benchmark?.diagnosticCues.join("; ")??"");
+      ". Certified facts passed; real writing quality still needs a human read. "+
+      (result.benchmark?.diagnosticCues.join("; ")??"")+
+      (result.benchmark?.qualityWarnings?.length?
+       " · EDITORIAL WATCH: "+result.benchmark.qualityWarnings
+        .map(w=>w.description).slice(0,3).join("; "):
+       " · No automatic prose warnings (not a quality guarantee).");
      labData=null;
      await loadLab();
     }catch(e){
@@ -418,7 +441,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    };
    benchmark.append(inputField("Wrestling scenario",scenarioPick),rubric,
     inputField("Benchmark provider",benchmarkProvider),
-    inputField("Groq model",benchmarkModel),runBenchmark,benchmarkStatus);
+    inputField("Groq model",benchmarkModel),
+    el("p","ppw-admin-small","Writing energy · choose one before running (does not contact Groq)"),
+    energy,runBenchmark,benchmarkStatus);
    const reportButton=el("button","ppw-admin-secondary","Copy AI test report") as HTMLButtonElement;
    reportButton.type="button";
    const reportStatus=el("p","ppw-admin-message","");

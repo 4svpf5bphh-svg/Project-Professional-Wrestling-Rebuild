@@ -25,6 +25,7 @@ export function describeWrestlerRivalryMemory(m:WrestlerRivalryMemory):string{
 }
 export interface StaffRivalryEvidence{
  sideA:string;sideB:string;heat:number|null;
+ programmeFormat?:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION";
  lastKind:"MATCH"|"SEGMENT"|null;lastWeekIndex:number|null;
  lastWinnerSide:"A"|"B"|null;
  lastMatchWinnerSide:"A"|"B"|null;
@@ -38,12 +39,34 @@ export function deriveStaffRivalryObservations(story:StaffRivalryEvidence|null):
  priority:string|null;
 }{
  if(!story)return {creative:null,commentary:null,roadAgent:null,priority:null};
- if(!story.sideA.trim()||!story.sideB.trim()||
+ const format=story.programmeFormat??"RIVALRY";
+ if(!["RIVALRY","SOLO","RELATIONSHIP","FACTION"].includes(format)||
+  !story.sideA.trim()||(format==="RIVALRY"&&!story.sideB.trim())||
   !["MATCH","SEGMENT",null].includes(story.lastKind)||
   !["A","B",null].includes(story.lastWinnerSide)||
   ![null,"PURSUE_REMATCH","PLAN_RETALIATION","LET_STAND"].includes(story.directionChoice)||
   !Number.isFinite(story.heat??0))
   throw new Error("Invalid staff rivalry evidence");
+ if(format!=="RIVALRY"){
+  // Character, relationship and faction stories are not rivalries and have
+  // no canonical B side. An ordinary match winner cannot establish one.
+  const label=format==="SOLO"?"character":format==="RELATIONSHIP"?
+   "relationship":"faction";
+  const cast=story.sideA;
+  const last=story.lastKind==="MATCH"?
+   "a match linked to this story":story.lastKind==="SEGMENT"?
+   "a recorded on-screen scene":"no completed on-screen chapter yet";
+  const observation=cast+" has "+last+" in the "+label+" story.";
+  return {
+   creative:observation+" I'd give the next appearance a different reason to happen; "+
+    "we don't need to invent an opponent.",
+   commentary:observation+" Commentary should call what actually aired, "+
+    "not pretend this is already a feud.",
+   roadAgent:observation+" We can fit a new beat around the next real card "+
+    "without inventing a rivalry match.",
+   priority:null
+  };
+ }
  const pairing=story.sideA+" and "+story.sideB;
  const last=story.lastKind==="MATCH"?
   "Their last recorded rivalry chapter was a match"+

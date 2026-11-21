@@ -60,7 +60,7 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
   expect(body).toMatchObject({
    benchmarkId:"tag-standard",previewProvider:"GROQ",
    settings:{model:"openai/gpt-oss-20b",voice:"MARTY",reasoning:"low",
-    detail:"BALANCED",creativity:0.92,additionalGuidance:""}
+    detail:"BALANCED",creativity:0.65,additionalGuidance:""}
   });
   expect(body.showId).toBeUndefined();
   return route.fulfill({json:{
@@ -92,6 +92,11 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
  await page.getByLabel("Wrestling scenario").selectOption("tag-standard");
  await expect(page.getByText(/Both partners legal simultaneously/)).toBeVisible();
  await page.getByLabel("Groq model").selectOption("openai/gpt-oss-20b");
+ await page.getByRole("group",{name:"Ringside writing energy"})
+  .getByRole("button",{name:"Grounded"}).click();
+ await expect(page.getByRole("group",{name:"Ringside writing energy"})
+  .getByRole("button",{name:"Grounded"})).toHaveAttribute("aria-pressed","true");
+ expect(generated).toBe(0);
  await page.getByRole("button",{name:"Run Wrestling IQ benchmark"}).click();
  await expect(page.getByText(/Saved Tag · conventional 2v2/)).toBeVisible();
  await expect(page.getByText(/1 provider call\(s\)/)).toBeVisible();

@@ -5,9 +5,10 @@ import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
-// Updated editorial is versioned independently. Published v4 remains immutable.
-export const RINGSIDE_PROMPT_VERSION="ringside-v9";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v7";
+// New writing guidance is independently versioned. Previously published
+// reports stay immutable; an old completed show never needs a fresh API call.
+export const RINGSIDE_PROMPT_VERSION="ringside-v10";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v9";
 export const RINGSIDE_OLDER_VERSION="ringside-v6";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
@@ -131,8 +132,9 @@ const literalPattern=(value:string)=>[...value].map(ch=>
  "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
 function assertReferencedPromoTargetStayedOffScreen(
  source:ShowResultEntry,prose:string):void{
- if(source.type!=="SEGMENT"||source.segmentKind!=="PROMO"||
-  !source.segmentContext||
+ if(source.type!=="SEGMENT"||
+  !["PROMO","INTERVIEW","CHALLENGE","CONTRACT_SIGNING","VIDEO_PACKAGE"].includes(
+   source.segmentKind??"")||!source.segmentContext||
   source.segmentContext.targetPresence==="ON_SCREEN")return;
  const actors=new Set(source.segmentContext.actorNames.map(x=>x.toLocaleLowerCase()));
  for(const name of source.segmentContext.targetNames){
@@ -142,7 +144,7 @@ function assertReferencedPromoTargetStayedOffScreen(
    "(?:^|[^\\p{L}\\p{N}])"+target+
    "(?:\\s+|['’]s\\s+)"+
    "(?:answered|replied|responded|interrupted|stepped|walked|ran|"+
-   "charged|stood|approached|entered|arrived|appeared|performed|"+
+   "charged|stood|approached|entered|arrived|appeared|emerged|came\\s+(?:down|out|to)|performed|"+
    "executed|landed|hit|launched|gestured|watched|stared|smirked|"+
    "loomed|grabbed|raised|lifted|attacked|struck|climbed)\\b","iu");
   const physical=new RegExp(
@@ -447,8 +449,43 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
 }
 
 /** Atmospheric description for the writer; the UI retains canonical numbers. */
-const crowdMood=(n:number)=>n>=84?"electric":n>=70?"loud":n>=56?"engaged":
+const crowdMood=(n:number)=>n>=84?"strongly responsive":n>=70?"loud":n>=56?"engaged":
  n>=42?"divided":n>=28?"muted":"quiet";
+/** One truthful editorial angle per slot. The previous round-robin cue
+ * encouraged the model to invent "shifting allegiance" in unrelated matches.
+ * These are writing priorities, never new canonical event facts.
+ */
+export function ringsideEditorialLens(e:ShowResultEntry):string{
+ if(e.type==="SEGMENT"){
+  if(["INTERVIEW","PROMO","CHALLENGE"].includes(e.segmentKind??""))
+   return "character point; no invented entrance";
+  if(["ATTACK","POST_MATCH_ASSAULT","RESCUE"].includes(e.segmentKind??""))
+   return "booked action and response";
+  return "filmed beat; no unseen change";
+ }
+ if(e.outcome==="FOREIGN_OBJECT")
+  return "referee sightline; cheating; winner";
+ if(e.outcome==="DISQUALIFICATION")
+  return "DQ foul; awarded winner";
+ if(e.outcome==="VERBAL_SURRENDER")
+  return "resistance; spoken surrender, no tap";
+ if(e.outcome==="RETRIEVAL"||e.outcome==="MOST_FALLS")
+  return "stipulation pressure; certified win";
+ const minutes=e.fallout?.actualMinutes??e.matchContext?.plannedMinutes??0;
+ const rating=e.fallout?.ratingStars;
+ if(minutes>0&&minutes<=6)
+  return "brief, decisive action";
+ const format=wrestlingMatchIQ(e)?.format;
+ if(format==="TAG"||format==="MULTI_TEAM")
+  return typeof rating==="number"&&rating<2.5?
+   "legal tags; awkward pacing":
+   "legal tags; team pacing";
+ if(typeof rating==="number"&&rating<2.5)
+  return "what fell flat; no false ovation";
+ if(typeof rating==="number"&&rating>=4)
+  return "strong exchange; precise finish";
+ return "tactics; certified finish";
+}
 
 /** Send relevant certified facts once, without redundant IDs and analytics. */
 export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
@@ -456,9 +493,7 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   audienceMood:crowdMood(show.crowdResponse),
   slots:show.entries.map((e,i)=>({
-   editorialLens:["ring psychology","shifting crowd allegiance","pacing and the finishing stretch",
-    "the wrestlers\u0027 distinct personalities","wrestling spectacle"][
-     (i+[...show.showId].reduce((sum,ch)=>sum+ch.charCodeAt(0),0))%5],
+   editorialLens:ringsideEditorialLens(e),
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
    ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
@@ -496,19 +531,20 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
 export const RINGSIDE_STYLE_GUIDE=`You are Marty Vale, PPW Ringside's sharp, funny-when-earned
 veteran wrestling columnist. Write as a smark who WATCHED the action,
 not a game engine, booker, press release or omniscient narrator.
-Have opinions: praise earned psychology, criticise flat spells, relish
-a crafty heel or fiery babyface. Humour is occasional, dry and specific.
-No borrowed writer's phrases, stock hype or invented history.
+Have opinions grounded in EVIDENCE. Show one memorable exchange, mistake
+or finish that explains why THIS match was worth seeing. Criticise flat bouts.
+Dry humour sparingly; never just list moves or announce crowd approval.
 
-Write ONE chronological article: atmosphere, advancing slots, an opinionated
-closing, not a winner list. For EVERY match, show its start, personalities,
-a turn and ONE decisive finish; near-falls are not victories.
+Write ONE chronological article, not separate reports. For EVERY match,
+give tactical contrast, a turning point and ONE decisive finish;
+vary rhythm and emphasis. Near-falls are not victories.
 Strong bouts 90–150 words, squashes 55–100, angles 35–85.
-Avoid stock "In the end", "The crowd erupted", "momentum shifted",
-recycled moves and repeated finishes.
-Avoid fantasy melodrama: no "looming storms", "unstoppable auras",
-"hushed reverence", stock "electric crowds" or invented camera shots.
-Only show motives and relationships grounded in on-air evidence.
+Let standout contests breathe; don't claim every bout stole the show.
+Headlines must be specific, not bloated finish descriptions; do not repeat
+them in the first sentence. Slot.editorialLens sets emphasis, NOT new facts.
+Avoid "In the end", "momentum shifted", recycled moves, "looming storms",
+"unstoppable auras", "hushed reverence", "electric crowds" and invented
+camera shots. Motives and relationships need on-air evidence.
 
 The slot records are AUTHORITATIVE: participant names, match format,
 winner, winning method, title movement, injured wrestlers, interference,

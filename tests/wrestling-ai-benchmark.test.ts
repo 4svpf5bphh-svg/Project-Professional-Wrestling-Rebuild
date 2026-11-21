@@ -5,26 +5,37 @@ import {getWrestlingBenchmark,WRESTLING_BENCHMARKS,assessWrestlingBenchmark}
 import {ringsideBrief,ringsideStipulationNote,validateRingsideCopy}
  from "../src/domain/ringside-editorial.js";
 import {wrestlingMatchIQ} from "../src/domain/wrestling-iq.js";
-test("Fifteen deterministic wrestling scenarios provide certified results and no World data",()=>{
- assert.equal(WRESTLING_BENCHMARKS.length,15);
- assert.equal(new Set(WRESTLING_BENCHMARKS.map(s=>s.id)).size,15);
+test("Fifteen wrestling matches and three grounded angles test Groq without World data",()=>{
+ assert.equal(WRESTLING_BENCHMARKS.length,18);
+ assert.equal(new Set(WRESTLING_BENCHMARKS.map(s=>s.id)).size,18);
  for(const meta of WRESTLING_BENCHMARKS){
   const first=getWrestlingBenchmark(meta.id)!;
   const second=getWrestlingBenchmark(meta.id)!;
   assert.deepEqual(first,second,"benchmarks must be stable for model comparison");
   assert.equal(first.show.entries.length,1);
   const entry=first.show.entries[0]!,brief=ringsideBrief(first.show).slots[0]!;
-  assert.equal(brief.match!.winners.join("|"),entry.matchContext!.winnerNames.join("|"));
+  if(entry.type==="MATCH"){
+   assert.equal(brief.match!.winners.join("|"),entry.matchContext!.winnerNames.join("|"));
+   assert.ok(wrestlingMatchIQ(entry));
+   assert.equal(first.show.matchCount,1);
+  }else{
+   assert.equal(first.show.angleCount,1);
+   assert.equal(first.show.matchCount,0);
+   assert.equal(entry.segmentContext?.targetPresence,
+    meta.id==="angle-postmatch-assault"?"ON_SCREEN":"MENTIONED");
+  }
   assert.equal(brief.finish,entry.outcome);
-  assert.ok(wrestlingMatchIQ(entry));
   assert.ok(first.show.showId.startsWith("benchmark:"));
-  assert.equal(first.show.matchCount,1);
   assert.ok(!JSON.stringify(first).includes("api_key"));
   const ok={showHeadline:"A story at ringside",opening:"The crowd greeted the bell.",
    closing:"There was plenty to consider after the finish.",slots:[{
-    slotId:entry.slotId,headline:"The main event",recap:entry.outcome==="VERBAL_SURRENDER"?
-     "The defeated opponent verbally surrendered to the referee after saying I quit.":
-     "The official victor had their hand raised once the decisive result was reached."}]};
+    slotId:entry.slotId,headline:"The main event",recap:entry.type==="SEGMENT"?
+     (entry.segmentKind==="POST_MATCH_ASSAULT"?
+      "The attacker struck the on-screen target during the planned assault.":
+      "The speaker delivered the booked interview without a response from the named targets."):
+     entry.outcome==="VERBAL_SURRENDER"?
+      "The defeated opponent verbally surrendered to the referee after saying I quit.":
+      "The official victor had their hand raised once the decisive result was reached."}]};
   assert.deepEqual(validateRingsideCopy(ok,first.show),ok);
   assert.equal(assessWrestlingBenchmark(meta.id,ok).certifiedFactsValidated,true);
  }
@@ -93,6 +104,30 @@ test("Model comparisons use identical certified fixture facts and one provider c
   assert.deepEqual(payloads[0],payloads[1],
    "The model identity must never change match evidence or the factual rubric");
  }
+});
+
+test("Groq now benchmarks solos, faction callouts and physical angles without phantom participants",()=>{
+ for(const id of ["angle-solo-interview","angle-faction-callout","angle-postmatch-assault"]){
+  const {show}=getWrestlingBenchmark(id)!;
+  const entry=show.entries[0]!;
+  assert.equal(entry.type,"SEGMENT");
+  assert.ok(entry.segmentContext?.actorNames.length);
+  const recap=id==="angle-postmatch-assault"?
+   entry.segmentContext!.actorNames[0]+" carried out the physical attack on "+
+    entry.segmentContext!.targetNames[0]+" while the crowd watched.":
+   entry.segmentContext!.actorNames.join(" and ")+
+    " spoke from the interview area. The named targets never appeared.";
+  const safe={showHeadline:"A character moment",opening:"The segment drew attention.",
+   closing:"The next show will have to respond.",slots:[{
+    slotId:entry.slotId,headline:"A purposeful scene",recap}]};
+  assert.equal(assessWrestlingBenchmark(id,safe).certifiedFactsValidated,true);
+ }
+ const {show}=getWrestlingBenchmark("angle-solo-interview")!;
+ const falseArrival={showHeadline:"A scene",opening:"The arena listened.",
+  closing:"It ended.",slots:[{slotId:show.entries[0]!.slotId,
+   headline:"A surprise",recap:"The Champion came down to confront The Undertaker in the interview."}]};
+ assert.throws(()=>assessWrestlingBenchmark("angle-solo-interview",falseArrival),
+  /target|on.camera|off.screen|present/i);
 });
 
 test("20B fictional benchmark starts with JSON object, not a failed strict-schema request",async()=>{

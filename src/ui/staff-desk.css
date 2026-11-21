@@ -207,3 +207,15 @@
 .ppw-staff-team-list .ppw-staff-dossier{margin-top:9px}
 .ppw-staff-meeting-context{margin:9px 12px;padding:10px 12px;border-left:3px solid #80dece;
  border-radius:8px;background:#123447;color:#d9f3f4;font-size:13px;line-height:1.45}
+
+/* Nine specialist briefs stay compact, with one clear recommendation and
+ * honest boundaries. No decorative panels or additional horizontal width. */
+.ppw-staff-meeting-brief .ppw-staff-meeting-recommendation{
+ margin:8px 0 7px;padding:10px 12px;border-radius:8px;
+ border-left:3px solid #e8c47b;background:#163046;
+ color:#f8ecd0;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+.ppw-staff-meeting-specialism,.ppw-staff-meeting-boundary,
+.ppw-staff-meeting-policy{
+ display:block;margin:7px 2px;color:#b6d6e8;font-size:12px;
+ line-height:1.5;overflow-wrap:anywhere}
+.ppw-staff-meeting-boundary{color:#aebfd2}
