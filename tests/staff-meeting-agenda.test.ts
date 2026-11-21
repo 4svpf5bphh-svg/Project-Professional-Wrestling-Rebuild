@@ -89,3 +89,14 @@ test("a hired trainer or producer describes bounded real effects, not invented u
  assert.match(STAFF_DEPARTMENT_PURPOSES.TRAINER.limit,/Cannot overwrite innate skills/);
  assert.match(STAFF_DEPARTMENT_PURPOSES.PRODUCTION.does,/reduce some verified production spending/);
 });
+
+test("creative protects a first-time solo chapter from bogus rematch or repetition advice",()=>{
+ const solo:StaffMeetingEvidence={...facts,repeatedProgrammes:0,
+  featured:{creative:"The Undertaker leads an active solo character story. No completed on-air chapter has been recorded yet.",
+   commentary:null,roadAgent:null}};
+ const suggestion=staffMeetingAgenda("CREATIVE",solo,person("FRANK"));
+ assert.equal(suggestion.priority,"WATCH");
+ assert.match(suggestion.message,/The Undertaker.*solo character story/);
+ assert.match(suggestion.message,/one clear decision/);
+ assert.doesNotMatch(suggestion.message,/Stop repeating|rematch|Side B|needs another rival/);
+});
