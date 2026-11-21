@@ -499,7 +499,7 @@ test("factual rescue uses wrestlers and match method, not placeholders pretendin
   slots:many.entries.map((e,i)=>({
    slotId:e.slotId,headline:"Omega outlasts the rival",
    recap:i===3?"Omega won by submission.":
-    "Omega worked the opponent's arm before securing the clean pinfall."
+    "In bout "+(i+1)+", Omega worked the opponent's arm before securing the clean pinfall."
   }))};
  const report=recoverRingsideCopy(candidate,many);
  assert.equal(report?.replaced,1);
