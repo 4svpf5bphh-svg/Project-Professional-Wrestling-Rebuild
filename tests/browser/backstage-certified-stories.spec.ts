@@ -68,7 +68,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/About that chapter we put on air/}).click();
   const wrestler=page.getByLabel("Message from Character One");
   await expect(wrestler).toContainText("The Lottery");
-  await expect(wrestler).toContainText("actual completed Programme chapter");
+  await expect(wrestler).not.toContainText("actual completed Programme chapter");
+  await expect(wrestler.locator(".ppw-backstage-world-evidence")).toHaveCount(0);
   await expect(wrestler).toContainText("Plan a creative response");
   await expect(wrestler).toContainText("View wrestler dossier");
   await expect.poll(()=>read.length).toBe(1);
@@ -77,7 +78,8 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:/Creative review of an on-air storyline/}).click();
   const creative=page.getByLabel("Message from Creative Director");
   await expect(creative).toContainText("faction story");
-  await expect(creative).toContainText("verified audience response");
+  await expect(creative).not.toContainText("verified audience response");
+  await expect(creative.locator(".ppw-backstage-world-evidence")).toHaveCount(0);
   await expect(creative).toContainText("Plan a creative response");
   await expect(creative).not.toContainText("I'll refresh the rivalries");
   await expect.poll(()=>read.length).toBe(2);
@@ -175,12 +177,12 @@ for(const width of [320,390]){
   const thread=page.getByLabel("Message from Character B");
   await expect(thread.getByRole("button",{name:"Try a different approach"})).toBeVisible();
   await thread.getByRole("button",{name:"Try a different approach"}).click();
-  await expect(thread).toContainText("My next chapter: Try a different approach");
+  await expect(thread).toContainText("Let's try a different presentation next time");
   await expect(thread.getByRole("button",{name:"Try a different approach"})).toHaveCount(0);
   await page.getByRole("button",{name:"Back to messages"}).click();
   await page.getByRole("button",{name:/A verified creative response/}).click();
   await expect(page.getByLabel("Message from Creative Director"))
-   .toContainText("My next chapter: Try a different approach");
+   .toContainText("Let's try a different presentation next time");
   await expect(page.getByRole("button",{name:"Try a different approach"})).toHaveCount(0);
   await page.getByRole("button",{name:"Open this exact storyline"}).click();
   await expect(page).toHaveURL(/#\/programmes$/);
