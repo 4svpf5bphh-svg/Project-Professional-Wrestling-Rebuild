@@ -43,10 +43,10 @@ for(const width of [320,390]){
   // is not interrupted by two repeated, mechanical feud recap boxes.
   await expect(page.locator(".ppw-rivalry-at-ringside")).toHaveCount(0);
   await expect(page.getByText("THE RIVALRY SO FAR")).toHaveCount(0);
-  await expect(page.getByText("Samoa Joe defeats Matt Riddle")).toBeVisible();
+  await expect(page.locator(".ppw-result-headline").first()).toContainText("Samoa Joe defeats Matt Riddle");
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await expect(page.locator(".ppw-road-agent-observation"))
-   .toContainText("Samoa Joe defeats Matt Riddle earned 4.00 stars");
+  await expect(page.locator(".ppw-post-show-road-agent")).toContainText("The match was strong.");
+  await expect(page.locator(".ppw-road-agent-observation")).toHaveCount(0);
   expect(resultsCalls).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
