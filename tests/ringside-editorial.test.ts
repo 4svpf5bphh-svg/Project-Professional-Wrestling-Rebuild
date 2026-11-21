@@ -95,6 +95,21 @@ test("Ringside rejects a loser being reported as the victor",()=>{
  assert.throws(()=>validateRingsideCopy(inverted,example),/winner/);
 });
 
+test("Ringside rejects the live-observed three-count on the winner's shoulders",()=>{
+ const phrase="As the referee fell, Kenny Omega struck with the hidden belt. "+
+  "The official recovered and counted three on Kenny Omega's shoulders.";
+ const broken={...valid,slots:[{...valid.slots[0],recap:phrase},valid.slots[1]]};
+ const disputed={...example,entries:[{...example.entries[0]!,
+  outcome:"FOREIGN_OBJECT" as const},example.entries[1]!]};
+ assert.throws(()=>validateRingsideCopy(broken,disputed),
+  /winner's shoulders/);
+ const good={...valid,slots:[{...valid.slots[0],
+  recap:"Omega used a hidden belt and covered the opponent. "+
+   "The referee returned to count three on the opponent's shoulders."},
+  valid.slots[1]]};
+ assert.doesNotThrow(()=>validateRingsideCopy(good,disputed));
+});
+
 test("a six-slot article retains five AI recaps and replaces one false submission",()=>{
  const many:CompletedShowView={...example,entries:Array.from({length:6},(_,i)=>({
   ...example.entries[0]!,slotId:"m"+i,position:i
