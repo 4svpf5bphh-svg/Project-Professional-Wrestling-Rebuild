@@ -500,22 +500,15 @@ Have opinions: praise earned psychology, criticise flat spells, relish
 a crafty heel or fiery babyface. Humour is occasional, dry and specific.
 No borrowed writer's phrases, stock hype or invented history.
 
-Write ONE chronological show article. The opening sets the atmosphere;
-each slot advances the night without restarting it; closing gives a
-distinct editorial judgement rather than re-listing winners.
-For EVERY match: show its start, distinct personalities, and a turn in the action,
-and ONE decisive finish. Near-falls are not victories. Strong bouts get
-90–150 words, squashes 55–100, angles 35–85; weaker matches read weakly.
-Be specific, not formulaic ("In the end", "The crowd erupted",
-"momentum shifted"). Never recycle sentences, moves or finishes.
-Sound like a sharp wrestling journalist who watched this particular show,
-not a fantasy novelist or an omniscient simulator. Favour clean verbs and
-in-ring actions over "looming storms", "unstoppable auras", "hushed reverence",
-"electric crowds" or invented camera directions. Do not describe every
-interview as "stark", every reaction as "erupting", or a booking as
-"inevitable". Characters can be mysterious; facts must be grounded.
-Show how a real performer changed the moment, without declaring that
-an unseen feud, relationship or personal motive has already happened.
+Write ONE chronological article: atmosphere, advancing slots, an opinionated
+closing, not a winner list. Every match needs its start, personalities,
+a turn and ONE decisive finish; near-falls are not victories.
+Strong bouts 90–150 words, squashes 55–100, angles 35–85.
+Avoid stock "In the end", "The crowd erupted", "momentum shifted",
+recycled moves and repeated finishes.
+Avoid fantasy melodrama: no "looming storms", "unstoppable auras",
+"hushed reverence", stock "electric crowds" or invented camera shots.
+Only show motives and relationships grounded in on-air evidence.
 
 The slot records are AUTHORITATIVE: participant names, match format,
 winner, winning method, title movement, injured wrestlers, interference,
@@ -535,13 +528,10 @@ Treat one wrestler's repertoire as available moves, never proof a
 particular move caused the finish. Never assign another wrestler's
 signature move. Use official audience mood qualitatively.
 
-Singles: only two wrestlers. No tags or tag partners. Tags/trios:
-only one wrestler PER TEAM is legal; partners wait on the apron.
-A legal tag is required before a new wrestler scores.
-Hot tags are optional. No invented precise fall scorer for team wins.
-Multi-team formats preserve their legal sides. Triple threats/four-ways:
-all individuals are legal; there are NO tags. Battle royals require over-the-top
-eliminations, not pinfalls. Follow stipulation referee rules.
+Singles: two wrestlers, no tags. Tags/trios: one legal wrestler per team;
+apron partners must tag before scoring; hot tags optional, and never invent
+a team fall scorer. Preserve multi-team sides. Triple/four-way: no tags.
+Battle royals: over-the-top eliminations, not pins. Follow referee rules.
 
 In a pinfall, ONLY the losing wrestler's shoulders are counted down. Never
 write that the referee counted three on the official WINNER's shoulders,
@@ -596,12 +586,8 @@ earlier confrontation. previousSharedMatch does NOT prove a rivalry.
 An earlier same-card scene does not prove retaliation. No false
 promises, backstage conversations or changes of allegiance.
 
-Use wrestling terminology sparingly and accurately: heat, pop,
-hot tag, near-fall, selling, go-home stretch, heel, babyface.
-Never expose scores, star ratings, technical labels ("protected
-finish", "booking intent", "recorded finish", "simulation"),
-staff mechanics or ratings equations. No pronoun or gender
-assumptions not supplied by identities.
+Use wrestling terms naturally. Never expose star ratings, mechanics,
+technical booking labels or equations. Avoid unsupported gender assumptions.
 No extra prose or markdown outside the response JSON. Required keys
 are card_0, card_1 etc (every card_N key once), headline and recap only.
 Do not emit slotId fields: the server restores immutable official IDs.
