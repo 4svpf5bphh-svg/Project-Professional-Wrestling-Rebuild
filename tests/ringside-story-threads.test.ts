@@ -76,6 +76,21 @@ test("only opposite-side participants sharing a certified prior match receive ca
   wrestlers:["Kenny Omega","Cody Rhodes"],winners:["Kenny Omega"],finish:"CLEAN_PIN"}]};
  assert.equal(verifiedSlotStoryThreads({...show,entries:[together]},unproven)[0],null);
 });
+test("solo programme angle supplies its real cast without inventing an opposing wrestler",()=>{
+ const solo:ShowResultEntry={...angle,slotId:"undertaker-solo",
+  segmentContext:{actorNames:["The Undertaker"],targetNames:[],
+   videoPurpose:null,stableDecision:null,turnTargetAlignment:null},
+  programmeChapters:[{...chapter,programmeFormat:"SOLO",
+   sideA:"The Undertaker",sideB:"",currentWinner:null}]};
+ const notes=verifiedSlotStoryThreads({...show,entries:[solo]},history);
+ assert.equal(notes[0]?.rivalry,undefined);
+ assert.deepEqual(notes[0]?.characterStory,{
+  format:"SOLO",cast:"The Undertaker",priorChapters:3
+ });
+ assert.doesNotMatch(JSON.stringify(ringsideBrief({...show,entries:[solo]})),
+  /Side B|Undertaker vs/);
+});
+
 test("future and same-week history is suppressed even when stale data is supplied",()=>{
  const bad:RingsideMemory={priorMatches:[{when:"Y2 W5",
   wrestlers:["Kenny Omega","PAC"],winners:["PAC"],finish:"CLEAN_PIN",

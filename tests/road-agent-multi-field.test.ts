@@ -15,6 +15,7 @@ test("Road Agent names every person in the real three-way ladder main event",()=
   personIds:["perfect","alexander","lethal"],injuries:[]}];
  const report=deriveRoadAgentReport(receipt,facts,null);
  assert.match(report.praise,/Mr\. Perfect vs Josh Alexander vs Jay Lethal/);
- assert.match(report.praise,/23-minute bout earned 3\.75 stars/);
+ assert.match(report.praise,/ladder retrieval gave it a clear destination/);
+ assert.doesNotMatch(report.praise,/23-minute bout earned 3\.75 stars/);
  assert.match(report.recommendation,/Mr\. Perfect vs Josh Alexander vs Jay Lethal/);
 });

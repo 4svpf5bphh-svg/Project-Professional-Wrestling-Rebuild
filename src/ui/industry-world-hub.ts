@@ -956,7 +956,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      CAREER_STAGE_CHANGED:s=>(s.personName??"A wrestler")+" enters a new career chapter",
      PROMOTION_TIER_CHANGED:s=>(s.promotionName??"A promotion")+" moves "+
       (s.toTier??"to a new level"),
-     PROMOTION_RESTRUCTURED:s=>(s.promotionName??"A promotion")+" reshapes its operation",
+     PROMOTION_RESTRUCTURED:s=>(s.promotionName??"A promotion")+" cuts costs and runs fewer shows",
      PROMOTION_ENTERED_DORMANCY:s=>(s.promotionName??"A promotion")+" suspends operations",
      PROMOTION_RECOVERED_FROM_DISTRESS:s=>(s.promotionName??"A promotion")+" finds its feet again"
     };

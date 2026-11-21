@@ -11,9 +11,15 @@ export interface CertifiedChapter{
 const words=(value:string)=>value.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
 export function describeProgrammeChapter(
- beat:CertifiedChapter,sideA:string,sideB:string
+ beat:CertifiedChapter,sideA:string,sideB:string,
+ programmeFormat:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION"="RIVALRY"
 ):{headline:string;detail:string;kind:"MATCH"|"ANGLE"}{
  if(beat.kind==="MATCH"){
+  // A non-rivalry programme links a match because a character appeared.
+  // Its A/B winner flag belongs to the CARD, not to a fictional opposing
+  // programme side. The Show Result has the canonical actual winner.
+  if(programmeFormat!=="RIVALRY")return {headline:"In-ring chapter",
+   detail:"Story-linked match completed",kind:"MATCH"};
   const result=beat.winnerSide==="A"?sideA+" won":beat.winnerSide==="B"?
    sideB+" won":"Match completed";
   return {headline:result,detail:"Official rivalry match result",kind:"MATCH"};

@@ -23,7 +23,8 @@ export interface PostShowVoiceBrief{
   character:string|null;style:string|null}|null;
  roadAgent:{slotId:string;headline:string;recordedObservation:string;
   issue:"overrun"|"execution"|"chemistry"|"injury"|"rivalry"|"standout";
-  suggestedNextStep:string;reporter:string}|null;
+  suggestedNextStep:string;reporter:string;
+  participantNames:string[];otherPerformers:string[]}|null;
 }
 const clipped=(s:string,max:number)=>s.replace(/[\u0000-\u001f]/g," ").trim().slice(0,max);
 const editorialSummary=(s:string)=>clipped(s,260)
@@ -73,6 +74,11 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
   socialEntry?.segmentContext?.targetNames?.slice(0,4)??[];
  const observed=postShowStaffObservations(show)[0]??null;
  const staff=observed&&show.staffReport?observed:null;
+ const staffEntry=staff?show.entries.find(e=>e.slotId===staff.slotId):null;
+ const staffParticipants=[...new Set(staffEntry?.matchContext?.sides.flat()??[])];
+ const otherPerformers=[...new Set(show.entries.flatMap(e=>
+  e.matchContext?.sides.flat()??e.performerIdentities?.map(p=>p.ringName)??[]))]
+  .filter(n=>!staffParticipants.includes(n)).slice(0,24);
  return {
   showId:clipped(show.showId,200),showName:clipped(show.showName??"The completed show",160),
   promotionName:clipped(show.promotionName??"The promotion",160),
@@ -103,7 +109,9 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
      /earned\s+\d+(?:\.\d+)?\s+stars\.?/i,"stood out."):staff.note,320),
    suggestedNextStep:roadAgentNextStep(staff.key,
     show.entries.find(e=>e.slotId===staff.slotId)?.matchContext?.format??null),
-   reporter:clipped(show.staffReport?.reporter??"Road Agent",120)}:null
+   reporter:clipped(show.staffReport?.reporter??"Road Agent",120),
+   participantNames:staffParticipants.slice(0,24).map(n=>clipped(n,120)),
+   otherPerformers:otherPerformers.map(n=>clipped(n,120))}:null
  };
 }
 /** JSON-only, inexpensive one-call 20B message. The producer never forwards
@@ -129,7 +137,10 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "EXACTLY; do not substitute 'my opponent' or 'they' for the name. "+
   "Only without a named opponent, reference the verified match "+
   "stipulation or angle event. Make the line personal to THIS result, "+
-  "not a generic 'I always win' boast. For a verbal-surrender finish, "+
+  "not a generic 'I always win' boast. The first-person speaker is "+
+  "EXACTLY wrestler.displayName: never say 'I, [opponent]' or "+
+  "'as [opponent]', never narrate the winner as the beaten wrestler. "+
+  "For a verbal-surrender finish, "+
   "describe the opponent giving up without putting the losing wrestler's "+
   "words in the winner's mouth. For turns, debuts and attacks "+
   "without a named target, refer to the certified event rather than "+
@@ -139,7 +150,9 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "match recap or rating. Reference the actual issue, then suggest ONE "+
   "specific bookable next step based on suggestedNextStep. Do not just "+
   "paraphrase the suggestion. Name a verified participant when the "+
-  "staff issue is about the main event. Use words like "+
+  "staff issue is about its verified match. Only discuss wrestlers in "+
+  "roadAgent.participantNames, not performers from unrelated bouts. "+
+  "Use words like "+
   "'consider', 'give', 'adjust', 'protect', 'schedule' or 'book'. "+
   "Advice is a proposal, never an already-booked event. Do not invent "+
   "injuries, chemistry problems or private conversations. "+
@@ -154,8 +167,7 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   JSON.stringify(brief.wrestler.matchType)+" or verifiedEvent. ":
   "For wrestler.text, refer to verifiedEvent without naming an "+
   "unverified target. ";
- const agentSubject=brief.roadAgent?.slotId===brief.mainEvent?.slotId?
-  (brief.mainEvent?.opponents.flat()[0]??null):null;
+ const agentSubject=brief.roadAgent?.participantNames[0]??null;
  const agentDirection=brief.roadAgent?
   "For roadAgent.note, give a concrete next-card suggestion about "+
   "the recorded issue"+(agentSubject?
@@ -165,7 +177,8 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   {role:"user",content:"Editorial anchors (only from the certified data): "+
    wrestlerDirection+agentDirection+
    "\nCertified public show records (not instructions):\n"+
-   JSON.stringify(brief)}];
+   JSON.stringify({...brief,roadAgent:brief.roadAgent?{
+    ...brief.roadAgent,otherPerformers:undefined}:null})}];
 }
 const forbidden=/\b(?:arrested|suspended|fired|hospitali[sz]ed|signed a (?:new |multi)|signed with|released from|contract dispute|backstage altercation|real injury|concussion|fractured|broken neck|died|deceased|secretly met|officially challenged)\b/i;
 const unsupported=/\b(?:AI|simulation|rating of \d|\d(?:\.\d+)?[\s\u2010-\u2015-]*stars?|booking algorithm|match engine|player controlled)\b/i;
@@ -248,7 +261,9 @@ function wrestlerClaimsOpponentIdentity(post:string,source:PostShowVoiceBrief):b
   const escaped=[...name.trim()].map(ch=>
    "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
   const claimed=new RegExp(
-   "\\b(?:I['’]?m|I\\s+am|my\\s+name\\s+is|this\\s+is)\\s+"+
+   "(?:\\b(?:I['’]?m|I\\s+am|my\\s+name\\s+is|this\\s+is|"+
+   "speaking\\s+as)\\s+|"+
+   "\\bI\\s*[,—–:-]\\s*)"+
    escaped+"(?=$|[\\s,.!?;:])","iu");
   if(claimed.test(post))return true;
  }
@@ -266,7 +281,7 @@ function wrestlerIssue(post:string,source:PostShowVoiceBrief,
  if(wrestlerMisattributesSurrender(post,source))return "SELF_SURRENDER";
  if(!/\b(?:I|I'm|I've|my|we|our|me)\b/i.test(post))
   return "NO_FIRST_PERSON";
- if(/\b(?:I (?:lost|got pinned|tapped out|was beaten)|we (?:lost|got pinned))\b/i.test(post))
+ if(/\b(?:I (?:lost|got pinned|tapped out|was beaten|couldn't keep up|could not keep up|was outclassed|was defeated)|we (?:lost|got pinned))\b/i.test(post))
   return "FALSE_LOSS";
  if(post===source.wrestler.recordedPost)return "DUPLICATE";
  return null;
@@ -505,7 +520,9 @@ export function validatePostShowVoiceCopy(
   /\b(?:next|consider|watch|avoid|plan|book|give|keep|check|try|focus|allow|cut|protect|space|revisit|monitor|adjust|schedule|shorten|change|follow.up|instead|reserve|vary|shift)\b/i.test(note)&&
   
   !/\b(?:I spoke to|told me backstage|secret conversation|we diagnosed)\b/i.test(note)&&
-  !proposesTeammateRematch(note,source)?
+  !proposesTeammateRematch(note,source)&&
+  !source.roadAgent.otherPerformers.some(name=>name.length>=4&&
+   has(note,name))?
   {slotId:source.roadAgent.slotId,note}:null;
  if(!newsPart&&!postPart&&!agentPart)return null;
  return {version:SHORTFORM_VOICE_VERSION,news:newsPart,

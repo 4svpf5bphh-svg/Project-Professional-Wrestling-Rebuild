@@ -67,6 +67,11 @@ for(const width of [320,390]){
     saved=segments[0]!;revision++;saveCount++;
     return r.fulfill({json:{status:"APPLIED",result:{showId:"weekly"}}});
    }
+   if(method==="talent")return r.fulfill({json:{
+    talent:[{...champion,name:"The Champion",available:true,
+     division:"MEN",alignment:"HEEL",popularity:75,reason:"AVAILABLE"}],
+    cursor:null
+   }});
    if(method==="kpWorkspace")return r.fulfill({json:{entitlements:[]}});
    throw Error("Unexpected method "+method);
   });
@@ -79,6 +84,14 @@ for(const width of [320,390]){
   await expect(dialog.getByText("CAST YOUR STORY")).toBeVisible();
   await expect(dialog.getByRole("button",{name:"Samoa Joe leads"})).toBeVisible();
   await dialog.getByRole("button",{name:"Samoa Joe leads"}).click();
+  // A solo programme has no Side B, but an optional interview subject
+  // must be searchable across the entire roster rather than only the
+  // protagonist's own story cast.
+  await dialog.getByRole("button",{name:"+ Add subject"}).click();
+  const rosterSheet=page.getByRole("dialog",{name:"Choose wrestler"});
+  await expect(rosterSheet).toContainText("Solo stories have no Side B");
+  await expect(rosterSheet).toContainText("The Champion");
+  await rosterSheet.getByRole("button",{name:"×"}).click();
   // The authenticated save below verifies the actual Joe actor ID.
   // Avoid matching a hidden <option> label in the optional Storyline selector.
   await expect(dialog.getByRole("button",{name:"Next · Script outcome"})).toBeEnabled();

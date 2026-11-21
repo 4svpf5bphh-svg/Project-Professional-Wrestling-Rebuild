@@ -38,10 +38,10 @@ test("hot rivalries take priority over generic standout without redundant planne
  const simple=postShowHandoff(view([match("a",null,2.9)]));
  assert.deepEqual(simple.actions.map(x=>x.key),[]);
 });
-test("verified standout is editorial only and low ratings never invent a star",()=>{
+test("a strong match stays in the editorial report without adding a generic booking order",()=>{
  const advice=postShowHandoff(view([match("a",null,4.45)]));
- assert.deepEqual(advice.actions.map(x=>x.key),["standout"]);
- assert.match(advice.actions[0]!.detail,/4.45 verified stars/);
+ assert.deepEqual(advice.actions,[]);
+ assert.match(advice.standout??"",/4.45 verified stars/);
  const noFacts=match("b");noFacts.fallout={injuries:[],eliminations:[]};
  assert.equal(postShowHandoff(view([noFacts])).standout,null);
 });

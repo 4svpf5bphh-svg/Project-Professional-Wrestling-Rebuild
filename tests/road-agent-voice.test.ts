@@ -101,12 +101,12 @@ test("Road Agent identifies the worst negative working chemistry when timings ar
  assert.equal(report.strongestMatchId,"opener");
 });
 
-test("Road Agent names actual performers and cites verified bout duration and rating",()=>{
+test("Road Agent names actual performers without repeating the public scorecard",()=>{
  const named=facts.map((f,i)=>({...f,participantNames:i===0?
   ["Místico","Samoa Joe"]:["Konosuke Takeshita","Samoa Joe"]}));
  const report=deriveRoadAgentReport(receipt,named,null);
  assert.match(report.praise,/Místico vs Samoa Joe/);
- assert.match(report.praise,/18-minute bout earned 4\.00 stars/);
+ assert.doesNotMatch(report.praise,/minute bout earned|stars/);
  assert.match(report.concern,/Konosuke Takeshita vs Samoa Joe/);
  assert.match(report.recommendation,/Konosuke Takeshita vs Samoa Joe/);
 });

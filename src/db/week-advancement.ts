@@ -2,6 +2,7 @@ import type {TransactionPool} from "./transaction.js";
 import {settleLivingWrestlerCareers} from "./living-world-career-settlement.js";
 import {settleWorldHeritage} from "./world-heritage.js";
 import {publishCertifiedWorldNews} from "./world-news.js";
+import {publishLateAiSigningNews} from "./late-world-signing-news.js";
 import {settleCertifiedWorldLegends} from "./legends-settlement.js";
 import {publishYearEndHallOfFame} from "./world-honours.js";
 import {settleLivingMorale,settleAnnualLivingTalentTrust} from "./living-world-morale.js";
@@ -239,10 +240,15 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
       // Careers and vacancies settle after the recorded show finishes, and
       // before contract expiry and next week's player planning rights.
       await settleLivingPromotionSurvival(tx,input.worldId,year,week);
-      await recruitDistressedAiRosters(tx,input.worldId,year,week);
+      const emergencyRecruits=await recruitDistressedAiRosters(tx,input.worldId,year,week);
       // Solvent AI promotions may make one affordable, free-agent signing
       // per quarter when their actual contracted roster is understaffed.
-      await recruitStrategicAiRosters(tx,input.worldId,year,week);
+      const strategicRecruits=await recruitStrategicAiRosters(tx,input.worldId,year,week);
+      // The first World News edition was sealed before weekly recruitment;
+      // publish genuine newly signed AI talent only when needed. No query
+      // on the many ordinary weeks without any AI recruitment.
+      if(emergencyRecruits.signed+strategicRecruits.signed>0)
+       await publishLateAiSigningNews(tx,input.worldId,year,week);
       await settleLivingWrestlerCareers(tx,input.worldId,year,week);
       // The current roster settles first; legends enter NEXT week as ordinary free agents.
       await settleCertifiedWorldLegends(tx,input.worldId,year,week);

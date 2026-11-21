@@ -8,6 +8,7 @@ import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {joinWorld} from "../src/db/membership-operations.js";
 import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {publishCertifiedWorldNews} from "../src/db/world-news.js";
+import {publishLateAiSigningNews} from "../src/db/late-world-signing-news.js";
 import {readIndustryWorldNews} from "../src/db/industry-news.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
@@ -99,6 +100,14 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
     VALUES($1,'promotion-0','cup-final',3,$2,$3,'hshow','hmatch',$2,0),
      ($1,'promotion-1','future-cup',1,$4,$5,NULL,NULL,NULL,NULL)`,
      [world,a,b,c,d]);
+   // Only actually signed contracts count as public World contract news.
+   // Pending/private negotiation terms are absent from the event payload.
+   await tx.query(`INSERT INTO ppw_ledger_events
+     (world_id,year,week,event_type,payload)
+     VALUES ($1,1,1,'CONTRACT_SIGNED',$2::jsonb),
+      ($1,1,1,'AI_STRATEGIC_TALENT_SIGNED',$3::jsonb)`,
+     [world,JSON.stringify({personId:a,promotionId:"promotion-0",offerId:"accepted-public"}),
+      JSON.stringify({personId:c,promotionId:"promotion-1",contractId:"ai-public"})]);
    await tx.query(`UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1`,[world]);
   });
   await assert.rejects(withWorldTransaction(db.pool,tx=>
@@ -123,6 +132,45 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   assert.equal(result.awards[0]!.rating,4.75);
   assert.ok(result.awards.some(x=>x.kind==="ANGLE"&&x.rating===92));
   assert.ok(result.stories.some(x=>x.desk==="DIRT"&&x.certainty==="SPECULATION"));
+  const signed=result.stories.filter(x=>x.id.startsWith("signing:"));
+  assert.equal(signed.length,2);
+  assert.ok(signed.some(x=>x.title===roster[0]!.name+" signs with Promotion 0"));
+  assert.ok(signed.some(x=>x.title===roster[2]!.name+" signs with Promotion 1"));
+  assert.ok(signed.every(x=>x.desk==="OFFICIAL"&&x.certainty==="CONFIRMED"));
+  assert.ok(signed.every(x=>!JSON.stringify(x).includes("accepted-public")),
+   "Private offer references never become public news");
+  assert.ok(signed.every(x=>x.showId===""),
+   "Off-show signed deals must never pretend to belong to a completed card");
+  const offShow=await withWorldTransaction(db.pool,tx=>
+   tx.query<{story_key:string;show_id:string|null}>(`
+    SELECT story_key,show_id FROM ppw_world_news_items
+    WHERE world_id=$1 AND story_key LIKE 'signing:%'`,[world]));
+  assert.equal(offShow.length,2);
+  assert.ok(offShow.every(x=>x.show_id===null),
+   "An official contract signing has no fabricated show foreign key");
+  // Weekly recruitment happens after the main News snapshot in the actual
+  // finance/World pipeline. Add a real AI signing after that seal, not before.
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+   VALUES($1,1,1,'AI_STRATEGIC_TALENT_SIGNED',$2::jsonb)`,
+   [world,JSON.stringify({personId:d,promotionId:"promotion-1",
+    contractId:"signed-after-news"})]));
+  const late=await withWorldTransaction(db.pool,tx=>
+   publishLateAiSigningNews(tx,world,1,1));
+  assert.equal(late,1,"A late signed AI wrestler gets a real official story");
+  assert.equal(await withWorldTransaction(db.pool,tx=>
+   publishLateAiSigningNews(tx,world,1,1)),0,
+   "The same World event must never publish twice on replay");
+  const afterLate=await readIndustryWorldNews(db.pool,{
+   worldId:world,promotionId:"promotion-0",playerId:owner});
+  assert.ok(afterLate.stories.some(x=>x.title===roster[3]!.name+
+   " signs with Promotion 1"&&x.showId===""));
+  const falseMoments=await withWorldTransaction(db.pool,tx=>
+   tx.query<{moment_key:string}>(`
+    SELECT moment_key FROM ppw_world_moments
+    WHERE world_id=$1 AND moment_key LIKE 'signing:%'`,[world]));
+  assert.deepEqual(falseMoments,[],
+   "An off-show signing cannot create an invented match-event heritage entry");
   const crown=result.stories.find(x=>x.id==="tournament:cup-final");
   assert.equal(crown?.desk,"OFFICIAL");
   assert.equal(crown?.certainty,"CONFIRMED");
