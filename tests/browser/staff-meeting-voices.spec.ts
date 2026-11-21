@@ -44,7 +44,12 @@ test("Staff Office sounds like distinct named colleagues, and opening advice nev
   "For now, let's keep it steady.");
  await notes.nth(2).locator("summary").click();
  await expect(notes.nth(2).locator(".ppw-staff-dialogue")).toContainText(
-  "House office note");
+  "No specialist has been hired");
+ await expect(notes.first().locator(".ppw-staff-meeting-boundary")).toBeVisible();
+ await expect(notes.nth(2)).toContainText("never changes");
+ await notes.nth(2).getByRole("button",{name:"Browse staff for this role"}).click();
+ await expect(page.getByRole("button",{name:"Staff Market"}))
+  .toHaveAttribute("aria-current","page");
  expect(reads).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
