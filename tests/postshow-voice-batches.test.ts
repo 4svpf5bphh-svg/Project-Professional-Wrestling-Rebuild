@@ -463,6 +463,26 @@ test("PPW local voices backfill rejected Groq slots without a second call",async
  assert.equal(local?.roadAgent,null,"Staff voice needs an actual report");
 });
 
+test("Road Agent cannot switch a failing pairing to an unrelated show's star",()=>{
+ const show=fixture();
+ const documented={...show,staffReport:{
+  reporter:"Nico Sterling-Jones",staffId:null,headline:"The locker room",
+  praise:"The main event was strong",concern:"A rough pairing",
+  recommendation:"Try a different opponent",strongestMatchId:show.entries[0]!.slotId,
+  reviewedMatches:2
+ }} as CompletedShowView;
+ const original=postShowVoiceBrief(documented);
+ assert.ok(original.roadAgent);
+ const correct={...original,roadAgent:{...original.roadAgent!,
+  participantNames:["Samoa Joe","Jay Lethal"],
+  otherPerformers:["William Regal","Místico"]}};
+ const wrong="Consider booking William Regal in a future main event against a fresh opponent to re-establish chemistry and showcase his legacy.";
+ assert.equal(validatePostShowVoiceCopy(correct,{roadAgent:{note:wrong}})?.roadAgent??null,null);
+ const right="Consider changing Jay Lethal's opponent after the flat Samoa Joe match. Let the next card test a different pairing.";
+ assert.ok(validatePostShowVoiceCopy(correct,{roadAgent:{note:right}})?.roadAgent);
+ assert.doesNotMatch(postShowVoicePrompt(correct)[1]!.content,/William Regal|Místico/);
+});
+
 test("Road Agent advises on the certified issue without invented injury or chemistry",()=>{
  const show=fixture();
  const relevant={...show,staffReport:{
