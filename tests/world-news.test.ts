@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {chooseWeeklyAwards,composeWorldNews,composeTournamentVictory,type TournamentFinal} from "../src/db/world-news.js";
+import {chooseWeeklyAwards,composeWorldNews,composeTournamentVictory,composeConfirmedSigningNews,type TournamentFinal} from "../src/db/world-news.js";
 const names=new Map([["a","Alice"],["b","Bob"],["c","Cara"],["d","Drew"]]);
 const pub=(show_id:string,promotion_id:string,crowd_response=86)=>({
  show_id,promotion_id,promotion_name:promotion_id==="human"?"Human Pro":"AI Elite",
@@ -185,4 +185,23 @@ test("dirt sheet reporting remains event-linked, authored only at certification 
  assert.ok(!/NEVER LEAK|privatePromise|HIDDEN CONTRACT/i.test(JSON.stringify(out)));
  assert.ok(!/wellness violation|drug test|failed drug|criminal|arrested/i.test(JSON.stringify(out)));
  assert.deepEqual(out,composeWorldNews([b1],angles,publicShows,[title],names));
+});
+
+test("accepted World contract signings are official news, with no private offer leak",()=>{
+ const signed=composeConfirmedSigningNews([
+  {eventId:"ev1",eventType:"AI_STRATEGIC_TALENT_SIGNED",
+   personName:"Taz",promotionId:"other",promotionName:"NJPW"},
+  {eventId:"ev2",eventType:"CONTRACT_SIGNED",
+   personName:"William Regal",promotionId:"cwa",promotionName:"Chaotic Wrestling Alliance"},
+  {eventId:"ev3",eventType:"EMERGENCY_TALENT_SIGNED",
+   personName:"Talent Three",promotionId:"other",promotionName:"NJPW"}
+ ]);
+ assert.equal(signed.length,3);
+ assert.equal(signed[0]!.title,"Taz signs with NJPW");
+ assert.equal(signed[1]!.desk,"OFFICIAL");
+ assert.equal(signed[1]!.sourceKind,"EVENT");
+ assert.ok(signed.every(x=>x.certainty==="CONFIRMED"));
+ assert.doesNotMatch(JSON.stringify(signed),/salary|weekly wage|private offer|signing bonus/i);
+ assert.doesNotMatch(signed[0]!.summary,/debuted|appeared at|will headline/i);
+ assert.deepEqual(composeConfirmedSigningNews([]),[]);
 });
