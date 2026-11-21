@@ -593,12 +593,16 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    node("h3","",report.reporter+" · Road Agent"),
    node("strong","",report.headline),
    node("p","ppw-road-agent-voice",report.praise),
-   node("p","ppw-road-agent-voice",report.concern),
-   node("p","ppw-road-agent-next",report.recommendation));
+   node("p","ppw-road-agent-voice",report.concern));
   // Show the concrete evidence even when it came from the show's
   // strongest match: a real injury or nine-minute overrun still needs care.
   // These are bounded verified notes, never fabricated staff conversations.
-  const observations=postShowStaffObservations(show);
+  const observations=postShowStaffObservations(show)
+   .filter(observation=>observation.key!=="standout");
+  // Avoid turning a strong match into another generic 'one to build on'
+  // card. The rating is already in The Night in Numbers and the report.
+  if(!observations.length&&report.recommendation)
+   office.append(node("p","ppw-road-agent-next",report.recommendation));
   if(observations.length){
    const specific=node("div","ppw-road-agent-observations");
    specific.append(node("strong","","On my desk tonight"));
