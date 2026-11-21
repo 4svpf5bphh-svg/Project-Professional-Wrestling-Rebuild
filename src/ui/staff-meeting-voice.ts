@@ -26,3 +26,37 @@ export function staffMeetingDialogue(input:{
   personality?openings[personality][calm?1:0]:"";
  return intro+message;
 }
+
+/** A recommendation is a distinct choice spoken by the employed specialist,
+ * not a fabricated decision or a second generic "we should" notification.
+ */
+export function staffRecommendationVoice(input:{
+ role:StaffRole;personality:MeetingPersonality;nextStep:string;
+ urgency?:"ACTION"|"WATCH"|"CLEAR";specialism?:string|null
+}):string{
+ const {role,personality,nextStep}=input;
+ if(!personality)return nextStep;
+ const urgent=input.urgency==="ACTION";
+ const framing:Record<Exclude<MeetingPersonality,null>,string>={
+  FRANK:urgent?"I'd deal with this before we book another card. ":
+   "Here's what I'd actually do. ",
+  PATIENT:urgent?"One change at a time, but I wouldn't leave it unattended. ":
+   "We can be deliberate here. ",
+  AMBITIOUS:urgent?"There is upside to fixing this properly, not rushing it. ":
+   "I want us thinking ahead. ",
+  LOYAL:urgent?"The people involved deserve a clear call from us. ":
+   "I'd protect the long-term relationships. ",
+  ECCENTRIC:urgent?"This is where a clever booking decision beats another speech. ":
+   "Let's find the interesting detail rather than making noise. "
+ };
+ // The real specialist's remit matters more than inserting a random quip.
+ const focus:Partial<Record<StaffRole,string>>={
+  MEDICAL:personality==="FRANK"?"We do not gamble on a clearance. ":"",
+  CREATIVE:personality==="ECCENTRIC"?"A different scene, not the same speech in new clothes. ":"",
+  ROAD_AGENT:personality==="PATIENT"?"We can build the pace without changing your finish. ":"",
+  REFEREE:personality==="FRANK"?"I need an exact instruction, not a guess. ":"",
+  TALENT_MANAGER:personality==="AMBITIOUS"?"An impossible offer is not ambition. ":"",
+  SCOUT:personality==="LOYAL"?"We owe prospects realistic expectations. ":""
+ };
+ return framing[personality]+(focus[role]??"")+nextStep;
+}
