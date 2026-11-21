@@ -510,3 +510,19 @@ test("factual rescue uses wrestlers and match method, not placeholders pretendin
  assert.doesNotMatch(corrected.recap,/The decision in the ring|result settled the contest/);
  assert.equal(report?.review.slots[2]!.recap,candidate.slots[2]!.recap);
 });
+
+test("match journalism cannot expose the simulator's protected-victory terminology",()=>{
+ for(const phrase of [
+  "The referee called it a protected victory, with the actual finish left vague.",
+  "The referee carried out an official-approved distraction before Omega won.",
+  "Omega had the booked winner's place in the final sequence.",
+  "The certified finish went to Kenny Omega after a technical exchange."
+ ]){
+  const article={...valid,slots:[{...valid.slots[0]!,recap:phrase},valid.slots[1]!]};
+  assert.throws(()=>validateRingsideCopy(article,example),/technical simulation terminology/);
+ }
+ assert.doesNotThrow(()=>validateRingsideCopy({...valid,slots:[
+  {...valid.slots[0]!,recap:"The referee watched Omega catch the opponent in a cradle and counted three."},
+  valid.slots[1]!
+ ]},example));
+});
