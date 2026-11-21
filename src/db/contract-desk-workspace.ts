@@ -227,11 +227,11 @@ export async function readContractDesk(
       (cost.career_stage==="SPECIAL_ATTRACTION"?1.35:
        cost.career_stage==="VETERAN"?1.1:
        cost.career_stage==="PROSPECT"?.75:1))),
-    nextTermServiceDensity:c.stamina!==null&&c.fatigue!==null&&
-     ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(c.career_stage??"")?
-      Math.max(0,serviceCapacityDatesPerWeek({careerStage:c.career_stage as Stage,
-       stamina:c.stamina,fatigue:c.fatigue})-c.other_density):null,
-    nextTermHasOverlap:c.other_term_overlap,
+    nextTermServiceDensity:cost.stamina!==null&&cost.fatigue!==null&&
+     ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(cost.career_stage??"")?
+      Math.max(0,serviceCapacityDatesPerWeek({careerStage:cost.career_stage as Stage,
+       stamina:cost.stamina,fatigue:cost.fatigue})-cost.other_density):null,
+    nextTermHasOverlap:cost.other_term_overlap,
     pendingNegotiation:pendingIds.has(c.contractId),
     pendingRenewal:renewalIds.has(c.contractId),
     pendingRenewalOffer:awaitingRenewalOfferIds.has(c.contractId),
