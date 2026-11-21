@@ -473,13 +473,15 @@ export function ringsideEditorialLens(e:ShowResultEntry):string{
  const rating=e.fallout?.ratingStars;
  if(minutes>0&&minutes<=6)
   return "a brief, decisive contest; no invented epic comeback or long exchanges";
+ const format=wrestlingMatchIQ(e)?.format;
+ if(format==="TAG"||format==="MULTI_TEAM")
+  return typeof rating==="number"&&rating<2.5?
+   "legal tags and the awkward pacing; do not invent a standout performance":
+   "legal tags and team pacing, not an invented precise fall scorer";
  if(typeof rating==="number"&&rating<2.5)
   return "one credible moment and what fell flat; no false standing ovation";
  if(typeof rating==="number"&&rating>=4)
   return "one distinctive exchange that earns the strong reaction; precise finish";
- const format=wrestlingMatchIQ(e)?.format;
- if(format==="TAG"||format==="MULTI_TEAM")
-  return "legal tags and team pacing, not an invented precise fall scorer";
  return "tactical contrast, a real turning point and the recorded finish";
 }
 
