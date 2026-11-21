@@ -8,6 +8,7 @@ import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {worldStaff,type WorldStaffMember} from "../domain/world-staff.js";
 import {staffDebateVoices,type StaffDebateVoices} from "../domain/backstage-staff-dialogue.js";
+import {staffAlertVoice} from "../domain/staff-mail-voice.js";
 import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
 import {PARTNER_MEDIATION_CANDIDATES_SQL} from "./backstage-partner-replies.js";
 import {COMMERCIAL_COMPANIES} from "../domain/commercial-offers.js";
@@ -188,9 +189,15 @@ WITH owner AS MATERIALIZED (
    ELSE 'Our rivalries are running in circles'
   END AS subject,
   CASE e.role
-   WHEN 'TALENT_MANAGER' THEN p.due||' signed contract(s) expire in the next four weeks. With your permission I can prepare unchanged renewal offers at World Lock. The wrestlers still decide whether to agree.'
-   WHEN 'MEDICAL' THEN p.tired||' contracted wrestler(s) have fatigue at 70 or above. I''d check the upcoming workload before they work another long match.'
-   ELSE p.stale||' active programme(s) have repeated without moving the story forward. Let''s book a proper next chapter.'
+   WHEN 'TALENT_MANAGER' THEN p.due||' signed '||
+   (CASE WHEN p.due=1 THEN 'contract expires' ELSE 'contracts expire' END)||
+   ' in the next four weeks. With your permission I can prepare unchanged renewal offers at World Lock. The wrestlers still decide whether to agree.'
+   WHEN 'MEDICAL' THEN p.tired||' contracted '||
+   (CASE WHEN p.tired=1 THEN 'wrestler has' ELSE 'wrestlers have' END)||
+   ' fatigue at 70 or above. I''d check the upcoming workload before another long match.'
+   ELSE p.stale||' active '||
+    (CASE WHEN p.stale=1 THEN 'programme has' ELSE 'programmes have' END)||
+    ' repeated without moving the story forward. Let''s book a proper next chapter.'
   END AS body,
   CASE e.role WHEN 'TALENT_MANAGER' THEN 'CONTRACTS'
    WHEN 'MEDICAL' THEN 'STAFF' ELSE 'PROGRAMMES' END AS action,
@@ -798,7 +805,9 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
   return {id:r.id,kind:r.kind,
    sender:r.kind==="FREE_AGENT"||r.kind==="LOCKER_ROOM"?r.sender_name!:
     network??catalogue.get(r.sender_key)??(r.kind==="NETWORK"?"Your broadcaster":"Staff Office"),
-   subject:r.subject,body:r.body,action:r.action,
+   subject:r.subject,body:r.kind==="STAFF"&&staffProfiles.has(r.sender_key)?
+    staffAlertVoice(staffProfiles.get(r.sender_key)!,r.subject,r.body):r.body,
+   action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
     ...(r.story_chapter===true?{
      storyChapter:true,storyProgrammeId:r.story_programme_id!,
