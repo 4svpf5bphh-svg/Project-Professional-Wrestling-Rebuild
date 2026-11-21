@@ -5,6 +5,15 @@ ALTER TABLE ppw_world_news_items
  ALTER COLUMN show_id DROP NOT NULL;
 
 -- Matches, angles and championships must still reference an actual show.
-ALTER TABLE ppw_world_news_items
- ADD CONSTRAINT ppw_world_news_offshow_event_only
- CHECK (show_id IS NOT NULL OR source_kind='EVENT');
+DO $
+BEGIN
+ IF NOT EXISTS (
+  SELECT 1 FROM pg_constraint
+  WHERE conrelid='ppw_world_news_items'::regclass
+   AND conname='ppw_world_news_offshow_event_only'
+ ) THEN
+  ALTER TABLE ppw_world_news_items
+   ADD CONSTRAINT ppw_world_news_offshow_event_only
+   CHECK (show_id IS NOT NULL OR source_kind='EVENT');
+ END IF;
+END $;
