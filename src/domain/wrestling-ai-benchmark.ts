@@ -6,6 +6,7 @@ import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js
 import {ringsideBrief,ringsideStipulationNote,validateRingsideCopy,type RingsideCopy}
  from "./ringside-editorial.js";
 import {wrestlingMatchIQ} from "./wrestling-iq.js";
+import {ringsideClicheSignals} from "./ringside-prose-quality.js";
 
 export interface WrestlingBenchmarkScenario{
  id:string;name:string;focus:string;expectation:string;watchFor:string;
@@ -193,7 +194,10 @@ export function assessWrestlingBenchmark(id:string,copy:RingsideCopy){
  }
  if(iq?.format==="BATTLE_ROYAL"&&/\b(?:rope|elimination|survivor|last (?:one|man|woman))\b/i.test(text))
   cues.push("Battle-royal mechanics mentioned");
+ const editorialWarnings=[...new Set(ringsideClicheSignals(
+  copy.opening+" "+copy.closing+" "+text))].slice(0,6);
  return {scenario:scenario.id,certifiedFactsValidated:true,
-  diagnosticCues:cues,humanReviewRequired:true,reviewFocus:scenario.expectation,
+  diagnosticCues:cues,editorialWarnings,
+  humanReviewRequired:true,reviewFocus:scenario.expectation,
   watchFor:scenario.watchFor};
 }
