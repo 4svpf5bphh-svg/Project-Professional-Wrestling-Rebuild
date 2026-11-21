@@ -1,6 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
+import {serviceCapacityDatesPerWeek,type Stage} from "../domain/contract-economics.js";
 import {forecastTalentBudget} from "../domain/talent-budget.js";
 import {worldTalentManagers} from "../domain/world-staff.js";
 import type {ContractAvailabilityInput} from "../domain/contract-availability.js";
@@ -66,14 +67,28 @@ export async function readContractDesk(
    creative_control:string;role_expectation:string;
    popularity:number|null;recognition:number|null;morale:number|null;
    career_stage:string|null;in_ring_quality:number|null;match_craft:number|null;
-   presentation:number|null;
+   presentation:number|null;stamina:number|null;fatigue:number|null;
+   other_density:number;other_term_overlap:boolean;
    backstage_contract_request_id:string|null;renewal_secured:boolean;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
      c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
      c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation,
      p.popularity,p.recognition,p.morale,p.career_stage,p.in_ring_quality,
-     p.match_craft,p.presentation,
+     p.match_craft,p.presentation,p.stamina,p.fatigue,
+     coalesce((SELECT sum(CASE WHEN other.family='EXCLUSIVE' THEN 1.0
+       ELSE greatest(0,coalesce(other.remaining_dates,0))::double precision /
+        greatest(1,other.expires_week_index-greatest($3::integer,other.start_week_index)+1)
+      END) FROM ppw_contracts other
+      WHERE other.world_id=c.world_id AND other.person_id=c.person_id
+       AND other.contract_id<>c.contract_id AND other.status='SIGNED'
+       AND other.start_week_index<=c.expires_week_index+52
+       AND other.expires_week_index>=c.expires_week_index+1),0)::double precision AS other_density,
+     EXISTS(SELECT 1 FROM ppw_contracts other
+      WHERE other.world_id=c.world_id AND other.person_id=c.person_id
+       AND other.contract_id<>c.contract_id AND other.status='SIGNED'
+       AND other.start_week_index<=c.expires_week_index+52
+       AND other.expires_week_index>=c.expires_week_index+1) AS other_term_overlap,
      EXISTS(SELECT 1 FROM ppw_contract_offers accepted
       WHERE accepted.world_id=c.world_id AND accepted.promotion_id=c.promotion_id
        AND accepted.person_id=c.person_id
@@ -212,6 +227,11 @@ export async function readContractDesk(
       (cost.career_stage==="SPECIAL_ATTRACTION"?1.35:
        cost.career_stage==="VETERAN"?1.1:
        cost.career_stage==="PROSPECT"?.75:1))),
+    nextTermServiceDensity:c.stamina!==null&&c.fatigue!==null&&
+     ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(c.career_stage??"")?
+      Math.max(0,serviceCapacityDatesPerWeek({careerStage:c.career_stage as Stage,
+       stamina:c.stamina,fatigue:c.fatigue})-c.other_density):null,
+    nextTermHasOverlap:c.other_term_overlap,
     pendingNegotiation:pendingIds.has(c.contractId),
     pendingRenewal:renewalIds.has(c.contractId),
     pendingRenewalOffer:awaitingRenewalOfferIds.has(c.contractId),
