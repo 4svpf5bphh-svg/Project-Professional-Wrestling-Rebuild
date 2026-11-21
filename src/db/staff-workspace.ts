@@ -40,8 +40,10 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
       WHERE a.world_id=w.world_id AND a.promotion_id=$3
        AND a.player_id=$2),'{}'::jsonb) AS staff_aliases,
     CASE WHEN spotlight.programme_id IS NULL THEN NULL ELSE jsonb_build_object(
-     'sideA',coalesce(sides.side_a,'Side A'),
-     'sideB',coalesce(sides.side_b,'Side B'),
+     'sideA',coalesce(sides.side_a,'Featured cast'),
+     'sideB',coalesce(sides.side_b,
+      CASE WHEN spotlight.programme_format='RIVALRY' THEN 'Side B' ELSE '' END),
+     'programmeFormat',spotlight.programme_format,
      'heat',spotlight.heat,'lastKind',beat.kind,
      'lastWeekIndex',beat.week_index,'lastWinnerSide',beat.winner_side,
      'lastMatchWinnerSide',last_match.winner_side,
@@ -155,7 +157,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    -- One named active programme per promotion, picked by heat.
    -- Each lateral lookup is bounded to that programme using existing indexes.
    LEFT JOIN LATERAL (
-    SELECT programme_id,heat FROM ppw_programmes programme
+    SELECT programme_id,heat,programme_format FROM ppw_programmes programme
     WHERE programme.world_id=w.world_id AND programme.promotion_id=$3
      AND programme.status='ACTIVE'
     ORDER BY programme.heat DESC NULLS LAST,
