@@ -137,10 +137,10 @@ test("solo, relationship and faction reactions require certified linked cast, re
   assert.equal(wrestlers.length,3);assert.equal(staff.length,3);
   assert.deepEqual(wrestlers.map(m=>m.sender).sort(),
    ["Character 1","Character 2","Character 3"]);
-  assert.ok(wrestlers.some(m=>m.body.includes("relationship story")));
-  assert.ok(wrestlers.some(m=>m.body.includes("That story is finished")));
-  assert.ok(staff.some(m=>m.body.includes("The faction story")));
-  assert.ok(staff.some(m=>m.body.includes("approved ending was certified")));
+  assert.ok(wrestlers.some(m=>m.body.includes("something to work with")));
+  assert.ok(wrestlers.some(m=>m.body.includes("What is next for me?")));
+  assert.ok(staff.some(m=>m.body.includes("A faction works better")));
+  assert.ok(staff.some(m=>m.body.includes("That ending landed on air")));
   assert.ok(staff.every(m=>m.sender===creative.name));
   assert.ok(messages.every(m=>m.action==="PROGRAMMES"&&!m.canStaffRespond));
   assert.ok(messages.every(m=>!m.read));
