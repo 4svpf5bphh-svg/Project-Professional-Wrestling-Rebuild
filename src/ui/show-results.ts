@@ -6,7 +6,7 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {projectShowBreakdown} from "./show-breakdown.js";
 import {segmentTemperature} from "../domain/segment-temperature.js";
-import {programmeBroadcastRecap,programmeManagementNote}
+import {programmeManagementNote}
  from "../domain/verified-programme-broadcast.js";
 import {postShowHandoff,type NextStepDestination} from "../domain/post-show-handoff.js";
 import {postShowStaffObservations} from "../domain/post-show-staff-observations.js";
@@ -471,18 +471,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   if(entry.type==="MATCH"&&entry.matchContext?.winnerNames.length)
    append(body,node("p","ppw-result-verdict",
     "WINNER  ·  "+entry.matchContext.winnerNames.join(" & ")));
-  const chapters=entry.programmeChapters??[];
-  if(chapters.length){
-   const context=node("section","ppw-rivalry-at-ringside");
-   context.append(node("span","ppw-eyebrow","THE RIVALRY SO FAR"));
-   for(const chapter of chapters){
-    const record=node("div","ppw-ringside-rivalry-chapter");
-    record.append(node("strong","",chapter.sideA+" vs "+chapter.sideB),
-     node("p","",programmeBroadcastRecap(chapter,entry.type)));
-    context.append(record);
-   }
-   body.append(context);
-  }
+  // The certified programme context still informs the editorial writer and
+  // continuity checks. Do not interrupt every result with a redundant,
+  // mechanical rivalry box (or mislabel a solo character story as a feud).
   append(details,body);
   storyLinks.set(entry.slotId,details);
   const lead=node("p","ppw-show-transition",
