@@ -528,9 +528,10 @@ Treat one wrestler's repertoire as available moves, never proof a
 particular move caused the finish. Never assign another wrestler's
 signature move. Use official audience mood qualitatively.
 
-Singles: two wrestlers, no tags. Tags/trios: one legal wrestler per team;
-apron partners must tag before scoring; hot tags optional, and never invent
-a team fall scorer. Preserve multi-team sides. Triple/four-way: no tags.
+Singles: two wrestlers. No tags or tag partners.
+Tags/trios: only one wrestler PER TEAM is legal; apron partners must tag
+before scoring; hot tags optional. Never invent a team fall scorer.
+Preserve multi-team sides. Triple/four-way: no tags.
 Battle royals: over-the-top eliminations, not pins. Follow referee rules.
 
 In a pinfall, ONLY the losing wrestler's shoulders are counted down. Never
