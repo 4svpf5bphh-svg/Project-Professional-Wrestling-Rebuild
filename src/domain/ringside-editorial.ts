@@ -4,6 +4,7 @@ import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js
 import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
+import {ringsideProseQualityFailure,impossibleHoldCount,unseenCleanCount} from "./ringside-prose-quality.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // Updated editorial is versioned independently. Published v4 remains immutable.
 export const RINGSIDE_PROMPT_VERSION="ringside-v9";
@@ -187,6 +188,27 @@ export function removeVerbatimRecapEchoes(recap:string):string{
  }).filter(p=>p.trim()).join("\n\n");
 }
 
+/** Dialogue is an on-air fact, not a licence for a journalist to write
+ * wrestler speeches. Only manager-authored quotations are permissible.
+ */
+function assertNoUnscriptedDialogue(entry:ShowResultEntry,prose:string):void{
+ if(entry.type!=="SEGMENT")return;
+ const quoted=/[“"]([^”"]{28,210})[”"]/gu;
+ const authorised=(entry.summary+" "+JSON.stringify(
+  entry.segmentContext?.scriptedActions??[])).normalize("NFKC").toLowerCase()
+  .replace(/\s+/g," ");
+ for(const occurrence of prose.matchAll(quoted)){
+  const quote=occurrence[1]?.trim()??"";
+  const preceding=prose.slice(Math.max(0,(occurrence.index??0)-100),
+   occurrence.index??0);
+  const isSpeech=/\b(?:said|shouted|yelled|declared|announced|promised|snarled|demanded|told|replied|warned|delivered the line|claimed)\b/i.test(preceding)||
+   /\b(?:i|we|you|my|your|our|me|us)\b/i.test(quote);
+  if(!isSpeech)continue;
+  const known=quote.normalize("NFKC").toLowerCase().replace(/\s+/g," ");
+  if(!authorised.includes(known))
+   throw new Error("Ringside invented a direct quotation that was never scripted");
+ }
+}
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
  const v=shape(candidate);
  if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
@@ -239,6 +261,9 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   }
  }
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
+ const voiceFailure=ringsideProseQualityFailure({
+  opening:v.opening as string,closing:v.closing as string,slots});
+ if(voiceFailure)throw new Error(voiceFailure);
  if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result)\b/i.test(fullStory))
   throw new Error("Ringside leaked technical simulation terminology");
  if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b|\b[0-5](?:\.\d{1,2})?[\s\-\u2010-\u2015]*stars?\b/i.test(fullStory))
@@ -263,6 +288,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   // character or medical record, not a writer's improvised description.
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
+  assertNoUnscriptedDialogue(source,prose);
   assertReferencedPromoTargetStayedOffScreen(source,prose);
   assertSpokenAngleStayedSpoken(source,prose);
   // A declared turn against a rival is not proof the two were partners.
@@ -278,6 +304,12 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
    throw new Error("Invented interference");
   if(source.type==="MATCH"){
    validateWrestlingMechanics(source,prose);
+   if(["CLEAN_PIN","FLASH_PIN"].includes(source.outcome)){
+    if(impossibleHoldCount(slot.recap))
+     throw new Error("Ringside counted a clean pin while a submission hold remained locked");
+    if(unseenCleanCount(slot.recap))
+     throw new Error("Ringside counted a clean pin while the referee was looking away");
+   }
    // A generated near-fall is fine; declaring that the defeated wrestler
    // actually pinned/submitted the recorded winner is not.
    const winners=source.matchContext?.winnerNames??[];
@@ -447,8 +479,8 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
 }
 
 /** Atmospheric description for the writer; the UI retains canonical numbers. */
-const crowdMood=(n:number)=>n>=84?"electric":n>=70?"loud":n>=56?"engaged":
- n>=42?"divided":n>=28?"muted":"quiet";
+const crowdMood=(n:number)=>n>=84?"very responsive":n>=70?"responsive":
+ n>=56?"engaged":n>=42?"divided":n>=28?"muted":"quiet";
 
 /** Send relevant certified facts once, without redundant IDs and analytics. */
 export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
