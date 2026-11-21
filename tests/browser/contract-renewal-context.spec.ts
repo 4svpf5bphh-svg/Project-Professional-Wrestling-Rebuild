@@ -251,7 +251,7 @@ for(const width of [320,390]){
   await expect(card.locator(".ppw-contract-renew-hint"))
    .toContainText("at most 24");
   await card.getByRole("button",{name:"Send negotiated renewal"}).click();
-  expect(submissions).toBe(0,"Impossible competing commitments are caught before a bad offer");
+  expect(submissions).toBe(0);
   await expect(page.getByText(/can commit to at most 24 dates/).first()).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
