@@ -99,6 +99,14 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
     VALUES($1,'promotion-0','cup-final',3,$2,$3,'hshow','hmatch',$2,0),
      ($1,'promotion-1','future-cup',1,$4,$5,NULL,NULL,NULL,NULL)`,
      [world,a,b,c,d]);
+   // Only actually signed contracts count as public World contract news.
+   // Pending/private negotiation terms are absent from the event payload.
+   await tx.query(`INSERT INTO ppw_ledger_events
+     (world_id,year,week,event_type,payload)
+     VALUES ($1,1,1,'CONTRACT_SIGNED',$2::jsonb),
+      ($1,1,1,'AI_STRATEGIC_TALENT_SIGNED',$3::jsonb)`,
+     [world,JSON.stringify({personId:a,promotionId:"promotion-0",offerId:"accepted-public"}),
+      JSON.stringify({personId:c,promotionId:"promotion-1",contractId:"ai-public"})]);
    await tx.query(`UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1`,[world]);
   });
   await assert.rejects(withWorldTransaction(db.pool,tx=>
@@ -123,6 +131,13 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
   assert.equal(result.awards[0]!.rating,4.75);
   assert.ok(result.awards.some(x=>x.kind==="ANGLE"&&x.rating===92));
   assert.ok(result.stories.some(x=>x.desk==="DIRT"&&x.certainty==="SPECULATION"));
+  const signed=result.stories.filter(x=>x.id.startsWith("signing:"));
+  assert.equal(signed.length,2);
+  assert.ok(signed.some(x=>x.title===roster[0]!.name+" signs with Promotion 0"));
+  assert.ok(signed.some(x=>x.title===roster[2]!.name+" signs with Promotion 1"));
+  assert.ok(signed.every(x=>x.desk==="OFFICIAL"&&x.certainty==="CONFIRMED"));
+  assert.ok(signed.every(x=>!JSON.stringify(x).includes("accepted-public")),
+   "Private offer references never become public news");
   const crown=result.stories.find(x=>x.id==="tournament:cup-final");
   assert.equal(crown?.desk,"OFFICIAL");
   assert.equal(crown?.certainty,"CONFIRMED");
