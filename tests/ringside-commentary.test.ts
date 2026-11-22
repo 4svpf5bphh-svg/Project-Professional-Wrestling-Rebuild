@@ -340,3 +340,74 @@ test("AI Lab trace preserves original Groq prose and identifies PPW cleaning",as
  assert.equal(trace.slotOrigins[0]?.source,"CLEANED");
  assert.notEqual(trace.attempts[0]!.draft.slots[0]!.recap,result.slots[0]!.recap);
 });
+
+
+test("Groq 400 strict schema recovery reuses exactly the existing second attempt",async()=>{
+ let calls=0;
+ const fetcher:typeof fetch=async(_url,init)=>{
+  calls++;
+  const body=JSON.parse(String(init?.body));
+  assert.equal(body.model,"openai/gpt-oss-120b");
+  assert.equal(body.reasoning_effort,"low");
+  assert.ok(!Object.hasOwn(body,"reasoning_format"),
+   "GPT-OSS does not accept reasoning_format");
+  assert.match(body.messages[1].content,/One Winged Angel/);
+  if(calls===1){
+   assert.equal(body.response_format.type,"json_schema");
+   assert.equal(body.response_format.json_schema.strict,true);
+   return new Response(JSON.stringify({error:{
+    type:"invalid_request_error",param:"response_format",
+    message:"Invalid schema for response_format"
+   }}),{status:400});
+  }
+  assert.equal(body.response_format.type,"json_object");
+  assert.match(body.messages[1].content,/Quality-control correction required/);
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:review.showHeadline,opening:review.opening,closing:review.closing,
+   slots:{card_0:{headline:review.slots[0]!.headline,recap:review.slots[0]!.recap}}
+  })}}]}));
+ };
+ const article=await generateGroqReview(show,"fixture",fetcher);
+ assert.equal(article.slots[0]?.slotId,"m");
+ assert.equal(calls,2);
+});
+
+test("An unknown provider 400 gets one compatible JSON attempt, never a third",async()=>{
+ let calls=0;
+ const fake:typeof fetch=async(_url,init)=>{
+  calls++;
+  const body=JSON.parse(String(init?.body));
+  assert.equal(body.response_format.type,calls===1?"json_schema":"json_object");
+  return new Response("Bad Request",{status:400});
+ };
+ await assert.rejects(()=>generateGroqReview(show,"fixture",fake),
+  e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_ERROR"&&
+   /including its compatibility format/.test(e.message));
+ assert.equal(calls,2);
+});
+
+test("Known invalid model parameters fail safely without retrying or leaking raw provider text",async()=>{
+ let calls=0;
+ const secretLikeDetail="DO_NOT_EXPOSE_PRIVATE_PROVIDER_FRAGMENT";
+ const fake:typeof fetch=async()=>{
+  calls++;
+  return new Response(JSON.stringify({error:{
+   type:"invalid_request_error",param:"reasoning_effort",
+   message:"Unsupported reasoning_effort "+secretLikeDetail
+  }}),{status:400});
+ };
+ await assert.rejects(()=>generateGroqReview(show,"fixture",fake),
+  e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_ERROR"&&
+   /model or reasoning parameter/.test(e.message)&&
+   !e.message.includes(secretLikeDetail));
+ assert.equal(calls,1);
+});
+
+test("Fictional 20B JSON mode omits unsupported reasoning_format",async()=>{
+ const settings={model:"openai/gpt-oss-20b" as const,voice:"MARTY" as const,
+  detail:"BALANCED" as const,creativity:1,reasoning:"medium" as const,
+  additionalGuidance:"",version:0};
+ const payload=inspectRingsidePrompt(show,settings,undefined,true);
+ assert.equal(payload.response_format.type,"json_object");
+ assert.equal(Object.hasOwn(payload,"reasoning_format"),false);
+});
