@@ -318,7 +318,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   // A model-authored spot is flavour, not authority to create permanent
   // consequences. Confirmed fallout appears separately in the official UI.
   const goldClaims=source.type==="MATCH"&&
-   [...prose.matchAll(/\b(?:captur(?:e|ed|es|ing)|claim(?:ed|s|ing)|win(?:s|ning)?|secur(?:e|ed|es|ing))\s+(?:(?:the|a|an|his|her|their|vacant|world|tag|women's|intercontinental|universal|heavyweight|singles)\s+){0,4}(?:title|championship|gold|belt)\b/gi)]
+   [...prose.matchAll(/\b(?:captur(?:e|ed|es|ing)|claim(?:ed|s|ing)|win(?:s|ning)?|won|secur(?:e|ed|es|ing))\s+(?:(?:the|a|an|his|her|their|vacant|world|tag|women's|intercontinental|universal|heavyweight|singles)\s+){0,4}(?:title|championship|gold|belt)\b(?!\s+(?:shot|opportunity|match|contract|chance))/gi)]
     .some(hit=>{
      const before=prose.slice(Math.max(0,(hit.index??0)-35),hit.index);
      return !/(?:\b(?:did|could|would|will|does|do)\s+not|\b(?:never|didn't|couldn't|wouldn't|failed\s+to|unable\s+to))\s*$/i.test(before);
@@ -611,11 +611,10 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
      format:wrestlingMatchIQ(e)!.format,
      tempo:(e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)<7?"BRIEF":
       (e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)>=20?"LONG":"STANDARD",
-     beat:wrestlingMatchIQ(e)!.format==="TAG"?"tag drama optional":
-      wrestlingMatchIQ(e)!.format==="MULTI_TEAM"?"team tags; no guessed rotation":
-      wrestlingMatchIQ(e)!.format==="BATTLE_ROYAL"?"survive, over-rope eliminations":
-      wrestlingMatchIQ(e)!.format==="MULTI_PERSON"?"break covers; no tags":
-      "build to one legal finish"
+     ...(wrestlingMatchIQ(e)!.format==="TAG"?{beat:"tag drama optional"}:
+      wrestlingMatchIQ(e)!.format==="MULTI_TEAM"?{beat:"team tags; no guessed rotation"}:
+      wrestlingMatchIQ(e)!.format==="BATTLE_ROYAL"?{beat:"survive, over-rope eliminations"}:
+      wrestlingMatchIQ(e)!.format==="MULTI_PERSON"?{beat:"break covers; no tags"}:{})
     }}:{}),
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
     ...(e.matchContext.finishProp?{bookedWeapon:finishPropLabel(e.matchContext.finishProp)}:{}),
@@ -646,7 +645,7 @@ Dry humour sparingly; never just list moves or announce crowd approval.
 
 Write ONE chronological article. Build match psychology from the verified
 winner, finish, wrestlers, audience, duration and scoped storyThread.
-For EVERY match, give tactical contrast, a turning point and ONE legal finish.
+For EVERY match, give tactical contrast, a turning point and ONE decisive finish, legally.
 Near-falls are not victories. Strong bouts 90–150 words, squashes 55–100,
 angles 35–85. Criticise weak bouts; not everything steals the show.
 Only slot.dramaticCue=PEAK may BURST into a live count:

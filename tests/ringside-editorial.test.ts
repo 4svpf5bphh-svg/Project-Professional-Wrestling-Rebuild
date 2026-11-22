@@ -577,3 +577,19 @@ test("the private quality lab can inspect overwrought prose without bypassing fa
  assert.throws(()=>validateRingsideCopy(contradiction,example,{styleWarningOnly:true}),
   /championship/);
 });
+
+
+test("winning a title match or a future title shot is not an invented championship change",()=>{
+ const header={...valid,slots:[{...valid.slots[0]!,
+  recap:"Omega won a title shot when he caught the opponent with a cradle."},
+  valid.slots[1]!]};
+ assert.doesNotThrow(()=>validateRingsideCopy(header,example));
+ const retained={...header,slots:[{...header.slots[0]!,
+  recap:"Omega won the world title match by scoring a clean pinfall."},
+  header.slots[1]!]};
+ assert.doesNotThrow(()=>validateRingsideCopy(retained,example));
+ const falseCrown={...header,slots:[{...header.slots[0]!,
+  recap:"Omega won the world championship with a clean pinfall."},
+  header.slots[1]!]};
+ assert.throws(()=>validateRingsideCopy(falseCrown,example),/championship change/);
+});
