@@ -16,6 +16,10 @@ export const WRESTLING_BENCHMARKS:readonly WrestlingBenchmarkScenario[]=[
   focus:"A 24-minute, highly rated clean-pin singles contest",
   expectation:"Pacing, counters, selling and a plausible clean three-count",
   watchFor:"A generic brawl, impossible legal rules, invented title wins or constant finishers"},
+ {id:"finisher-kickout",name:"Singles · incredible finisher kick-out",
+  focus:"Omega's One Winged Angel gets a dramatic TWO-count; MJF survives and Omega later wins by a separate clean pin",
+  expectation:"Earned live-count shock, correct move ownership and one later legal three-count",
+  watchFor:"MJF delivering Omega's finisher, the two-count treated as the win, a flat generic recap or invented title change"},
  {id:"singles-squash",name:"Singles · four-minute squash",
   focus:"A brief, one-sided main-event mismatch",
   expectation:"A convincing dominant performance and brief, appropriate closing sequence",
@@ -88,11 +92,18 @@ export const WRESTLING_BENCHMARKS:readonly WrestlingBenchmarkScenario[]=[
 type MatchFixture={
  names:string[][];winner:string[];format:string;finish:string;duration:number;
  stars:number;crowd:number;summary:string;
+ finishers?:Record<string,string[]>;
 };
 const matches:Record<string,MatchFixture>={
  "singles-technical":{names:[["Rowan Pierce"],["Kira Vale"]],winner:["Rowan Pierce"],
   format:"SINGLES",finish:"CLEAN_PIN",duration:24,stars:4.5,crowd:94,
   summary:"Rowan Pierce defeated Kira Vale with a clean pin after a long technical contest."},
+ "finisher-kickout":{names:[["Kenny Omega"],["MJF"]],winner:["Kenny Omega"],
+  format:"SINGLES",finish:"CLEAN_PIN",duration:27,stars:4.75,crowd:96,
+  summary:"Kenny Omega hit MJF with the One Winged Angel. MJF kicked out at TWO; "+
+   "that was a near-fall, not a victory. Omega later won with a separate clean three-count. "+
+   "No title change, referee incident or outside interference.",
+  finishers:{"Kenny Omega":["One Winged Angel"]}},
  "singles-squash":{names:[["Darius Stone"],["Leo Finch"]],winner:["Darius Stone"],
   format:"SINGLES",finish:"CLEAN_PIN",duration:4,stars:1.5,crowd:64,
   summary:"Darius Stone dominated Leo Finch and won by pinfall in four minutes."},
@@ -197,7 +208,8 @@ export function getWrestlingBenchmark(id:string):{
   performerIdentities:m.names.flat().slice(0,6).map((name,i)=>({
    personId:"fixture-"+i,ringName:name,
    character:i%3===0?"COLD-BLOODED TECHNICIAN":i%3===1?"FIERY UNDERDOG":"COCKY HEEL",
-   style:i%2?"HIGH_FLYER":"TECHNICAL",signatureMoves:[],finishingMoves:[],
+   style:i%2?"HIGH_FLYER":"TECHNICAL",signatureMoves:[],
+   finishingMoves:m.finishers?.[name]??[],
    source:"WORLD_RECORD" as const
   }))
  };
@@ -261,6 +273,14 @@ export function assessWrestlingBenchmark(id:string,copy:RingsideCopy){
  }
  if(iq?.format==="BATTLE_ROYAL"&&/\b(?:rope|elimination|survivor|last (?:one|man|woman))\b/i.test(text))
   cues.push("Battle-royal mechanics mentioned");
+ if(id==="finisher-kickout"){
+  if(/one[ -]winged angel/i.test(text))
+   cues.push("The verified Omega finisher appears");
+  if(/\bmjf\b[^.!?]{0,85}\b(?:kick(?:ed|s)? out|shoulder (?:came|is) up|surviv(?:ed|es))\b/i.test(text))
+   cues.push("MJF is described surviving the finisher near-fall");
+  if(/\b(?:one|1)[.!…\s]+(?:two|2)\b/i.test(text))
+   cues.push("An urgent one-two referee count is dramatized");
+ }
  const quality=ringsideQualitySignals(show,copy);
  return {scenario:scenario.id,certifiedFactsValidated:true,
   diagnosticCues:cues,qualityWarnings:quality.warnings,

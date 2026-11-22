@@ -586,6 +586,10 @@ export function ringsideDramaCue(entry:ShowResultEntry):string|null{
  if(entry.type!=="MATCH")return null;
  if(!["CLEAN_PIN","FLASH_PIN","SUBMISSION","SECOND_FALL"].includes(entry.outcome))
   return null;
+ // A submission-only stipulation cannot have a legitimate pin near-fall.
+ if(entry.outcome==="SUBMISSION"&&
+  /^(?:Submission(?: Only)? Match|Submission Only)\b/i.test(
+   entry.matchContext?.format??""))return null;
  const mins=entry.fallout?.actualMinutes??entry.matchContext?.plannedMinutes??0;
  const stars=entry.fallout?.ratingStars??0;
  if(mins<12||stars<3.75||entry.crowdResponse<70)return null;

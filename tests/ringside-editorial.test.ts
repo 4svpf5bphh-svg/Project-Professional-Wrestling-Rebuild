@@ -539,6 +539,11 @@ test("Ringside invites genuine live-call drama only when the certified match ear
  assert.equal(ringsideBrief(weak).slots[0]!.dramaticCue,undefined);
  const anglesOnly={...example,entries:[example.entries[1]!]};
  assert.equal(ringsideBrief(anglesOnly).slots[0]!.dramaticCue,undefined);
+ const submissions={...example,entries:[{...example.entries[0]!,
+  outcome:"SUBMISSION",
+  matchContext:{...example.entries[0]!.matchContext!,
+   format:"Submission Match · SINGLES"}},example.entries[1]!]};
+ assert.equal(ringsideBrief(submissions).slots[0]!.dramaticCue,undefined);
 });
 
 test("MJF can kick out of Omega's near-fall without stealing the One Winged Angel",()=>{

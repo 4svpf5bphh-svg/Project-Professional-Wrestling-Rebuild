@@ -5,9 +5,9 @@ import {getWrestlingBenchmark,WRESTLING_BENCHMARKS,assessWrestlingBenchmark}
 import {ringsideBrief,ringsideStipulationNote,validateRingsideCopy}
  from "../src/domain/ringside-editorial.js";
 import {wrestlingMatchIQ} from "../src/domain/wrestling-iq.js";
-test("Fifteen wrestling matches and three grounded angles test Groq without World data",()=>{
- assert.equal(WRESTLING_BENCHMARKS.length,18);
- assert.equal(new Set(WRESTLING_BENCHMARKS.map(s=>s.id)).size,18);
+test("Sixteen wrestling matches and three grounded angles test Groq without World data",()=>{
+ assert.equal(WRESTLING_BENCHMARKS.length,19);
+ assert.equal(new Set(WRESTLING_BENCHMARKS.map(s=>s.id)).size,19);
  for(const meta of WRESTLING_BENCHMARKS){
   const first=getWrestlingBenchmark(meta.id)!;
   const second=getWrestlingBenchmark(meta.id)!;
@@ -293,4 +293,30 @@ test("shared Results prompt stays compact without sacrificing certified fixture 
  assert.ok(rawBytes<14500,"Lean one-match payload should stay comfortably bounded");
  assert.ok(reserved>1000&&reserved<6000,
   "The existing safety ledger must still reserve completion tokens");
+});
+
+
+test("the epic finisher-kickout AI Lab scenario preserves the extraordinary near-fall and later clean result",()=>{
+ const {show}=getWrestlingBenchmark("finisher-kickout")!;
+ const entry=show.entries[0]!;
+ assert.equal(entry.outcome,"CLEAN_PIN");
+ assert.deepEqual(entry.matchContext?.winnerNames,["Kenny Omega"]);
+ assert.ok(entry.summary.includes("MJF kicked out at TWO"));
+ assert.deepEqual(entry.performerIdentities?.find(x=>x.ringName==="Kenny Omega")?.finishingMoves,
+  ["One Winged Angel"]);
+ assert.deepEqual(entry.performerIdentities?.find(x=>x.ringName==="MJF")?.finishingMoves,[]);
+ assert.equal(ringsideBrief(show).slots[0]?.dramaticCue,"PEAK");
+ const copy={showHeadline:"Omega survives a classic",opening:"The crowd was on edge.",
+  closing:"Omega won, but MJF forced him to work for it.",slots:[{
+   slotId:entry.slotId,headline:"MJF survives the unthinkable",
+   recap:"Omega landed the One Winged Angel. ONE! TWO! HOLY SHIT! MJF kicked out! "+
+    "Omega then countered another exchange and ultimately won by a separate clean pinfall."}]};
+ assert.doesNotThrow(()=>validateRingsideCopy(copy,show));
+ const assessment=assessWrestlingBenchmark("finisher-kickout",copy);
+ assert.ok(assessment.diagnosticCues.some(x=>/finisher appears/.test(x)));
+ assert.ok(assessment.diagnosticCues.some(x=>/near-fall/.test(x)));
+ assert.ok(assessment.diagnosticCues.some(x=>/referee count/.test(x)));
+ const reversed={...copy,slots:[{...copy.slots[0]!,
+  recap:"MJF hit Omega with the One Winged Angel before Omega later won by pinfall."}]};
+ assert.throws(()=>validateRingsideCopy(reversed,show),/wrong wrestler/);
 });
