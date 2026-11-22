@@ -140,7 +140,7 @@ test("20B fictional benchmark starts with JSON object, not a failed strict-schem
   const request=JSON.parse(String(init?.body));
   assert.equal(request.model,"openai/gpt-oss-20b");
   assert.equal(request.response_format.type,"json_object");
-  assert.equal(request.reasoning_format,"hidden");
+  assert.equal(request.reasoning_format,undefined,"GPT-OSS JSON mode must omit unsupported reasoning_format");
   assert.equal(request.response_format.json_schema,undefined);
   assert.match(request.messages[1].content,/card_N key/);
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
@@ -155,17 +155,18 @@ test("20B fictional benchmark starts with JSON object, not a failed strict-schem
  assert.equal(calls,1,"Valid 20B JSON mode should use exactly one provider call");
  assert.equal(assessWrestlingBenchmark("i-quit",result).certifiedFactsValidated,true);
 });
-test("20B compatibility is isolated to the benchmark; bad parameters and 429 never retry",async()=>{
+test("strict schema 400 uses bounded JSON recovery; invalid parameters and 429 never retry",async()=>{
  const {generateGroqReview,RingsideGenerationError}=
   await import("../src/db/ringside-commentary.js");
  const {DEFAULT_RINGSIDE_SETTINGS}=await import("../src/domain/ringside-settings.js");
  const {show}=getWrestlingBenchmark("i-quit")!;
  const small={...DEFAULT_RINGSIDE_SETTINGS,model:"openai/gpt-oss-20b" as const};
  for(const data of [
-  {settings:small,benchmark:false,status:400,code:"structured_generation_failed",expected:"PROVIDER_ERROR"},
-  {settings:small,benchmark:true,status:400,code:"invalid_reasoning_effort",expected:"PROVIDER_ERROR"},
-  {settings:small,benchmark:true,status:429,code:"rate_limit_exceeded",expected:"PROVIDER_LIMIT"},
-  {settings:DEFAULT_RINGSIDE_SETTINGS,benchmark:true,status:400,code:"structured_generation_failed",expected:"PROVIDER_ERROR"}
+  {settings:small,benchmark:false,status:400,code:"structured_generation_failed",expected:"PROVIDER_ERROR",calls:2},
+  {settings:small,benchmark:true,status:400,code:"invalid_reasoning_effort",expected:"PROVIDER_ERROR",calls:1},
+  {settings:small,benchmark:true,status:429,code:"rate_limit_exceeded",expected:"PROVIDER_LIMIT",calls:1},
+  {settings:DEFAULT_RINGSIDE_SETTINGS,benchmark:true,status:400,code:"structured_generation_failed",expected:"PROVIDER_ERROR",calls:2},
+  {settings:DEFAULT_RINGSIDE_SETTINGS,benchmark:false,status:400,code:"invalid_reasoning_effort",expected:"PROVIDER_ERROR",calls:1}
  ]){
   let calls=0;
   await assert.rejects(
@@ -178,7 +179,8 @@ test("20B compatibility is isolated to the benchmark; bad parameters and 429 nev
    },data.settings,undefined,undefined,"GROQ",data.benchmark),
    (error:unknown)=>error instanceof RingsideGenerationError&&error.code===data.expected&&
     !error.message.includes("Sensitive user text"));
-  assert.equal(calls,1,"rejection outside the compatibility case must not retry");
+  assert.equal(calls,data.calls,
+   "Only strict schema/unknown HTTP 400 may consume the existing second attempt");
  }
 
 });
