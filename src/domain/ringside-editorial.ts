@@ -706,7 +706,7 @@ or finish that explains why THIS match was worth seeing. Criticise flat bouts.
 Dry humour sparingly; never just list moves or announce crowd approval.
 
 Write ONE chronological article. For EVERY match use slot.director:
-setup, turn, decisive finish, then a rating-scaled verdict. All directives
+setup, turn, ONE decisive finish, then a rating-scaled verdict. All directives
 are storytelling guidance, not certified new spots. Slot.finish always wins.
 Near-falls aren't wins. Strong bouts 90–150 words, squashes 55–100,
 angles 35–85; criticise weak bouts.

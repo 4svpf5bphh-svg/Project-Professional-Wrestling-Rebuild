@@ -123,7 +123,13 @@ test("a six-slot article retains five AI recaps and replaces one false submissio
  assert.equal(result?.replaced,1);
  assert.equal(result?.review.slots[2]?.recap,candidate.slots[2]?.recap);
  assert.ok(!result?.review.slots[3]?.recap.includes("submission"));
- assert.ok(JSON.stringify(ringsideBrief(many)).length<JSON.stringify(ringsideFacts(many)).length);
+ // This richer brief now includes authoritative direction for every bout.
+ // Keep it bounded and proportionate instead of requiring fewer bytes than
+ // an undirected facts-only packet.
+ const briefBytes=JSON.stringify(ringsideBrief(many)).length;
+ const factsBytes=JSON.stringify(ringsideFacts(many)).length;
+ assert.ok(briefBytes<11000&&briefBytes<factsBytes*3,
+  "Six directed slots must remain comfortably within the single-call budget");
  assert.doesNotMatch(JSON.stringify(ringsideBrief(many)),/crowd":(?:[0-9]+)/);
  assert.ok(ringsideBrief(many).slots.every(s=>typeof s.audienceMood==="string"));
  const allBad={...candidate,slots:candidate.slots.map(s=>({...s,recap:"Omega won by submission."}))};

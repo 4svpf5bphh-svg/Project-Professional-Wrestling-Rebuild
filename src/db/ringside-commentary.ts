@@ -81,8 +81,7 @@ function decodeEditorialResponse(input:unknown,show:CompletedShowView):unknown{
  * before the Groq Director appends its chosen model and bearer token headers.
  */
 function boundedRingsideFacts(show:CompletedShowView,memory:RingsideMemory):string{
- if(JSON.stringify(ringsideBrief(show)).length>26000||
-    show.entries.length>30||show.entries.length===0)
+ if(show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
  // Each card_N key already appears in the authenticated brief and schema.
  // Never let contextual history displace authoritative current-show facts.
@@ -104,6 +103,52 @@ function boundedRingsideFacts(show:CompletedShowView,memory:RingsideMemory):stri
   if(bounded.priorMatches.length)bounded.priorMatches.pop();
   else bounded.programmes.pop();
   facts=JSON.stringify(ringsideBrief(show,bounded));
+ }
+ // On a dense PPV, keep EVERY factual card and the lead story rather
+ // than rejecting the whole review because optional direction grew.
+ // Trim low-salience editorial extras first; winners, finishes, scripted
+ // actions, title movement and card order are never touched.
+ if(facts.length>26000){
+  const compact=JSON.parse(facts) as {
+   showFocus:{lead:string;support:string[]};
+   slots:Record<string,unknown>[];
+  };
+  const featured=new Set([compact.showFocus.lead,...compact.showFocus.support]);
+  const all=compact.slots.map((_,i)=>i);
+  const lessImportant=all.filter(i=>!featured.has("card_"+i)).reverse();
+  const highlights=all.filter(i=>featured.has("card_"+i)).reverse();
+  const removeDirection=(index:number)=>{
+   delete compact.slots[index]!.director;
+   facts=JSON.stringify(compact);
+  };
+  const slimMoves=(index:number)=>{
+   const slot=compact.slots[index]!;
+   if(!Array.isArray(slot.wrestlers))return;
+   slot.wrestlers=slot.wrestlers.map((person:unknown)=>{
+    if(!person||typeof person!=="object"||Array.isArray(person))return person;
+    const p=person as Record<string,unknown>;
+    return {name:p.name,character:p.character,style:p.style};
+   });
+   facts=JSON.stringify(compact);
+  };
+  for(const i of lessImportant){
+   removeDirection(i);
+   if(facts.length<=26000)break;
+  }
+  if(facts.length>26000)for(const i of lessImportant){
+   slimMoves(i);
+   if(facts.length<=26000)break;
+  }
+  // Keep headline-worthy matches fully directed unless even this
+  // conservative reduction is insufficient for a 30-slot event.
+  if(facts.length>26000)for(const i of highlights){
+   removeDirection(i);
+   if(facts.length<=26000)break;
+  }
+  if(facts.length>26000)for(const i of highlights){
+   slimMoves(i);
+   if(facts.length<=26000)break;
+  }
  }
  if(facts.length>26000)throw new RingsideGenerationError("INVALID_OUTPUT",
   "Verified Ringside facts exceed the bounded article size.");

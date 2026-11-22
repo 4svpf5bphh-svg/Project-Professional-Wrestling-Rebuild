@@ -205,3 +205,42 @@ test("Historical programme counts and Week 25 never enter the model-facing artic
   /Week 25|previousMatchWeek|precedingMatches|precedingAngles/);
  assert.ok(JSON.stringify(inspected.facts).length<26000);
 });
+
+test("A dense 30-card PPV retains every certified finish within the existing token budget",()=>{
+ const identities=[{
+  personId:"o-reilly",ringName:"Kyle O'Reilly",character:"SHARP TECHNICIAN",
+  style:"TECHNICAL",source:"WORLD_RECORD" as const,
+  signatureMoves:Array.from({length:3},(_,i)=>"Technical Grappling Signature Hold "+
+   i+" with a distinctive escape pattern for this wrestler"),
+  finishingMoves:Array.from({length:3},(_,i)=>"Recorded Technical Finisher "+
+   i+" belonging to the only wrestler authorised to execute it")
+ },{
+  personId:"sabin",ringName:"Chris Sabin",character:"RESILIENT VETERAN",
+  style:"ALL_ROUNDER",source:"WORLD_RECORD" as const,
+  signatureMoves:Array.from({length:3},(_,i)=>"High Impact Aerial Signature Attack "+
+   i+" with a long distinctive ring name"),
+  finishingMoves:Array.from({length:3},(_,i)=>"Recorded Aerial Finisher "+
+   i+" belonging to the only wrestler authorised to execute it")
+ }];
+ const dense:CompletedShowView={...ascension,matchCount:30,angleCount:0,
+  entries:Array.from({length:30},(_,i)=>({
+   ...oreilly,position:i,slotId:"dense-match-"+i,
+   performerIdentities:identities,
+   headline:"A technically demanding contest between two former title challengers",
+   summary:"The two athletes exchanged legal offence and the certified winner scored a clean pin."
+  }))};
+ assert.ok(JSON.stringify(ringsideBrief(dense)).length>26000,
+  "Fixture must exercise the dense-show compaction, not just a short article");
+ const result=inspectRingsidePrompt(dense);
+ const facts=result.facts as ReturnType<typeof ringsideBrief>;
+ assert.equal(result.callMade,false);
+ assert.equal(facts.slots.length,30);
+ assert.ok(JSON.stringify(facts).length<=26000);
+ assert.deepEqual(facts.slots.map(x=>x.key),
+  Array.from({length:30},(_,i)=>"card_"+i));
+ assert.ok(facts.slots.every(x=>x.finish==="CLEAN_PIN"));
+ assert.ok(facts.slots.every(x=>x.match?.winners[0]==="Kyle O'Reilly"));
+ assert.ok(facts.slots.every(x=>x.match?.sides[1]?.[0]==="Chris Sabin"));
+ assert.ok(facts.slots.some(x=>x.director),
+  "Important matches retain detailed direction when lower cards are compacted");
+});

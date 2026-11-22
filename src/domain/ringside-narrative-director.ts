@@ -83,7 +83,7 @@ export function directRingsideMatch(e:ShowResultEntry):MatchDirection|null{
  const verdict=typeof stars!=="number"?
   "Use the documented audience response; do not claim an instant classic.":
   stars<2.5?"A disappointing or awkward bout; identify a credible weakness, without a fake botch.":
-  stars<3.5?"Solid but imperfect wrestling; appreciate effective moments without calling it a masterpiece.":
+  stars<3.5?"Solid but imperfect wrestling; appreciate effective moments without extravagant hype.":
   stars<4.25?"A strong match with earned praise for specific execution; no automatic classic.":
   stars<4.75?"An excellent performance; give the decisive exchange proper space.":
   "An exceptional contest; vivid detail and a rare big-match sense of occasion are justified.";
