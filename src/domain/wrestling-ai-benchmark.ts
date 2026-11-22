@@ -216,7 +216,9 @@ export function assessWrestlingBenchmark(id:string,copy:RingsideCopy){
  const sample=getWrestlingBenchmark(id);
  if(!sample)throw new Error("Unknown wrestling benchmark");
  const {show,scenario}=sample;
- validateRingsideCopy(copy,show);
+ // Validate all canonical wrestling facts, but let the private quality
+ // benchmark inspect (rather than reject) deliberately bad sample prose.
+ validateRingsideCopy(copy,show,{styleWarningOnly:true});
  const entry=show.entries[0]!,
   iq=entry.type==="MATCH"?wrestlingMatchIQ(entry):null;
  const text=(copy.slots[0]?.headline??"")+" "+(copy.slots[0]?.recap??"");

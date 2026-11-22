@@ -249,7 +249,8 @@ function assertMoveExecutionOwnership(entry:ShowResultEntry,prose:string):void{
  }
 }
 
-export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
+export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
+ options:{styleWarningOnly?:boolean}={}):RingsideCopy{
  const v=shape(candidate);
  if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
   !printable(v.showHeadline,140)||!printable(v.opening,900)||
@@ -303,7 +304,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
  const voiceFailure=ringsideProseQualityFailure({
   opening:v.opening as string,closing:v.closing as string,slots});
- if(voiceFailure)throw new Error(voiceFailure);
+ if(voiceFailure&&!options.styleWarningOnly)throw new Error(voiceFailure);
  if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result|protected victory|official-approved distraction|certified finish|certified decision|booked winner|booked result)\b/i.test(fullStory))
   throw new Error("Ringside leaked technical simulation terminology");
  if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b|\b[0-5](?:\.\d{1,2})?[\s\-\u2010-\u2015]*stars?\b/i.test(fullStory))
@@ -470,7 +471,8 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
      " "+targets+" was named but did not appear on camera.": "";
     return {slotId:entry.slotId,
      headline:(entry.headline||((people||"The cast")+"'s "+segment)).slice(0,140),
-     recap:((people||"The participants")+" took part in a "+segment+
+     recap:("In card segment "+(entry.position+1)+", "+
+     (people||"The participants")+" took part in a "+segment+
       " on "+(show.showName??"the show")+". "+action+names).slice(0,1600)};
    }
    const sides=entry.matchContext?.sides??[];
@@ -507,7 +509,8 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
     " After "+entry.fallout.actualMinutes+" minutes, ":" ";
    return {slotId:entry.slotId,
     headline:(entry.headline||winner+(opponents?" defeats "+opponents:" wins")).slice(0,140),
-    recap:(matchup+" met in a "+format+"." +when+result+". "+reaction).slice(0,1750)};
+    recap:("In contest "+(entry.position+1)+", "+matchup+" met in a "+format+"."+
+     when+result+". "+reaction).slice(0,1750)};
   })
  };
  try{validateRingsideCopy(base,show);}catch{return null;}
@@ -586,11 +589,7 @@ export function ringsideDramaCue(entry:ShowResultEntry):string|null{
  const mins=entry.fallout?.actualMinutes??entry.matchContext?.plannedMinutes??0;
  const stars=entry.fallout?.ratingStars??0;
  if(mins<12||stars<3.75||entry.crowdResponse<70)return null;
- return stars>=4.25&&entry.crowdResponse>=80?
-  "BIG MOMENT: build one startling but legal two-count/kick-out or counter; "+
-  "a short explosive ringside call is welcome, not mandatory. The official finish still happens later.":
-  "GOOD MATCH: a specific reversal or near-fall can earn a brief, excited live call; "+
-  "do not manufacture a miracle or a second victory.";
+ return stars>=4.25&&entry.crowdResponse>=80?"PEAK":"EARNED";
 }
 /** Send relevant certified facts once, without redundant IDs and analytics. */
 export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
@@ -641,55 +640,36 @@ Have opinions grounded in EVIDENCE. Show one memorable exchange, mistake
 or finish that explains why THIS match was worth seeing. Criticise flat bouts.
 Dry humour sparingly; never just list moves or announce crowd approval.
 
-Write ONE chronological article, not separate reports. For EVERY match,
-first understand the certified winner, stipulation, finish, crowd, duration,
-quality, known characters and any verified storyThread. Then build the
-preceding action logically towards that ending. Show why an underdog almost
-stole it, why a veteran made a mistake or why a dominant wrestler struggled,
-only when the shown context supports those readings.
-Give tactical contrast, a turning point and ONE decisive finish;
-vary rhythm and emphasis. Near-falls are not victories.
-Strong bouts 90–150 words, squashes 55–100, angles 35–85.
-Let standout contests breathe; don't claim every bout stole the show.
-For a genuinely dramatic long, strongly received match, BREAK out of the
-retrospective into one short, immediate ringside call at a plausible peak:
-"ONE! TWO! ... KICKOUT! HOW DID THEY SURVIVE THAT?" is the *kind* of
-urgency, not a sentence to copy. A rare "HOLY SHIT!" can be right when
-an extraordinary escape earns it. Use punchy exclamation, pauses and disbelief;
-then return to clear journalism. No repetitive fake counts, empty screaming
-or obligatory profanity. Quiet crowds, weak matches and brief squashes should
-sound different. slot.dramaticCue marks genuinely eligible contests: omit the
-burst elsewhere. A dramatic two-count means the shoulder came up BEFORE THREE;
-it never replaces or contradicts the certified final three-count.
-When describing a named finisher near-fall, use ONLY a move belonging to
-a wrestler on that card and make clear who landed it and who survived it.
-A repertoire move is permission for plausible temporary ring colour, NOT
-evidence of a specific recorded near-fall or the official finishing move.
-Treat quoted dialogue from promos separately: never invent exact speech.
+Write ONE chronological article. Build match psychology from the verified
+winner, finish, wrestlers, audience, duration and scoped storyThread.
+Every match needs tactical contrast, a turning point and ONE legal finish.
+Near-falls are not victories. Strong bouts 90–150 words, squashes 55–100,
+angles 35–85. Criticise weak bouts; not everything steals the show.
+Only slot.dramaticCue=PEAK may BURST into a live count:
+"ONE! TWO! ... KICKOUT!" or a rare earned "HOLY SHIT!" at a plausible
+near-fall. slot.dramaticCue=EARNED merits interest, not a miracle. Do not copy,
+force profanity, or manufacture miracles in short or flat matches.
+A two-count stops BEFORE THREE; the certified finish still happens.
+Only the move's verified wrestler may land a named finisher. Someone
+kicking OUT of that move is the recipient, not its performer.
+Repertoire enables plausible short-lived colour, not a certified spot.
+Return to clear, varied journalism after the moment.
 Headlines must be specific, not bloated finish descriptions; do not repeat
 them in the first sentence. Slot.editorialLens sets emphasis, NOT new facts.
 Avoid "In the end", "momentum shifted", recycled moves, "looming storms",
 "unstoppable auras", "hushed reverence", "electric crowds" and invented
 camera shots. Motives and relationships need on-air evidence.
 
-The slot records are AUTHORITATIVE: participant names, match format,
-winner, winning method, title movement, injured wrestlers, interference,
-angle outcomes and audience mood. If slot.fallout.title.changed is false,
-slot.fallout.title.winnerName names the MATCH winner, not necessarily the
-champion. The priorHolderName retains the belt when different from the
-match winner; with no prior holder the title stays vacant. Only changed:true
-certifies a new champion. Do not call a challenger's DQ win a title defence. Match.wrestlingIQ gives the legal
-format and psychology; slot.match.stipulationRules gives the real
-winning condition and suggested dramatic beats. Those beats and
-possibleSpots are creative possibilities, NOT certified event records.
-Invent only plausible, temporary bell-to-bell colour (counters,
-selling, grappling, strikes, near-falls, crowd texture, taunts),
-not a different winner, exact scores, outside attacker, title change,
-serious injury, debut, actual quotation or permanent storyline consequence.
-Treat one wrestler's repertoire as available moves, never proof a
-particular move caused the finish. Never assign another wrestler's
-signature move. Use official audience mood qualitatively.
-
+The slot records are AUTHORITATIVE for cast, format, finish, title
+movement, injuries, interference, angle outcome and crowd. A title changes
+ONLY when slot.fallout.title.changed is true; if false, winnerName is
+the MATCH winner, not necessarily the champion, and priorHolderName
+keeps the belt. No prior holder means vacant. No invented title defence.
+Match.wrestlingIQ and stipulationRules set legal win methods and pacing;
+possibleSpots are possibilities, not settled action. Invent temporary
+bell-to-bell colour, NOT winners, quotes, scores, attacks, injuries, title
+changes, debuts, turns or any lasting consequence. Never assign another
+wrestler's signature and scale reactions to the verified crowd.
 Singles: two wrestlers. No tags or tag partners.
 Tags/trios: only one wrestler PER TEAM is legal; apron partners must tag
 before scoring; hot tags optional. Never invent a team fall scorer.
@@ -721,34 +701,19 @@ a table break; Last Man Standing an unanswered ten-count; First Blood
 the first bleeding; Casket the closed lid. Follow the slot's explicit
 stipulationRules if present.
 
-Angles are filmed scenes, not bouts. Use verified initiator, victim,
-location, outcome, scene purpose and visible scripted aftermath.
-angle.scriptedActions are the ONLY directed beats: narrate them IN ORDER,
-preserving exact quoted lines. With spoken-only actions, NO wrestling moves, strikes, dropkicks or brawls.
-Presence alone does not imply contact; only explicit ATTACK, FIGHT_BACK,
-RESCUE or BETRAY allows it, without unrelated moves or new outcomes.
-In a PROMO, actorNames are speakers. The verified angle.targetPresence
-field decides whether targetNames are merely MENTIONED or ON_SCREEN.
-If MENTIONED (or unrecorded legacy presence), the named target must NOT
-enter, respond, gesture, attack, sell or deliver a move. If ON_SCREEN,
-they may appear as booked, but do not invent the outcome of a confrontation
-or any additional uncast wrestler. Being named is not being present.
-Do not invent signature physical traits, limps, scars, body language
-defects or artificial "eyes shining" flourishes. Temporary selling in
-an actual match is different from inventing a wrestler's character.
-For interviews, celebrations, contract signings or video packages,
-do not invent match moves, attackers, dialogue in quotes or combat.
-A scripted BLOODIED appearance is not a medical injury. An intent
-to build a rivalry does not prove heat increased. Refusal or
-interruption cannot be narrated as the planned outcome happening.
-No unexplained outsider, weapon or new participant.
-
-Only a slot's supplied storyThread can establish HISTORY; at most
-one relevant callback, never a new feud, feud payoff or invented
-earlier confrontation. previousSharedMatch does NOT prove a rivalry.
-An earlier same-card scene does not prove retaliation. No false
-promises, backstage conversations or changes of allegiance.
-
+Angles are filmed scenes, NOT bouts. Narrate angle.scriptedActions
+in exact recorded order; any direct quotes must come from those actions.
+Speech alone cannot imply a strike, move or brawl. Only ATTACK,
+FIGHT_BACK, RESCUE or BETRAY authorises physical conflict. A PROMO's
+actorNames speak; angle.targetPresence distinguishes targets MENTIONED
+(off-camera, unable to enter, reply or fight) from targets ON_SCREEN.
+Do not invent an outcome, outsider, entrance, camera shot, physical
+character trait, friendship or partner history. Scripted BLOODIED
+appearance isn't an injury. Planned retaliation isn't completed
+retaliation. A refusal or interruption isn't success.
+Only a slot's scoped storyThread proves prior HISTORY. One relevant
+callback maximum; absent history means no imagined feud, revenge,
+partnership or payoff. An earlier shared match alone proves no rivalry.
 Use wrestling terms naturally. Never expose star ratings, mechanics,
 technical booking labels or equations. Avoid unsupported gender assumptions.
 No extra prose or markdown outside the response JSON. Required keys

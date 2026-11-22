@@ -529,7 +529,7 @@ test("match journalism cannot expose the simulator's protected-victory terminolo
 
 test("Ringside invites genuine live-call drama only when the certified match earns it",()=>{
  const big=ringsideBrief(example).slots[0]!;
- assert.match(big.dramaticCue??"",/BIG MOMENT/);
+ assert.equal(big.dramaticCue,"PEAK");
  assert.match(RINGSIDE_STYLE_GUIDE,/ONE! TWO!/);
  assert.match(RINGSIDE_STYLE_GUIDE,/HOLY SHIT/);
  assert.match(RINGSIDE_STYLE_GUIDE,/BEFORE THREE/);
@@ -557,4 +557,18 @@ test("MJF can kick out of Omega's near-fall without stealing the One Winged Ange
   recap:"MJF hit Kenny Omega with the One Winged Angel. "+
    "Omega countered and eventually scored the clean pinfall."},kickout.slots[1]!]};
  assert.throws(()=>validateRingsideCopy(theft,card),/wrong wrestler/);
+});
+
+
+test("the private quality lab can inspect overwrought prose without bypassing factual validation",()=>{
+ const florid={...valid,slots:[{...valid.slots[0]!,
+  recap:"The electric crowd met a looming threat before Omega secured a clean pinfall."},
+  valid.slots[1]!]};
+ assert.throws(()=>validateRingsideCopy(florid,example),/stock metaphors/);
+ assert.doesNotThrow(()=>validateRingsideCopy(florid,example,{styleWarningOnly:true}));
+ const contradiction={...florid,slots:[{...florid.slots[0]!,
+  recap:"The electric crowd met a looming threat before Omega won the world championship."},
+  florid.slots[1]!]};
+ assert.throws(()=>validateRingsideCopy(contradiction,example,{styleWarningOnly:true}),
+  /championship/);
 });
