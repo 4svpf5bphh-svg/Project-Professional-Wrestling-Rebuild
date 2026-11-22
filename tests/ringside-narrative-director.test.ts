@@ -88,7 +88,8 @@ test("Match Director understands why a pin is NOT an armbar submission",()=>{
  assert.match(clean.verdict,/Solid but imperfect/);
  assert.doesNotMatch(clean.verdict,/masterpiece/i);
  const submission=directRingsideMatch(joeMatch)!;
- assert.match(submission.decisive,/tap or referee stoppage, no pinfall/);
+ assert.match(submission.decisive,/referee stops the submission/);
+ assert.match(submission.decisive,/does NOT count taps/);
  const flash=directRingsideMatch(bayne)!;
  assert.match(flash.setup,/No tags|all rivals|opponents/i);
  assert.match(flash.decisive,/sudden cradle or roll-up/);
@@ -136,7 +137,7 @@ test("Debut, scripted promo, interview, video and attack get different treatment
  const interview=directRingsideAngle(taker)!;
  assert.match(interview.focus,/speaker's actual words/);
  const pkg=directRingsideAngle(video)!;
- assert.match(pkg.focus,/no unverified footage/);
+ assert.match(pkg.focus,/do not describe invented clips/);
  const attack:ShowResultEntry={...joePromo,slotId:"attack",segmentKind:"ATTACK",
   segmentContext:{...joePromo.segmentContext!,scriptedActions:[
    {action:"ATTACK",by:"actor-0",to:"target-0"}]}};
@@ -161,7 +162,7 @@ test("Rivalry history is presented as a viewer callback, never angle/week counts
 test("Prompt Inspector receives the SAME bounded one-call focus and director facts",()=>{
  const inspected=inspectRingsidePrompt(ascension);
  assert.equal(inspected.callMade,false);
- assert.equal(inspected.promptVersion,"ringside-v13");
+ assert.equal(inspected.promptVersion,"ringside-v14");
  const facts=inspected.facts as ReturnType<typeof ringsideBrief>;
  assert.deepEqual(facts.showFocus,{lead:"card_7",support:["card_0","card_8"]});
  const matchDirector=facts.slots[3]!.director;
@@ -246,7 +247,7 @@ test("A dense 30-card PPV retains every certified finish within the existing tok
 });
 
 test("Phase 66 starts as an entertaining TV wrestling review for real game readers",()=>{
- assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v13");
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v14");
  assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/experienced WRESTLING JOURNALIST/);
  assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/televised wrestling show/);
  assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/game's players/);
@@ -400,4 +401,73 @@ test("Mentioned-only backstage participants trigger a corrective rewrite, not an
  assert.deepEqual(trace.attempts.map(x=>x.status),["REJECTED","ACCEPTED"]);
  assert.equal(report.slots[1]?.recap,corrected);
  assert.ok(trace.slotOrigins.every(x=>x.source==="GROQ"));
+});
+
+
+test("Phase 67 enforces Ascension W29 wrestling logic instead of publishing the live v13 mistakes",()=>{
+ const original={showHeadline:"Ascension puts its rivals on notice",
+  opening:"Regal made his debut and one submission was settled in the ring.",
+  closing:"Místico kept his title while the Gunns and Undertaker issued warnings.",
+  slots:ascension.entries.map(e=>({slotId:e.slotId,headline:e.headline,
+   recap:e.summary}))};
+ assert.doesNotThrow(()=>validateRingsideCopy(original,ascension));
+ const replace=(index:number,text:string)=>({...original,slots:original.slots.map((s,i)=>
+  i===index?{...s,recap:text}:s)});
+ assert.throws(()=>validateRingsideCopy({...original,
+  opening:"Two Joe-powered submissions and a title match carried the night."},ascension),
+  /show-level finish count/);
+ assert.throws(()=>validateRingsideCopy(replace(1,
+  "Megan Bayne snapped a cradle-roll-up on a distracted Mayu Iwatani. The referee counted three."),ascension),
+  /unrecorded multi-person fall victim/);
+ assert.throws(()=>validateRingsideCopy(replace(5,
+  "Joe applied the Coquina Clutch. After a tense count of taps, the referee awarded the submission."),ascension),
+  /referee count of taps/);
+ assert.throws(()=>validateRingsideCopy(replace(6,
+  "A montage of Mr. Perfect and Takeshita appeared. Highlights of slick technical exchanges and near-falls played on the arena screen."),ascension),
+  /specific historic video footage/);
+ assert.throws(()=>validateRingsideCopy(replace(7,
+  "Místico hit Regal with the championship belt. The referee saw no pin, but the match was called in Místico's favor due to the illegal weapon."),ascension),
+  /concealed weapon strike as an official award/);
+ assert.throws(()=>validateRingsideCopy(replace(7,
+  "Místico stole the championship belt, then struck Regal while the referee was down."),ascension),
+  /reigning champion's own belt stolen/);
+ const sound=replace(7,"Místico used his own championship belt to hit Regal while the referee was down. "+
+  "He made the cover when the referee recovered, who counted three on Regal's shoulders. "+
+  "Místico retained his World Championship through the concealed foul.");
+ assert.doesNotThrow(()=>validateRingsideCopy(sound,ascension));
+ assert.match(directRingsideMatch(title)!.decisive,/reigning champion's OWN belt/);
+ assert.match(directRingsideMatch(title)!.decisive,/subsequent cover/);
+});
+
+test("Phase 67's rare wrestling history asides are deterministic, witty and not Groq invention",async()=>{
+ const {withOccasionalWrestlingHistory}=await import("../src/domain/ringside-editorial.js");
+ const weak=match("bad",0,{sides:[["Red"],["Blue"]],winners:["Red"],
+  finish:"CLEAN_PIN",stars:1.5,crowd:35,duration:11});
+ const goodReview={showHeadline:"A tough night",opening:"Some matches struggled to find a rhythm.",
+  closing:"The card ended without any lasting new injury.",
+  slots:[{slotId:"bad",headline:"One-sided action",
+   recap:"Red worked over Blue and won by a clean pinfall. The crowd was largely quiet."}]};
+ let inserted=0;
+ for(let i=0;i<32;i++){
+  const show={...ascension,showId:"history-test-"+i,entries:[weak],matchCount:1,angleCount:0};
+  const out=withOccasionalWrestlingHistory(goodReview,show);
+  assert.deepEqual(out,withOccasionalWrestlingHistory(goodReview,show),
+   "the same show cannot reroll its editorial analogy");
+  assert.equal(out.slots.length,1);
+  assert.equal(out.slots[0]!.slotId,"bad");
+  assert.match(out.slots[0]!.recap,/Red worked over Blue/);
+  const hasHistory=out.slots[0]!.recap.includes("Hogan");
+  if(hasHistory){
+   inserted++;
+   assert.match(out.slots[0]!.recap,/WrestleMania III/);
+   assert.match(out.slots[0]!.recap,/technical masterclass/);
+  }
+ }
+ assert.ok(inserted>2&&inserted<14,"history appears sometimes, never every match");
+ const strong={...weak,fallout:{...weak.fallout!,ratingStars:3.25}};
+ for(let i=0;i<12;i++){
+  const s={...ascension,showId:"ordinary-"+i,entries:[strong],matchCount:1,angleCount:0};
+  assert.deepEqual(withOccasionalWrestlingHistory(goodReview,s),goodReview,
+   "a solid match cannot get a sarcastic bad-match comparison");
+ }
 });
