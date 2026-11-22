@@ -615,7 +615,7 @@ test("CWA sample: pinfall mechanism and private rivalry counters are not reporta
   "This article used the official fallout to check the win."
  ]){
   const review={...valid,slots:[valid.slots[0]!,{...valid.slots[1]!,recap:bad}]};
-  assert.throws(()=>validateRingsideCopy(review,example),/internal storyline or card metadata/,bad);
+  assert.throws(()=>validateRingsideCopy(review,example),/private card or story metadata|internal storyline or card metadata/,bad);
  }
  assert.match(RINGSIDE_STYLE_GUIDE,/never database bookkeeping|database bookkeeping/);
 });

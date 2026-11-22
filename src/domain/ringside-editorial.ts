@@ -163,7 +163,12 @@ function assertReferencedPromoTargetStayedOffScreen(
     "furious|icy|trademark|quiet|stoic|stunned)\\s+){0,2}"+
     "(?:stare|glare|expression|reaction|smile|grimace|nod|body language|"+
     "eyes|gaze|face|fists|hands)\\b","iu");
-   if(facing.test(prose)||bodyLanguage.test(prose))
+   const impliedReaction=new RegExp(
+    "(?:^|[^\\p{L}\\p{N}])"+quoted+"\\s*,?\\s+whose\\s+"+
+    "(?:(?:calm|silent|defiant|cold|angry|knowing|sharp|steady|nervous|"+
+    "furious|icy|quiet|stoic|stunned)\\s+){0,2}"+
+    "(?:stare|glare|expression|reaction|smile|grimace|gaze|eyes|face)\\b","iu");
+   if(facing.test(prose)||bodyLanguage.test(prose)||impliedReaction.test(prose))
     throw new Error("Ringside invented an off-screen promo target appearance");
   }
   const body=new RegExp(
