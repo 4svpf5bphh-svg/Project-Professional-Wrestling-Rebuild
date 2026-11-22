@@ -690,6 +690,63 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  catch{return null;}
 }
 
+
+/**
+ * Curated real-world wrestling history, independent of Groq. One short aside
+ * at most, on a deterministic minority of shows. It is commentary, NEVER a
+ * PPW career event, historical programme memory or simulated match fact.
+ * Benchmarks: Hogan/André (WrestleMania III), Michaels/Ramon (WM X),
+ * Hart/Austin (WM 13), Rock/Hogan (WM X8), Okada/Omega (Dominion 2018),
+ * Undertaker/Michaels (WM 25). The original event identities were verified.
+ * No model tokens, Neon queries, state changes, random rerolls or UI work.
+ */
+export function withOccasionalWrestlingHistory(
+ review:RingsideCopy,show:CompletedShowView):RingsideCopy{
+ const key=show.showId+"|"+show.year+"|"+show.week;
+ let hash=2166136261;
+ for(const char of key)hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+ if(hash%4!==0)return review;
+ const candidates:{i:number;line:string}[]=[];
+ for(const [i,e] of show.entries.entries()){
+  if(e.type!=="MATCH"||!e.matchContext||
+   typeof e.fallout?.ratingStars!=="number"||!review.slots[i])continue;
+  const stars=e.fallout.ratingStars;
+  const length=e.fallout.actualMinutes??e.matchContext.plannedMinutes??0;
+  const format=e.matchContext.format.toLowerCase();
+  const field=e.matchContext.sides.flat().join(" ").toLowerCase();
+  let line:string|null=null;
+  if(stars<2.5&&length>=8&&e.crowdResponse<=65)
+   line="It was Hogan versus André at WrestleMania III without the spectacle — and somehow made that old clash look like a technical masterclass.";
+  else if(/ladder|tlc/.test(format)&&e.outcome==="RETRIEVAL"&&stars>=4)
+   line="Michaels and Razor Ramon at WrestleMania X remain the ladder-match measuring stick; this at least understood why every climb must matter.";
+  else if(e.outcome==="SUBMISSION"&&stars>=4.25&&e.crowdResponse>=75)
+   line="Hart and Austin at WrestleMania 13 made resistance unforgettable. This wasn't that landmark, but the submission struggle understood the assignment.";
+  else if(stars>=4.75&&length>=22&&e.crowdResponse>=88)
+   line="For a moment the suspense invited thoughts of Undertaker and Michaels at WrestleMania 25. A lofty comparison, but the crowd had earned it.";
+  else if(stars>=4.5&&length>=25)
+   line="Okada and Omega at Dominion 2018 set a fearsome standard for endurance; this contest at least understood the value of a long, escalating fight.";
+  else if(stars>=4&&e.crowdResponse>=89)
+   line="There was a flicker of Rock–Hogan at WrestleMania X8 in the crowd's reaction: sometimes the audience becomes half the story.";
+  if(!line)continue;
+  // If a real-world reference includes an actual on-card wrestler, prefer
+  // another scene rather than implying PPW's own career has that history.
+  const nameClash=(line.includes("André")&&/hogan|andre/.test(field))||
+   (line.includes("Ramon")&&/michaels|ramon/.test(field))||
+   (line.includes("Austin")&&/hart|austin/.test(field))||
+   (line.includes("Undertaker")&&/undertaker|michaels/.test(field))||
+   (line.includes("Okada")&&/okada|omega/.test(field))||
+   (line.includes("Rock–Hogan")&&/rock|hogan/.test(field));
+  if(!nameClash&&review.slots[i]!.recap.length+line.length+2<=1800)
+   candidates.push({i,line});
+ }
+ if(!candidates.length)return review;
+ const selected=candidates[Math.floor(hash/4)%candidates.length]!;
+ const slots=review.slots.map((slot,i)=>i===selected.i?{
+  ...slot,recap:slot.recap.trimEnd()+"\n\n"+selected.line}:slot);
+ try{return validateRingsideCopy({...review,slots},show);}
+ catch{return review;}
+}
+
 /** An accurate scorecard paragraph cannot stand in for a major match review.
  * This quality gate applies only to newly generated articles and recovery,
  * never to certified World data or previously published cached reports.
