@@ -49,7 +49,7 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
     promotion_name:string;show_id:string;title:string;summary:string;
     source_kind:string}>(`
     SELECT year,week,story_key,desk,certainty,promotion_id,promotion_name,
-     show_id,title,summary,source_kind
+     coalesce(show_id,'') AS show_id,title,summary,source_kind
     FROM ppw_world_news_items
     WHERE world_id=$1 AND (year,week)>=($2::integer,$3::integer)
      AND (year,week)<=($4::integer,$5::integer)

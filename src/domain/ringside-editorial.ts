@@ -4,10 +4,12 @@ import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js
 import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
+import {ringsideProseQualityFailure,impossibleHoldCount,unseenCleanCount} from "./ringside-prose-quality.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
-// Updated editorial is versioned independently. Published v4 remains immutable.
-export const RINGSIDE_PROMPT_VERSION="ringside-v9";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v7";
+// New writing guidance is independently versioned. Previously published
+// reports stay immutable; an old completed show never needs a fresh API call.
+export const RINGSIDE_PROMPT_VERSION="ringside-v11";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v10";
 export const RINGSIDE_OLDER_VERSION="ringside-v6";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
@@ -131,8 +133,9 @@ const literalPattern=(value:string)=>[...value].map(ch=>
  "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
 function assertReferencedPromoTargetStayedOffScreen(
  source:ShowResultEntry,prose:string):void{
- if(source.type!=="SEGMENT"||source.segmentKind!=="PROMO"||
-  !source.segmentContext||
+ if(source.type!=="SEGMENT"||
+  !["PROMO","INTERVIEW","CHALLENGE","CONTRACT_SIGNING","VIDEO_PACKAGE"].includes(
+   source.segmentKind??"")||!source.segmentContext||
   source.segmentContext.targetPresence==="ON_SCREEN")return;
  const actors=new Set(source.segmentContext.actorNames.map(x=>x.toLocaleLowerCase()));
  for(const name of source.segmentContext.targetNames){
@@ -142,7 +145,7 @@ function assertReferencedPromoTargetStayedOffScreen(
    "(?:^|[^\\p{L}\\p{N}])"+target+
    "(?:\\s+|['’]s\\s+)"+
    "(?:answered|replied|responded|interrupted|stepped|walked|ran|"+
-   "charged|stood|approached|entered|arrived|appeared|performed|"+
+   "charged|stood|approached|entered|arrived|appeared|emerged|came\\s+(?:down|out|to)|performed|"+
    "executed|landed|hit|launched|gestured|watched|stared|smirked|"+
    "loomed|grabbed|raised|lifted|attacked|struck|climbed)\\b","iu");
   const physical=new RegExp(
@@ -187,7 +190,67 @@ export function removeVerbatimRecapEchoes(recap:string):string{
  }).filter(p=>p.trim()).join("\n\n");
 }
 
-export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
+/** Dialogue is an on-air fact, not a licence for a journalist to write
+ * wrestler speeches. Only manager-authored quotations are permissible.
+ */
+function assertNoUnscriptedDialogue(entry:ShowResultEntry,prose:string):void{
+ if(entry.type!=="SEGMENT")return;
+ const quoted=/[“"]([^”"]{28,210})[”"]/gu;
+ const authorised=(entry.summary+" "+JSON.stringify(
+  entry.segmentContext?.scriptedActions??[])).normalize("NFKC").toLowerCase()
+  .replace(/\s+/g," ");
+ for(const occurrence of prose.matchAll(quoted)){
+  const quote=occurrence[1]?.trim()??"";
+  const preceding=prose.slice(Math.max(0,(occurrence.index??0)-100),
+   occurrence.index??0);
+  const isSpeech=/\b(?:said|shouted|yelled|declared|announced|promised|snarled|demanded|told|replied|warned|delivered the line|claimed)\b/i.test(preceding)||
+   /\b(?:i|we|you|my|your|our|me|us)\b/i.test(quote);
+  if(!isSpeech)continue;
+  const known=quote.normalize("NFKC").toLowerCase().replace(/\s+/g," ");
+  if(!authorised.includes(known))
+   throw new Error("Ringside invented a direct quotation that was never scripted");
+ }
+}
+/** Attribute a named signature/finisher to its actual performer.
+ * The receiving wrestler may still kick out of it; that's the drama.
+ * Do not confuse a kick-out with executing somebody else's finisher.
+ */
+function assertMoveExecutionOwnership(entry:ShowResultEntry,prose:string):void{
+ if(entry.type!=="MATCH")return;
+ const cast=entry.performerIdentities??[];
+ const words=moveSurface(prose);
+ const moves=new Map<string,Set<string>>();
+ for(const wrestler of cast)for(const move of
+  [...wrestler.signatureMoves,...wrestler.finishingMoves]){
+  const key=moveSurface(move);
+  if(key.length<7)continue;
+  const owners=moves.get(key)??new Set<string>();
+  owners.add(wrestler.personId);moves.set(key,owners);
+ }
+ for(const [move,owners] of moves){
+  if(!words.includes(move))continue;
+  for(const wrestler of cast){
+   if(owners.has(wrestler.personId))continue;
+   const full=moveSurface(wrestler.ringName);
+   const aliases=[full];
+   const last=full.split(" ").at(-1)??"";
+   if(last.length>=4&&cast.filter(p=>
+    moveSurface(p.ringName).endsWith(" "+last)).length===1)
+    aliases.push(last);
+   for(const actor of new Set(aliases)){
+    // Explicit use by a non-owner; does not match "MJF kicked out of...".
+    const pattern=new RegExp("(?:^|\\s)"+literalPattern(actor)+
+     "\\s+(?:hit|hits|landed|lands|delivered|delivers|executed|executes|used|uses|unleashed|unleashes)"+
+     "(?:\\s+[^\\s]+){0,12}\\s+"+literalPattern(move)+"(?:\\s|$)","u");
+    if(pattern.test(words))
+     throw new Error("Ringside attributed a named finishing move to the wrong wrestler");
+   }
+  }
+ }
+}
+
+export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
+ options:{styleWarningOnly?:boolean}={}):RingsideCopy{
  const v=shape(candidate);
  if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
   !printable(v.showHeadline,140)||!printable(v.opening,900)||
@@ -239,7 +302,10 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   }
  }
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
- if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result)\b/i.test(fullStory))
+ const voiceFailure=ringsideProseQualityFailure({
+  opening:v.opening as string,closing:v.closing as string,slots});
+ if(voiceFailure&&!options.styleWarningOnly)throw new Error(voiceFailure);
+ if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result|protected victory|official-approved distraction|certified finish|certified decision|booked winner|booked result)\b/i.test(fullStory))
   throw new Error("Ringside leaked technical simulation terminology");
  if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b|\b[0-5](?:\.\d{1,2})?[\s\-\u2010-\u2015]*stars?\b/i.test(fullStory))
   throw new Error("Ringside leaked numerical score into editorial");
@@ -252,7 +318,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   // A model-authored spot is flavour, not authority to create permanent
   // consequences. Confirmed fallout appears separately in the official UI.
   const goldClaims=source.type==="MATCH"&&
-   [...prose.matchAll(/\b(?:captur(?:e|ed|es|ing)|claim(?:ed|s|ing)|win(?:s|ning)?|secur(?:e|ed|es|ing))\s+(?:(?:the|a|an|his|her|their|vacant|world|tag|women's|intercontinental|universal|heavyweight|singles)\s+){0,4}(?:title|championship|gold|belt)\b/gi)]
+   [...prose.matchAll(/\b(?:captur(?:e|ed|es|ing)|claim(?:ed|s|ing)|win(?:s|ning)?|won|secur(?:e|ed|es|ing))\s+(?:(?:the|a|an|his|her|their|vacant|world|tag|women's|intercontinental|universal|heavyweight|singles)\s+){0,4}(?:title|championship|gold|belt)\b(?!\s+(?:shot|opportunity|match|contract|chance))/gi)]
     .some(hit=>{
      const before=prose.slice(Math.max(0,(hit.index??0)-35),hit.index);
      return !/(?:\b(?:did|could|would|will|does|do)\s+not|\b(?:never|didn't|couldn't|wouldn't|failed\s+to|unable\s+to))\s*$/i.test(before);
@@ -263,6 +329,8 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   // character or medical record, not a writer's improvised description.
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
+  assertNoUnscriptedDialogue(source,prose);
+  assertMoveExecutionOwnership(source,prose);
   assertReferencedPromoTargetStayedOffScreen(source,prose);
   assertSpokenAngleStayedSpoken(source,prose);
   // A declared turn against a rival is not proof the two were partners.
@@ -278,10 +346,35 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
    throw new Error("Invented interference");
   if(source.type==="MATCH"){
    validateWrestlingMechanics(source,prose);
+   if(["CLEAN_PIN","FLASH_PIN"].includes(source.outcome)){
+    if(impossibleHoldCount(slot.recap))
+     throw new Error("Ringside counted a clean pin while a submission hold remained locked");
+    if(unseenCleanCount(slot.recap))
+     throw new Error("Ringside counted a clean pin while the referee was looking away");
+   }
    // A generated near-fall is fine; declaring that the defeated wrestler
    // actually pinned/submitted the recorded winner is not.
    const winners=source.matchContext?.winnerNames??[];
    const opponents=source.matchContext?.sides.flat()??[];
+   // The referee must not count three on the official WINNER'S shoulders.
+   // This inversion appeared in a published Místico/Regal foreign-object
+   // recap even though the names and finish otherwise passed validation.
+   if(["CLEAN_PIN","FLASH_PIN","FOREIGN_OBJECT","PROTECTED_FINISH"].includes(source.outcome)){
+    for(const winner of winners){
+     const escaped=[...winner].map(ch=>
+      "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
+     const badPin=new RegExp(
+      "(?:count(?:ed|s|ing)?\\s+(?:the\\s+)?(?:full\\s+)?three|"+
+      "(?:three[-\\s]?count|pinfall|pinned|covered|cover(?:ed)?\\s+for\\s+three))"+
+      "[^.!?]{0,95}\\b(?:on|over|against)\\s+"+
+      escaped+"[’']s\\s+shoulders\\b","iu");
+     const reversedCover=new RegExp(
+      "\\b(?:count(?:ed|s)?\\s+(?:the\\s+)?three|pinned|covered)"+
+      "[^.!?]{0,35}\\b"+escaped+"\\s+for\\s+(?:the\\s+)?(?:three|pin)","iu");
+     if(badPin.test(prose)||reversedCover.test(prose))
+      throw new Error("Ringside counted a pin on the official winner's shoulders");
+    }
+   }
    const language=prose.toLowerCase();
    for(const loser of opponents.filter(name=>!winners.includes(name))){
     for(const winner of winners){
@@ -353,32 +446,41 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  if(!raw||!Array.isArray(raw.slots)||raw.slots.length!==show.entries.length||
   show.entries.length<4)return null;
  const maxFallback=Math.min(2,Math.floor(show.entries.length/3));
- const ordinals=["opening","second","third","fourth","fifth","sixth",
-  "seventh","eighth","ninth","tenth","eleventh","twelfth",
-  "thirteenth","fourteenth","fifteenth","sixteenth","seventeenth",
-  "eighteenth","nineteenth","twentieth","twenty-first","twenty-second",
-  "twenty-third","twenty-fourth","twenty-fifth","twenty-sixth",
-  "twenty-seventh","twenty-eighth","twenty-ninth","thirtieth"];
- const ordinal=(n:number)=>ordinals[n]??"later";
+ // When one AI slot fails, report its actual wrestlers and official method
+ // instead of printing the old "decision in the ring" non-story. These
+ // sentences contain no invented moves, dialogue, feud outcome or scorer.
  const base:RingsideCopy={
   showHeadline:"Ringside: "+(show.showName??"The show").slice(0,90),
-  opening:"The crowd gathered for a full night of wrestling.",
-  closing:"The final bell gave the audience plenty to discuss.",
-  slots:show.entries.map((entry,i)=>{
+  opening:(show.promotionName??"The promotion")+" presented "+
+   (show.showName??"its next card")+". Every finish below comes from the show.",
+  closing:"The bell has sounded. What the promotion does with those results remains to be seen.",
+  slots:show.entries.map(entry=>{
    if(entry.type==="SEGMENT"){
-    const angleIndex=show.entries.slice(0,i).filter(e=>e.type==="SEGMENT").length;
-    const result=entry.outcome==="REFUSED"?"was refused":
-     entry.outcome==="INTERRUPTED"?"was interrupted":"took place";
-    return {slotId:entry.slotId,headline:"A moment outside the ring",
-     recap:"The "+ordinal(angleIndex)+" segment of the evening, "+
-      entry.headline.replace(/[.!?]+$/,"")+", "+result+
-      ". The audience has seen the outcome, whatever the intent."};
+    const context=entry.segmentContext;
+    const speaker=context?.actorNames.join(" & ")??"";
+    const targets=context?.targetNames.join(" & ")??"";
+    const segment=(entry.segmentKind??"SEGMENT").replaceAll("_"," ").toLowerCase();
+    const people=targets&&context?.targetPresence==="ON_SCREEN"?
+     speaker+" and "+targets:speaker;
+    const action=entry.outcome==="REFUSED"?
+     "The proposal was refused on air.":
+     entry.outcome==="INTERRUPTED"?
+      "The scene was interrupted before its planned end.":
+      "The segment aired without a reported change to the match card.";
+    const names=targets&&context?.targetPresence==="MENTIONED"?
+     " "+targets+" was named but did not appear on camera.": "";
+    return {slotId:entry.slotId,
+     headline:(entry.headline||((people||"The cast")+"'s "+segment)).slice(0,140),
+     recap:("In card segment "+(entry.position+1)+", "+
+     (people||"The participants")+" took part in a "+segment+
+      " on "+(show.showName??"the show")+". "+action+names).slice(0,1600)};
    }
+   const sides=entry.matchContext?.sides??[];
    const names=entry.matchContext?.winnerNames??[];
-   const winner=names.length?names.join(" & "):"The winning side";
-   // Recovered editorial must preserve every unusual certified finish, not
-   // collapse I Quit, Casket, Iron Man or other stipulations to "won the match".
-   // This is pure local fallback: no second model call or history query.
+   const winner=names.length?names.join(" & "):"The contest";
+   const opponents=sides.filter(side=>!side.some(n=>names.includes(n)))
+    .flat().filter(Boolean).slice(0,5).join(" & ");
+   const format=(entry.matchContext?.format??"match").replaceAll("_"," ").toLowerCase();
    const finish:Record<string,string>={
     CLEAN_PIN:"secured a clean pinfall",FLASH_PIN:"snatched a sudden pinfall",
     SUBMISSION:"earned a submission victory",
@@ -394,11 +496,21 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
     VERBAL_SURRENDER:"won when the opponent verbally surrendered, saying 'I quit'",
     FIRST_BLOOD:"won after the opponent was the first to bleed",
     CASKET_CLOSE:"won by shutting the casket lid on the opponent"};
-   const boutIndex=show.entries.slice(0,i).filter(e=>e.type==="MATCH").length;
-   return {slotId:entry.slotId,headline:"The decision in the ring",
-    recap:"The "+ordinal(boutIndex)+" bout belonged to "+winner+", who "+
-     (finish[entry.outcome]??"won the match")+
-     ". The result settled the contest in front of the crowd."};
+   const result=names.length?winner+" "+(finish[entry.outcome]??"won the match"):
+    "The contest ended without a recorded winning side";
+   const reaction=entry.crowdResponse>=75?
+    "The crowd responded strongly to the decision.":
+    entry.crowdResponse<45?"The response was noticeably quiet.":
+     "The reaction was mixed.";
+   const matchup=sides.length>=2?sides.map(side=>side.join(" & ")).join(" against "):
+    (opponents?winner+" against "+opponents:winner);
+   const when=entry.fallout?.actualMinutes!==undefined&&
+    entry.fallout.actualMinutes!==null?
+    " After "+entry.fallout.actualMinutes+" minutes, ":" ";
+   return {slotId:entry.slotId,
+    headline:(entry.headline||winner+(opponents?" defeats "+opponents:" wins")).slice(0,140),
+    recap:("In contest "+(entry.position+1)+", "+matchup+" met in a "+format+"."+
+     when+result+". "+reaction).slice(0,1750)};
   })
  };
  try{validateRingsideCopy(base,show);}catch{return null;}
@@ -428,18 +540,69 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
 }
 
 /** Atmospheric description for the writer; the UI retains canonical numbers. */
-const crowdMood=(n:number)=>n>=84?"electric":n>=70?"loud":n>=56?"engaged":
+const crowdMood=(n:number)=>n>=84?"strongly responsive":n>=70?"loud":n>=56?"engaged":
  n>=42?"divided":n>=28?"muted":"quiet";
+/** One truthful editorial angle per slot. The previous round-robin cue
+ * encouraged the model to invent "shifting allegiance" in unrelated matches.
+ * These are writing priorities, never new canonical event facts.
+ */
+export function ringsideEditorialLens(e:ShowResultEntry):string{
+ if(e.type==="SEGMENT"){
+  if(["INTERVIEW","PROMO","CHALLENGE"].includes(e.segmentKind??""))
+   return "character point; no invented entrance";
+  if(["ATTACK","POST_MATCH_ASSAULT","RESCUE"].includes(e.segmentKind??""))
+   return "booked action and response";
+  return "filmed beat; no unseen change";
+ }
+ if(e.outcome==="FOREIGN_OBJECT")
+  return "referee sightline; cheating; winner";
+ if(e.outcome==="DISQUALIFICATION")
+  return "DQ foul; awarded winner";
+ if(e.outcome==="VERBAL_SURRENDER")
+  return "resistance; spoken surrender, no tap";
+ if(e.outcome==="RETRIEVAL"||e.outcome==="MOST_FALLS")
+  return "stipulation pressure; certified win";
+ const minutes=e.fallout?.actualMinutes??e.matchContext?.plannedMinutes??0;
+ const rating=e.fallout?.ratingStars;
+ if(minutes>0&&minutes<=6)
+  return "brief, decisive action";
+ const format=wrestlingMatchIQ(e)?.format;
+ if(format==="TAG"||format==="MULTI_TEAM")
+  return typeof rating==="number"&&rating<2.5?
+   "legal tags; awkward pacing":
+   "legal tags; team pacing";
+ if(typeof rating==="number"&&rating<2.5)
+  return "what fell flat; no false ovation";
+ if(typeof rating==="number"&&rating>=4)
+  return "strong exchange; precise finish";
+ return "tactics; certified finish";
+}
 
+/** A big reaction must be earned by the actual match and crowd, not
+ * manufactured for every short bout. A two-count is temporary ring colour,
+ * never a certified finish or a claim the wrestler already won.
+ */
+export function ringsideDramaCue(entry:ShowResultEntry):string|null{
+ if(entry.type!=="MATCH")return null;
+ if(!["CLEAN_PIN","FLASH_PIN","SUBMISSION","SECOND_FALL"].includes(entry.outcome))
+  return null;
+ // A submission-only stipulation cannot have a legitimate pin near-fall.
+ if(entry.outcome==="SUBMISSION"&&
+  /^(?:Submission(?: Only)? Match|Submission Only)\b/i.test(
+   entry.matchContext?.format??""))return null;
+ const mins=entry.fallout?.actualMinutes??entry.matchContext?.plannedMinutes??0;
+ const stars=entry.fallout?.ratingStars??0;
+ if(mins<12||stars<3.75||entry.crowdResponse<70)return null;
+ return stars>=4.25&&entry.crowdResponse>=80?"PEAK":"EARNED";
+}
 /** Send relevant certified facts once, without redundant IDs and analytics. */
 export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
  const slotStories=verifiedSlotStoryThreads(show,memory);
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   audienceMood:crowdMood(show.crowdResponse),
   slots:show.entries.map((e,i)=>({
-   editorialLens:["ring psychology","shifting crowd allegiance","pacing and the finishing stretch",
-    "the wrestlers\u0027 distinct personalities","wrestling spectacle"][
-     (i+[...show.showId].reduce((sum,ch)=>sum+ch.charCodeAt(0),0))%5],
+   editorialLens:ringsideEditorialLens(e),
+   ...(ringsideDramaCue(e)?{dramaticCue:ringsideDramaCue(e)}:{}),
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
    ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
@@ -448,11 +611,10 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
      format:wrestlingMatchIQ(e)!.format,
      tempo:(e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)<7?"BRIEF":
       (e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)>=20?"LONG":"STANDARD",
-     beat:wrestlingMatchIQ(e)!.format==="TAG"?"tag drama optional":
-      wrestlingMatchIQ(e)!.format==="MULTI_TEAM"?"team tags; no guessed rotation":
-      wrestlingMatchIQ(e)!.format==="BATTLE_ROYAL"?"survive, over-rope eliminations":
-      wrestlingMatchIQ(e)!.format==="MULTI_PERSON"?"break covers; no tags":
-      "build to one legal finish"
+     ...(wrestlingMatchIQ(e)!.format==="TAG"?{beat:"tag drama optional"}:
+      wrestlingMatchIQ(e)!.format==="MULTI_TEAM"?{beat:"team tags; no guessed rotation"}:
+      wrestlingMatchIQ(e)!.format==="BATTLE_ROYAL"?{beat:"survive, over-rope eliminations"}:
+      wrestlingMatchIQ(e)!.format==="MULTI_PERSON"?{beat:"break covers; no tags"}:{})
     }}:{}),
     sides:e.matchContext.sides,winners:e.matchContext.winnerNames,
     ...(e.matchContext.finishProp?{bookedWeapon:finishPropLabel(e.matchContext.finishProp)}:{}),
@@ -477,45 +639,50 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
 export const RINGSIDE_STYLE_GUIDE=`You are Marty Vale, PPW Ringside's sharp, funny-when-earned
 veteran wrestling columnist. Write as a smark who WATCHED the action,
 not a game engine, booker, press release or omniscient narrator.
-Have opinions: praise earned psychology, criticise flat spells, relish
-a crafty heel or fiery babyface. Humour is occasional, dry and specific.
-No borrowed writer's phrases, stock hype or invented history.
+Have opinions grounded in EVIDENCE. Show one memorable exchange, mistake
+or finish that explains why THIS match was worth seeing. Criticise flat bouts.
+Dry humour sparingly; never just list moves or announce crowd approval.
 
-Write ONE chronological show article. The opening sets the atmosphere;
-each slot advances the night without restarting it; closing gives a
-distinct editorial judgement rather than re-listing winners.
-For EVERY match: show its start, distinct personalities, and a turn in the action,
-and ONE decisive finish. Near-falls are not victories. Strong bouts get
-90–150 words, squashes 55–100, angles 35–85; weaker matches read weakly.
-Be specific, not formulaic ("In the end", "The crowd erupted",
-"momentum shifted"). Never recycle sentences, moves or finishes.
+Write ONE chronological article. Build match psychology from the verified
+winner, finish, wrestlers, audience, duration and scoped storyThread.
+For EVERY match, give tactical contrast, a turning point and ONE decisive finish, legally.
+Near-falls are not victories. Strong bouts 90–150 words, squashes 55–100,
+angles 35–85. Criticise weak bouts; not everything steals the show.
+Only slot.dramaticCue=PEAK may BURST into a live count:
+"ONE! TWO! ... KICKOUT!" or a rare earned "HOLY SHIT!" at a plausible
+near-fall. slot.dramaticCue=EARNED merits interest, not a miracle. Do not copy,
+force profanity, or manufacture miracles in short or flat matches.
+A two-count stops BEFORE THREE; the certified finish still happens.
+Only the move's verified wrestler may land a named finisher. Someone
+kicking OUT of that move is the recipient, not its performer.
+Repertoire enables plausible short-lived colour, not a certified spot.
+Return to clear, varied journalism after the moment.
+Headlines must be specific, not bloated finish descriptions; do not repeat
+them in the first sentence. Slot.editorialLens sets emphasis, NOT new facts.
+Avoid "In the end", "momentum shifted", recycled moves, "looming storms",
+"unstoppable auras", "hushed reverence", "electric crowds" and invented
+camera shots. Motives and relationships need on-air evidence.
 
-The slot records are AUTHORITATIVE: participant names, match format,
-winner, winning method, title movement, injured wrestlers, interference,
-angle outcomes and audience mood. If slot.fallout.title.changed is false,
-slot.fallout.title.winnerName names the MATCH winner, not necessarily the
-champion. The priorHolderName retains the belt when different from the
-match winner; with no prior holder the title stays vacant. Only changed:true
-certifies a new champion. Do not call a challenger's DQ win a title defence. Match.wrestlingIQ gives the legal
-format and psychology; slot.match.stipulationRules gives the real
-winning condition and suggested dramatic beats. Those beats and
-possibleSpots are creative possibilities, NOT certified event records.
-Invent only plausible, temporary bell-to-bell colour (counters,
-selling, grappling, strikes, near-falls, crowd texture, taunts),
-not a different winner, exact scores, outside attacker, title change,
-serious injury, debut, actual quotation or permanent storyline consequence.
-Treat one wrestler's repertoire as available moves, never proof a
-particular move caused the finish. Never assign another wrestler's
-signature move. Use official audience mood qualitatively.
+The slot records are AUTHORITATIVE for cast, format, finish, title
+movement, injuries, interference, angle outcome and crowd. A title changes
+ONLY when slot.fallout.title.changed is true; if false, winnerName is
+the MATCH winner, not necessarily the champion, and priorHolderName
+keeps the belt. No prior holder means vacant. No invented title defence.
+Match.wrestlingIQ and stipulationRules set legal win methods and pacing;
+possibleSpots are possibilities, not settled action. Invent temporary
+bell-to-bell colour, NOT winners, quotes, scores, attacks, injuries, title
+changes, debuts, turns or any lasting consequence. Never assign another
+wrestler's signature and scale reactions to the verified crowd.
+Singles: two wrestlers. No tags or tag partners.
+Tags/trios: only one wrestler PER TEAM is legal; apron partners must tag
+before scoring; hot tags optional. Never invent a team fall scorer.
+Preserve multi-team sides. Triple/four-way: there are NO tags.
+Battle royals: over-the-top eliminations, not pins. Follow referee rules.
 
-Singles: only two wrestlers. No tags or tag partners. Tags/trios:
-only one wrestler PER TEAM is legal; partners wait on the apron.
-A legal tag is required before a new wrestler scores.
-Hot tags are optional. No invented precise fall scorer for team wins.
-Multi-team formats preserve their legal sides. Triple threats/four-ways:
-all individuals are legal; there are NO tags. Battle royals require over-the-top
-eliminations, not pinfalls. Follow stipulation referee rules.
-
+In a pinfall, ONLY the losing wrestler's shoulders are counted down. Never
+write that the referee counted three on the official WINNER's shoulders,
+even in a disputed or foreign-object finish. Recheck winner, defeated
+wrestler, cover and method before writing the last sentence.
 CLEAN_PIN requires a legal three-count; FLASH_PIN a sudden roll-up.
 SUBMISSION is a tap/stoppage, NOT a pin. Samoa Joe's Coquina Clutch
 cannot score a pin; Muscle Buster may precede one. An earlier hold can
@@ -537,40 +704,21 @@ a table break; Last Man Standing an unanswered ten-count; First Blood
 the first bleeding; Casket the closed lid. Follow the slot's explicit
 stipulationRules if present.
 
-Angles are filmed scenes, not bouts. Use verified initiator, victim,
-location, outcome, scene purpose and visible scripted aftermath.
-angle.scriptedActions are the ONLY directed beats: narrate them IN ORDER,
-preserving exact quoted lines. With spoken-only actions, NO wrestling moves, strikes, dropkicks or brawls.
-Presence alone does not imply contact; only explicit ATTACK, FIGHT_BACK,
-RESCUE or BETRAY allows it, without unrelated moves or new outcomes.
-In a PROMO, actorNames are speakers. The verified angle.targetPresence
-field decides whether targetNames are merely MENTIONED or ON_SCREEN.
-If MENTIONED (or unrecorded legacy presence), the named target must NOT
-enter, respond, gesture, attack, sell or deliver a move. If ON_SCREEN,
-they may appear as booked, but do not invent the outcome of a confrontation
-or any additional uncast wrestler. Being named is not being present.
-Do not invent signature physical traits, limps, scars, body language
-defects or artificial "eyes shining" flourishes. Temporary selling in
-an actual match is different from inventing a wrestler's character.
-For interviews, celebrations, contract signings or video packages,
-do not invent match moves, attackers, dialogue in quotes or combat.
-A scripted BLOODIED appearance is not a medical injury. An intent
-to build a rivalry does not prove heat increased. Refusal or
-interruption cannot be narrated as the planned outcome happening.
-No unexplained outsider, weapon or new participant.
-
-Only a slot's supplied storyThread can establish HISTORY; at most
-one relevant callback, never a new feud, feud payoff or invented
-earlier confrontation. previousSharedMatch does NOT prove a rivalry.
-An earlier same-card scene does not prove retaliation. No false
-promises, backstage conversations or changes of allegiance.
-
-Use wrestling terminology sparingly and accurately: heat, pop,
-hot tag, near-fall, selling, go-home stretch, heel, babyface.
-Never expose scores, star ratings, technical labels ("protected
-finish", "booking intent", "recorded finish", "simulation"),
-staff mechanics or ratings equations. No pronoun or gender
-assumptions not supplied by identities.
+Angles are filmed scenes, NOT bouts. Narrate angle.scriptedActions
+in exact recorded order; any direct quotes must come from those actions.
+Speech alone cannot imply a strike, move or brawl. Spoken-only angles permit NO wrestling moves, strikes, dropkicks or brawls. Only ATTACK,
+FIGHT_BACK, RESCUE or BETRAY authorises physical conflict. A PROMO's
+actorNames speak; angle.targetPresence distinguishes targets MENTIONED
+(off-camera, unable to enter, reply or fight) from targets ON_SCREEN.
+Do not invent an outcome, outsider, entrance, camera shot, physical
+character trait, friendship or partner history. Scripted BLOODIED
+appearance isn't an injury. Planned retaliation isn't completed
+retaliation. A refusal or interruption isn't success.
+Only a slot's scoped storyThread proves prior HISTORY. One relevant
+callback maximum; absent history means no imagined feud, revenge,
+partnership or payoff. An earlier shared match alone proves no rivalry.
+Use wrestling terms naturally. Never expose star ratings, mechanics,
+technical booking labels or equations. Avoid unsupported gender assumptions.
 No extra prose or markdown outside the response JSON. Required keys
 are card_0, card_1 etc (every card_N key once), headline and recap only.
 Do not emit slotId fields: the server restores immutable official IDs.

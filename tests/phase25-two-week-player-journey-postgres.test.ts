@@ -348,6 +348,8 @@ test("player books and certifies two weeks with a renewed show-week contract and
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
+    "ppw_world_moments","ppw_world_news_items","ppw_world_news_awards",
+    "ppw_world_news_weeks",
     "ppw_programme_finales","ppw_programme_postshow_directions",
     "ppw_programme_resolved_activities","ppw_wrestler_relationship_changes",
     "ppw_tag_working_pair_appearances","ppw_wrestler_relationships",

@@ -456,6 +456,7 @@ test("390px: referee changes dangerous match rules only on request; Road Agent t
  await expect(review).toContainText("18 min");
  await dialog.getByRole("button",{name:"Complete match"}).click();
  await page.getByRole("button",{name:"Save changes"}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
  expect(saved).toHaveLength(1);
  const recorded=(saved[0] as {matches:{payload:{plannedFinish:string;
   plannedLengthMinutes:number;scriptedWinnerSide:string}}[]}).matches[0]!.payload;

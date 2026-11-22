@@ -61,24 +61,30 @@ story_scene AS (
 ), story_wrestler AS (
  SELECT 'LOCKER_ROOM'::text AS kind,
   'story-scene:'||s.programme_id||':'||s.show_id||':'||s.slot_id||':'||s.sender_key AS evidence,
-  s.sender_key,'About that chapter we put on air'::text AS subject,
+  s.sender_key,'That moment on '||s.show_name AS subject,
   (CASE WHEN s.finale_delivered THEN
-    'The '||lower(replace(s.segment_kind,'_',' '))||' on '||s.show_name||
-    ' was the ending you actually booked for my character story. '
+    'That '||lower(replace(s.segment_kind,'_',' '))||' on '||s.show_name||
+    ' was the ending we were working towards. '
    WHEN s.programme_format='SOLO' THEN
-    'My '||lower(replace(s.segment_kind,'_',' '))||' on '||s.show_name||
-    ' gave my character an on-screen chapter. '
+    'That '||lower(replace(s.segment_kind,'_',' '))||' on '||s.show_name||
+    ' was a chance to show people what I can do. '
    WHEN s.programme_format='RELATIONSHIP' THEN
-    'I was part of the '||lower(replace(s.segment_kind,'_',' '))||
-    ' on '||s.show_name||'. It advanced our relationship story on screen. '
-   ELSE 'My part in the faction''s '||lower(replace(s.segment_kind,'_',' '))||
-    ' on '||s.show_name||' was shown to the crowd. ' END)||
-  (CASE WHEN s.crowd_response>=70 THEN 'The audience got behind that moment. '
-   WHEN s.crowd_response<45 THEN 'The crowd was quieter than we hoped. '
-   ELSE 'The crowd gave us a mixed reaction. ' END)||
+    'That '||lower(replace(s.segment_kind,'_',' '))||
+    ' on '||s.show_name||' gave us something to work with. '
+   ELSE 'We got the faction in front of people with that '||
+    lower(replace(s.segment_kind,'_',' '))||' on '||s.show_name||'. ' END)||
+  (CASE WHEN s.crowd_response>=70 THEN
+    'They listened. I could feel it. '
+   WHEN s.crowd_response<45 THEN
+    'I wanted more from that crowd, to be fair. '
+   ELSE 'Some people were with me. Others need convincing. ' END)||
   (CASE WHEN s.finale_delivered THEN
-    'That story is finished; my next direction is still yours to decide.'
-   ELSE 'I want a distinct next beat, not an automatic turn, alliance or rematch.' END)
+    'I am happy to leave that one there. What is next for me?'
+   WHEN s.programme_format='SOLO' THEN
+    'Give me another reason to pick up a mic; I do not want to repeat myself.'
+   WHEN s.programme_format='RELATIONSHIP' THEN
+    'I would rather show the next change between us than explain it in another speech.'
+   ELSE 'Next time, give us something to do instead of just standing together.' END)
    AS body,
   'PROGRAMMES'::text AS action,s.week_index AS created_week_index,
   s.sender_key AS target_person_id,s.sender_name
@@ -86,20 +92,24 @@ story_scene AS (
 ), story_creative AS (
  SELECT 'STAFF'::text AS kind,
   'story-staff:'||s.programme_id||':'||s.show_id||':'||s.slot_id||':'||e.staff_id AS evidence,
-  e.staff_id AS sender_key,'Creative review of an on-air storyline'::text AS subject,
-  (CASE s.programme_format WHEN 'SOLO' THEN 'The solo character story'
-   WHEN 'RELATIONSHIP' THEN 'The relationship story'
-   ELSE 'The faction story' END)||
-  ' had a certified '||lower(replace(s.segment_kind,'_',' '))||
-  ' on '||s.show_name||'. '||
-  (CASE WHEN s.crowd_response>=70
-   THEN 'The crowd responded strongly. Build on it without replaying the same angle. '
-   WHEN s.crowd_response<45
-   THEN 'The response was quiet. Consider clearer motivation or a different presentation before escalating. '
-   ELSE 'The response was mixed. Give the next beat a clearer reason to happen. ' END)||
+  e.staff_id AS sender_key,'Creative note: '||s.sender_name AS subject,
+  s.sender_name||'''s '||lower(replace(s.segment_kind,'_',' '))||
+  ' on '||s.show_name||' '||
+  (CASE WHEN s.crowd_response>=70 THEN
+    'caught the crowd. I would keep the attention on '||s.sender_name||
+    ': a short response or a fresh obstacle would be worth more than the same scene again. '
+   WHEN s.crowd_response<45 THEN
+    'did not get much back from the building. Next time, give '||s.sender_name||
+    ' a clearer point to make, and cut the speech if the room goes quiet. '
+   ELSE 'split the room. We could use that: let somebody disagree, or give '||
+    s.sender_name||' a sharper reason to speak next time. ' END)||
   (CASE WHEN s.finale_delivered THEN
-   'The approved ending was certified. That story is complete; choose the next direction in Programmes.'
-   ELSE 'The story remains yours to shape. No turn, friendship, stable membership or result was assumed.' END)
+   'That ending landed on air. I would start a new idea rather than reopen it.'
+   WHEN s.programme_format='SOLO' THEN
+   'This can stay a one-person story; no rival has to appear until you actually book one.'
+   WHEN s.programme_format='RELATIONSHIP' THEN
+   'The next piece should reveal something between the people involved.'
+   ELSE 'A faction works better when each person has a reason to stand with the others.' END)
    AS body,
   'PROGRAMMES'::text AS action,s.week_index AS created_week_index,
   NULL::text AS target_person_id,NULL::text AS sender_name

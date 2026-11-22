@@ -1,6 +1,6 @@
-/** The one certified-week World News publisher. Only immutable completed receipts,
- * genuine match ratings and completed angles are admissible evidence. No AI,
- * backstage conversations, contract desk, plans or rival private data is read.
+/** The certified-week World News publisher. Only completed show receipts,
+ * settled public contract-signing ledger events, and immutable results are
+ * admissible evidence. No drafts, pending bids or private contract terms.
  * Called within ADVANCE_RESOLVED_WORLD_WEEK's existing World transaction.
  */
 import type {SqlRows} from "./world-operations.js";
@@ -68,6 +68,33 @@ export interface WorldNewsStory{
  key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";
  promotionId:string;promotionName:string;showId:string;title:string;
  summary:string;sourceKind:"MATCH"|"ANGLE"|"TITLE"|"EVENT"|"CROWD";
+}
+/** World signings become public only after a signed ledger event is committed.
+ * This is news about employment, never a leak of competing private offers.
+ */
+export interface ConfirmedWorldSigning{
+ eventId:string;eventType:"CONTRACT_SIGNED"|"AI_STRATEGIC_TALENT_SIGNED"|"EMERGENCY_TALENT_SIGNED";
+ personName:string;promotionId:string;promotionName:string;
+}
+export function composeConfirmedSigningNews(
+ events:readonly ConfirmedWorldSigning[]):WorldNewsStory[]{
+ const seen=new Set<string>();
+ return events.filter(e=>
+  e.eventId.length>0&&e.personName.trim().length>0&&
+  e.promotionName.trim().length>0&&e.promotionId.trim().length>0&&
+  ["CONTRACT_SIGNED","AI_STRATEGIC_TALENT_SIGNED","EMERGENCY_TALENT_SIGNED"].includes(e.eventType))
+  .filter(e=>{const id=e.promotionId+":"+e.personName.toLowerCase();
+   if(seen.has(id))return false;seen.add(id);return true;})
+  .slice(0,8).map(e=>({
+   key:"signing:"+e.eventId,desk:"OFFICIAL" as const,
+   certainty:"CONFIRMED" as const,
+   promotionId:e.promotionId,promotionName:e.promotionName,
+   showId:"",sourceKind:"EVENT" as const,
+   title:e.personName+" signs with "+e.promotionName,
+   summary:e.personName+" has agreed a contract with "+e.promotionName+
+    ". The signing is confirmed; it does not establish an unbooked debut, "+
+    "a title opportunity or an immediate first appearance."
+  }));
 }
 const significant=new Set(["TURN","ATTACK","POST_MATCH_ASSAULT","DEBUT",
  "STABLE_EXIT","STABLE_INVITATION","RESCUE","CONFRONTATION","CHALLENGE"]);
@@ -496,7 +523,28 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
   publishedStories:weeklyStories
  });
  const followups=await continueWorldRumours(tx,worldId,year,week,weeklyStories);
- const stories=[...weeklyStories,...pressFollowups,...followups];
+ // One bounded publisher-only read. Other promotions' settled signings
+ // are public World news; pending offers and private wages are never shown.
+ const signings=await tx.query<{event_id:string;event_type:ConfirmedWorldSigning["eventType"];
+  person_name:string;promotion_id:string;promotion_name:string}>(`
+  SELECT e.event_id::text AS event_id,e.event_type,
+    person.name AS person_name,p.promotion_id,p.name AS promotion_name
+  FROM ppw_ledger_events e
+  JOIN ppw_people person ON person.world_id=e.world_id
+   AND person.person_id=e.payload->>'personId'
+  JOIN ppw_promotions p ON p.world_id=e.world_id
+   AND p.promotion_id=e.payload->>'promotionId'
+  WHERE e.world_id=$1 AND e.year=$2 AND e.week=$3
+   AND e.event_type IN ('CONTRACT_SIGNED','AI_STRATEGIC_TALENT_SIGNED',
+    'EMERGENCY_TALENT_SIGNED')
+  ORDER BY person.popularity DESC NULLS LAST,e.event_id ASC LIMIT 33`,
+  [worldId,year,week]);
+ if(signings.length>32)throw new Error("Certified signing news exceeds bounded World events");
+ const publicSignings=composeConfirmedSigningNews(signings.map(e=>({
+  eventId:e.event_id,eventType:e.event_type,personName:e.person_name,
+  promotionId:e.promotion_id,promotionName:e.promotion_name
+ })));
+ const stories=[...publicSignings,...weeklyStories,...pressFollowups,...followups];
  if(awards.length)await tx.query(`
   INSERT INTO ppw_world_news_awards(world_id,year,week,kind,
    promotion_id,promotion_name,show_id,show_name,slot_id,title,
@@ -516,7 +564,7 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
   INSERT INTO ppw_world_news_items(world_id,year,week,story_key,desk,certainty,
    promotion_id,promotion_name,show_id,title,summary,source_kind)
   SELECT $1,$2,$3,x.story_key,x.desk,x.certainty,x.promotion_id,
-   x.promotion_name,x.show_id,x.title,x.summary,x.source_kind
+   x.promotion_name,NULLIF(x.show_id,''),x.title,x.summary,x.source_kind
   FROM jsonb_to_recordset($4::jsonb) AS x(story_key text,desk text,certainty text,
    promotion_id text,promotion_name text,show_id text,title text,
    summary text,source_kind text)`,[worldId,year,week,

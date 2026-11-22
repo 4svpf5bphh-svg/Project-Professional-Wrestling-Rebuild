@@ -111,7 +111,7 @@ for(const width of [320,390]){
    await expect(fans.locator(".ppw-pop-copy").first())
     .toHaveCSS("color","rgb(255, 244, 242)");
   await expect(page.getByRole("heading",{name:"POST-SHOW MANAGEMENT BRIEF"})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"What needs your attention"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"What needs your attention"})).toHaveCount(0);
   await expect(page.getByRole("heading",{name:"The night in numbers"})).toBeVisible();
   await expect(page.locator(".ppw-manager-snapshot")).not.toHaveAttribute("open");
   await expect(page.locator(".ppw-manager-snapshot-fact").first()).toBeVisible();
@@ -223,7 +223,7 @@ for(const width of [320,390]){
   await page.getByRole("button",{name:"Check roster"}).click();
   await expect(page).toHaveURL(/#\/roster$/);
  });
- test(`Post-show handoff ${width}px gives a useful route for a strong clean card`,async({page})=>{
+ test(`Post-show handoff ${width}px keeps clean-card evidence without inventing a booking task`,async({page})=>{
   await page.setViewportSize({width,height:844});
   const one={...show,entries:[{...show.entries[0],
    fallout:{...show.entries[0]!.fallout,programmeSignal:null}
@@ -237,10 +237,15 @@ for(const width of [320,390]){
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await expect(page.getByText(/4.50 verified stars/)).toBeVisible();
-  await expect(page.getByRole("button",{name:"Plan a show"})).toHaveCount(0);
-  await page.getByRole("button",{name:"Open show planner"}).click();
-  await expect(page).toHaveURL(/#\/planner$/);
+  await expect(page.locator(".ppw-manager-snapshot-fact").first())
+   .toContainText("4.50★");
+  await expect(page.getByText(/4.50 verified stars/)).toHaveCount(0);
+  await expect(page.locator(".ppw-next-show-choice")).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Open show planner"})).toHaveCount(0);
+  await expect(page.getByRole("heading",{name:"The night in numbers"})).toBeVisible();
+  await expect(page.locator(".ppw-post-show-road-agent"))
+   .toContainText("The main event delivered.");
+  await expect(page).toHaveURL(/#\/results$/);
  });
 }
 
@@ -503,20 +508,16 @@ for(const skin of [
     skin.value==="FIGHT_NIGHT"?"rgb(23, 43, 60)":"rgb(240, 251, 212)";
    const accent=skin.value==="TERRITORY_TV"?"rgb(161, 72, 41)":
     skin.value==="FIGHT_NIGHT"?"rgb(169, 35, 60)":"rgb(226, 255, 89)";
-   const rivalry=root.locator(".ppw-rivalry-at-ringside").first();
-   await expect(rivalry).toBeVisible();
-   await expect(rivalry.locator(".ppw-ringside-rivalry-chapter strong"))
-    .toHaveCSS("color",ink);
-   await expect(rivalry.locator(".ppw-ringside-rivalry-chapter p"))
-    .toHaveCSS("color",ink);
+   await expect(root.locator(".ppw-rivalry-at-ringside")).toHaveCount(0);
+   await expect(root.locator(".ppw-result-verdict").first()).toBeVisible();
    await page.getByRole("button",{name:"Read Post-show Brief"}).click();
    const agent=root.locator(".ppw-post-show-road-agent");
    await expect(agent).toContainText("The main event delivered");
    await expect(agent.locator(".ppw-road-agent-voice").first()).toHaveCSS(
     "color",ink);
    await expect(agent.locator("h3")).toHaveCSS("color",accent);
-   await expect(agent.locator(".ppw-road-agent-observation")).toBeVisible();
-   await expect(agent.locator(".ppw-road-agent-observation")).toContainText("4.50 stars");
+   await expect(agent.locator(".ppw-road-agent-observation")).toHaveCount(0);
+   await expect(agent.locator(".ppw-road-agent-voice").first()).toBeVisible();
    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
     .toBeLessThanOrEqual(1);
   });
@@ -560,12 +561,8 @@ for(const width of [320,390]){
    .toHaveCSS("color","rgb(255, 200, 169)");
   await expect(report.locator(".ppw-result-verdict").first()).toContainText("Kenny Omega");
   await expect(report.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
-  const rivalry=report.locator(".ppw-rivalry-at-ringside").first();
-  await expect(rivalry).toBeVisible();
-  await expect(rivalry.locator(".ppw-ringside-rivalry-chapter strong"))
-   .toHaveCSS("color","rgb(22, 44, 86)");
-  await expect(rivalry.locator(".ppw-ringside-rivalry-chapter p"))
-   .toHaveCSS("color","rgb(22, 44, 86)");
+  await expect(report.locator(".ppw-rivalry-at-ringside")).toHaveCount(0);
+  await expect(report.locator(".ppw-result-verdict").first()).toBeVisible();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
   await expect(report.locator(".ppw-retro-chapter-head").last()).toContainText("AFTER THE SHOW");
   await expect(report.locator(".ppw-pop-post").first()).toHaveCSS(

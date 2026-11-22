@@ -406,6 +406,23 @@ test("20B wrestler rejection explains the actual guard without retaining prose",
 });
 
 
+test("HOT TAG cannot publish a victorious wrestler writing as their defeated opponent",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const source=postShowVoiceBrief(getPostShowVoiceBenchmark("i-quit")!.show);
+ const opponent=source.wrestler!.opponentNames[0]!;
+ const victor=source.wrestler!.displayName;
+ const falseIdentity="I, "+opponent+", felt the heat of that night. "+
+  victor+" turned the tables, and I couldn't keep up with that relentless attack.";
+ assert.equal(wrestlerVoiceRejectionReason(source,falseIdentity),"WRONG_SPEAKER");
+ assert.equal(validatePostShowVoiceCopy(source,{wrestler:{text:falseIdentity}}),null);
+ const falseLoss="I couldn't keep up with "+opponent+" tonight. "+
+  "That contest knocked me off my feet, but my next chapter starts now.";
+ assert.equal(wrestlerVoiceRejectionReason(source,falseLoss),"FALSE_LOSS");
+ const legitimate="I heard "+opponent+" surrender in the ring. "+
+  "It took everything I had to make him say it, and I own that win.";
+ assert.ok(validatePostShowVoiceCopy(source,{wrestler:{text:legitimate}})?.wrestler);
+});
+
 test("tag reaction can describe its team and result without naming every opponent",async()=>{
  const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
  const brief=getPostShowVoiceBenchmark("tag-standard")!.brief;
@@ -444,6 +461,26 @@ test("PPW local voices backfill rejected Groq slots without a second call",async
  const bare=fixture();
  const local=localPostShowVoiceCopy(bare);
  assert.equal(local?.roadAgent,null,"Staff voice needs an actual report");
+});
+
+test("Road Agent cannot switch a failing pairing to an unrelated show's star",()=>{
+ const show=fixture();
+ const documented={...show,staffReport:{
+  reporter:"Nico Sterling-Jones",staffId:null,headline:"The locker room",
+  praise:"The main event was strong",concern:"A rough pairing",
+  recommendation:"Try a different opponent",strongestMatchId:show.entries[0]!.slotId,
+  reviewedMatches:2
+ }} as CompletedShowView;
+ const original=postShowVoiceBrief(documented);
+ assert.ok(original.roadAgent);
+ const correct={...original,roadAgent:{...original.roadAgent!,
+  participantNames:["Samoa Joe","Jay Lethal"],
+  otherPerformers:["William Regal","Místico"]}};
+ const wrong="Consider booking William Regal in a future main event against a fresh opponent to re-establish chemistry and showcase his legacy.";
+ assert.equal(validatePostShowVoiceCopy(correct,{roadAgent:{note:wrong}})?.roadAgent??null,null);
+ const right="Consider changing Jay Lethal's opponent after the flat Samoa Joe match. Let the next card test a different pairing.";
+ assert.ok(validatePostShowVoiceCopy(correct,{roadAgent:{note:right}})?.roadAgent);
+ assert.doesNotMatch(postShowVoicePrompt(correct)[1]!.content,/William Regal|Místico/);
 });
 
 test("Road Agent advises on the certified issue without invented injury or chemistry",()=>{

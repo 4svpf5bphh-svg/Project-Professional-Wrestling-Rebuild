@@ -150,7 +150,7 @@ test("iPhone plans and removes a real match or angle payoff without auto-ending 
   .selectOption("FINAL_CONFRONTATION");
  await page.getByRole("button",{name:"Plan on-screen finale"}).click();
  await expect(page.getByText(/Finale planned · Armageddon/)).toBeVisible();
- await expect(page.getByText(/only the certified event can end this rivalry/i)).toBeVisible();
+ await expect(page.getByText(/only an on-screen chapter can finish this story/i)).toBeVisible();
  await expect(page.locator(".ppw-programme-card")).toHaveCount(1);
  await expect(page.getByRole("heading",{name:"Concluded rivalries"})).toHaveCount(0);
  await page.getByRole("button",{name:"Remove planned finale"}).click();

@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {generateGroqReview,immutableResultDigest,ringsideResponseSchema,RingsideGenerationError} from "../src/db/ringside-commentary.js";
+import {generateGroqReview,inspectRingsidePrompt,immutableResultDigest,ringsideResponseSchema,RingsideGenerationError} from "../src/db/ringside-commentary.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 const show:CompletedShowView={showId:"show",year:1,week:2,crowdResponse:71,
  matchCount:1,angleCount:0,entries:[{slotId:"m",position:0,type:"MATCH",
@@ -260,4 +260,83 @@ test("Groq response headers report real account RPD and model TPM, never inferre
  actual.set("x-ratelimit-remaining-requests","978");
  actual.set("x-ratelimit-remaining-tokens","impossible");
  assert.equal(groqResponseLimits(actual),null);
+});
+
+test("two-attempt Groq budget improves an over-written match rather than publishing stock prose",async()=>{
+ let calls=0;
+ const transport:typeof fetch=async (_url,init)=>{
+  calls++;
+  const body=JSON.parse(String(init?.body));
+  if(calls===2)assert.match(body.messages[1].content,
+   /Cut the melodrama/);
+  const recap=calls===1?
+   "The electric crowd watched a looming threat seize the canvas, before Omega captured a clean pinfall.":
+   "Omega worked the opponent down, countered a late strike and secured the official pinfall with a legal cover.";
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"Omega gets his victory",opening:"The house was ready.",
+   closing:"The win kept Omega in the picture.",
+   slots:{card_0:{headline:"Omega's clean decision",recap}}
+  })}}]}));
+ };
+ const result=await generateGroqReview(show,"fixture",transport);
+ assert.equal(calls,2,"One bounded editorial correction, never a paid third attempt");
+ assert.match(result.slots[0]!.recap,/countered a late strike/);
+ assert.doesNotMatch(result.slots[0]!.recap,/electric crowd|looming threat/);
+});
+
+test("read-only Groq inspector uses the identical provider payload and costs no request",async()=>{
+ const settings={model:"openai/gpt-oss-120b" as const,voice:"MARTY" as const,
+  detail:"BALANCED" as const,creativity:0.65,reasoning:"medium" as const,
+  additionalGuidance:"Vary the rhythm",version:1};
+ const inspected=inspectRingsidePrompt(show,settings);
+ assert.equal(inspected.callMade,false);
+ assert.equal(inspected.promptVersion,"ringside-v11");
+ assert.equal(inspected.model,settings.model);
+ assert.equal(inspected.temperature,0.65);
+ assert.equal(inspected.reasoning_effort,"medium");
+ assert.deepEqual(inspected.facts.slots.map((x:{key:string})=>x.key),["card_0"]);
+ let requests=0;
+ const transport:typeof fetch=async(_url,init)=>{
+  requests++;
+  const {model:_model,promptVersion:_version,facts:_facts,provider:_provider,
+   callMade:_call,historyScope:_scope,...exact}=inspected;
+  const sent=JSON.parse(String(init?.body));
+  assert.deepEqual(sent,{...exact,model:settings.model},
+   "Inspector request and actual Groq request must remain identical");
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:review.showHeadline,opening:review.opening,closing:review.closing,
+   slots:{card_0:{headline:review.slots[0]!.headline,recap:review.slots[0]!.recap}}
+  })}}]}));
+ };
+ assert.equal(requests,0,"Inspection must not generate any tokens");
+ await generateGroqReview(show,"fixture",transport,settings);
+ assert.equal(requests,1);
+});
+test("inspector shows 20B fictional fixture JSON compatibility without a provider call",()=>{
+ const settings={model:"openai/gpt-oss-20b" as const,voice:"MARTY" as const,
+  detail:"BALANCED" as const,creativity:1.05,reasoning:"high" as const,
+  additionalGuidance:"",version:0};
+ const inspected=inspectRingsidePrompt(show,settings,undefined,true);
+ assert.equal(inspected.response_format.type,"json_object");
+ assert.equal(inspected.reasoning_effort,"high");
+ assert.equal(inspected.temperature,1.05);
+ assert.match(inspected.messages[1]!.content,/No extra prose or markdown/);
+});
+test("AI Lab trace preserves original Groq prose and identifies PPW cleaning",async()=>{
+ const trace:{attempts:import("../src/db/ringside-commentary.js").RingsideGenerationTrace["attempts"];
+  slotOrigins:import("../src/db/ringside-commentary.js").RingsideGenerationTrace["slotOrigins"]}=
+  {attempts:[],slotOrigins:[]};
+ const transport:typeof fetch=async()=>new Response(JSON.stringify({choices:[{
+  message:{content:JSON.stringify({
+   showHeadline:"The main event",opening:"The crowd settled in.",closing:"A clean result.",
+   slots:{card_0:{headline:"Omega prevails",recap:
+    "Omega took control and earned the pinfall.\n\nOmega took control and earned the pinfall."}}
+  })}}]}));
+ const result=await generateGroqReview(show,"fixture",transport,undefined,
+  undefined,undefined,"GROQ",false,trace);
+ assert.equal(trace.attempts.length,1);
+ assert.equal(trace.attempts[0]?.status,"ACCEPTED");
+ assert.match(trace.attempts[0]!.draft.slots[0]!.recap,/\n\nOmega took control/);
+ assert.equal(trace.slotOrigins[0]?.source,"CLEANED");
+ assert.notEqual(trace.attempts[0]!.draft.slots[0]!.recap,result.slots[0]!.recap);
 });

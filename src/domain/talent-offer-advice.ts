@@ -9,10 +9,13 @@ export interface TalentOfferProfile{
  popularity:number|null;recognition:number|null;morale:number|null;
  careerStage:Stage|string|null;
  interest:"KEEN"|"INTERESTED"|"OPEN_TO_TALKS"|"RELUCTANT"|"NOT_INTERESTED"|"UNKNOWN"|"UNAVAILABLE";
+ /** Person-scoped, non-financial availability after other signed contracts. */
+ remainingServiceDensityPerWeek?:number|null;
 }
 export interface TalentManagerProfile{staffId:string;name:string;insight:number}
 export interface TalentOfferAdvice{
  terms:Omit<OfferTerms,"startWeekIndex">;
+ feasible:boolean;
  voice:string;confidence:"CONFIDENT"|"MEASURED"|"SPECULATIVE";
  rationale:string;projectedCommitment:number;managerName:string;
 }
@@ -35,7 +38,17 @@ export function recommendTalentOffer(person:TalentOfferProfile,
   talent>=58?"FEATURED":talent>=40?"REGULAR":"DEVELOPMENTAL";
  const weeks=person.careerStage==="SPECIAL_ATTRACTION"?12:
   talent>=63?52:talent>=40?26:12;
- const dates=weeks===52?40:weeks===26?20:9;
+ const idealDates=weeks===52?40:weeks===26?20:9;
+ const available=typeof person.remainingServiceDensityPerWeek==="number"&&
+  Number.isFinite(person.remainingServiceDensityPerWeek)?
+  Math.max(0,person.remainingServiceDensityPerWeek):null;
+ // Use the same signed-service-density bound as original offer validation.
+ // Never recommend 40 appearances when another employer already owns most
+ // of the wrestler's calendar; no other employer's terms leave the server.
+ const safeDates=available===null?null:
+  Math.max(0,Math.floor(Math.max(0,available-.001)*weeks));
+ const feasible=safeDates===null||safeDates>=1;
+ const dates=safeDates===null?idealDates:Math.max(1,Math.min(idealDates,safeDates));
  const family:Family="LIMITED_NON_EXCLUSIVE";
  const creative:Creative=talent>=83?"PROTECTED_FINISHES":
   talent>=58?"CONSULTATION":"NONE";
@@ -71,13 +84,19 @@ export function recommendTalentOffer(person:TalentOfferProfile,
   " per appearance";
  const confidencePhrase=confidence==="CONFIDENT"?"I'm reasonably confident":
   confidence==="MEASURED"?"My best estimate is":"This is a cautious opening offer";
- const voice=confidencePhrase+" we should offer "+person.name+" "+
-  weeks+" weeks, "+dates+" dates, "+pay+". "+priorities;
- const rationale=person.interest==="RELUCTANT"||person.interest==="NOT_INTERESTED"?
+ const voice=!feasible?
+  "I would not offer "+person.name+" another dates-based deal yet. "+
+  "Their signed schedule leaves no room for a new appearance commitment at the next start week.":
+  confidencePhrase+" we should offer "+person.name+" "+
+  weeks+" weeks, "+dates+" dates, "+pay+". "+priorities+
+  (safeDates!==null&&safeDates<idealDates?
+   " I've reduced the dates because other signed commitments occupy part of their calendar.":"");
+ const rationale=!feasible?"The existing schedule does not support new purchased dates. Wait for availability or review an eligible alternative.":
+  person.interest==="RELUCTANT"||person.interest==="NOT_INTERESTED"?
   "Interest is limited. A stronger offer may be needed.":
   confidence==="SPECULATIVE"?
   "Wrestler expectations are uncertain; be prepared to negotiate.":
   "This is a starting recommendation, not an acceptance guarantee.";
- return {terms,voice,confidence,rationale,
+ return {terms,feasible,voice,confidence,rationale,
   projectedCommitment:cost.plannedFullTermCost,managerName:manager.name};
 }

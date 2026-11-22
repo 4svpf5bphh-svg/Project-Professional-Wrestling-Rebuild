@@ -25,7 +25,7 @@ const show={showId:"fight",showName:"Ascension",bookingClass:"REGULAR",
   actorIds:["joe"],targetIds:["riddle"],segmentKind:"CHALLENGE",
   programmeChapters:[{...context,currentWinner:null}]}]};
 for(const width of [320,390]){
- test("Ringside shows verified prior rivalry matches and staff continuity at "+width+"px",async({page})=>{
+ test("Ringside retains clean match history without redundant rivalry panels at "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:844});
   let resultsCalls=0;
   await page.route("**/api/session",route=>route.fulfill({json:session}));
@@ -39,16 +39,14 @@ for(const width of [320,390]){
   await page.route("**/api/results-commentary",route=>route.fulfill({json:{status:"unavailable"}}));
   await page.goto("/#/results");
   await page.getByRole("button",{name:/Read ringside report/}).click();
-  const recaps=page.locator(".ppw-rivalry-at-ringside");
-  await expect(recaps).toHaveCount(2);
-  await expect(recaps.first()).toContainText("Samoa Joe vs Matt Riddle");
-  await expect(recaps.first()).toContainText("latest was Year 2, Week 1, won by Matt Riddle");
-  await expect(recaps.first()).toContainText("This chapter went to Samoa Joe");
-  await expect(recaps.last()).toContainText("on-screen chapter");
-  await expect(recaps.last()).not.toContainText("This chapter went to");
+  // Story context still anchors the Ringside author, but the public result
+  // is not interrupted by two repeated, mechanical feud recap boxes.
+  await expect(page.locator(".ppw-rivalry-at-ringside")).toHaveCount(0);
+  await expect(page.getByText("THE RIVALRY SO FAR")).toHaveCount(0);
+  await expect(page.locator(".ppw-result-headline").first()).toContainText("Samoa Joe defeats Matt Riddle");
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
-  await expect(page.locator(".ppw-road-agent-observation"))
-   .toContainText("Samoa Joe defeats Matt Riddle earned 4.00 stars");
+  await expect(page.locator(".ppw-post-show-road-agent")).toContainText("The match was strong.");
+  await expect(page.locator(".ppw-road-agent-observation")).toHaveCount(0);
   expect(resultsCalls).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);

@@ -4,12 +4,13 @@
  */
 export interface VerifiedProgrammeBroadcast{
  programmeId:string;sideA:string;sideB:string;
+ programmeFormat?:"RIVALRY"|"SOLO"|"RELATIONSHIP"|"FACTION";
  precedingMatches:number;precedingAngles:number;
  previousWinner:"A"|"B"|null;previousMatchWeek:number|null;
  currentWinner:"A"|"B"|null;
 }
 type RawProgramme={
- programmeId?:unknown;sideA?:unknown;sideB?:unknown;
+ programmeId?:unknown;sideA?:unknown;sideB?:unknown;programmeFormat?:unknown;
  precedingMatches?:unknown;precedingAngles?:unknown;
  previousWinner?:unknown;previousMatchWeek?:unknown;currentWinner?:unknown;
 };
@@ -22,12 +23,18 @@ export function parseVerifiedProgrammeBroadcast(raw:unknown):VerifiedProgrammeBr
  const side=(x:unknown)=>x===null||x===undefined||x==="A"||x==="B";
  const week=(x:unknown)=>x===null||x===undefined||
   (typeof x==="number"&&Number.isSafeInteger(x)&&x>=0);
- if(!name(p.programmeId)||!name(p.sideA)||!name(p.sideB)||
+ const format=p.programmeFormat??"RIVALRY";
+ if(!["RIVALRY","SOLO","RELATIONSHIP","FACTION"].includes(String(format))||
+  !name(p.programmeId)||!name(p.sideA)||
+  (format==="RIVALRY"&&!name(p.sideB))||
+  (format!=="RIVALRY"&&p.sideB!==""&&p.sideB!==undefined&&!name(p.sideB))||
   !count(p.precedingMatches)||!count(p.precedingAngles)||
   !side(p.previousWinner)||!side(p.currentWinner)||!week(p.previousMatchWeek))
   throw new Error("Invalid settled programme context");
  return {programmeId:p.programmeId as string,sideA:p.sideA as string,
-  sideB:p.sideB as string,precedingMatches:p.precedingMatches as number,
+  sideB:typeof p.sideB==="string"?p.sideB:"",
+  programmeFormat:format as VerifiedProgrammeBroadcast["programmeFormat"],
+  precedingMatches:p.precedingMatches as number,
   precedingAngles:p.precedingAngles as number,
   previousWinner:(p.previousWinner??null) as "A"|"B"|null,
   previousMatchWeek:(p.previousMatchWeek??null) as number|null,
@@ -38,6 +45,14 @@ const week=(index:number)=>"Year "+(Math.floor(index/52)+1)+
 export function programmeBroadcastRecap(
  p:VerifiedProgrammeBroadcast,kind:"MATCH"|"SEGMENT",
 ):string{
+ if(p.programmeFormat&&p.programmeFormat!=="RIVALRY"){
+  const chapter=p.programmeFormat==="SOLO"?"character journey":
+   p.programmeFormat==="RELATIONSHIP"?"relationship story":"faction story";
+  const prior=p.precedingMatches+p.precedingAngles;
+  return p.sideA+"'s "+chapter+" "+
+   (kind==="SEGMENT"?"continued with an on-screen scene.":"featured a match chapter.")+
+   (prior?" There were "+prior+" earlier recorded chapters.":" This was its first recorded chapter.");
+ }
  const pairing=p.sideA+" vs "+p.sideB;
  const history=p.precedingMatches;
  const past=history?(
@@ -64,7 +79,9 @@ export function programmeManagementNote(
  programmes:readonly VerifiedProgrammeBroadcast[],
 ):string|null{
  if(!programmes.length)return null;
- const distinct=[...new Map(programmes.map(p=>[p.programmeId,p])).values()];
+ const distinct=[...new Map(programmes.filter(p=>!p.programmeFormat||
+  p.programmeFormat==="RIVALRY").map(p=>[p.programmeId,p])).values()];
+ if(!distinct.length)return null;
  const established=distinct.filter(p=>p.precedingMatches>0||p.precedingAngles>0);
  if(!established.length)
   return distinct.length===1?

@@ -5,7 +5,8 @@
 import {postgresPool} from "../db/postgres.js";
 import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled,aiBenchmarkPreviewOperatorEnabled} from "../domain/manual-playtest-permission.js";
-import {loadRingsideCommentary,generateGroqReview,RingsideGenerationError} from "../db/ringside-commentary.js";
+import {loadRingsideCommentary,generateGroqReview,inspectRingsidePrompt,
+ RingsideGenerationError,type RingsideGenerationTrace} from "../db/ringside-commentary.js";
 import {paidPreviewEnabled,OPENAI_PREVIEW_MODEL} from "../db/openai-editorial-preview.js";
 import {groqResponseUsage} from "../domain/ai-director.js";
 import {getWrestlingBenchmark,assessWrestlingBenchmark,WRESTLING_BENCHMARKS}
@@ -284,6 +285,52 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     return json(200,{settings:saved});
    }catch(e){return json(409,{error:e instanceof Error?e.message:"Settings rejected"});}
   }
+  // Read-only owner inspector: derives the EXACT first Groq request from
+  // certified show data or a named lab fixture. No API key, provider call,
+  // token reservation, new World row, or published article mutation.
+  if(path==="/api/admin-preview"&&body.action==="INSPECT_PROMPT"){
+   if(Object.keys(body).some(key=>!["action","showId","benchmarkId","settings"].includes(key))||
+    (body.showId!==undefined&&body.benchmarkId!==undefined))
+    return json(400,{error:"Choose either a completed show or a known test fixture"});
+   const fixtureRequested=body.benchmarkId!==undefined;
+   if(fixtureRequested?(typeof body.benchmarkId!=="string"||body.benchmarkId.length>80):
+    (typeof body.showId!=="string"||!body.showId||body.showId.length>200))
+    return json(400,{error:"Select a completed show or a recognised wrestling scenario"});
+   if(!fixtureRequested&&!normalOperator)
+    return json(403,{error:"Only the World operator can inspect completed shows"});
+   if(!allow("admin-inspect:"+user.playerId,24,60*60_000))
+    return json(429,{error:"Too many Prompt Inspector requests"});
+   try{
+    const safeSettings=body.settings===undefined?null:validateRingsideSettings(body.settings);
+    const effective=safeSettings?{...safeSettings,version:0}:
+     fixtureRequested?DEFAULT_RINGSIDE_SETTINGS:
+      await readAdminRingsideSettings(pool,cfg.worldId);
+    let show,memory;
+    if(fixtureRequested){
+     const fixture=getWrestlingBenchmark(body.benchmarkId as string);
+     if(!fixture)return json(404,{error:"Unknown wrestling fixture"});
+     show=fixture.show;
+    }else{
+     const promotion=await withSqlClient(pool,tx=>tx.query<{promotion_id:string}>(`
+      SELECT c.promotion_id FROM ppw_completed_shows c
+      JOIN ppw_promotion_controls p ON p.world_id=c.world_id
+       AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
+      JOIN ppw_memberships m ON m.world_id=p.world_id AND m.player_id=p.player_id
+       AND m.status='ACTIVE'
+      WHERE c.world_id=$1 AND c.show_id=$3 LIMIT 1`,
+      [cfg.worldId,user.playerId,body.showId]));
+     if(promotion.length!==1)return json(404,{error:"Completed show not available"});
+     const scope={worldId:cfg.worldId,playerId:user.playerId,
+      promotionId:promotion[0]!.promotion_id,showId:body.showId as string};
+     show=await readCompletedShowView(pool,scope);
+     try{memory=await readRingsideMemory(pool,scope,show);}
+     catch{console.warn("Ringside inspector history unavailable; showing certified card facts");}
+    }
+    return json(200,{inspection:inspectRingsidePrompt(show,effective,memory,fixtureRequested)});
+   }catch(e){
+    return json(422,{error:e instanceof Error?e.message:"Could not inspect this show"});
+   }
+  }
   // A separate fictional 20B voice test is available ONLY to the protected
   // operator of the isolated AI Lab. It never reaches the World publication
   // path, does not create completed shows, and never retries rejected output.
@@ -374,9 +421,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    const safeSettings=body.settings?validateRingsideSettings(body.settings):null;
    // Every benchmark uses exactly the same presentation settings except the
    // selected model. Creative settings from a prior playtest cannot bias it.
-   const effective=fixture?{...DEFAULT_RINGSIDE_SETTINGS,
-    model:safeSettings?.model??DEFAULT_RINGSIDE_SETTINGS.model}:
-    safeSettings?{...safeSettings,version:0}:
+   const effective=safeSettings?{...safeSettings,version:0}:
+    fixture?DEFAULT_RINGSIDE_SETTINGS:
      await readAdminRingsideSettings(pool,cfg.worldId);
    let show, memory;
    if(fixture){
@@ -422,8 +468,9 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     else meter.reported=false;
     return response;
    };
+   const trace:RingsideGenerationTrace={attempts:[],slotOrigins:[]};
    const review=await generateGroqReview(show,providerKey,instrumentedTransport,
-    effective,memory,pool,previewProvider,!!fixture);
+    effective,memory,pool,previewProvider,!!fixture,trace);
    const durationMs=Date.now()-meter.started;
    const benchmark=fixture?assessWrestlingBenchmark(fixture.scenario.id,review):null;
    const recorded=await saveAiLabPreview(pool,{
@@ -434,7 +481,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     outputTokens:meter.reported?meter.output:null,review
    });
    tracked=null;
-   return json(200,{review,preview:true,labRunId:recorded.runId,
+   return json(200,{review,preview:true,labRunId:recorded.runId,trace,
     ...(benchmark?{benchmark}:{}),
     metrics:{durationMs,providerCalls:meter.calls,
      inputTokens:meter.reported?meter.input:null,

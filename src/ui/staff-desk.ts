@@ -4,7 +4,8 @@
 import type {readStaffWorkspace} from "../db/staff-workspace.js";
 import {STAFF_ROLES,type StaffRole} from "../domain/world-staff.js";
 import {GORILLA_POLICIES,type GorillaPolicy} from "../domain/gorilla-position.js";
-import {staffMeetingDialogue} from "./staff-meeting-voice.js";
+import {staffMeetingDialogue,staffRecommendationVoice} from "./staff-meeting-voice.js";
+import {STAFF_PURPOSE} from "../domain/staff-meeting-brief.js";
 import {staffOfficeThemeClass} from "../domain/staff-office-themes.js";
 import "./staff-office-themes.css";
 export type StaffView=Awaited<ReturnType<typeof readStaffWorkspace>>;
@@ -161,28 +162,48 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
   meeting.append(el("span","ppw-staff-kicker","STAFF MEETING"),
    el("h2","","Around the table"),
    el("p","ppw-staff-muted",
-    "Your people, their opinions and the decisions that matter. Open a department for its full report."));
+    "What your hired specialists know, what they actually change and where you make the final call."));
   const attendees=el("div","ppw-staff-meeting-grid");
-  for(const brief of view.meetings??[]){
+  // Put genuinely urgent staffed decisions first; vacancies stay last.
+  // Pure sorting, no extra World query or editor state change.
+  const urgencyRank={ACTION:0,WATCH:1,CLEAR:2} as const;
+  const orderedBriefs=[...(view.meetings??[])].sort((a,b)=>
+   (a.staffName?urgencyRank[a.urgency]:3)-
+   (b.staffName?urgencyRank[b.urgency]:3));
+  for(const brief of orderedBriefs){
    const slot=el("details","ppw-staff-meeting-brief");
    const lead=el("summary","");
    const caption=el("div","");
+   const remit=STAFF_PURPOSE[brief.role];
    caption.append(el("span","ppw-staff-kicker",roles(brief.role)),
-    el("strong","",brief.staffName??"Position vacant · house cover"));
+    el("strong","",brief.staffName??"Vacant · no specialist employed"));
    lead.append(caption);slot.append(lead);
-   slot.append(el("p","ppw-staff-dialogue",
-    staffMeetingDialogue({role:brief.role,staffName:brief.staffName,
-     personality:brief.personality,message:brief.message})));
-   // Each specialist provides practical context rather than a generic alert.
-   if(brief.role==="TALENT_MANAGER")slot.append(el("p","ppw-staff-meeting-context",
-    "Contract renewals: "+(view.autoRenewSameTerms?"automatic same-terms offers enabled":"manager approval required")+
-    ". Check future show dates before rebooking talent."));
-   if(brief.role==="ROAD_AGENT")slot.append(el("p","ppw-staff-meeting-context",
-    "Gorilla policy: "+gorillaPolicy.replaceAll("_"," ").toLowerCase()+
-    ". Your scripted winners and finishes remain protected."));
-   if(brief.role==="SCOUT")slot.append(el("p","ppw-staff-meeting-context",
-    (view.scoutReport?.length??0)+" specific scouting leads currently available."));
-   if(brief.role==="SCOUT"&&view.scoutReport?.length){
+   slot.append(el("p","ppw-staff-meeting-context",remit.responsibility+" — "+remit.effect));
+   if(brief.staffName){
+    slot.append(el("p","ppw-staff-dialogue",
+     staffMeetingDialogue({role:brief.role,staffName:brief.staffName,
+      personality:brief.personality,message:brief.message})));
+    if(brief.nextStep)slot.append(el("p","ppw-staff-meeting-recommendation",
+     staffRecommendationVoice({role:brief.role,personality:brief.personality,
+      urgency:brief.urgency,nextStep:brief.nextStep,
+      specialism:brief.specialism})));
+    if(brief.specialism)slot.append(el("small","ppw-staff-meeting-specialism",
+     "Specialism: "+brief.specialism));
+   }else{
+    // The house office knows basic facts but is not a substitute for a
+    // hired specialist. Don't invent a staff voice or suggest they acted.
+    slot.append(el("p","ppw-staff-dialogue",
+     "No specialist has been hired for this department."));
+   }
+   slot.append(el("small","ppw-staff-meeting-boundary",remit.boundary));
+   // Keep standing permissions visible without repeating the report.
+   if(brief.role==="TALENT_MANAGER"&&brief.staffName)
+    slot.append(el("small","ppw-staff-meeting-policy",
+     "Same-terms renewal delegation: "+(view.autoRenewSameTerms?"enabled":"disabled")));
+   if(brief.role==="ROAD_AGENT"&&brief.staffName)
+    slot.append(el("small","ppw-staff-meeting-policy",
+     "Standing Gorilla policy: "+gorillaPolicy.replaceAll("_"," ").toLowerCase()));
+   if(brief.role==="SCOUT"&&brief.staffName&&view.scoutReport?.length){
     for(const prospect of view.scoutReport){
      const item=el("div","ppw-staff-scout-pick");
      item.append(el("strong","",prospect.name),
@@ -193,13 +214,16 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    }
    if(brief.staffName)slot.append(el("small","ppw-staff-voice",
     "— "+brief.staffName+" · "+roles(brief.role)));
-   if(brief.target==="contracts"&&port.openContracts)
+   if(!brief.staffName)slot.append(button("Browse staff for this role",()=>{
+    department=brief.role;pane="MARKET";render();
+   }));
+   if(brief.staffName&&brief.target==="contracts"&&port.openContracts)
     slot.append(button("Review contracts",()=>port.openContracts?.()));
-   if(brief.target==="roster"&&port.openRoster)
+   if(brief.staffName&&brief.target==="roster"&&port.openRoster)
     slot.append(button("Review roster",()=>port.openRoster?.()));
-   if(brief.target==="programmes"&&port.openProgrammes)
+   if(brief.staffName&&brief.target==="programmes"&&port.openProgrammes)
     slot.append(button("Review programmes",()=>port.openProgrammes?.()));
-   if(brief.target==="gorilla"&&port.openGorilla)
+   if(brief.staffName&&brief.target==="gorilla"&&port.openGorilla)
     slot.append(button("Open Gorilla Position",()=>port.openGorilla?.()));
    attendees.append(slot);
   }

@@ -626,8 +626,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   picker={slotId,side:role==="actors"?0:1,member:0,role,query:"",cursor:null,
    items:[],sort:"POPULARITY",division:"ALL"};
   const linked=view?.programmes.find(p=>p.programmeId===segments.get(slotId)?.programmeId);
-  picker.showOther=!linked||!linked.cast?.length;
-  render();if(!linked)void findTalent("");
+  // A SOLO story contains no programme opponent. When a scene really
+  // needs a target, open the full eligible roster instead of trapping the
+  // picker inside the sole protagonist's storyline cast.
+  const outsideStory=role==="targets"&&linked?.programmeFormat!=="RIVALRY";
+  picker.showOther=!linked||!linked.cast?.length||outsideStory;
+  render();if(picker.showOther)void findTalent("");
  }
  async function loadStableChoices(){
   if(stableChoices!==null||stableChoicesLoading||!port.stableChoices)return;
@@ -2933,6 +2937,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    sheet.append(heading);
    const focusedStory=(current.role==="actors"||current.role==="targets")?
     view?.programmes.find(x=>x.programmeId===segments.get(current.slotId)?.programmeId):null;
+   if(focusedStory?.programmeFormat==="SOLO"&&current.role==="targets")
+    sheet.append(el("p","ppw-picker-storyline-note",
+     "Solo stories have no Side B. Choose a real opponent or guest from your available roster."));
    if(focusedStory&&!current.showOther){
     const storyBox=el("section","ppw-picker-storyline");
     storyBox.append(el("strong","","CAST FROM YOUR STORYLINE"),

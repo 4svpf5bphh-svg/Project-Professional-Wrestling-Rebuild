@@ -39,6 +39,21 @@ test("staff storyline advice is optional, derived from completed story history a
  const newOne=programmeManagementNote([{...match,precedingMatches:0,precedingAngles:0}]);
  assert.match(newOne??"",/first recorded chapter/);
 });
+test("solo and ensemble stories never invent a Side B rivalry",()=>{
+ for(const programmeFormat of ["SOLO","RELATIONSHIP","FACTION"] as const){
+  const p=parseVerifiedProgrammeBroadcast({...match,programmeFormat,
+   sideA:programmeFormat==="SOLO"?"The Undertaker":"The Gunns",
+   sideB:"",precedingMatches:0,precedingAngles:1,currentWinner:null});
+  const recap=programmeBroadcastRecap(p,"SEGMENT");
+  assert.doesNotMatch(recap,/Side B| vs |rivalry/i);
+  assert.match(recap,programmeFormat==="SOLO"?/character journey/:
+   programmeFormat==="RELATIONSHIP"?/relationship story/:/faction story/);
+  assert.equal(programmeManagementNote([p]),null);
+ }
+ assert.throws(()=>parseVerifiedProgrammeBroadcast({...match,
+  programmeFormat:"UNKNOWN"}),/Invalid settled programme context/);
+});
+
 test("malformed or speculative programme context is rejected at the results boundary",()=>{
  for(const corrupted of [
   null,[],{...match,programmeId:""},{...match,sideA:""},

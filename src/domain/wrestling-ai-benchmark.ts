@@ -6,6 +6,7 @@ import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js
 import {ringsideBrief,ringsideStipulationNote,validateRingsideCopy,type RingsideCopy}
  from "./ringside-editorial.js";
 import {wrestlingMatchIQ} from "./wrestling-iq.js";
+import {ringsideQualitySignals} from "./ringside-quality-signals.js";
 
 export interface WrestlingBenchmarkScenario{
  id:string;name:string;focus:string;expectation:string;watchFor:string;
@@ -15,6 +16,10 @@ export const WRESTLING_BENCHMARKS:readonly WrestlingBenchmarkScenario[]=[
   focus:"A 24-minute, highly rated clean-pin singles contest",
   expectation:"Pacing, counters, selling and a plausible clean three-count",
   watchFor:"A generic brawl, impossible legal rules, invented title wins or constant finishers"},
+ {id:"finisher-kickout",name:"Singles · incredible finisher kick-out",
+  focus:"Omega's One Winged Angel gets a dramatic TWO-count; MJF survives and Omega later wins by a separate clean pin",
+  expectation:"Earned live-count shock, correct move ownership and one later legal three-count",
+  watchFor:"MJF delivering Omega's finisher, the two-count treated as the win, a flat generic recap or invented title change"},
  {id:"singles-squash",name:"Singles · four-minute squash",
   focus:"A brief, one-sided main-event mismatch",
   expectation:"A convincing dominant performance and brief, appropriate closing sequence",
@@ -70,16 +75,35 @@ export const WRESTLING_BENCHMARKS:readonly WrestlingBenchmarkScenario[]=[
  {id:"poor-contest",name:"Singles · poor 22-minute match",
   focus:"Long match, low rating and a flat crowd",
   expectation:"An honest critical review without saying it was a classic",
-  watchFor:"Automatic standing ovations, five-star praise or a made-up serious injury"}
+  watchFor:"Automatic standing ovations, five-star praise or a made-up serious injury"},
+ {id:"angle-solo-interview",name:"Angle · solo title interview",
+  focus:"A strong solo speech about the championship, with champion only mentioned",
+  expectation:"Distinct character voice and a strong ending; champion stays off camera",
+  watchFor:"An invented face-off, brawl, physical defect or unscripted quotation"},
+ {id:"angle-faction-callout",name:"Angle · two wrestlers call out a faction",
+  focus:"A combative interview with two speakers and two named off-camera targets",
+  expectation:"Actual speakers, sharp words and no phantom physical response",
+  watchFor:"Targets entering the scene, fabricated fight or inevitable booked rematch"},
+ {id:"angle-postmatch-assault",name:"Angle · witnessed post-match attack",
+  focus:"A physical assault with exactly one recorded initiator and one on-screen target",
+  expectation:"Credible impact and reaction without inventing medical consequences",
+  watchFor:"An unbooked injury, an extra attacker or a new backstage alliance"}
 ] as const;
 type MatchFixture={
  names:string[][];winner:string[];format:string;finish:string;duration:number;
  stars:number;crowd:number;summary:string;
+ finishers?:Record<string,string[]>;
 };
 const matches:Record<string,MatchFixture>={
  "singles-technical":{names:[["Rowan Pierce"],["Kira Vale"]],winner:["Rowan Pierce"],
   format:"SINGLES",finish:"CLEAN_PIN",duration:24,stars:4.5,crowd:94,
   summary:"Rowan Pierce defeated Kira Vale with a clean pin after a long technical contest."},
+ "finisher-kickout":{names:[["Kenny Omega"],["MJF"]],winner:["Kenny Omega"],
+  format:"SINGLES",finish:"CLEAN_PIN",duration:27,stars:4.75,crowd:96,
+  summary:"Kenny Omega hit MJF with the One Winged Angel. MJF kicked out at TWO; "+
+   "that was a near-fall, not a victory. Omega later won with a separate clean three-count. "+
+   "No title change, referee incident or outside interference.",
+  finishers:{"Kenny Omega":["One Winged Angel"]}},
  "singles-squash":{names:[["Darius Stone"],["Leo Finch"]],winner:["Darius Stone"],
   format:"SINGLES",finish:"CLEAN_PIN",duration:4,stars:1.5,crowd:64,
   summary:"Darius Stone dominated Leo Finch and won by pinfall in four minutes."},
@@ -124,10 +148,53 @@ const matches:Record<string,MatchFixture>={
   format:"SINGLES",finish:"CLEAN_PIN",duration:22,stars:1.25,crowd:31,
   summary:"Hector Voss pinned Eric Marsh cleanly after an awkward, flatly received twenty-two-minute contest."}
 };
+type AngleFixture={
+ kind:string;actors:string[];targets:string[];presence:"MENTIONED"|"ON_SCREEN";
+ crowd:number;summary:string;
+};
+const angles:Record<string,AngleFixture>={
+ "angle-solo-interview":{kind:"INTERVIEW",actors:["The Undertaker"],
+  targets:["The Champion"],presence:"MENTIONED",crowd:81,
+  summary:"The Undertaker spoke on camera about challenging for the World Championship. "+
+   "The Champion was only named, never present or heard."},
+ "angle-faction-callout":{kind:"INTERVIEW",actors:["Austin Gunn","Colten Gunn"],
+  targets:["Juice Robinson","Iziah Hunter"],presence:"MENTIONED",crowd:66,
+  summary:"Austin and Colten Gunn called out The Cut during a booked interview. "+
+   "Neither named target appeared on camera or responded."},
+ "angle-postmatch-assault":{kind:"POST_MATCH_ASSAULT",actors:["Nadia Cross"],
+  targets:["Mika Storm"],presence:"ON_SCREEN",crowd:73,
+  summary:"Nadia Cross carried out a booked physical assault on Mika Storm "+
+   "in front of the audience. No medical injury or third party was certified."}
+};
 export function getWrestlingBenchmark(id:string):{
  scenario:WrestlingBenchmarkScenario;show:CompletedShowView}|null{
- const scenario=WRESTLING_BENCHMARKS.find(s=>s.id===id),m=matches[id];
- if(!scenario||!m)return null;
+ const scenario=WRESTLING_BENCHMARKS.find(s=>s.id===id),
+  m=matches[id],angle=angles[id];
+ if(!scenario||(!m&&!angle))return null;
+ if(angle){
+  const entry:ShowResultEntry={
+   slotId:"benchmark-main-event",position:0,type:"SEGMENT",
+   headline:scenario.name,summary:angle.summary,outcome:"HAPPENS",
+   crowdResponse:angle.crowd,
+   actorIds:angle.actors.map((_,i)=>"actor-"+i),
+   targetIds:angle.targets.map((_,i)=>"target-"+i),
+   segmentKind:angle.kind,segmentRatingStars:angle.crowd/20,
+   segmentContext:{actorNames:[...angle.actors],targetNames:[...angle.targets],
+    targetPresence:angle.presence,videoPurpose:null,stableDecision:null,
+    turnTargetAlignment:null},
+   performerIdentities:angle.actors.map((name,i)=>({
+    personId:"actor-"+i,ringName:name,character:"FEATURED CHARACTER",
+    style:"ALL_ROUNDER",signatureMoves:[],finishingMoves:[],
+    source:"WORLD_RECORD" as const
+   }))
+  };
+  return {scenario,show:{
+   showId:"benchmark:"+scenario.id,showName:"Ringside Benchmark · "+scenario.name,
+   promotionName:"PPW Quality Lab",bookingClass:"REGULAR" as const,
+   year:1,week:1,crowdResponse:angle.crowd,
+   matchCount:0,angleCount:1,entries:[entry]
+  }};
+ }
  const entry:ShowResultEntry={
   slotId:"benchmark-main-event",position:0,type:"MATCH",headline:scenario.name,
   summary:m.summary,outcome:m.finish,crowdResponse:m.crowd,
@@ -141,7 +208,8 @@ export function getWrestlingBenchmark(id:string):{
   performerIdentities:m.names.flat().slice(0,6).map((name,i)=>({
    personId:"fixture-"+i,ringName:name,
    character:i%3===0?"COLD-BLOODED TECHNICIAN":i%3===1?"FIERY UNDERDOG":"COCKY HEEL",
-   style:i%2?"HIGH_FLYER":"TECHNICAL",signatureMoves:[],finishingMoves:[],
+   style:i%2?"HIGH_FLYER":"TECHNICAL",signatureMoves:[],
+   finishingMoves:m.finishers?.[name]??[],
    source:"WORLD_RECORD" as const
   }))
  };
@@ -160,11 +228,23 @@ export function assessWrestlingBenchmark(id:string,copy:RingsideCopy){
  const sample=getWrestlingBenchmark(id);
  if(!sample)throw new Error("Unknown wrestling benchmark");
  const {show,scenario}=sample;
- validateRingsideCopy(copy,show);
- const entry=show.entries[0]!,iq=wrestlingMatchIQ(entry);
+ // Validate all canonical wrestling facts, but let the private quality
+ // benchmark inspect (rather than reject) deliberately bad sample prose.
+ validateRingsideCopy(copy,show,{styleWarningOnly:true});
+ const entry=show.entries[0]!,
+  iq=entry.type==="MATCH"?wrestlingMatchIQ(entry):null;
  const text=(copy.slots[0]?.headline??"")+" "+(copy.slots[0]?.recap??"");
- const rule=ringsideStipulationNote(entry.matchContext!.format);
+ const rule=entry.matchContext?ringsideStipulationNote(entry.matchContext.format):null;
  const cues:string[]=[];
+ if(entry.type==="SEGMENT"){
+  if(entry.segmentContext?.actorNames.some(name=>
+   text.toLocaleLowerCase().includes(name.toLocaleLowerCase())))
+   cues.push("An actual on-screen speaker is named");
+  if(entry.segmentContext?.targetPresence==="MENTIONED")
+   cues.push("Only booked speakers may physically appear");
+  if(entry.segmentKind==="POST_MATCH_ASSAULT")
+   cues.push("Physical assault, no medically certified injury");
+ }
  if(iq?.format==="TAG"||iq?.format==="MULTI_TEAM"){
   if(/\b(?:tag|tagging|corner|apron|legal (?:man|partner|wrestler)|isolation|cut (?:the )?ring)\b/i.test(text))
    cues.push("Some tag-team mechanics mentioned");
@@ -193,7 +273,17 @@ export function assessWrestlingBenchmark(id:string,copy:RingsideCopy){
  }
  if(iq?.format==="BATTLE_ROYAL"&&/\b(?:rope|elimination|survivor|last (?:one|man|woman))\b/i.test(text))
   cues.push("Battle-royal mechanics mentioned");
+ if(id==="finisher-kickout"){
+  if(/one[ -]winged angel/i.test(text))
+   cues.push("The verified Omega finisher appears");
+  if(/\bmjf\b[^.!?]{0,85}\b(?:kick(?:ed|s)? out|shoulder (?:came|is) up|surviv(?:ed|es))\b/i.test(text))
+   cues.push("MJF is described surviving the finisher near-fall");
+  if(/\b(?:one|1)[.!…\s]+(?:two|2)\b/i.test(text))
+   cues.push("An urgent one-two referee count is dramatized");
+ }
+ const quality=ringsideQualitySignals(show,copy);
  return {scenario:scenario.id,certifiedFactsValidated:true,
-  diagnosticCues:cues,humanReviewRequired:true,reviewFocus:scenario.expectation,
+  diagnosticCues:cues,qualityWarnings:quality.warnings,
+  humanReviewRequired:true,reviewFocus:scenario.expectation,
   watchFor:scenario.watchFor};
 }

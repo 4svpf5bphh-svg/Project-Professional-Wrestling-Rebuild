@@ -11,7 +11,7 @@ import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessag
  type BackstageDecision} from "../domain/backstage-conversations.js";
 import type {WorldMail,WorldMailAction} from "../db/backstage-world-mail.js";
 import {staffDebateReaction} from "../domain/backstage-staff-dialogue.js";
-import {STORY_FOLLOW_UPS,storyFollowUpBrief,type StoryFollowUpChoice}
+import {STORY_FOLLOW_UPS,type StoryFollowUpChoice}
  from "../domain/programme-story-follow-up.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
@@ -486,13 +486,12 @@ export function mountPersonaDesk(root:HTMLElement,
      chat.append(perspective);
     }
    }
-   chat.append(el("p","ppw-backstage-world-evidence",
+   if(!mail.storyChapter)chat.append(el("p","ppw-backstage-world-evidence",
     mail.contentConcern?"From a completed television match with a verified hardcore stipulation.":
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
      mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
      mail.kind==="FREE_AGENT"?"No contract or appearance has been agreed.":
-     mail.storyChapter?"From an actual completed Programme chapter and verified audience response; no off-screen character consequence has been assumed.":
-     mail.kind==="LOCKER_ROOM"&&mail.staffReview?
+      mail.kind==="LOCKER_ROOM"&&mail.staffReview?
       "From your earlier staff decision and a completed review of real workload or programme progress.":
      mail.kind==="LOCKER_ROOM"?"From actual teammate match history and an answered mediation request.":
      "Based on your actual roster, contracts or active programmes."));
@@ -603,18 +602,19 @@ export function mountPersonaDesk(root:HTMLElement,
      "No contract offer was submitted."));
    }
    if(mail.storyChapter&&mail.storyFollowUp&&mail.storySource){
-    const story=storyFollowUpBrief(mail.storyFollowUp,mail.storySource.programmeFormat);
-    chat.append(el("article","ppw-persona-bubble ppw-persona-out",
-     "My next chapter: "+STORY_FOLLOW_UPS[mail.storyFollowUp].label+". "+story.direction));
-    chat.append(el("p","ppw-backstage-world-evidence",
-     "Saved as creative direction. No segment, booking or relationship was changed."));
+    const response=mail.storyFollowUp==="BUILD_ON_REACTION"?
+     "Good. The crowd gave us something there. Let's follow it with a new beat, not a repeat of that scene.":
+     mail.storyFollowUp==="CHANGE_PRESENTATION"?
+     "Let's try a different presentation next time. Same story, a fresh angle.":
+     "No rush. Let the audience sit with what they saw before we push this further.";
+    chat.append(el("article","ppw-persona-bubble ppw-persona-out",response));
    }
    const actions=el("div","ppw-backstage-world-actions");
    if(mail.storyChapter&&mail.canChooseStoryFollowUp&&
     !mail.storyFollowUp&&port.chooseStoryFollowUp){
     const prompt=el("div","ppw-backstage-story-options");
     prompt.append(el("strong","","Choose the next storyline direction"),
-     el("p","ppw-muted","A creative choice, not a booked turn, match or wrestler agreement."));
+     el("p","ppw-muted","Choose a direction. You'll decide what actually happens on the show."));
     for(const choice of Object.keys(STORY_FOLLOW_UPS) as StoryFollowUpChoice[]){
      const spec=STORY_FOLLOW_UPS[choice];
      const option=button(spec.label,()=>void answerStory(mail.id,choice),loading);
