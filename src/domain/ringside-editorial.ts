@@ -948,7 +948,7 @@ Do not invent outsiders, entrances, physical traits, friendship or
 partnership. BLOODIED isn't an injury; planned retaliation isn't done.
 Refusal or interruption isn't success.
 Only scoped storyThread proves past events. Use one viewer-facing callback
-at most; one shared match doesn't prove a feud. Never expose raw history,
+at most; one shared match doesn't prove a feud. Never expose raw history or database bookkeeping,
 'third angle', 'rivalry thread', 'official fallout', 'prior angles',
 'card segment' or 'Week 25'.
 A recap video sells the real issue, not a list of what it did NOT introduce.
@@ -962,5 +962,5 @@ slot IDs, focus keys or editorial instructions into the reader's article.
 Use wrestling terms naturally. Never expose star ratings, mechanics,
 technical booking labels or equations. Avoid unsupported gender assumptions.
 JSON only: card_0, card_1 etc (every card_N key once), each with
-headline and recap. No slotId: server restores immutable IDs.
+headline and recap. Do not emit slotId fields: the server restores immutable IDs.
 `;
