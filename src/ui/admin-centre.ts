@@ -48,6 +48,50 @@ type LabData={usage:LabDay[];runs:LabRun[];scores:{
  providers?:{groq:boolean;openai:boolean}};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
+type PromptInspection={promptVersion:string;provider:"GROQ";model:string;
+ temperature:number;reasoning_effort:string;max_completion_tokens:number;
+ response_format:unknown;messages:{role:string;content:string}[];
+ facts:unknown;callMade:false;historyScope:string};
+type GenerationTrace={attempts:Array<{attempt:number;status:string;reason?:string;
+ draft:Recap}>;slotOrigins:{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}[]};
+/** Use selectable text, not HTML injection. This remains accessible on iPhone. */
+function textDisclosure(title:string,body:string){
+ const details=document.createElement("details");details.className="ppw-admin-preview";
+ details.append(el("summary","",title));
+ const content=el("textarea","ppw-admin-input") as HTMLTextAreaElement;
+ content.readOnly=true;content.spellcheck=false;content.rows=12;content.value=body;
+ content.setAttribute("aria-label",title);details.append(content);return details;
+}
+function renderPromptInspection(root:HTMLElement,inspection:PromptInspection){
+ const request={model:inspection.model,temperature:inspection.temperature,
+  reasoning_effort:inspection.reasoning_effort,
+  max_completion_tokens:inspection.max_completion_tokens,
+  response_format:inspection.response_format,messages:inspection.messages};
+ root.replaceChildren(el("h3","","Groq Prompt Inspector"),
+  el("p","ppw-admin-small",inspection.promptVersion+" · "+inspection.model+
+   " · creativity "+inspection.temperature+" · reasoning "+inspection.reasoning_effort+
+   " · max "+inspection.max_completion_tokens+" output tokens"),
+  el("p","ppw-admin-small","Read-only first-attempt request. No provider call, usage charge or World change. "+
+   "A rejected response may receive a second prompt with an additional correction."),
+  textDisclosure("System instructions — Groq's role and writing rules",inspection.messages[0]?.content??""),
+  textDisclosure("User instructions — full factual match briefing",inspection.messages[1]?.content??""),
+  textDisclosure("Verified match records as structured data",JSON.stringify(inspection.facts,null,2)),
+  textDisclosure("Complete request payload (excluding secret API key)",JSON.stringify(request,null,2)));
+}
+function renderGenerationTrace(root:HTMLElement,trace:GenerationTrace,review:Recap){
+ const origins=trace.slotOrigins;
+ const totalFallback=origins.filter(s=>s.source==="PPW_FALLBACK").length;
+ const cleaned=origins.filter(s=>s.source==="CLEANED").length;
+ root.append(el("h4","","Groq draft vs PPW final"),
+  el("p","ppw-admin-small",trace.attempts.length+" generation attempt(s) · "+
+   totalFallback+" factual fallback card(s) · "+cleaned+" cleaned recap(s). "+
+   "This raw trace is session-only; only the validated article is kept in AI Lab."));
+ for(const attempt of trace.attempts)
+  root.append(textDisclosure("Original Groq draft "+attempt.attempt+" · "+attempt.status+
+   (attempt.reason?" · validator: "+attempt.reason:""),JSON.stringify(attempt.draft,null,2)));
+ root.append(textDisclosure("Final accepted/recovered PPW article",JSON.stringify(review,null,2)),
+  textDisclosure("Which card came from where",JSON.stringify(origins,null,2)));
+}
 type Context={csrfToken:string;benchmarkOnly?:boolean};
 const el=(tag:string,cls="",text="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=text;return n;
@@ -93,6 +137,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  let activeTab:"WORLD"|"AI"|"PLAYTESTS"=ctx.benchmarkOnly?"AI":"WORLD";
  let labData:LabData|null=null;
  let lastBenchmarkNotice="";
+ let lastBenchmarkTrace:GenerationTrace|null=null;
+ let lastBenchmarkReview:Recap|null=null;
  let lastVoiceNotice="";
  let selectedVoiceScenario="i-quit";
  // The entire lab is re-rendered after each completed test. Keep the chosen
@@ -101,6 +147,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  let benchmarkModelChoice:"openai/gpt-oss-120b"|"openai/gpt-oss-20b"="openai/gpt-oss-120b";
  let benchmarkProviderChoice:"GROQ"|"OPENAI"="GROQ";
  let benchmarkEnergyChoice:0.65|0.82|1.05=0.82;
+ let benchmarkReasoningChoice:"low"|"medium"|"high"="low";
  const tabs:readonly ("WORLD"|"AI"|"PLAYTESTS")[]=
   ctx.benchmarkOnly?["AI"]:["WORLD","AI","PLAYTESTS"];
  const navButtons=tabs.map(tab=>{
@@ -348,6 +395,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    const benchmarkModel=selectControl([
     ["openai/gpt-oss-120b","Groq · 120B"],["openai/gpt-oss-20b","Groq · 20B"]
    ],benchmarkModelChoice);
+   const benchmarkReasoning=selectControl([["low","Low"],["medium","Medium"],
+    ["high","High"]],benchmarkReasoningChoice);
+   benchmarkReasoning.onchange=()=>{
+    benchmarkReasoningChoice=benchmarkReasoning.value as typeof benchmarkReasoningChoice;
+   };
    const benchmarkProvider=selectControl([
     ["GROQ","Groq · free allowance"],
     ...(data.providers?.openai?[["OPENAI","OpenAI · paid comparison"] as [string,string]]:[])
@@ -407,12 +459,13 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      const result=await request("/api/admin-preview","POST",ctx.csrfToken,{
       benchmarkId:chosen.id,previewProvider:benchmarkProvider.value,
       settings:{model:benchmarkModel.value,voice:"MARTY",detail:"BALANCED",
-       reasoning:"low",creativity:benchmarkEnergyChoice,additionalGuidance:""}
-     }) as {labRunId:string;metrics:{durationMs:number;providerCalls:number;
+       reasoning:benchmarkReasoningChoice,creativity:benchmarkEnergyChoice,additionalGuidance:""}
+     }) as {trace?:GenerationTrace;review?:Recap;labRunId:string;metrics:{durationMs:number;providerCalls:number;
       inputTokens:number|null;outputTokens:number|null;compatibilityJson?:boolean};
       benchmark?:{certifiedFactsValidated:boolean;diagnosticCues:string[];
        qualityWarnings?:{code:string;slotId:string;description:string}[];
        humanReviewRequired:boolean}};
+     lastBenchmarkTrace=result.trace??null;lastBenchmarkReview=result.review??null;
      lastBenchmarkNotice="Saved "+chosen.name+" · "+
       (benchmarkProviderChoice==="GROQ"?
        (benchmarkModelChoice==="openai/gpt-oss-20b"?"20B":"120B"):
@@ -432,6 +485,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      labData=null;
      await loadLab();
     }catch(e){
+     lastBenchmarkTrace=null;lastBenchmarkReview=null;
      lastBenchmarkNotice="Benchmark failed: "+(e instanceof Error?e.message:
       "No valid model article")+
       ". Any provider attempt will appear in the AI Lab failure history. Official results were not changed.";
@@ -439,11 +493,30 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      await loadLab();
     }
    };
+   const inspectFixture=el("button","ppw-admin-secondary","Inspect test prompt · no Groq call") as HTMLButtonElement;
+   inspectFixture.type="button";inspectFixture.disabled=!scenarios.length;
+   const fixtureInspection=el("section","ppw-admin-preview");fixtureInspection.hidden=true;
+   inspectFixture.onclick=async()=>{
+    inspectFixture.disabled=true;
+    try{
+     const response=await request("/api/admin-preview","POST",ctx.csrfToken,{
+      action:"INSPECT_PROMPT",benchmarkId:scenarioPick.value,
+      settings:{model:benchmarkModel.value,voice:"MARTY",detail:"BALANCED",
+       reasoning:benchmarkReasoningChoice,creativity:benchmarkEnergyChoice,additionalGuidance:""}
+     }) as {inspection:PromptInspection};
+     fixtureInspection.hidden=false;
+     renderPromptInspection(fixtureInspection,response.inspection);
+    }catch(e){fixtureInspection.hidden=false;message(fixtureInspection,
+     e instanceof Error?e.message:"Could not inspect this benchmark",true);}
+    finally{inspectFixture.disabled=false;}
+   };
    benchmark.append(inputField("Wrestling scenario",scenarioPick),rubric,
     inputField("Benchmark provider",benchmarkProvider),
-    inputField("Groq model",benchmarkModel),
+    inputField("Groq model",benchmarkModel),inputField("Reasoning effort",benchmarkReasoning),
     el("p","ppw-admin-small","Writing energy · choose one before running (does not contact Groq)"),
-    energy,runBenchmark,benchmarkStatus);
+    energy,inspectFixture,fixtureInspection,runBenchmark,benchmarkStatus);
+   if(lastBenchmarkTrace&&lastBenchmarkReview)
+    renderGenerationTrace(benchmark,lastBenchmarkTrace,lastBenchmarkReview);
    const reportButton=el("button","ppw-admin-secondary","Copy AI test report") as HTMLButtonElement;
    reportButton.type="button";
    const reportStatus=el("p","ppw-admin-message","");
@@ -824,7 +897,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    try{
     const out=await request("/api/admin-preview","POST",ctx.csrfToken,{
      showId:latest.value,settings:selectedSettings(),previewProvider:provider.value
-    }) as {review:Recap;labRunId?:string;metrics?:{
+    }) as {review:Recap;trace?:GenerationTrace;labRunId?:string;metrics?:{
      durationMs:number;providerCalls:number;inputTokens:number|null;
      outputTokens:number|null}};
     preview.hidden=false;preview.replaceChildren(el("span","ppw-eyebrow","UNPUBLISHED SAMPLE"),
@@ -832,6 +905,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     for(const slot of out.review.slots)
      preview.append(el("h4","",slot.headline),el("p","",slot.recap));
     preview.append(el("p","",out.review.closing));
+    if(out.trace)renderGenerationTrace(preview,out.trace,out.review);
     message(aiStatus,"Preview saved to your AI Lab. "+
      (out.metrics?out.metrics.providerCalls+" model request(s) · "+
       out.metrics.durationMs+"ms · "+
@@ -841,6 +915,20 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     labData=null;void loadLab();
    }catch(e){message(aiStatus,e instanceof Error?e.message:"Preview unavailable",true);}
    finally{busy=false;previewBtn.disabled=false;}
+  };
+  const inspectBtn=el("button","ppw-admin-secondary","Inspect Groq prompt · no tokens") as HTMLButtonElement;
+  inspectBtn.type="button";inspectBtn.disabled=!data.shows.length;
+  const inspector=el("section","ppw-admin-preview");inspector.hidden=true;
+  inspectBtn.onclick=async()=>{
+   inspectBtn.disabled=true;
+   try{
+    const out=await request("/api/admin-preview","POST",ctx.csrfToken,{
+     action:"INSPECT_PROMPT",showId:latest.value,settings:selectedSettings()
+    }) as {inspection:PromptInspection};
+    renderPromptInspection(inspector,out.inspection);inspector.hidden=false;
+   }catch(e){inspector.hidden=false;message(inspector,
+    e instanceof Error?e.message:"Could not inspect this show",true);}
+   finally{inspectBtn.disabled=!data.shows.length;}
   };
   const recover=el("button","ppw-admin-secondary","Retry failed AI report") as HTMLButtonElement;
   recover.type="button";
@@ -865,7 +953,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    "A saved review keeps its original text. New settings cannot change winners, title changes, injuries or scripted angles."),
    inputField("Try against a completed show",latest),
    inputField("Preview provider",provider),paidNotice,
-   previewBtn,recover,aiStatus,preview);
+   inspectBtn,inspector,previewBtn,recover,aiStatus,preview);
  }
  if(ctx.benchmarkOnly){await loadLab();return;}
  try{await load();}catch(e){

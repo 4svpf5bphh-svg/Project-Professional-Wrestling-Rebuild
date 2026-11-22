@@ -75,34 +75,12 @@ function decodeEditorialResponse(input:unknown,show:CompletedShowView):unknown{
    return {slotId:entry.slotId,headline:fields.headline,recap:fields.recap};
   })};
 }
-const validationHint=(message:string)=>message.includes("unowned signature")?
- "Only use a named signature or finisher in the entry containing its owner; otherwise use generic move descriptions.":
- message.includes("Untrusted ringside review shape")||message.includes("changed card order")?
- "Do not omit a segment, and keep all requested headlines and recaps substantial.":
- message.includes("stock metaphors")?
- "Cut the melodrama. Use concrete in-ring action, one believable crowd observation and a specific wrestling judgement instead of stock hype.":
- message.includes("direct quotation")?
- "Never make up wrestler dialogue. Paraphrase the scene unless the exact line exists in the authored actions.":
- message.includes("submission hold remained")?
- "A hold must be released before a separate clean pin. Never make a locked armbar score a three-count.":
- message.includes("referee was looking away")?
- "The referee must be watching to count a clean fall. If the referee was distracted, report the actual certified finish without inventing a count.":
- message.includes("repeated")?
- "Your slots sounded identical. Vary the first exchange, viewpoint and final judgement between bouts; do not reuse any sentence from another card entry.":
- message.includes("winner")?"Never reverse the officially recorded winners.":
- message.includes("title")?"Never invent a title change; use the verified match fallout.":
- message.includes("finish")||message.includes("submission")?
- "Report the certified finish accurately; pin and submission endings are not interchangeable.":
- "Do not invent durable outcomes, new participants or unsupported signature moves.";
-export async function generateGroqReview(show:CompletedShowView,key:string,
- transport:typeof fetch=fetch,
- settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
- memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,
- budgetPool?:TransactionPool,previewProvider:"GROQ"|"OPENAI"="GROQ",
- benchmarkFixture=false):Promise<RingsideCopy>{
- if(previewProvider==="OPENAI"&&!budgetPool)
-  throw new RingsideGenerationError("INVALID_OUTPUT",
-   "Paid previews require a server-side usage budget");
+
+/** One request builder for real reports and the operator's read-only Prompt Inspector.
+ * The displayed first attempt is byte-for-byte the editorial payload sent to Groq,
+ * before the Groq Director appends its chosen model and bearer token headers.
+ */
+function boundedRingsideFacts(show:CompletedShowView,memory:RingsideMemory):string{
  if(JSON.stringify(ringsideBrief(show)).length>26000||
     show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
@@ -129,19 +107,16 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  }
  if(facts.length>26000)throw new RingsideGenerationError("INVALID_OUTPUT",
   "Verified Ringside facts exceed the bounded article size.");
+ return facts;
+
+}
+function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings,
+ facts:string,correction:string,benchmarkFixture:boolean,
+ previewProvider:"GROQ"|"OPENAI"="GROQ"){
  const schema=ringsideResponseSchema(show);
- // Player Results and 120B use strict provider schemas as before. On
- // fictional AI Lab fixtures only, 20B uses JSON object mode directly:
- // observed strict-output 400s otherwise doubled calls without better prose.
- // The exact same certified-fact validator applies to both formats.
  const compatibilityJson=benchmarkFixture&&previewProvider==="GROQ"&&
   settings.model==="openai/gpt-oss-20b";
- let correction="";
- for(let attempt=0;attempt<2;attempt++){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),18000);
-  try{
-   const payload={temperature:settings.creativity,
+ return {temperature:settings.creativity,
      max_completion_tokens:Math.min(5800,760+show.entries.length*(
       settings.detail==="LONG"?310:settings.detail==="SHORT"?185:245)),
      reasoning_effort:settings.reasoning,
@@ -163,6 +138,64 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        (correction?"Quality-control correction required: "+correction+"\n":"")+
        "Records:\n"+facts}]
     };
+}
+export function inspectRingsidePrompt(show:CompletedShowView,
+ settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
+ memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,benchmarkFixture=false){
+ const facts=boundedRingsideFacts(show,memory);
+ const payload=ringsideRequestPayload(show,settings,facts,"",benchmarkFixture);
+ return {promptVersion:RINGSIDE_PROMPT_VERSION,model:settings.model,
+  ...payload,facts:JSON.parse(facts),provider:"GROQ" as const,
+  callMade:false,historyScope:"Only verified per-card storyThread; no unrelated history"};
+}
+export type RingsideGenerationTrace={attempts:Array<{
+ attempt:number;status:"ACCEPTED"|"REJECTED"|"RECOVERED";reason?:string;
+ draft:{showHeadline:string;opening:string;closing:string;
+ slots:Array<{slotId:string;headline:string;recap:string}>}}>,
+ slotOrigins:Array<{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}>};
+
+const validationHint=(message:string)=>message.includes("unowned signature")?
+ "Only use a named signature or finisher in the entry containing its owner; otherwise use generic move descriptions.":
+ message.includes("Untrusted ringside review shape")||message.includes("changed card order")?
+ "Do not omit a segment, and keep all requested headlines and recaps substantial.":
+ message.includes("stock metaphors")?
+ "Cut the melodrama. Use concrete in-ring action, one believable crowd observation and a specific wrestling judgement instead of stock hype.":
+ message.includes("direct quotation")?
+ "Never make up wrestler dialogue. Paraphrase the scene unless the exact line exists in the authored actions.":
+ message.includes("submission hold remained")?
+ "A hold must be released before a separate clean pin. Never make a locked armbar score a three-count.":
+ message.includes("referee was looking away")?
+ "The referee must be watching to count a clean fall. If the referee was distracted, report the actual certified finish without inventing a count.":
+ message.includes("repeated")?
+ "Your slots sounded identical. Vary the first exchange, viewpoint and final judgement between bouts; do not reuse any sentence from another card entry.":
+ message.includes("winner")?"Never reverse the officially recorded winners.":
+ message.includes("title")?"Never invent a title change; use the verified match fallout.":
+ message.includes("finish")||message.includes("submission")?
+ "Report the certified finish accurately; pin and submission endings are not interchangeable.":
+ "Do not invent durable outcomes, new participants or unsupported signature moves.";
+export async function generateGroqReview(show:CompletedShowView,key:string,
+ transport:typeof fetch=fetch,
+ settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
+ memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,
+ budgetPool?:TransactionPool,previewProvider:"GROQ"|"OPENAI"="GROQ",
+ benchmarkFixture=false,inspection?:RingsideGenerationTrace):Promise<RingsideCopy>{
+ if(previewProvider==="OPENAI"&&!budgetPool)
+  throw new RingsideGenerationError("INVALID_OUTPUT",
+   "Paid previews require a server-side usage budget");
+ const facts=boundedRingsideFacts(show,memory);
+ // Player Results and 120B use strict provider schemas as before. On
+ // fictional AI Lab fixtures only, 20B uses JSON object mode directly:
+ // observed strict-output 400s otherwise doubled calls without better prose.
+ // The exact same certified-fact validator applies to both formats.
+ const compatibilityJson=benchmarkFixture&&previewProvider==="GROQ"&&
+  settings.model==="openai/gpt-oss-20b";
+ let correction="";
+ for(let attempt=0;attempt<2;attempt++){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),18000);
+  try{
+   const payload=ringsideRequestPayload(show,settings,facts,correction,
+    benchmarkFixture,previewProvider);
    const response=previewProvider==="OPENAI"?
     await requestOpenAiEditorialPreview({
      key,enabled:true,transport,signal:controller.signal,
@@ -204,11 +237,25 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    const candidate=decodeEditorialResponse(JSON.parse(answer.message.content),show) as
     {showHeadline:string;opening:string;closing:string;
      slots:{slotId:string;headline:string;recap:string}[]};
+   const original={showHeadline:candidate.showHeadline,opening:candidate.opening,
+    closing:candidate.closing,slots:candidate.slots.map(slot=>({...slot}))};
+   const trace=inspection?{attempt:attempt+1,status:"ACCEPTED" as
+    "ACCEPTED"|"REJECTED"|"RECOVERED",draft:original,reason:undefined as string|undefined}:null;
+   if(trace)inspection!.attempts.push(trace);
    for(const slot of candidate.slots)
     if(typeof slot.recap==="string")slot.recap=removeVerbatimRecapEchoes(slot.recap);
-   try{return validateRingsideCopy(candidate,show);}
-   catch(e){
+   const origin=(current:typeof candidate.slots)=>current.map((slot,i)=>({
+    slotId:slot.slotId,source:slot.headline!==candidate.slots[i]?.headline||
+     slot.recap!==candidate.slots[i]?.recap?"PPW_FALLBACK" as const:
+     slot.recap!==original.slots[i]?.recap?"CLEANED" as const:"GROQ" as const
+   }));
+   try{
+    const accepted=validateRingsideCopy(candidate,show);
+    if(inspection)inspection.slotOrigins=origin(accepted.slots);
+    return accepted;
+   }catch(e){
     const reason=e instanceof Error?e.message:"Editorial facts did not validate";
+    if(trace){trace.status="REJECTED";trace.reason=reason;}
     console.warn("Ringside validator:",reason,"attempt",attempt+1);
     // Prefer one corrective pass over a bland canonical substitution for
     // repetition. We still permit only the existing two provider attempts.
@@ -216,6 +263,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      reason.includes("Ringside stacked"))&&attempt===0?null:
      recoverRingsideCopy(candidate,show);
     if(rescued){
+     if(trace)trace.status="RECOVERED";
+     if(inspection)inspection.slotOrigins=origin(rescued.review.slots);
      if(rescued.replaced)console.warn("Ringside preserved valid article slots; replaced",
       rescued.replaced,"unsafe entries using verified results");
      return rescued.review;
