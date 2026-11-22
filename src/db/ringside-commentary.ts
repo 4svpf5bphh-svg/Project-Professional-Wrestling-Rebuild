@@ -154,7 +154,13 @@ export type RingsideGenerationTrace={attempts:Array<{
  slots:Array<{slotId:string;headline:string;recap:string}>}}>,
  slotOrigins:Array<{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}>};
 
-const validationHint=(message:string)=>message.includes("unowned signature")?
+const validationHint=(message:string)=>message.includes("internal storyline or card metadata")?
+ "Translate each confirmed past beat into TV-viewer language. Never report angle counts, week indices, card positions, history fields or official fallout.":
+ message.includes("actual tap-out in a certified pinfall")||
+ message.includes("pin while a submission hold")||
+ message.includes("submission cannot itself")?
+ "The winner earned a PIN, not a tap-out. Release or escape every submission hold before a separate cover; no heel hook, leg lock or armbar can hold shoulders down for three.":
+ message.includes("unowned signature")?
  "Only use a named signature or finisher in the entry containing its owner; otherwise use generic move descriptions.":
  message.includes("Untrusted ringside review shape")||message.includes("changed card order")?
  "Do not omit a segment, and keep all requested headlines and recaps substantial.":
