@@ -330,13 +330,13 @@ test("AI Lab trace preserves original Groq prose and identifies PPW cleaning",as
   message:{content:JSON.stringify({
    showHeadline:"The main event",opening:"The crowd settled in.",closing:"A clean result.",
    slots:{card_0:{headline:"Omega prevails",recap:
-    "Omega took control and earned the pinfall.\\n\\nOmega took control and earned the pinfall."}}
+    "Omega took control and earned the pinfall.\n\nOmega took control and earned the pinfall."}}
   })}}]}));
  const result=await generateGroqReview(show,"fixture",transport,undefined,
   undefined,undefined,"GROQ",false,trace);
  assert.equal(trace.attempts.length,1);
  assert.equal(trace.attempts[0]?.status,"ACCEPTED");
- assert.match(trace.attempts[0]!.draft.slots[0]!.recap,/\\n\\nOmega took control/);
+ assert.match(trace.attempts[0]!.draft.slots[0]!.recap,/\n\nOmega took control/);
  assert.equal(trace.slotOrigins[0]?.source,"CLEANED");
  assert.notEqual(trace.attempts[0]!.draft.slots[0]!.recap,result.slots[0]!.recap);
 });
