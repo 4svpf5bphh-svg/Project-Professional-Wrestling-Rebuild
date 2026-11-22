@@ -9,9 +9,9 @@ import {ringsideProseQualityFailure,impossibleHoldCount,reportedTapInPinfall,uns
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // New writing guidance is independently versioned. Previously published
 // reports stay immutable; an old completed show never needs a fresh API call.
-export const RINGSIDE_PROMPT_VERSION="ringside-v13";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v12";
-export const RINGSIDE_OLDER_VERSION="ringside-v11";
+export const RINGSIDE_PROMPT_VERSION="ringside-v14";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v13";
+export const RINGSIDE_OLDER_VERSION="ringside-v12";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 /** Compact, provider-neutral vocabulary. No additional model request, database
@@ -279,6 +279,46 @@ function assertMoveExecutionOwnership(entry:ShowResultEntry,prose:string):void{
  }
 }
 
+
+/** Reject editorial bookends that invent counts of completed finishes. */
+function assertCertifiedShowCounts(show:CompletedShowView,headline:string,opening:string,
+ closing:string):void{
+ const text=[headline,opening,closing].join(" ");
+ const numbers:Record<string,number>={one:1,two:2,both:2,three:3,four:4,five:5,
+  six:6,seven:7,eight:8,nine:9};
+ const claims=/\b(one|two|both|three|four|five|six|seven|eight|nine|[1-9]|a pair of)\s+(?:[\p{L}’'-]+\s+){0,3}(submissions?|tap[- ]?outs?|pinfalls?|title changes?)\b/giu;
+ const total=(kind:string)=>kind.startsWith("submis")||kind.startsWith("tap")?
+  show.entries.filter(e=>e.type==="MATCH"&&e.outcome==="SUBMISSION").length:
+  kind.startsWith("pin")?
+   show.entries.filter(e=>e.type==="MATCH"&&
+    ["CLEAN_PIN","FLASH_PIN"].includes(e.outcome)).length:
+   show.entries.filter(e=>e.type==="MATCH"&&e.fallout?.title?.changed===true).length;
+ for(const claim of text.matchAll(claims)){
+  const n=claim[1]!.toLowerCase()==="a pair of"?2:numbers[claim[1]!.toLowerCase()]??
+   Number(claim[1]);
+  if(Number.isFinite(n)&&n!==total(claim[2]!.toLowerCase()))
+   throw new Error("Ringside invented a show-level finish count");
+ }
+}
+
+/** The World knows the winning side of a triple/four-way, not the person pinned. */
+function assertUnrecordedMultiPersonVictim(entry:ShowResultEntry,prose:string):void{
+ const sides=entry.matchContext?.sides??[];
+ if(entry.type!=="MATCH"||sides.length<3||
+  !["CLEAN_PIN","FLASH_PIN","FOREIGN_OBJECT"].includes(entry.outcome))return;
+ const winners=new Set(entry.matchContext?.winnerNames??[]);
+ for(const name of sides.flat().filter(n=>!winners.has(n))){
+  const loser=literalPattern(name);
+  const finishBeforeName=new RegExp(
+   "\\b(?:cradle|roll[- ]?up|roll(?:ed|ing)?\\s+up|pin(?:ned|ning)?|cover(?:ed|ing)?|stack(?:ed|ing)?\\s+up)\\b[^.!?]{0,85}\\b"+
+   loser+"\\b","iu");
+  const nameBeforeFinish=new RegExp(
+   "\\b"+loser+"\\b[^.!?]{0,65}\\b(?:was (?:pinned|covered|rolled up|caught in a cradle)|took the (?:pin|fall|three[- ]count))\\b","iu");
+  if(finishBeforeName.test(prose)||nameBeforeFinish.test(prose))
+   throw new Error("Ringside named an unrecorded multi-person fall victim");
+ }
+}
+
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
  options:{styleWarningOnly?:boolean}={}):RingsideCopy{
  const v=shape(candidate);
@@ -332,6 +372,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   }
  }
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
+ assertCertifiedShowCounts(show,v.showHeadline as string,v.opening as string,v.closing as string);
  // Headline and bookends must not expose directing keys either.
  if(/\b(?:card[_\s-]*\d+|slot[_\s-]*\d+|showfocus|editoriallens|storythread|director\.[a-z]+|week\s+\d{1,3})\b/i.test(fullStory))
   throw new Error("Ringside exposed private card or story metadata");
