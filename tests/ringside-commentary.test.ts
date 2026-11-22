@@ -294,7 +294,7 @@ test("read-only Groq inspector uses the identical provider payload and costs no 
  assert.equal(inspected.model,settings.model);
  assert.equal(inspected.temperature,0.65);
  assert.equal(inspected.reasoning_effort,"medium");
- assert.deepEqual(inspected.facts.slots.map(x=>x.key),["card_0"]);
+ assert.deepEqual(inspected.facts.slots.map((x:{key:string})=>x.key),["card_0"]);
  let requests=0;
  const transport:typeof fetch=async(_url,init)=>{
   requests++;

@@ -49,7 +49,7 @@ type LabData={usage:LabDay[];runs:LabRun[];scores:{
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
 type PromptInspection={promptVersion:string;provider:"GROQ";model:string;
- temperature:number;reasoning_effort:string;max_completion_tokens:number;
+ temperature:number;reasoning_effort:string;reasoning_format?:string;max_completion_tokens:number;
  response_format:unknown;messages:{role:string;content:string}[];
  facts:unknown;callMade:false;historyScope:string};
 type GenerationTrace={attempts:Array<{attempt:number;status:string;reason?:string;
@@ -65,6 +65,7 @@ function textDisclosure(title:string,body:string){
 function renderPromptInspection(root:HTMLElement,inspection:PromptInspection){
  const request={model:inspection.model,temperature:inspection.temperature,
   reasoning_effort:inspection.reasoning_effort,
+  ...(inspection.reasoning_format?{reasoning_format:inspection.reasoning_format}:{}),
   max_completion_tokens:inspection.max_completion_tokens,
   response_format:inspection.response_format,messages:inspection.messages};
  root.replaceChildren(el("h3","","Groq Prompt Inspector"),
