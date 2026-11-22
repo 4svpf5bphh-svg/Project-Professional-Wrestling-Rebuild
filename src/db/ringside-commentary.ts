@@ -201,6 +201,8 @@ export type RingsideGenerationTrace={attempts:Array<{
 
 const validationHint=(message:string)=>message.includes("underwrote a significant match")?
  "You are a wrestling TV journalist writing for readers' enjoyment. Rebuild EVERY important match as an absorbing ringside account: opening tactics, a meaningful counter, the CERTIFIED finish and a measured verdict. At least 70 words for a strong bout, 85 for a 4.25+ star bout. No formulaic 'In the fourth bout' summaries or invented consequences.":
+ message.includes("off-screen promo target appearance")?
+ "The person named in the promo was OFF SCREEN. Rewrite the scene from the on-camera speaker's words and reactions; the mentioned opponent did not stare, face anyone, respond or physically appear. Keep this an enjoyable filmed scene, not a generic status report.":
  message.includes("private card or story metadata")?
  "Never report card numbers, slot IDs, Week indices, editor directions or system keys in the headline, opening, match reports or close. Write exclusively for wrestling viewers.":
  message.includes("historical footage or narrated internal video")?
@@ -318,9 +320,16 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     console.warn("Ringside validator:",reason,"attempt",attempt+1);
     // Prefer one corrective pass over a bland canonical substitution for
     // repetition. We still permit only the existing two provider attempts.
-    const rescued=(reason.includes("Ringside repeated")||
-     reason.includes("Ringside stacked"))&&attempt===0?null:
-     recoverRingsideCopy(candidate,show);
+    // Errors that remove the actual on-camera scene or contaminate the
+    // show's narrative voice deserve the already-budgeted correction. A
+    // generic fallback is a last resort, never our first editorial choice.
+    const rewriteFirst=attempt===0&&(
+     reason.includes("Ringside repeated")||
+     reason.includes("Ringside stacked")||
+     reason.includes("off-screen promo target appearance")||
+     reason.includes("historical footage or narrated internal video")||
+     reason.includes("private card or story metadata"));
+    const rescued=rewriteFirst?null:recoverRingsideCopy(candidate,show);
     // A mechanically safe scorecard recap is NOT an acceptable replacement
     // for an important match. Try the already-authorised second Groq
     // correction first. No third call, additional SQL or hidden publishing.

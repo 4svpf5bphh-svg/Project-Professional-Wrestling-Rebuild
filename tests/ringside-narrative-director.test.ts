@@ -367,3 +367,37 @@ test("The existing correction attempt repairs a major match instead of accepting
  assert.doesNotMatch(report.slots[2]!.recap,/In the third bout|Coquina Clutch/);
  assert.ok(report.slots[2]!.recap.length>440);
 });
+
+test("Mentioned-only backstage participants trigger a corrective rewrite, not an immediate generic angle",async()=>{
+ const show:CompletedShowView={...ascension,matchCount:0,angleCount:4,
+  entries:[regal,{...joePromo,position:1},{...gunn,position:2},
+   {...taker,position:3}]};
+ let calls=0;
+ const corrected="Samoa Joe turned toward the locker-room camera and warned "+
+  "Matt Riddle in unmistakable terms. No answer came: Joe's speech alone "+
+  "made clear that he intended to settle their issue himself.";
+ const transport:typeof fetch=async()=>{
+  calls++;
+  const recaps=[
+   "William Regal walked onto the entrance ramp and announced himself as a major new arrival.",
+   calls===1?"Samoa Joe faced Matt Riddle and threatened him; Riddle's calm stare filled the silence.":
+    corrected,
+   "Austin Gunn and Colten Gunn challenged Iziah Hunter and Juice Robinson by name from the interview area.",
+   "The Undertaker spoke of his intention to pursue the CWA World Championship."
+  ];
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"Ascension builds major rivalries",
+   opening:"Regal debuted and the roster laid down challenges.",
+   closing:"Undertaker's words put the championship on notice.",
+   slots:Object.fromEntries(recaps.map((recap,i)=>["card_"+i,{
+    headline:"Chapter "+i+" on tonight's wrestling show",recap}]))
+  })}}]}));
+ };
+ const trace:RingsideGenerationTrace={attempts:[],slotOrigins:[]};
+ const report=await generateGroqReview(show,"fixture",transport,
+  undefined,undefined,undefined,"GROQ",false,trace);
+ assert.equal(calls,2);
+ assert.deepEqual(trace.attempts.map(x=>x.status),["REJECTED","ACCEPTED"]);
+ assert.equal(report.slots[1]?.recap,corrected);
+ assert.ok(trace.slotOrigins.every(x=>x.source==="GROQ"));
+});
