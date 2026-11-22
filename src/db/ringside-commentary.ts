@@ -12,7 +12,7 @@ import type {TransactionPool} from "./transaction.js";
 import {readCompletedShowView} from "./show-results-view.js";
 import {readRingsideMemory,EMPTY_RINGSIDE_MEMORY,type RingsideMemory} from "./ringside-continuity.js";
 import type {CompletedShowView} from "./show-results-view.js";
-import {ringsideFacts,ringsideBrief,recoverRingsideCopy,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,ringsideReaderQualityIssue,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
  RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
@@ -199,14 +199,20 @@ export type RingsideGenerationTrace={attempts:Array<{
  slots:Array<{slotId:string;headline:string;recap:string}>}}>,
  slotOrigins:Array<{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}>};
 
-const validationHint=(message:string)=>message.includes("internal storyline or card metadata")?
+const validationHint=(message:string)=>message.includes("underwrote a significant match")?
+ "You are a wrestling TV journalist writing for readers' enjoyment. Rebuild EVERY important match as an absorbing ringside account: opening tactics, a meaningful counter, the CERTIFIED finish and a measured verdict. At least 70 words for a strong bout, 85 for a 4.25+ star bout. No formulaic 'In the fourth bout' summaries or invented consequences.":
+ message.includes("private card or story metadata")?
+ "Never report card numbers, slot IDs, Week indices, editor directions or system keys in the headline, opening, match reports or close. Write exclusively for wrestling viewers.":
+ message.includes("historical footage or narrated internal video")?
+ "Write a natural video-package recap using only verified stakes. Do not invent a last-night result or discuss whether a video introduced new moves or promos.":
+ message.includes("internal storyline or card metadata")?
  "Translate each confirmed past beat into TV-viewer language. Never report angle counts, week indices, card positions, history fields or official fallout.":
  message.includes("actual tap-out in a certified pinfall")||
  message.includes("pin while a submission hold")||
  message.includes("submission cannot itself")?
  "The winner earned a PIN, not a tap-out. Release or escape every submission hold before a separate cover; no heel hook, leg lock or armbar can hold shoulders down for three.":
  message.includes("unowned signature")?
- "Only use a named signature or finisher in the entry containing its owner; otherwise use generic move descriptions.":
+ "The previous draft put another wrestler's signature move in the wrong match. Delete unsupported named moves but KEEP full, absorbing match journalism for EVERY bout; use normal wrestling exchanges instead of a one-sentence result.":
  message.includes("Untrusted ringside review shape")||message.includes("changed card order")?
  "Do not omit a segment, and keep all requested headlines and recaps substantial.":
  message.includes("stock metaphors")?
@@ -302,6 +308,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    }));
    try{
     const accepted=validateRingsideCopy(candidate,show);
+    const quality=ringsideReaderQualityIssue(accepted,show);
+    if(quality)throw new Error(quality);
     if(inspection)inspection.slotOrigins=origin(accepted.slots);
     return accepted;
    }catch(e){
@@ -313,17 +321,22 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     const rescued=(reason.includes("Ringside repeated")||
      reason.includes("Ringside stacked"))&&attempt===0?null:
      recoverRingsideCopy(candidate,show);
-    if(rescued){
+    // A mechanically safe scorecard recap is NOT an acceptable replacement
+    // for an important match. Try the already-authorised second Groq
+    // correction first. No third call, additional SQL or hidden publishing.
+    const weakRescue=rescued?ringsideReaderQualityIssue(rescued.review,show):null;
+    if(rescued&&!weakRescue){
      if(trace)trace.status="RECOVERED";
      if(inspection)inspection.slotOrigins=origin(rescued.review.slots);
      if(rescued.replaced)console.warn("Ringside preserved valid article slots; replaced",
       rescued.replaced,"unsafe entries using verified results");
      return rescued.review;
     }
+    if(weakRescue)console.warn("Ringside rejected mechanical match fallback:",weakRescue);
     if(attempt===1)throw new RingsideGenerationError("FACT_VALIDATION",
-     "Ringside's article failed factual validation: "+reason+
+     "Ringside's article failed factual validation: "+(weakRescue??reason)+
       ". All recorded results remain unchanged.");
-    correction=validationHint(reason);
+    correction=validationHint(weakRescue??reason);
    }
   }catch(e){
    if(e instanceof RingsideGenerationError){

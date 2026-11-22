@@ -5,9 +5,9 @@ import {directRingsideMatch,directRingsideAngle,directRingsideShow}
  from "../src/domain/ringside-narrative-director.js";
 import {ringsideViewerCallback,type RingsideStoryThread}
  from "../src/domain/ringside-story-threads.js";
-import {ringsideBrief,RINGSIDE_STYLE_GUIDE,validateRingsideCopy}
+import {ringsideBrief,RINGSIDE_STYLE_GUIDE,RINGSIDE_PROMPT_VERSION,ringsideReaderQualityIssue,validateRingsideCopy}
  from "../src/domain/ringside-editorial.js";
-import {inspectRingsidePrompt} from "../src/db/ringside-commentary.js";
+import {inspectRingsidePrompt,generateGroqReview,type RingsideGenerationTrace} from "../src/db/ringside-commentary.js";
 
 function match(id:string,position:number,input:{
  sides:string[][];winners:string[];finish:string;stars:number;crowd:number;
@@ -161,7 +161,7 @@ test("Rivalry history is presented as a viewer callback, never angle/week counts
 test("Prompt Inspector receives the SAME bounded one-call focus and director facts",()=>{
  const inspected=inspectRingsidePrompt(ascension);
  assert.equal(inspected.callMade,false);
- assert.equal(inspected.promptVersion,"ringside-v12");
+ assert.equal(inspected.promptVersion,"ringside-v13");
  const facts=inspected.facts as ReturnType<typeof ringsideBrief>;
  assert.deepEqual(facts.showFocus,{lead:"card_7",support:["card_0","card_8"]});
  const matchDirector=facts.slots[3]!.director;
@@ -243,4 +243,127 @@ test("A dense 30-card PPV retains every certified finish within the existing tok
  assert.ok(facts.slots.every(x=>x.match?.sides[1]?.[0]==="Chris Sabin"));
  assert.ok(facts.slots.some(x=>x.director),
   "Important matches retain detailed direction when lower cards are compacted");
+});
+
+test("Phase 66 starts as an entertaining TV wrestling review for real game readers",()=>{
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v13");
+ assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/experienced WRESTLING JOURNALIST/);
+ assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/televised wrestling show/);
+ assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/game's players/);
+ assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/enjoyable, immersive article/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/showFocus\.lead/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/never write card numbers/i);
+ assert.ok(RINGSIDE_STYLE_GUIDE.length<6500);
+});
+test("W29 reader safety: mentioned-only targets cannot be face-to-face or react",()=>{
+ const copy={showHeadline:"Ascension brought news to the title scene",
+  opening:"The night was anchored by Regal's appearance and Místico's title defence.",
+  closing:"Undertaker's challenge left the main event with real consequences.",
+  slots:ascension.entries.map(e=>({slotId:e.slotId,headline:e.headline,
+   recap:e.summary}))};
+ for(const [index,recap] of [
+  [2,"Samoa Joe faced Matt Riddle in the locker room before issuing a threat."],
+  [2,"Joe warned Matt Riddle, whose calm stare suggested he was unimpressed."],
+  [2,"Joe issued a warning. Riddle's steady gaze gave nothing away."],
+  [4,"Austin Gunn stared at Iziah Hunter and spoke straight to him."],
+  [4,"Colten Gunn followed, fixing Juice Robinson with a glare."],
+  [4,"Austin gave his challenge while Robinson's face remained impassive."]
+ ] as const){
+  const broken={...copy,slots:copy.slots.map((s,i)=>i===index?{...s,recap}:s)};
+  assert.throws(()=>validateRingsideCopy(broken,ascension),
+   /off-screen promo target appearance/,recap);
+ }
+ for(const [index,recap] of [
+  [2,"Samoa Joe addressed the locker-room camera, warning Matt Riddle that he had better stay away."],
+  [4,"The Gunn brothers called out Iziah Hunter and Juice Robinson in an interview, neither of whom answered."]
+ ] as const){
+  const sound={...copy,slots:copy.slots.map((s,i)=>i===index?{...s,recap}:s)};
+  assert.doesNotThrow(()=>validateRingsideCopy(sound,ascension),recap);
+ }
+});
+test("W29 headlines, intro and Perfect's video cannot leak backstage card bookkeeping",()=>{
+ const base={showHeadline:"Ascension made its mark",
+  opening:"The main event ended with a controversial belt strike.",
+  closing:"Regal and Undertaker left the fans with plenty to anticipate.",
+  slots:ascension.entries.map(e=>({slotId:e.slotId,headline:e.headline,
+   recap:e.summary}))};
+ for(const bad of ["card 7's headline bout led the night",
+  "The showFocus.lead got the biggest pop","Week 29 brought the results"]){
+  assert.throws(()=>validateRingsideCopy({...base,opening:bad},ascension),
+   /private card or story metadata/);
+  assert.throws(()=>validateRingsideCopy({...base,showHeadline:bad},ascension),
+   /private card or story metadata/);
+ }
+ for(const bad of [
+  "The video highlighted Perfect's last-night victory.",
+  "The package didn't introduce new moves or promos.",
+  "The show didn’t introduce new moves or promos."
+ ]){
+  const copy={...base,slots:base.slots.map((s,i)=>i===6?{...s,recap:bad}:s)};
+  assert.throws(()=>validateRingsideCopy(copy,ascension),
+   /historical footage or narrated internal video limitations/,bad);
+ }
+});
+test("W29 20-minute O'Reilly match and 4.25-star Místico main event cannot be replaced by scorecards",()=>{
+ const base={showHeadline:"Ascension delivers a night of action",
+  opening:"The in-ring action was mixed, but the title contest mattered.",
+  closing:"The wrestlers left a story for next week.",
+  slots:ascension.entries.map(e=>({slotId:e.slotId,headline:e.headline,
+   recap:e.summary}))};
+ const bad={...base,slots:base.slots.map((s,i)=>i===3?{
+  ...s,recap:"In the fourth bout, Kyle O'Reilly against Chris Sabin met in a singles. After 20 minutes, Kyle O'Reilly secured a clean pinfall. The reaction was mixed."
+ }:i===7?{
+  ...s,recap:"In the eighth bout, Místico against William Regal met in a singles. After 25 minutes, Místico emerged victorious after a controversial ending. The crowd responded strongly to the decision."
+ }:s)};
+ assert.match(ringsideReaderQualityIssue(bad,ascension)??"",/significant match/);
+ assert.match(ringsideReaderQualityIssue(bad,{
+  ...ascension,entries:ascension.entries.filter((_,i)=>i!==3)
+ })??"",/significant match/);
+});
+test("The existing correction attempt repairs a major match instead of accepting two bland fallbacks",async()=>{
+ const show:CompletedShowView={...ascension,entries:[
+  regal,{...joePromo,position:1,
+   performerIdentities:[{personId:"person-joe",ringName:"Samoa Joe",
+    character:"Submission machine",style:"POWER",
+    signatureMoves:["Muscle Buster"],finishingMoves:["Coquina Clutch"],
+    source:"WORLD_RECORD"}]},
+  {...oreilly,position:2}, {...taker,position:3}
+ ]};
+ const long="O'Reilly built the match around wrist control while Sabin tried to create "+
+  "room to strike. A counter to the opening exchange forced both men to adjust "+
+  "their footing, and Sabin found more chances when he stopped letting O'Reilly "+
+  "dictate every hold. As the fight entered its later stages, the technical "+
+  "exchanges became more deliberate rather than simply faster. O'Reilly "+
+  "escaped one last scramble, worked free of the pressure and secured the "+
+  "separate, legal three-count. It was a solid match rather than a classic.";
+ const write=(wrong:boolean)=>({
+  showHeadline:"Ascension has a decisive night",
+  opening:"Regal arrived and the singles match rewarded patience.",
+  closing:"The wrestlers made their statements and the audience responded.",
+  slots:Object.fromEntries(show.entries.map((e,i)=>["card_"+i,{
+   headline:i===2?"O'Reilly's hard-earned pin":"The on-air confrontation "+i,
+   recap:i===2?(wrong?
+    "Kyle O'Reilly hit the Coquina Clutch on Sabin before the winning clean pin.":long):
+    e.type==="SEGMENT"?"The segment featured "+(e.segmentContext?.actorNames.join(" & ")??"the roster")+
+     " making a declaration. The filmed scene gave fans something to consider.":
+    e.summary
+  }]))
+ });
+ const trace:RingsideGenerationTrace={attempts:[],slotOrigins:[]};
+ let calls=0;
+ const transport:typeof fetch=async()=>{
+  calls++;
+  return new Response(JSON.stringify({choices:[{message:{
+   content:JSON.stringify(write(calls===1))
+  }}]}),{status:200});
+ };
+ const report=await generateGroqReview(show,"fixture",transport,
+  undefined,undefined,undefined,"GROQ",false,trace);
+ assert.equal(calls,2,"one first attempt plus the existing quality-control retry");
+ assert.equal(trace.attempts.length,2);
+ assert.equal(trace.attempts[0]?.status,"REJECTED");
+ assert.equal(trace.attempts[1]?.status,"ACCEPTED");
+ assert.match(report.slots[2]!.recap,/wrist control/);
+ assert.doesNotMatch(report.slots[2]!.recap,/In the third bout|Coquina Clutch/);
+ assert.ok(report.slots[2]!.recap.length>440);
 });
