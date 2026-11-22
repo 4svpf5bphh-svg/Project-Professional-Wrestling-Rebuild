@@ -58,5 +58,39 @@ export function staffRecommendationVoice(input:{
   TALENT_MANAGER:personality==="AMBITIOUS"?"An impossible offer is not ambition. ":"",
   SCOUT:personality==="LOYAL"?"We owe prospects realistic expectations. ":""
  };
- return framing[personality]+(focus[role]??"")+nextStep;
+ // Specific, bounded alternatives from a real hired professional.
+ // Temperament affects a decision, not just the greeting.
+ const options:Partial<Record<StaffRole,
+  Partial<Record<Exclude<MeetingPersonality,null>,string>>>>={
+  CREATIVE:{
+   FRANK:"Name what changes in the next scene; cut the recycled confrontation. ",
+   PATIENT:"Let the next chapter reveal one fresh motive before rushing a payoff. ",
+   AMBITIOUS:"Shape the next beat towards an earned major-show payoff, not an unbooked result. ",
+   LOYAL:"Give the wrestler a credible reason for change before demanding a turn. ",
+   ECCENTRIC:"Change the setting or point of view while keeping the story understandable. "
+  },
+  TALENT_MANAGER:{
+   FRANK:"Check calendar conflicts before discussing the money. ",
+   PATIENT:"Start with the dates the wrestler can truly fulfil, then talk terms. ",
+   AMBITIOUS:"A bigger role is worthwhile only if outside commitments permit it. ",
+   LOYAL:"Protect the working relationship by being clear about available appearances. ",
+   ECCENTRIC:"A glamorous contract is useless if the calendar cannot accommodate it. "
+  },
+  MEDICAL:{
+   FRANK:"A medical restriction is not negotiable. ",
+   PATIENT:"Build the next card around the recorded recovery timetable. ",
+   AMBITIOUS:"Long-term wrestler availability matters more than one show. ",
+   LOYAL:"Prioritise the injured performer's recovery over a rushed return. ",
+   ECCENTRIC:"An elaborate entrance does not count as medical clearance. "
+  },
+  ROAD_AGENT:{
+   FRANK:"Strip out spots that do not serve the finish. ",
+   PATIENT:"Make the key turning point work at the time actually allotted. ",
+   AMBITIOUS:"Make the match feel bigger through earned stakes, not invented near-falls. ",
+   LOYAL:"Protect both wrestlers with a finish they can credibly execute. ",
+   ECCENTRIC:"Find one memorable legal exchange instead of six disconnected stunts. "
+  }
+ };
+ const specific=input.urgency==="CLEAR"?"":options[role]?.[personality]??"";
+ return framing[personality]+(focus[role]??"")+specific+nextStep;
 }

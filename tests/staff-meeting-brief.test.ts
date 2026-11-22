@@ -81,3 +81,21 @@ test("the same evidence yields different, accountable staff positions",()=>{
  assert.ok([...out].every(s=>s.endsWith(recommendation)));
  assert.match([...out].find(s=>s.includes("ambition"))??"",/impossible offer/);
 });
+
+
+test("temperament changes the actual specialist recommendation",()=>{
+ for(const role of ["CREATIVE","TALENT_MANAGER","MEDICAL","ROAD_AGENT"] as const){
+  const options=(["FRANK","PATIENT","AMBITIOUS","LOYAL","ECCENTRIC"] as const)
+   .map(personality=>staffRecommendationVoice({
+    role,personality,urgency:"ACTION",nextStep:"Review the actual saved booking."
+   }));
+  assert.equal(new Set(options).size,5);
+  assert.ok(options.every(x=>x.endsWith("Review the actual saved booking.")));
+ }
+ assert.match(staffRecommendationVoice({role:"CREATIVE",personality:"PATIENT",
+  urgency:"WATCH",nextStep:"Read the on-air programme."}),/fresh motive/);
+ assert.match(staffRecommendationVoice({role:"ROAD_AGENT",personality:"FRANK",
+  urgency:"WATCH",nextStep:"Check Gorilla."}),/spots that do not serve the finish/);
+ assert.doesNotMatch(staffRecommendationVoice({role:"MEDICAL",personality:"FRANK",
+  urgency:"CLEAR",nextStep:"No medical warnings."}),/restriction is not negotiable/);
+});

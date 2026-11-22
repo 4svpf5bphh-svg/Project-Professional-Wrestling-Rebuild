@@ -164,7 +164,13 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    el("p","ppw-staff-muted",
     "What your hired specialists know, what they actually change and where you make the final call."));
   const attendees=el("div","ppw-staff-meeting-grid");
-  for(const brief of view.meetings??[]){
+  // Put genuinely urgent staffed decisions first; vacancies stay last.
+  // Pure sorting, no extra World query or editor state change.
+  const urgencyRank={ACTION:0,WATCH:1,CLEAR:2} as const;
+  const orderedBriefs=[...(view.meetings??[])].sort((a,b)=>
+   (a.staffName?urgencyRank[a.urgency]:3)-
+   (b.staffName?urgencyRank[b.urgency]:3));
+  for(const brief of orderedBriefs){
    const slot=el("details","ppw-staff-meeting-brief");
    const lead=el("summary","");
    const caption=el("div","");

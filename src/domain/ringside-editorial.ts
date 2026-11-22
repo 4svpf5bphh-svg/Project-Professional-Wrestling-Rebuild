@@ -4,6 +4,7 @@ import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js
 import type {RingsideMemory} from "../db/ringside-continuity.js";
 import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
+import {ringsideProseQualityFailure,impossibleHoldCount,unseenCleanCount} from "./ringside-prose-quality.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // New writing guidance is independently versioned. Previously published
 // reports stay immutable; an old completed show never needs a fresh API call.
@@ -189,6 +190,27 @@ export function removeVerbatimRecapEchoes(recap:string):string{
  }).filter(p=>p.trim()).join("\n\n");
 }
 
+/** Dialogue is an on-air fact, not a licence for a journalist to write
+ * wrestler speeches. Only manager-authored quotations are permissible.
+ */
+function assertNoUnscriptedDialogue(entry:ShowResultEntry,prose:string):void{
+ if(entry.type!=="SEGMENT")return;
+ const quoted=/[“"]([^”"]{28,210})[”"]/gu;
+ const authorised=(entry.summary+" "+JSON.stringify(
+  entry.segmentContext?.scriptedActions??[])).normalize("NFKC").toLowerCase()
+  .replace(/\s+/g," ");
+ for(const occurrence of prose.matchAll(quoted)){
+  const quote=occurrence[1]?.trim()??"";
+  const preceding=prose.slice(Math.max(0,(occurrence.index??0)-100),
+   occurrence.index??0);
+  const isSpeech=/\b(?:said|shouted|yelled|declared|announced|promised|snarled|demanded|told|replied|warned|delivered the line|claimed)\b/i.test(preceding)||
+   /\b(?:i|we|you|my|your|our|me|us)\b/i.test(quote);
+  if(!isSpeech)continue;
+  const known=quote.normalize("NFKC").toLowerCase().replace(/\s+/g," ");
+  if(!authorised.includes(known))
+   throw new Error("Ringside invented a direct quotation that was never scripted");
+ }
+}
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
  const v=shape(candidate);
  if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
@@ -241,7 +263,10 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   }
  }
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
- if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result)\b/i.test(fullStory))
+ const voiceFailure=ringsideProseQualityFailure({
+  opening:v.opening as string,closing:v.closing as string,slots});
+ if(voiceFailure)throw new Error(voiceFailure);
+ if(/\b(?:protected finish|foreign object|booking intent|scored compatibility|execution quality|crowd score|crowd meter|cheer meter|reaction score|booking grade|chemistry modifier|execution modifier|recorded finish|official record|simulation result|protected victory|official-approved distraction|certified finish|certified decision|booked winner|booked result)\b/i.test(fullStory))
   throw new Error("Ringside leaked technical simulation terminology");
  if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b|\b[0-5](?:\.\d{1,2})?[\s\-\u2010-\u2015]*stars?\b/i.test(fullStory))
   throw new Error("Ringside leaked numerical score into editorial");
@@ -265,6 +290,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   // character or medical record, not a writer's improvised description.
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
+  assertNoUnscriptedDialogue(source,prose);
   assertReferencedPromoTargetStayedOffScreen(source,prose);
   assertSpokenAngleStayedSpoken(source,prose);
   // A declared turn against a rival is not proof the two were partners.
@@ -280,6 +306,12 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
    throw new Error("Invented interference");
   if(source.type==="MATCH"){
    validateWrestlingMechanics(source,prose);
+   if(["CLEAN_PIN","FLASH_PIN"].includes(source.outcome)){
+    if(impossibleHoldCount(slot.recap))
+     throw new Error("Ringside counted a clean pin while a submission hold remained locked");
+    if(unseenCleanCount(slot.recap))
+     throw new Error("Ringside counted a clean pin while the referee was looking away");
+   }
    // A generated near-fall is fine; declaring that the defeated wrestler
    // actually pinned/submitted the recorded winner is not.
    const winners=source.matchContext?.winnerNames??[];
@@ -374,32 +406,40 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  if(!raw||!Array.isArray(raw.slots)||raw.slots.length!==show.entries.length||
   show.entries.length<4)return null;
  const maxFallback=Math.min(2,Math.floor(show.entries.length/3));
- const ordinals=["opening","second","third","fourth","fifth","sixth",
-  "seventh","eighth","ninth","tenth","eleventh","twelfth",
-  "thirteenth","fourteenth","fifteenth","sixteenth","seventeenth",
-  "eighteenth","nineteenth","twentieth","twenty-first","twenty-second",
-  "twenty-third","twenty-fourth","twenty-fifth","twenty-sixth",
-  "twenty-seventh","twenty-eighth","twenty-ninth","thirtieth"];
- const ordinal=(n:number)=>ordinals[n]??"later";
+ // When one AI slot fails, report its actual wrestlers and official method
+ // instead of printing the old "decision in the ring" non-story. These
+ // sentences contain no invented moves, dialogue, feud outcome or scorer.
  const base:RingsideCopy={
   showHeadline:"Ringside: "+(show.showName??"The show").slice(0,90),
-  opening:"The crowd gathered for a full night of wrestling.",
-  closing:"The final bell gave the audience plenty to discuss.",
-  slots:show.entries.map((entry,i)=>{
+  opening:(show.promotionName??"The promotion")+" presented "+
+   (show.showName??"its next card")+". Every finish below comes from the show.",
+  closing:"The bell has sounded. What the promotion does with those results remains to be seen.",
+  slots:show.entries.map(entry=>{
    if(entry.type==="SEGMENT"){
-    const angleIndex=show.entries.slice(0,i).filter(e=>e.type==="SEGMENT").length;
-    const result=entry.outcome==="REFUSED"?"was refused":
-     entry.outcome==="INTERRUPTED"?"was interrupted":"took place";
-    return {slotId:entry.slotId,headline:"A moment outside the ring",
-     recap:"The "+ordinal(angleIndex)+" segment of the evening, "+
-      entry.headline.replace(/[.!?]+$/,"")+", "+result+
-      ". The audience has seen the outcome, whatever the intent."};
+    const context=entry.segmentContext;
+    const speaker=context?.actorNames.join(" & ")??"";
+    const targets=context?.targetNames.join(" & ")??"";
+    const segment=(entry.segmentKind??"SEGMENT").replaceAll("_"," ").toLowerCase();
+    const people=targets&&context?.targetPresence==="ON_SCREEN"?
+     speaker+" and "+targets:speaker;
+    const action=entry.outcome==="REFUSED"?
+     "The proposal was refused on air.":
+     entry.outcome==="INTERRUPTED"?
+      "The scene was interrupted before its planned end.":
+      "The segment aired without a reported change to the match card.";
+    const names=targets&&context?.targetPresence==="MENTIONED"?
+     " "+targets+" was named but did not appear on camera.": "";
+    return {slotId:entry.slotId,
+     headline:(entry.headline||((people||"The cast")+"'s "+segment)).slice(0,140),
+     recap:((people||"The participants")+" took part in a "+segment+
+      " on "+(show.showName??"the show")+". "+action+names).slice(0,1600)};
    }
+   const sides=entry.matchContext?.sides??[];
    const names=entry.matchContext?.winnerNames??[];
-   const winner=names.length?names.join(" & "):"The winning side";
-   // Recovered editorial must preserve every unusual certified finish, not
-   // collapse I Quit, Casket, Iron Man or other stipulations to "won the match".
-   // This is pure local fallback: no second model call or history query.
+   const winner=names.length?names.join(" & "):"The contest";
+   const opponents=sides.filter(side=>!side.some(n=>names.includes(n)))
+    .flat().filter(Boolean).slice(0,5).join(" & ");
+   const format=(entry.matchContext?.format??"match").replaceAll("_"," ").toLowerCase();
    const finish:Record<string,string>={
     CLEAN_PIN:"secured a clean pinfall",FLASH_PIN:"snatched a sudden pinfall",
     SUBMISSION:"earned a submission victory",
@@ -415,11 +455,20 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
     VERBAL_SURRENDER:"won when the opponent verbally surrendered, saying 'I quit'",
     FIRST_BLOOD:"won after the opponent was the first to bleed",
     CASKET_CLOSE:"won by shutting the casket lid on the opponent"};
-   const boutIndex=show.entries.slice(0,i).filter(e=>e.type==="MATCH").length;
-   return {slotId:entry.slotId,headline:"The decision in the ring",
-    recap:"The "+ordinal(boutIndex)+" bout belonged to "+winner+", who "+
-     (finish[entry.outcome]??"won the match")+
-     ". The result settled the contest in front of the crowd."};
+   const result=names.length?winner+" "+(finish[entry.outcome]??"won the match"):
+    "The contest ended without a recorded winning side";
+   const reaction=entry.crowdResponse>=75?
+    "The crowd responded strongly to the decision.":
+    entry.crowdResponse<45?"The response was noticeably quiet.":
+     "The reaction was mixed.";
+   const matchup=sides.length>=2?sides.map(side=>side.join(" & ")).join(" against "):
+    (opponents?winner+" against "+opponents:winner);
+   const when=entry.fallout?.actualMinutes!==undefined&&
+    entry.fallout.actualMinutes!==null?
+    " After "+entry.fallout.actualMinutes+" minutes, ":" ";
+   return {slotId:entry.slotId,
+    headline:(entry.headline||winner+(opponents?" defeats "+opponents:" wins")).slice(0,140),
+    recap:(matchup+" met in a "+format+"." +when+result+". "+reaction).slice(0,1750)};
   })
  };
  try{validateRingsideCopy(base,show);}catch{return null;}
