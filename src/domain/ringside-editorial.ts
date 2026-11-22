@@ -642,7 +642,7 @@ Dry humour sparingly; never just list moves or announce crowd approval.
 
 Write ONE chronological article. Build match psychology from the verified
 winner, finish, wrestlers, audience, duration and scoped storyThread.
-Every match needs tactical contrast, a turning point and ONE legal finish.
+For EVERY match, give tactical contrast, a turning point and ONE legal finish.
 Near-falls are not victories. Strong bouts 90–150 words, squashes 55–100,
 angles 35–85. Criticise weak bouts; not everything steals the show.
 Only slot.dramaticCue=PEAK may BURST into a live count:
@@ -703,7 +703,7 @@ stipulationRules if present.
 
 Angles are filmed scenes, NOT bouts. Narrate angle.scriptedActions
 in exact recorded order; any direct quotes must come from those actions.
-Speech alone cannot imply a strike, move or brawl. Only ATTACK,
+Speech alone cannot imply a strike, move or brawl. Spoken-only angles permit NO wrestling moves, strikes, dropkicks or brawls. Only ATTACK,
 FIGHT_BACK, RESCUE or BETRAY authorises physical conflict. A PROMO's
 actorNames speak; angle.targetPresence distinguishes targets MENTIONED
 (off-camera, unable to enter, reply or fight) from targets ON_SCREEN.
