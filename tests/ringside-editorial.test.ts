@@ -526,3 +526,35 @@ test("match journalism cannot expose the simulator's protected-victory terminolo
   valid.slots[1]!
  ]},example));
 });
+
+test("Ringside invites genuine live-call drama only when the certified match earns it",()=>{
+ const big=ringsideBrief(example).slots[0]!;
+ assert.match(big.dramaticCue??"",/BIG MOMENT/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/ONE! TWO!/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/HOLY SHIT/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/BEFORE THREE/);
+ const weak={...example,entries:[{...example.entries[0]!,
+  crowdResponse:30,fallout:{...example.entries[0]!.fallout!,
+   ratingStars:1.5,actualMinutes:4}},example.entries[1]!]};
+ assert.equal(ringsideBrief(weak).slots[0]!.dramaticCue,undefined);
+ const anglesOnly={...example,entries:[example.entries[1]!]};
+ assert.equal(ringsideBrief(anglesOnly).slots[0]!.dramaticCue,undefined);
+});
+
+test("MJF can kick out of Omega's near-fall without stealing the One Winged Angel",()=>{
+ const omega=example.entries[0]!;
+ const mjf={personId:"mjf",ringName:"MJF",character:"COCKY HEEL",
+  style:"TECHNICAL",signatureMoves:["Heatseeker"],finishingMoves:["Salt of the Earth"],
+  source:"WORLD_RECORD" as const};
+ const card:CompletedShowView={...example,entries:[{...omega,
+  matchContext:{...omega.matchContext!,sides:[["Kenny Omega"],["MJF"]]},
+  performerIdentities:[...(omega.performerIdentities??[]),mjf]},example.entries[1]!]};
+ const kickout={...valid,slots:[{...valid.slots[0]!,
+  recap:"Omega planted MJF with the One Winged Angel. ONE! TWO! ... HOLY SHIT! MJF KICKED OUT! "+
+   "Omega recovered, countered a desperation strike and later scored the clean pinfall."},valid.slots[1]!]};
+ assert.doesNotThrow(()=>validateRingsideCopy(kickout,card));
+ const theft={...kickout,slots:[{...kickout.slots[0]!,
+  recap:"MJF hit Kenny Omega with the One Winged Angel. "+
+   "Omega countered and eventually scored the clean pinfall."},kickout.slots[1]!]};
+ assert.throws(()=>validateRingsideCopy(theft,card),/wrong wrestler/);
+});

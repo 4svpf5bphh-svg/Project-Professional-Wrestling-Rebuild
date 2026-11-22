@@ -8,8 +8,8 @@ import {ringsideProseQualityFailure,impossibleHoldCount,unseenCleanCount} from "
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // New writing guidance is independently versioned. Previously published
 // reports stay immutable; an old completed show never needs a fresh API call.
-export const RINGSIDE_PROMPT_VERSION="ringside-v10";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v9";
+export const RINGSIDE_PROMPT_VERSION="ringside-v11";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v10";
 export const RINGSIDE_OLDER_VERSION="ringside-v6";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
@@ -211,6 +211,44 @@ function assertNoUnscriptedDialogue(entry:ShowResultEntry,prose:string):void{
    throw new Error("Ringside invented a direct quotation that was never scripted");
  }
 }
+/** Attribute a named signature/finisher to its actual performer.
+ * The receiving wrestler may still kick out of it; that's the drama.
+ * Do not confuse a kick-out with executing somebody else's finisher.
+ */
+function assertMoveExecutionOwnership(entry:ShowResultEntry,prose:string):void{
+ if(entry.type!=="MATCH")return;
+ const cast=entry.performerIdentities??[];
+ const words=moveSurface(prose);
+ const moves=new Map<string,Set<string>>();
+ for(const wrestler of cast)for(const move of
+  [...wrestler.signatureMoves,...wrestler.finishingMoves]){
+  const key=moveSurface(move);
+  if(key.length<7)continue;
+  const owners=moves.get(key)??new Set<string>();
+  owners.add(wrestler.personId);moves.set(key,owners);
+ }
+ for(const [move,owners] of moves){
+  if(!words.includes(move))continue;
+  for(const wrestler of cast){
+   if(owners.has(wrestler.personId))continue;
+   const full=moveSurface(wrestler.ringName);
+   const aliases=[full];
+   const last=full.split(" ").at(-1)??"";
+   if(last.length>=4&&cast.filter(p=>
+    moveSurface(p.ringName).endsWith(" "+last)).length===1)
+    aliases.push(last);
+   for(const actor of new Set(aliases)){
+    // Explicit use by a non-owner; does not match "MJF kicked out of...".
+    const pattern=new RegExp("(?:^|\\s)"+literalPattern(actor)+
+     "\\s+(?:hit|hits|landed|lands|delivered|delivers|executed|executes|used|uses|unleashed|unleashes)"+
+     "(?:\\s+[^\\s]+){0,12}\\s+"+literalPattern(move)+"(?:\\s|$)","u");
+    if(pattern.test(words))
+     throw new Error("Ringside attributed a named finishing move to the wrong wrestler");
+   }
+  }
+ }
+}
+
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):RingsideCopy{
  const v=shape(candidate);
  if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
@@ -291,6 +329,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView):R
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
   assertNoUnscriptedDialogue(source,prose);
+  assertMoveExecutionOwnership(source,prose);
   assertReferencedPromoTargetStayedOffScreen(source,prose);
   assertSpokenAngleStayedSpoken(source,prose);
   // A declared turn against a rival is not proof the two were partners.
@@ -536,6 +575,23 @@ export function ringsideEditorialLens(e:ShowResultEntry):string{
  return "tactics; certified finish";
 }
 
+/** A big reaction must be earned by the actual match and crowd, not
+ * manufactured for every short bout. A two-count is temporary ring colour,
+ * never a certified finish or a claim the wrestler already won.
+ */
+export function ringsideDramaCue(entry:ShowResultEntry):string|null{
+ if(entry.type!=="MATCH")return null;
+ if(!["CLEAN_PIN","FLASH_PIN","SUBMISSION","SECOND_FALL"].includes(entry.outcome))
+  return null;
+ const mins=entry.fallout?.actualMinutes??entry.matchContext?.plannedMinutes??0;
+ const stars=entry.fallout?.ratingStars??0;
+ if(mins<12||stars<3.75||entry.crowdResponse<70)return null;
+ return stars>=4.25&&entry.crowdResponse>=80?
+  "BIG MOMENT: build one startling but legal two-count/kick-out or counter; "+
+  "a short explosive ringside call is welcome, not mandatory. The official finish still happens later.":
+  "GOOD MATCH: a specific reversal or near-fall can earn a brief, excited live call; "+
+  "do not manufacture a miracle or a second victory.";
+}
 /** Send relevant certified facts once, without redundant IDs and analytics. */
 export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
  const slotStories=verifiedSlotStoryThreads(show,memory);
@@ -543,6 +599,7 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
   audienceMood:crowdMood(show.crowdResponse),
   slots:show.entries.map((e,i)=>({
    editorialLens:ringsideEditorialLens(e),
+   ...(ringsideDramaCue(e)?{dramaticCue:ringsideDramaCue(e)}:{}),
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
    ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
@@ -585,10 +642,30 @@ or finish that explains why THIS match was worth seeing. Criticise flat bouts.
 Dry humour sparingly; never just list moves or announce crowd approval.
 
 Write ONE chronological article, not separate reports. For EVERY match,
-give tactical contrast, a turning point and ONE decisive finish;
+first understand the certified winner, stipulation, finish, crowd, duration,
+quality, known characters and any verified storyThread. Then build the
+preceding action logically towards that ending. Show why an underdog almost
+stole it, why a veteran made a mistake or why a dominant wrestler struggled,
+only when the shown context supports those readings.
+Give tactical contrast, a turning point and ONE decisive finish;
 vary rhythm and emphasis. Near-falls are not victories.
 Strong bouts 90–150 words, squashes 55–100, angles 35–85.
 Let standout contests breathe; don't claim every bout stole the show.
+For a genuinely dramatic long, strongly received match, BREAK out of the
+retrospective into one short, immediate ringside call at a plausible peak:
+"ONE! TWO! ... KICKOUT! HOW DID THEY SURVIVE THAT?" is the *kind* of
+urgency, not a sentence to copy. A rare "HOLY SHIT!" can be right when
+an extraordinary escape earns it. Use punchy exclamation, pauses and disbelief;
+then return to clear journalism. No repetitive fake counts, empty screaming
+or obligatory profanity. Quiet crowds, weak matches and brief squashes should
+sound different. slot.dramaticCue marks genuinely eligible contests: omit the
+burst elsewhere. A dramatic two-count means the shoulder came up BEFORE THREE;
+it never replaces or contradicts the certified final three-count.
+When describing a named finisher near-fall, use ONLY a move belonging to
+a wrestler on that card and make clear who landed it and who survived it.
+A repertoire move is permission for plausible temporary ring colour, NOT
+evidence of a specific recorded near-fall or the official finishing move.
+Treat quoted dialogue from promos separately: never invent exact speech.
 Headlines must be specific, not bloated finish descriptions; do not repeat
 them in the first sentence. Slot.editorialLens sets emphasis, NOT new facts.
 Avoid "In the end", "momentum shifted", recycled moves, "looming storms",
