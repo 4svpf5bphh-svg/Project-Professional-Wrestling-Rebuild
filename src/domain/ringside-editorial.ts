@@ -662,8 +662,7 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
   showFocus:directRingsideShow(show),
   slots:show.entries.map((e,i)=>({
    editorialLens:ringsideEditorialLens(e),
-   ...(e.type==="MATCH"&&e.matchContext?{director:directRingsideMatch(e)}:
-    e.type==="SEGMENT"?{director:directRingsideAngle(e)}:{}),
+   director:e.type==="MATCH"?directRingsideMatch(e):directRingsideAngle(e),
    ...(ringsideDramaCue(e)?{dramaticCue:ringsideDramaCue(e)}:{}),
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
