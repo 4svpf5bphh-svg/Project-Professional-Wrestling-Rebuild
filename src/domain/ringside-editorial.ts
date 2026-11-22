@@ -2,7 +2,8 @@ import {finishPropLabel} from "./bookable-match.js";
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
-import {verifiedSlotStoryThreads} from "./ringside-story-threads.js";
+import {verifiedSlotStoryThreads,ringsideViewerCallback} from "./ringside-story-threads.js";
+import {directRingsideMatch,directRingsideAngle,directRingsideShow} from "./ringside-narrative-director.js";
 import {wrestlingMatchIQ,validateWrestlingMechanics} from "./wrestling-iq.js";
 import {ringsideProseQualityFailure,impossibleHoldCount,reportedTapInPinfall,unseenCleanCount} from "./ringside-prose-quality.js";
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
@@ -658,12 +659,16 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
  const slotStories=verifiedSlotStoryThreads(show,memory);
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   audienceMood:crowdMood(show.crowdResponse),
+  showFocus:directRingsideShow(show),
   slots:show.entries.map((e,i)=>({
    editorialLens:ringsideEditorialLens(e),
+   ...(e.type==="MATCH"&&e.matchContext?{director:directRingsideMatch(e)}:
+    e.type==="SEGMENT"?{director:directRingsideAngle(e)}:{}),
    ...(ringsideDramaCue(e)?{dramaticCue:ringsideDramaCue(e)}:{}),
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
-   ...(slotStories[i]?{storyThread:slotStories[i]}:{}),
+   ...(ringsideViewerCallback(slotStories[i]??null)?{
+    storyThread:ringsideViewerCallback(slotStories[i]??null)}:{}),
    ...(e.matchContext?{match:{format:e.matchContext.format,
     ...(wrestlingMatchIQ(e)?{wrestlingIQ:{
      format:wrestlingMatchIQ(e)!.format,
@@ -701,34 +706,28 @@ Have opinions grounded in EVIDENCE. Show one memorable exchange, mistake
 or finish that explains why THIS match was worth seeing. Criticise flat bouts.
 Dry humour sparingly; never just list moves or announce crowd approval.
 
-Write ONE chronological article. Build match psychology from the verified
-winner, finish, wrestlers, audience, duration and scoped storyThread.
-For EVERY match, give tactical contrast, a turning point and ONE decisive finish, legally.
-Near-falls are not victories. Strong bouts 90–150 words, squashes 55–100,
-angles 35–85. Criticise weak bouts; not everything steals the show.
-Only slot.dramaticCue=PEAK may BURST into a live count:
+Write ONE chronological article. For EVERY match use slot.director:
+setup, turn, decisive finish, then a rating-scaled verdict. All directives
+are storytelling guidance, not certified new spots. Slot.finish always wins.
+Near-falls aren't wins. Strong bouts 90–150 words, squashes 55–100,
+angles 35–85; criticise weak bouts.
+slot.dramaticCue=PEAK alone may BURST into a live count:
 "ONE! TWO! ... KICKOUT!" or a rare earned "HOLY SHIT!" at a plausible
 near-fall. slot.dramaticCue=EARNED merits interest, not a miracle. Do not copy,
 force profanity, or manufacture miracles in short or flat matches.
-A two-count stops BEFORE THREE; the certified finish still happens.
-Only the move's verified wrestler may land a named finisher. Someone
-kicking OUT of that move is the recipient, not its performer.
-Repertoire enables plausible short-lived colour, not a certified spot.
-Return to clear, varied journalism after the moment.
-Headlines must be specific, not bloated finish descriptions; do not repeat
-them in the first sentence. Slot.editorialLens sets emphasis, NOT new facts.
+A two-count stops BEFORE THREE. Only a move's verified owner lands it;
+the wrestler kicking OUT is the recipient.
+Repertoire permits temporary colour, not a certified spot.
+Headlines must be specific, not bloated; don't repeat the opening sentence.
+slot.editorialLens and director set emphasis, never new facts.
 Avoid "In the end", "momentum shifted", recycled moves, "looming storms",
 "unstoppable auras", "hushed reverence", "electric crowds" and invented
 camera shots. Motives and relationships need on-air evidence.
 
-The slot records are AUTHORITATIVE for cast, format, finish, title
-movement, injuries, interference, angle outcome and crowd. A title changes
-ONLY when slot.fallout.title.changed is true; if false, winnerName is
-the MATCH winner, not necessarily the champion, and priorHolderName
-keeps the belt. No prior holder means vacant. No invented title defence.
-If a championship belt is used as match.bookedWeapon, the illicit
-act is STRIKING someone with it, not holding the title or winning it;
-never imply a new champion when title.changed is false.
+Slot facts govern cast, finish, titles, injuries, interference and crowd.
+A belt changes hands ONLY when fallout.title.changed is true; the match
+winner is NOT automatically champion. No invented title defence.
+A booked championship belt is legal to own; using it to STRIKE is the foul.
 Match.wrestlingIQ and stipulationRules set legal win methods and pacing;
 possibleSpots are possibilities, not settled action. Invent temporary
 bell-to-bell colour, NOT winners, quotes, scores, attacks, injuries, title
@@ -767,24 +766,28 @@ a table break; Last Man Standing an unanswered ten-count; First Blood
 the first bleeding; Casket the closed lid. Follow the slot's explicit
 stipulationRules if present.
 
-Angles are filmed scenes, NOT bouts. Narrate angle.scriptedActions
-in exact recorded order; any direct quotes must come from those actions.
+Angles are filmed scenes, NOT bouts. Use slot.director for each angle
+kind; a high-rated debut must feel like an arrival, interviews should
+reveal character, and packages should sell the verified stakes. Narrate
+angle.scriptedActions in order; quote only these authored lines.
 Speech alone cannot imply a strike, move or brawl. Spoken-only angles permit NO wrestling moves, strikes, dropkicks or brawls. Only ATTACK,
 FIGHT_BACK, RESCUE or BETRAY authorises physical conflict. A PROMO's
 actorNames speak; angle.targetPresence distinguishes targets MENTIONED
 (off-camera, unable to enter, reply or fight) from targets ON_SCREEN.
-Do not invent an outcome, outsider, entrance, camera shot, physical
-character trait, friendship or partner history. Scripted BLOODIED
-appearance isn't an injury. Planned retaliation isn't completed
-retaliation. A refusal or interruption isn't success.
-Only a slot's scoped storyThread proves prior HISTORY. One relevant
-callback maximum; absent history means no imagined feud, revenge,
-partnership or payoff. An earlier shared match alone proves no rivalry.
+Do not invent outsiders, entrances, physical traits, friendship or
+partnership. BLOODIED isn't an injury; planned retaliation isn't done.
+Refusal or interruption isn't success.
+Only scoped storyThread proves history; it is a viewer-facing callback,
+not raw programme counts. Use at most one, and never invent past events.
+One earlier shared match alone does not prove a feud.
 Translate history into what viewers saw, never database bookkeeping.
 NEVER say 'third angle', 'rivalry thread', 'only recorded rivalry',
 'official fallout', 'prior angles', 'card segment' or 'Week 25'.
 A recap video can mention earlier encounters but must not recite
 angle counts, week indices or invent any unrecorded clips.
+showFocus.lead is the headline/opening priority; supporting cards inform
+the close. Use actual events, not made-up implications, and cover every
+card chronologically. Never mention focus keys or editorial directives.
 Use wrestling terms naturally. Never expose star ratings, mechanics,
 technical booking labels or equations. Avoid unsupported gender assumptions.
 No extra prose or markdown outside the response JSON. Required keys
