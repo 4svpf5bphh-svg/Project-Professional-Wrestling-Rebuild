@@ -11,7 +11,7 @@ import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js"
 export const RINGSIDE_PROMPT_VERSION="ringside-v12";
 export const RINGSIDE_PREVIOUS_VERSION="ringside-v11";
 export const RINGSIDE_OLDER_VERSION="ringside-v10";
-export const RINGSIDE_LEGACY_VERSION="ringside-v6";
+export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 /** Compact, provider-neutral vocabulary. No additional model request, database
  * read or invented permanent event; the recorded winning method stays final. */
@@ -334,7 +334,12 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
    /\b(?:award(?:ed|ing)|gav(?:e)|giv(?:en|ing))\b[^.!?]{0,75}\b(?:the\s+)?(?:win\s+and\s+)?(?:the\s+)?(?:title|championship)\b(?!\s+(?:shot|match|chance|opportunity))/i.test(prose))
    throw new Error("Invented championship change");
   if(source.type==="MATCH"&&!hadTitleChange&&
-   /\b(?:wins?|won|captur(?:e|ed|es)|claim(?:s|ed)?)\b[^.!?]{0,65}\b(?:title|championship)\b(?!\s+(?:match|shot|chance|opportunity|defence|defense))/i.test(prose))
+   [...prose.matchAll(/\b(?:wins?|won|captur(?:e|ed|es)|claim(?:s|ed)?)\b[^.!?]{0,65}\b(?:title|championship)\b(?!\s+(?:match|shot|chance|opportunity|defence|defense))/gi)]
+   .some(hit=>{
+    const before=prose.slice(Math.max(0,(hit.index??0)-50),hit.index);
+    return !/\b(?:did|does|do|could|would|will|has|had)\s+not\s*$|\b(?:never|didn't|couldn't|wouldn't|failed\s+to)\s*$/i.test(before)&&
+     !/\b(?:retain(?:s|ed|ing)?|keep(?:s|ing)?|defend(?:s|ed|ing)?)\b[^.!?]{0,20}\b(?:title|championship)\b/i.test(hit[0]);
+   }))
    throw new Error("Invented championship change");
   if(source.type==="MATCH"&&
    /\b(?:illegal|illicit|contraband)\s+(?:[a-z-]+\s+){0,2}championship belt\b/i.test(prose))
@@ -743,12 +748,8 @@ CLEAN_PIN requires a legal three-count; FLASH_PIN a sudden roll-up.
 SUBMISSION is a tap/stoppage, NOT a pin. Samoa Joe's Coquina Clutch
 cannot score a pin; Muscle Buster may precede one. An earlier hold can
 set up a separate pin ONLY after the hold is released or escaped.
-If CLEAN_PIN or FLASH_PIN is certified, do NOT describe anyone
-actually tapping out, yielding or submitting at any time in that match;
-even a tap 'before the three-count' would have ended the bout.
-Never claim a heel hook, leg lock or armbar forced the opponent's
-shoulders down for three, or that the referee counted a pin with a
-submission still locked in.
+In a pinfall match, nobody actually taps out; that ends the bout.
+Never count three with a locked hold or force shoulders down with a heel hook.
 DISQUALIFICATION is not a pin. FOREIGN_OBJECT: use ONLY the verified
 match.bookedWeapon, if present. No invented substitute. Otherwise say
 concealed cheating, without naming a weapon. PROTECTED_FINISH implies

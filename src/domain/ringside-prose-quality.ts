@@ -48,7 +48,7 @@ export function impossibleHoldCount(prose:string):boolean{
  const sentences=prose.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
  const holds=/\b(?:arm[- ]?bar|heel[- ]?hook|leg[- ]?lock|ankle[- ]?lock|sleeper|crossface|coquina clutch|chokehold|anaconda vise|submission hold|triangle choke|figure[- ]four|kimura|guillotine|submission lock)\b/i;
  const pin=/\b(?:three[- ]?count|counted (?:to )?three|referee['’]?s? (?:count (?:hit|reached)|hand (?:hit|struck)|counted (?:to )?three)|pinfall|clean pin|(?:shoulders? (?:hit|pinned|pressed|forced|down|flat|to)|pinned (?:his|her|their) shoulders?)\b[^.!?]{0,40}\b(?:mat|canvas|three))\b/i;
- const continuation=/\b(?:remained locked|still locked|still applied|kept (?:it|the hold|the pressure) on|kept (?:the )?pressure until|held (?:the )?hold|maintained (?:the )?hold|while (?:the )?hold|as (?:the )?hold|(?:armbar|hook|choke) remained|stretch(?:ed|ing)?[^.!?]{0,55}(?:into|until|forc(?:ed|ing))|forc(?:ed|ing)[^.!?]{0,65}shoulders?)\b/i;
+ const continuation=/\b(?:remained locked|still locked|still applied|kept (?:it|the hold|the pressure|the armbar|the chokehold|the leg lock) on|kept (?:the )?pressure until|held (?:the )?hold|maintained (?:the )?hold|while (?:the )?hold|as (?:the )?hold|(?:armbar|hook|choke) remained|stretch(?:ed|ing)?[^.!?]{0,55}(?:into|until|forc(?:ed|ing))|forc(?:ed|ing)[^.!?]{0,65}shoulders?)\b/i;
  const released=/\b(?:released? (?:the|his|her|their) hold|let go|escaped (?:the|his|her|their) hold|switched to (?:a )?(?:cover|cradle|roll[- ]?up)|rolled (?:through|into a cover)|broke (?:the )?hold|countered (?:the )?hold|got free|after (?:the )?hold was released)\b/i;
  for(let i=0;i<sentences.length;i++){
   const one=sentences[i]!;
