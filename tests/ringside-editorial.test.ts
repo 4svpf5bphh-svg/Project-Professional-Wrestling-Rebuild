@@ -187,7 +187,7 @@ test("Ringside recovers bad I Quit prose without losing Cage, First Blood or Cas
 });
 
 test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls",()=>{
- assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v12");
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v13");
  assert.match(ringsideStipulationNote("I Quit Match · SINGLES")!.winningCondition,/VERBALLY/);
  assert.match(ringsideStipulationNote("Steel Cage · SINGLES")!.plausibleAction,/Steel mesh/);
  const quit:CompletedShowView={...example,entries:[{
@@ -615,7 +615,7 @@ test("CWA sample: pinfall mechanism and private rivalry counters are not reporta
   "This article used the official fallout to check the win."
  ]){
   const review={...valid,slots:[valid.slots[0]!,{...valid.slots[1]!,recap:bad}]};
-  assert.throws(()=>validateRingsideCopy(review,example),/internal storyline or card metadata/,bad);
+  assert.throws(()=>validateRingsideCopy(review,example),/private card or story metadata|internal storyline or card metadata/,bad);
  }
  assert.match(RINGSIDE_STYLE_GUIDE,/never database bookkeeping|database bookkeeping/);
 });

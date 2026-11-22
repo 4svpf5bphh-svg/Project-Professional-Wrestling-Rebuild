@@ -9,9 +9,9 @@ import {ringsideProseQualityFailure,impossibleHoldCount,reportedTapInPinfall,uns
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // New writing guidance is independently versioned. Previously published
 // reports stay immutable; an old completed show never needs a fresh API call.
-export const RINGSIDE_PROMPT_VERSION="ringside-v12";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v11";
-export const RINGSIDE_OLDER_VERSION="ringside-v10";
+export const RINGSIDE_PROMPT_VERSION="ringside-v13";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v12";
+export const RINGSIDE_OLDER_VERSION="ringside-v11";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 /** Compact, provider-neutral vocabulary. No additional model request, database
@@ -142,6 +142,35 @@ function assertReferencedPromoTargetStayedOffScreen(
  for(const name of source.segmentContext.targetNames){
   if(actors.has(name.toLocaleLowerCase())||!name.trim())continue;
   const target=literalPattern(name);
+  // A named target isn't in the scene. CWA v12's "Joe faced Riddle"
+  // and "Riddle's calm stare" passed the old entrance/response check.
+  const last=name.trim().split(/\s+/).at(-1)??"";
+  const uniqueLast=last.length>=5&&
+   [...source.segmentContext.targetNames,...source.segmentContext.actorNames]
+    .filter(n=>n.trim().split(/\s+/).at(-1)?.toLowerCase()===last.toLowerCase())
+    .length===1;
+  for(const alias of uniqueLast?[name,last]:[name]){
+   const quoted=literalPattern(alias);
+   const facing=new RegExp(
+    "\\b(?:faced|faces|facing|stared (?:directly |straight )?at|"+
+    "stared down|staring at|fixed|fixing|looked at|looking at|"+
+    "locked eyes with|stood opposite|sat opposite|seated opposite|"+
+    "stood across from|sat across from|leaned toward|leaned towards)\\s+"+
+    quoted+"\\b","iu");
+   const bodyLanguage=new RegExp(
+    "(?:^|[^\\p{L}\\p{N}])"+quoted+"['’]s\\s+"+
+    "(?:(?:calm|silent|defiant|cold|angry|knowing|sharp|steady|nervous|"+
+    "furious|icy|trademark|quiet|stoic|stunned)\\s+){0,2}"+
+    "(?:stare|glare|expression|reaction|smile|grimace|nod|body language|"+
+    "eyes|gaze|face|fists|hands)\\b","iu");
+   const impliedReaction=new RegExp(
+    "(?:^|[^\\p{L}\\p{N}])"+quoted+"\\s*,?\\s+whose\\s+"+
+    "(?:(?:calm|silent|defiant|cold|angry|knowing|sharp|steady|nervous|"+
+    "furious|icy|quiet|stoic|stunned)\\s+){0,2}"+
+    "(?:stare|glare|expression|reaction|smile|grimace|gaze|eyes|face)\\b","iu");
+   if(facing.test(prose)||bodyLanguage.test(prose)||impliedReaction.test(prose))
+    throw new Error("Ringside invented an off-screen promo target appearance");
+  }
   const body=new RegExp(
    "(?:^|[^\\p{L}\\p{N}])"+target+
    "(?:\\s+|['’]s\\s+)"+
@@ -303,6 +332,9 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   }
  }
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
+ // Headline and bookends must not expose directing keys either.
+ if(/\b(?:card[_\s-]*\d+|slot[_\s-]*\d+|showfocus|editoriallens|storythread|director\.[a-z]+|week\s+\d{1,3})\b/i.test(fullStory))
+  throw new Error("Ringside exposed private card or story metadata");
  const voiceFailure=ringsideProseQualityFailure({
   opening:v.opening as string,closing:v.closing as string,slots});
  if(voiceFailure&&!options.styleWarningOnly)throw new Error(voiceFailure);
@@ -354,6 +386,9 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   // character or medical record, not a writer's improvised description.
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
+  if(source.type==="SEGMENT"&&source.segmentKind==="VIDEO_PACKAGE"&&
+   /\b(?:last[- ]night['’]?s?|yesterday['’]?s?)\s+(?:victory|win|match|bout)\b|\b(?:did(?:\s+not|n['’]t)|does(?:\s+not|n['’]t))\s+(?:introduce|feature|add|show)\s+(?:new\s+)?(?:moves?|promos?|matches?|spots?)\b|\bno\s+new\s+(?:moves?|promos?|matches?)\b/i.test(prose))
+   throw new Error("Ringside invented historical footage or narrated internal video limitations");
   assertNoUnscriptedDialogue(source,prose);
   assertMoveExecutionOwnership(source,prose);
   assertReferencedPromoTargetStayedOffScreen(source,prose);
@@ -598,6 +633,28 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  catch{return null;}
 }
 
+/** An accurate scorecard paragraph cannot stand in for a major match review.
+ * This quality gate applies only to newly generated articles and recovery,
+ * never to certified World data or previously published cached reports.
+ */
+export function ringsideReaderQualityIssue(
+ review:RingsideCopy,show:CompletedShowView):string|null{
+ if(show.entries.length<4)return null;
+ for(const [i,e] of show.entries.entries()){
+  if(e.type!=="MATCH")continue;
+  const stars=e.fallout?.ratingStars,mins=e.fallout?.actualMinutes??
+   e.matchContext?.plannedMinutes??0;
+  if(typeof stars!=="number"||stars<3||mins<10)continue;
+  const recap=review.slots[i]?.recap??"";
+  const count=recap.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu)?.length??0;
+  const minimum=stars>=4.25?65:48;
+  if(count<minimum||
+   /^in the (?:opening|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|later) bout\b/i.test(recap))
+   return "Ringside underwrote a significant match at card_"+i+
+    ": players need a vivid specific account, not a generic result";
+ }
+ return null;
+}
 /** Atmospheric description for the writer; the UI retains canonical numbers. */
 const crowdMood=(n:number)=>n>=84?"strongly responsive":n>=70?"loud":n>=56?"engaged":
  n>=42?"divided":n>=28?"muted":"quiet";
@@ -698,25 +755,25 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
   }))};
 }
 
-export const RINGSIDE_STYLE_GUIDE=`You are Marty Vale, PPW Ringside's sharp, funny-when-earned
-veteran wrestling columnist. Write as a smark who WATCHED the action,
-not a game engine, booker, press release or omniscient narrator.
-Have opinions grounded in EVIDENCE. Show one memorable exchange, mistake
-or finish that explains why THIS match was worth seeing. Criticise flat bouts.
-Dry humour sparingly; never just list moves or announce crowd approval.
+export const RINGSIDE_STYLE_GUIDE=`You are Marty Vale, an experienced WRESTLING JOURNALIST reviewing an
+actual televised wrestling show for the game's players. You WATCHED it.
+Write an enjoyable, immersive article that makes readers relive the matches,
+characters, surprises and stakes. They came to READ a wrestling show review,
+not a scorecard or technical explanation. Be specific, vivid, discerning and
+funny when earned; criticise a weak bout without disparaging its performers.
+You are a fan with a credible columnist's judgement, NOT the game's engine,
+an AI assistant, an instruction manual, a booking report or a press release.
 
 Write ONE chronological article. For EVERY match use slot.director:
-setup, turn, ONE decisive finish, then a rating-scaled verdict. All directives
-are storytelling guidance, not certified new spots. Slot.finish always wins.
-Near-falls aren't wins. Strong bouts 90–150 words, squashes 55–100,
-angles 35–85; criticise weak bouts.
+setup, turn, ONE decisive finish, rating-scaled verdict. Its exchanges
+are suggested colour, not certified spots; slot.finish always wins.
+Matches 90–150 words, squashes 55–100, angles 35–85; criticise weak bouts.
 slot.dramaticCue=PEAK alone may BURST into a live count:
 "ONE! TWO! ... KICKOUT!" or a rare earned "HOLY SHIT!" at a plausible
 near-fall. slot.dramaticCue=EARNED merits interest, not a miracle. Do not copy,
 force profanity, or manufacture miracles in short or flat matches.
-A two-count stops BEFORE THREE. Only a move's verified owner lands it;
-the wrestler kicking OUT is the recipient.
-Repertoire permits temporary colour, not a certified spot.
+A two-count stops BEFORE THREE. Only a move's owner lands it;
+the wrestler kicking OUT is the recipient. Repertoire is colour, not fact.
 Headlines must be specific, not bloated; don't repeat the opening sentence.
 slot.editorialLens and director set emphasis, never new facts.
 Avoid "In the end", "momentum shifted", recycled moves, "looming storms",
@@ -738,6 +795,8 @@ before scoring; hot tags optional. Never invent a team fall scorer.
 Preserve multi-team sides. Triple/four-way: there are NO tags.
 Battle royals: over-the-top eliminations, not pins. Follow referee rules.
 
+In multi-person matches the fall victim may be UNRECORDED. Never name
+the person pinned unless verified. Say the winner stole the fall.
 In a pinfall, ONLY the losing wrestler's shoulders are counted down. Never
 write that the referee counted three on the official WINNER's shoulders,
 even in a disputed or foreign-object finish. Recheck winner, defeated
@@ -782,11 +841,11 @@ One earlier shared match alone does not prove a feud.
 Translate history into what viewers saw, never database bookkeeping.
 NEVER say 'third angle', 'rivalry thread', 'only recorded rivalry',
 'official fallout', 'prior angles', 'card segment' or 'Week 25'.
-A recap video can mention earlier encounters but must not recite
-angle counts, week indices or invent any unrecorded clips.
-showFocus.lead is the headline/opening priority; supporting cards inform
-the close. Use actual events, not made-up implications, and cover every
-card chronologically. Never mention focus keys or editorial directives.
+A recap video sells the real issue, not a list of what it did NOT introduce.
+Never invent a replay, prior victory or what the footage depicted.
+showFocus.lead is the show's opening/headline priority; the support slots
+inform the close. Cover EVERY card chronologically. Never write card numbers,
+slot IDs, focus keys or editorial instructions into the reader's article.
 Use wrestling terms naturally. Never expose star ratings, mechanics,
 technical booking labels or equations. Avoid unsupported gender assumptions.
 No extra prose or markdown outside the response JSON. Required keys
