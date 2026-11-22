@@ -290,7 +290,7 @@ test("read-only Groq inspector uses the identical provider payload and costs no 
   additionalGuidance:"Vary the rhythm",version:1};
  const inspected=inspectRingsidePrompt(show,settings);
  assert.equal(inspected.callMade,false);
- assert.equal(inspected.promptVersion,"ringside-v11");
+ assert.equal(inspected.promptVersion,"ringside-v12");
  assert.equal(inspected.model,settings.model);
  assert.equal(inspected.temperature,0.65);
  assert.equal(inspected.reasoning_effort,"medium");

@@ -101,15 +101,18 @@ test("future and same-week history is suppressed even when stale data is supplie
   sides:[["Kenny Omega"],["PAC"]]}],programmes:[]};
  assert.deepEqual(verifiedSlotStoryThreads({...show,entries:[another]},bad),[null]);
 });
-test("Groq's compact factual brief has different private history per slot and no global dump",()=>{
+test("Groq's compact factual brief has private viewer-language history, not counters",()=>{
  const brief=ringsideBrief(show,history);
  assert.equal(brief.slots.length,4);
- assert.equal(brief.slots[0]?.storyThread?.rivalry?.pairing,"Samoa Joe vs Matt Riddle");
- assert.equal(brief.slots[1]?.storyThread?.earlierOnThisCard?.card,1);
- assert.equal(brief.slots[2]?.storyThread?.previousSharedMatch?.winner,"PAC");
- assert.equal(brief.slots[3]?.storyThread?.previousSharedMatch?.winner,"MJF");
- // Previous/next card headlines are intentionally retained for transitions.
- // Only historical evidence must be strictly scoped to its own encounter.
+ assert.match(brief.slots[0]?.storyThread??"",/Matt Riddle won the last recorded meeting/);
+ assert.match(brief.slots[1]?.storyThread??"",/earlier scene on this broadcast/);
+ assert.match(brief.slots[2]?.storyThread??"",/won by PAC/);
+ assert.match(brief.slots[3]?.storyThread??"",/won by MJF/);
+ // The simulation retains private numeric history; the AI never sees it.
+ for(const slot of brief.slots){
+  assert.doesNotMatch(slot.storyThread??"",
+   /Week \d+|card \d+|previousAngles|previousMatches|preceding/i);
+ }
  assert.doesNotMatch(JSON.stringify(brief.slots[2]?.storyThread),/Matt Riddle|Samoa Joe/);
  assert.doesNotMatch(JSON.stringify(brief.slots[3]?.storyThread),/PAC|Samoa Joe/);
  const without=ringsideBrief({...show,entries:[noMatch]});

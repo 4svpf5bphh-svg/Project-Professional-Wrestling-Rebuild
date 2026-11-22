@@ -123,7 +123,13 @@ test("a six-slot article retains five AI recaps and replaces one false submissio
  assert.equal(result?.replaced,1);
  assert.equal(result?.review.slots[2]?.recap,candidate.slots[2]?.recap);
  assert.ok(!result?.review.slots[3]?.recap.includes("submission"));
- assert.ok(JSON.stringify(ringsideBrief(many)).length<JSON.stringify(ringsideFacts(many)).length);
+ // This richer brief now includes authoritative direction for every bout.
+ // Keep it bounded and proportionate instead of requiring fewer bytes than
+ // an undirected facts-only packet.
+ const briefBytes=JSON.stringify(ringsideBrief(many)).length;
+ const factsBytes=JSON.stringify(ringsideFacts(many)).length;
+ assert.ok(briefBytes<11000&&briefBytes<factsBytes*3,
+  "Six directed slots must remain comfortably within the single-call budget");
  assert.doesNotMatch(JSON.stringify(ringsideBrief(many)),/crowd":(?:[0-9]+)/);
  assert.ok(ringsideBrief(many).slots.every(s=>typeof s.audienceMood==="string"));
  const allBad={...candidate,slots:candidate.slots.map(s=>({...s,recap:"Omega won by submission."}))};
@@ -181,7 +187,7 @@ test("Ringside recovers bad I Quit prose without losing Cage, First Blood or Cas
 });
 
 test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls",()=>{
- assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v11");
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v12");
  assert.match(ringsideStipulationNote("I Quit Match · SINGLES")!.winningCondition,/VERBALLY/);
  assert.match(ringsideStipulationNote("Steel Cage · SINGLES")!.plausibleAction,/Steel mesh/);
  const quit:CompletedShowView={...example,entries:[{
@@ -592,4 +598,80 @@ test("winning a title match or a future title shot is not an invented championsh
   recap:"Omega won the world championship with a clean pinfall."},
   header.slots[1]!]};
  assert.throws(()=>validateRingsideCopy(falseCrown,example),/championship change/);
+});
+
+test("CWA sample: pinfall mechanism and private rivalry counters are not reportable",()=>{
+ const write=(recap:string)=>({...valid,slots:[{...valid.slots[0]!,recap},valid.slots[1]!]});
+ for(const bad of [
+  "O'Reilly transitioned into an armbar and kept the pressure until Sabin's shoulders hit the mat. The referee counted three.",
+  "O'Reilly locked in a Heel Hook, forcing Sabin's shoulder to the mat for the three-count.",
+  "He stretched Sabin's arm into a heel hook that left the veteran tapping. The referee counted three."
+ ])assert.throws(()=>validateRingsideCopy(write(bad),example),/hold|submission|tap-out/);
+ for(const bad of [
+  "The rivalry thread shows this is their third angle, but zero prior matches.",
+  "The only recorded rivalry was between them, with three additional angles.",
+  "The recap returned to Week 25 for the important backstage encounter.",
+  "In card segment 3, the promo aired without a reported change to the match card.",
+  "This article used the official fallout to check the win."
+ ]){
+  const review={...valid,slots:[valid.slots[0]!,{...valid.slots[1]!,recap:bad}]};
+  assert.throws(()=>validateRingsideCopy(review,example),/internal storyline or card metadata/,bad);
+ }
+ assert.match(RINGSIDE_STYLE_GUIDE,/never database bookkeeping|database bookkeeping/);
+});
+test("CWA sample: a retained title and an ordinary match get accurate headlines",()=>{
+ const withMatch=(headline:string,recap:string,show=example)=>validateRingsideCopy({
+  ...valid,slots:[{...valid.slots[0]!,headline,recap},valid.slots[1]!]
+ },show);
+ assert.throws(()=>withMatch("Omega wins the World Championship",
+  "Omega was awarded the win and the title."),/championship/);
+ assert.throws(()=>withMatch("Omega wins the World Championship",
+  "Omega won the World Championship after using the belt."),/championship/);
+ assert.throws(()=>withMatch("Omega scored a pin",
+  "An illicit championship belt entered the ring."),/championship belt as illegal/);
+ const modest:CompletedShowView={...example,entries:[{
+  ...example.entries[0]!,crowdResponse:62.5,
+  fallout:{...example.entries[0]!.fallout!,ratingStars:3.25}
+ },example.entries[1]!]};
+ assert.throws(()=>withMatch("A methodical 20-minute masterpiece",
+  "Omega forced a legal pin after a good match.",modest),/exaggerated an ordinary match/);
+ assert.doesNotThrow(()=>withMatch("Omega works hard for a technical win",
+  "Omega's armbar was released, and a later V-Trigger set up a clean pin.",modest));
+});
+test("CWA's four-star Regal debut is never reduced to an empty card-segment fallback",()=>{
+ const speech="That's right ladies and gentlemen, I, William Regal have come to CWA to deal with all these scallywags.";
+ const debut:CompletedShowView["entries"][number]={
+  ...example.entries[1]!,slotId:"regal-debut",position:0,
+  headline:"A new arrival",summary:"William Regal delivered his surprise debut.",
+  actorIds:["regal"],targetIds:[],segmentKind:"DEBUT",
+  segmentContext:{actorNames:["William Regal"],targetNames:[],
+   targetPresence:"MENTIONED",videoPurpose:null,stableDecision:null,
+   turnTargetAlignment:null,
+   scene:{location:"ENTRANCE_RAMP",visual:"NONE",purpose:"BUILD_ANTICIPATION"},
+   scriptedActions:[{by:"regal",action:"SPEAK",line:speech}]
+  }
+ };
+ const event:CompletedShowView={...example,promotionName:"Chaotic Wrestling Alliance",
+  angleCount:1,matchCount:5,
+  entries:[debut,...Array.from({length:5},(_,i)=>({
+   ...example.entries[0]!,slotId:"match-"+(i+1),position:i+1,
+   fallout:{...example.entries[0]!.fallout!,actualMinutes:12+i}
+  }))]};
+ const candidate={showHeadline:"Regal shakes up Ascension",opening:"The building was ready.",
+  closing:"The evening ended with plenty still at stake.",
+  slots:event.entries.map((e,i)=>({
+   slotId:e.slotId,headline:i===0?"A new arrival":"Omega's clean win "+i,
+   recap:i===0?"In card segment 1, William Regal had a debut. The segment aired without a reported change to the match card.":
+    "In bout "+i+", Omega hit the V-Trigger, then landed One Winged Angel for a clean pin."
+  }))};
+ const recovered=recoverRingsideCopy(candidate,event);
+ assert.equal(recovered?.replaced,1);
+ const first=recovered!.review.slots[0]!;
+ assert.match(first.headline,/William Regal arrives in Chaotic Wrestling Alliance/);
+ assert.match(first.recap,/Regal.*debut.*entrance ramp/);
+ assert.ok(first.recap.includes(speech),"Booker-authored words survive recovery");
+ assert.doesNotMatch(first.recap,/card segment|reported change to the match card/i);
+ assert.equal(recovered!.review.slots[2]?.recap,candidate.slots[2]?.recap,
+  "Valid model prose survives factual recovery");
+ assert.doesNotThrow(()=>validateRingsideCopy(recovered!.review,event));
 });

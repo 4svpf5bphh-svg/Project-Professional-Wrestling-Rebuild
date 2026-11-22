@@ -39,13 +39,38 @@ export function ringsideProseQualityFailure(input:{
 /** A technical hold may build to a pin, but the referee must not count a
  * clean pin while that hold is still being applied as the decisive method.
  */
+/** Submission pressure may be a turning point in a pinfall match, but an
+ * active submission cannot be THE mechanism for holding down shoulders.
+ * Consider adjacent sentences: live Groq samples put the hold in one sentence
+ * and the referee's count in the next, bypassing a single-sentence check.
+ */
 export function impossibleHoldCount(prose:string):boolean{
- for(const sentence of prose.split(/(?<=[.!?])\s+|\n+/)){
-  const activeHold=/\b(?:armbar|sleeper|crossface|coquina clutch|chokehold|anaconda vise|submission hold|triangle choke|figure[- ]four)\b/i.test(sentence);
-  const counted=/\b(?:referee['’]?s? (?:count (?:hit|reached)|hand (?:hit|struck)|counted (?:to )?three)|three[- ]count|counted three|clean pin(?:fall)?|pinfall victory)\b/i.test(sentence);
-  const ongoing=/\b(?:remained locked|still locked|still applied|kept (?:it|the hold) on|while (?:the )?hold|as (?:the )?hold|armbar remained|choke remained)\b/i.test(sentence);
-  const released=/\b(?:released? the hold|let go|escaped the hold|switched to (?:a )?(?:cover|cradle|roll[- ]?up)|rolled (?:through|into a cover)|broke the hold)\b/i.test(sentence);
-  if(activeHold&&counted&&ongoing&&!released)return true;
+ const sentences=prose.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
+ const holds=/\b(?:arm[- ]?bar|heel[- ]?hook|leg[- ]?lock|ankle[- ]?lock|sleeper|crossface|coquina clutch|chokehold|anaconda vise|submission hold|triangle choke|figure[- ]four|kimura|guillotine|submission lock)\b/i;
+ const pin=/\b(?:three[- ]?count|counted (?:to )?three|referee['’]?s? (?:count (?:hit|reached)|hand (?:hit|struck)|counted (?:to )?three)|pinfall|clean pin|(?:shoulders? (?:hit|pinned|pressed|forced|down|flat|to)|pinned (?:his|her|their) shoulders?)\b[^.!?]{0,40}\b(?:mat|canvas|three))\b/i;
+ const continuation=/\b(?:remained locked|still locked|still applied|kept (?:it|the hold|the pressure|the armbar|the chokehold|the leg lock) on|kept (?:the )?pressure until|held (?:the )?hold|maintained (?:the )?hold|while (?:the )?hold|as (?:the )?hold|(?:armbar|hook|choke) remained|stretch(?:ed|ing)?[^.!?]{0,55}(?:into|until|forc(?:ed|ing))|forc(?:ed|ing)[^.!?]{0,65}shoulders?)\b/i;
+ const released=/\b(?:released? (?:the|his|her|their) hold|let go|escaped (?:the|his|her|their) hold|switched to (?:a )?(?:cover|cradle|roll[- ]?up)|rolled (?:through|into a cover)|broke (?:the )?hold|countered (?:the )?hold|got free|after (?:the )?hold was released)\b/i;
+ for(let i=0;i<sentences.length;i++){
+  const one=sentences[i]!;
+  const adjacent=i+1<sentences.length?one+" "+sentences[i+1]:one;
+  if(!holds.test(one))continue;
+  if(pin.test(one)&&continuation.test(one)&&!released.test(one))return true;
+  if(pin.test(adjacent)&&continuation.test(one)&&!released.test(adjacent))return true;
+ }
+ return false;
+}
+/** A certified pinfall cannot also end on an actual tap. Near-taps and
+ * refusals are legitimate drama; explicit submission is not.
+ */
+export function reportedTapInPinfall(prose:string):boolean{
+ const taps=/\b(?:tapp(?:ed|ing)(?:\s+out)?|submitted|yielded (?:to|under) (?:the )?hold)\b/gi;
+ for(const match of prose.matchAll(taps)){
+  const start=match.index??0;
+  const before=prose.slice(Math.max(0,start-55),start);
+  const after=prose.slice(start+(match[0]?.length??0),start+65);
+  if(/\b(?:almost|nearly|never|didn't|did not|wouldn't|would not|refused to|resisted|avoided|not|no intention of|on the verge of)\s+(?:\w+\s+){0,3}$/i.test(before))continue;
+  if(/^\s+(?:the\s+)?(?:mat|canvas|foot|boot|apron|shoulder)\b/i.test(after))continue;
+  return true;
  }
  return false;
 }

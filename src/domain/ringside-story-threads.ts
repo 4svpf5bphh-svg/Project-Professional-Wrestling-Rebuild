@@ -96,3 +96,32 @@ export function verifiedSlotStoryThreads(
  }
  return result;
 }
+
+/** Model-facing history removes game counters and week indices. A count of
+ * angles alone does not prove what anyone said, did or filmed. The only
+ * reportable previous result is one backed by a completed-match record.
+ */
+export function ringsideViewerCallback(thread:RingsideStoryThread|null):string|null{
+ if(!thread)return null;
+ const notes:string[]=[];
+ const r=thread.rivalry;
+ if(r&&r.previousMatches>0){
+  notes.push(r.lastWinner?
+   "These sides competed previously; "+r.lastWinner+" won the last recorded meeting.":
+   "These sides have met before; no specific prior finish is supplied.");
+ }else if(thread.previousSharedMatch){
+  const m=thread.previousSharedMatch;
+  notes.push(m.winner?
+   "A previous encounter between opposing sides was won by "+m.winner+".":
+   "These opposing sides shared a previous match; no winner is supplied.");
+ }else if(r&&r.previousAngles>0){
+  notes.push("The pairing has an established on-air story; no specific past incident is supplied.");
+ }
+ const character=thread.characterStory;
+ if(character&&character.priorChapters>0)
+  notes.push("An existing "+character.format.toLowerCase()+
+   " story centres on "+character.cast+"; prior events are not specified.");
+ if(thread.earlierOnThisCard)
+  notes.push("An earlier scene on this broadcast belongs to the same story; do not invent its details.");
+ return notes.length?notes.join(" ").slice(0,310):null;
+}
