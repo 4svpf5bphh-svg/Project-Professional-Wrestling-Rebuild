@@ -428,6 +428,9 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
   if(source.type==="SEGMENT"&&source.segmentKind==="VIDEO_PACKAGE"&&
+   /\b(?:montage|highlights?|clips?|footage|replay(?:s|ed)?)\b[^.!?]{0,135}\b(?:near[- ]falls?|suplex(?:es)?|finisher|technical exchanges?|pinfall|victor(?:y|ies)|past (?:match|bout))\b/iu.test(prose))
+   throw new Error("Ringside invented specific historic video footage");
+  if(source.type==="SEGMENT"&&source.segmentKind==="VIDEO_PACKAGE"&&
    /\b(?:last[- ]night['’]?s?|yesterday['’]?s?)\s+(?:victory|win|match|bout)\b|\b(?:did(?:\s+not|n['’]t)|does(?:\s+not|n['’]t))\s+(?:introduce|feature|add|show)\s+(?:new\s+)?(?:moves?|promos?|matches?|spots?)\b|\bno\s+new\s+(?:moves?|promos?|matches?)\b/i.test(prose))
    throw new Error("Ringside invented historical footage or narrated internal video limitations");
   assertNoUnscriptedDialogue(source,prose);
@@ -446,6 +449,19 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   if(!hadInterference&&/\b(?:outside interference|run-in (?:decided|cost|secured)|(?:manager|referee) (?:interfered|attacked)|(?:third party|outsider) interfered)\b/i.test(prose))
    throw new Error("Invented interference");
   if(source.type==="MATCH"){
+   assertUnrecordedMultiPersonVictim(source,prose);
+   if(source.outcome==="SUBMISSION"&&
+    /\b(?:count(?:ed|ing)?\s+(?:of\s+)?taps?|(?:two|three|four|\d+)\s+taps?|taps?\s+(?:were|was)\s+counted)\b/iu.test(prose))
+    throw new Error("Ringside invented a referee count of taps");
+   if(source.outcome==="FOREIGN_OBJECT"){
+    if(/\b(?:match|bout|win|victory)\s+(?:was\s+)?(?:called|awarded|granted)\b[^.!?]{0,90}\b(?:favou?r|victory|win)\b[^.!?]{0,65}\b(?:due to|because of|for)\s+(?:the\s+)?(?:illegal|weapon|belt|foul)/iu.test(prose)||
+      /\breferee\b[^.!?]{0,80}\b(?:witnessed|saw|spotted)\b[^.!?]{0,55}\b(?:weapon|belt\s+strike|illegal\s+blow)\b/iu.test(prose))
+     throw new Error("Ringside treated a concealed weapon strike as an official award");
+    if(source.matchContext?.finishProp==="CHAMPIONSHIP_BELT"&&
+      source.fallout?.title?.priorHolderName===source.fallout?.title?.winnerName&&
+      /\b(?:stole|stolen|stealing)\b[^.!?]{0,35}\b(?:championship|title|belt)\b/iu.test(prose))
+     throw new Error("Ringside called the reigning champion's own belt stolen");
+   }
    validateWrestlingMechanics(source,prose);
    if(["CLEAN_PIN","FLASH_PIN"].includes(source.outcome)){
     if(impossibleHoldCount(slot.recap))
@@ -825,6 +841,9 @@ Slot facts govern cast, finish, titles, injuries, interference and crowd.
 A belt changes hands ONLY when fallout.title.changed is true; the match
 winner is NOT automatically champion. No invented title defence.
 A booked championship belt is legal to own; using it to STRIKE is the foul.
+If the winner already held that championship, it is the champion's OWN belt.
+With a referee bump the foul happens unseen; the referee must recover to
+count the later cover. The referee never awards a win FOR the illegal strike.
 Match.wrestlingIQ and stipulationRules set legal win methods and pacing;
 possibleSpots are possibilities, not settled action. Invent temporary
 bell-to-bell colour, NOT winners, quotes, scores, attacks, injuries, title
@@ -837,13 +856,16 @@ Preserve multi-team sides. Triple/four-way: there are NO tags.
 Battle royals: over-the-top eliminations, not pins. Follow referee rules.
 
 In multi-person matches the fall victim may be UNRECORDED. Never name
-the person pinned unless verified. Say the winner stole the fall.
+the person pinned unless verified. Do not describe any specific rival being
+cradled, rolled up or covered for the final three without that evidence.
+Say the winner stole the fall.
 In a pinfall, ONLY the losing wrestler's shoulders are counted down. Never
 write that the referee counted three on the official WINNER's shoulders,
 even in a disputed or foreign-object finish. Recheck winner, defeated
 wrestler, cover and method before writing the last sentence.
 CLEAN_PIN requires a legal three-count; FLASH_PIN a sudden roll-up.
-SUBMISSION is a tap/stoppage, NOT a pin. Samoa Joe's Coquina Clutch
+SUBMISSION is a tap/stoppage, NOT a pin. A referee never counts taps.
+Samoa Joe's Coquina Clutch
 cannot score a pin; Muscle Buster may precede one. An earlier hold can
 set up a separate pin ONLY after the hold is released or escaped.
 In a pinfall match, nobody actually taps out; that ends the bout.
@@ -883,7 +905,10 @@ Translate history into what viewers saw, never database bookkeeping.
 NEVER say 'third angle', 'rivalry thread', 'only recorded rivalry',
 'official fallout', 'prior angles', 'card segment' or 'Week 25'.
 A recap video sells the real issue, not a list of what it did NOT introduce.
+Do not invent montages of moves, previous near-falls or filmed historic encounters.
 Never invent a replay, prior victory or what the footage depicted.
+Do not write historical wrestling-match comparisons: PPW's editorial desk
+adds rare, carefully verified historical asides separately.
 showFocus.lead is the show's opening/headline priority; the support slots
 inform the close. Cover EVERY card chronologically. Never write card numbers,
 slot IDs, focus keys or editorial instructions into the reader's article.
