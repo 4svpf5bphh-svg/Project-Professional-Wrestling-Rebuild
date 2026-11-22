@@ -157,15 +157,15 @@ function boundedRingsideFacts(show:CompletedShowView,memory:RingsideMemory):stri
 }
 function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings,
  facts:string,correction:string,benchmarkFixture:boolean,
- previewProvider:"GROQ"|"OPENAI"="GROQ"){
+ previewProvider:"GROQ"|"OPENAI"="GROQ",forceJsonObject=false){
  const schema=ringsideResponseSchema(show);
- const compatibilityJson=benchmarkFixture&&previewProvider==="GROQ"&&
-  settings.model==="openai/gpt-oss-20b";
+ const compatibilityJson=forceJsonObject||(benchmarkFixture&&previewProvider==="GROQ"&&
+  settings.model==="openai/gpt-oss-20b");
  return {temperature:settings.creativity,
      max_completion_tokens:Math.min(5800,760+show.entries.length*(
       settings.detail==="LONG"?310:settings.detail==="SHORT"?185:245)),
      reasoning_effort:settings.reasoning,
-     ...(compatibilityJson?{reasoning_format:"hidden"}:{}),
+     // GPT-OSS does not support reasoning_format. JSON Object Mode does not need it.
      response_format:compatibilityJson?{type:"json_object"}:
       {type:"json_schema",json_schema:{
        name:"ppw_ringside_review",strict:true,schema
@@ -199,6 +199,25 @@ export type RingsideGenerationTrace={attempts:Array<{
  slots:Array<{slotId:string;headline:string;recap:string}>}}>,
  slotOrigins:Array<{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}>};
 
+/** Inspect ONLY the provider's error category; never echo raw responses,
+ * potentially sensitive prompt fragments, or account information to the UI.
+ */
+function groq400Category(body:string):"SCHEMA"|"TOKEN_LIMIT"|"PARAMETERS"|"UNKNOWN"{
+ let error:unknown;
+ try{const parsed=JSON.parse(body) as {error?:unknown};error=parsed.error;}
+ catch{return "UNKNOWN";}
+ if(!error||typeof error!=="object"||Array.isArray(error))return "UNKNOWN";
+ const e=error as {param?:unknown;message?:unknown;code?:unknown};
+ const summary=[e.param,e.code,e.message].filter(x=>typeof x==="string")
+  .join(" ").slice(0,900).toLowerCase();
+ if(/response.format|json.schema|json_object|structured.output|schema/.test(summary))
+  return "SCHEMA";
+ if(/max.completion.tokens|context.length|token.limit|too.many.tokens/.test(summary))
+  return "TOKEN_LIMIT";
+ if(/reasoning.effort|reasoning.format|temperature|unsupported.model|invalid.model/.test(summary))
+  return "PARAMETERS";
+ return "UNKNOWN";
+}
 const validationHint=(message:string)=>message.includes("underwrote a significant match")?
  "You are a wrestling TV journalist writing for readers' enjoyment. Rebuild EVERY important match as an absorbing ringside account: opening tactics, a meaningful counter, the CERTIFIED finish and a measured verdict. At least 70 words for a strong bout, 85 for a 4.25+ star bout. No formulaic 'In the fourth bout' summaries or invented consequences.":
  message.includes("off-screen promo target appearance")?
@@ -248,13 +267,13 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  // The exact same certified-fact validator applies to both formats.
  const compatibilityJson=benchmarkFixture&&previewProvider==="GROQ"&&
   settings.model==="openai/gpt-oss-20b";
- let correction="";
+ let correction="",groqJsonCompatibility=false;
  for(let attempt=0;attempt<2;attempt++){
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),18000);
   try{
    const payload=ringsideRequestPayload(show,settings,facts,correction,
-    benchmarkFixture,previewProvider);
+    benchmarkFixture,previewProvider,groqJsonCompatibility);
    const response=previewProvider==="OPENAI"?
     await requestOpenAiEditorialPreview({
      key,enabled:true,transport,signal:controller.signal,
@@ -264,6 +283,32 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      signal:controller.signal,pool:budgetPool,body:payload
     });
    if(!response.ok){
+    if(response.status===400&&previewProvider==="GROQ"){
+     const errorBody=(await response.text()).slice(0,1400);
+     const category=groq400Category(errorBody);
+     console.warn("Ringside Groq request rejected",category,
+      groqJsonCompatibility||compatibilityJson?"JSON_OBJECT":"JSON_SCHEMA");
+     // Provider-specific format errors should not require the player to
+     // alter creativity or weaken canonical facts. Reuse, never ADD to, the
+     // existing second attempt. JSON mode still passes every local validator.
+     if(attempt===0&&!compatibilityJson&&
+      (category==="SCHEMA"||category==="UNKNOWN")){
+      groqJsonCompatibility=true;
+      correction="Return one complete JSON object with showHeadline, opening, "+
+       "closing and every card_N in slots, each containing headline and recap. "+
+       "Keep certified facts and write the full entertaining wrestling article.";
+      continue;
+     }
+     const hint=category==="TOKEN_LIMIT"?
+      "The request exceeded Groq's token or context limit.":
+      category==="PARAMETERS"?
+      "Groq rejected a model or reasoning parameter.":
+      category==="SCHEMA"?
+      "Groq rejected the structured article format, including JSON compatibility.":
+      "Groq rejected the article request, including its compatibility format.";
+     throw new RingsideGenerationError("PROVIDER_ERROR",
+      hint+" The official results were not changed.");
+    }
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
      "PROVIDER_AUTH":"PROVIDER_ERROR";
     const retry=Number(response.headers.get("retry-after"));
