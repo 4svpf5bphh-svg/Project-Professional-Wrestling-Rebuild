@@ -12,7 +12,7 @@ import type {TransactionPool} from "./transaction.js";
 import {readCompletedShowView} from "./show-results-view.js";
 import {readRingsideMemory,EMPTY_RINGSIDE_MEMORY,type RingsideMemory} from "./ringside-continuity.js";
 import type {CompletedShowView} from "./show-results-view.js";
-import {ringsideFacts,ringsideBrief,recoverRingsideCopy,ringsideReaderQualityIssue,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,ringsideReaderQualityIssue,withOccasionalWrestlingHistory,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
  RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
@@ -218,7 +218,19 @@ function groq400Category(body:string):"SCHEMA"|"TOKEN_LIMIT"|"PARAMETERS"|"UNKNO
   return "PARAMETERS";
  return "UNKNOWN";
 }
-const validationHint=(message:string)=>message.includes("underwrote a significant match")?
+const validationHint=(message:string)=>message.includes("show-level finish count")?
+ "Your opening or close counted more victories or submissions than the verified card has. Summarise the exact show; do not turn separate promos into match submissions.":
+ message.includes("unrecorded multi-person fall victim")?
+ "The result identifies the winning side, NOT which opponent took the three-count. Describe the winner's surprise cover without naming the pinned rival.":
+ message.includes("referee count of taps")?
+ "Wrestling officials do NOT count taps. One clear tap-out or an official stoppage ends the submission. Rewrite in correct authentic wrestling language.":
+ message.includes("concealed weapon strike as an official award")?
+ "The illegal blow was hidden from the referee, who later counted the winner's cover. A referee cannot award a win because of an illegal weapon strike he saw; that would be disqualification. Keep the verified winner and retained belt.":
+ message.includes("reigning champion's own belt stolen")?
+ "The winner was already champion: the weapon is the champion's OWN belt, not a stolen championship. Only its concealed use to strike is illegal.":
+ message.includes("specific historic video footage")?
+ "The package promoted the known rivals' stakes; no certified details of montage clips, old near-falls or moves were supplied. Write an evocative preview without claiming to see invented footage.":
+ message.includes("underwrote a significant match")?
  "You are a wrestling TV journalist writing for readers' enjoyment. Rebuild EVERY important match as an absorbing ringside account: opening tactics, a meaningful counter, the CERTIFIED finish and a measured verdict. At least 70 words for a strong bout, 85 for a 4.25+ star bout. No formulaic 'In the fourth bout' summaries or invented consequences.":
  message.includes("off-screen promo target appearance")?
  "The person named in the promo was OFF SCREEN. Rewrite the scene from the on-camera speaker's words and reactions; the mentioned opponent did not stare, face anyone, respond or physically appear. Keep this an enjoyable filmed scene, not a generic status report.":
@@ -357,8 +369,11 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     const accepted=validateRingsideCopy(candidate,show);
     const quality=ringsideReaderQualityIssue(accepted,show);
     if(quality)throw new Error(quality);
-    if(inspection)inspection.slotOrigins=origin(accepted.slots);
-    return accepted;
+    const final=withOccasionalWrestlingHistory(accepted,show);
+    if(inspection)inspection.slotOrigins=origin(accepted.slots).map((slot,i)=>
+     final.slots[i]?.recap!==accepted.slots[i]?.recap&&slot.source==="GROQ"?
+      {...slot,source:"CLEANED" as const}:slot);
+    return final;
    }catch(e){
     const reason=e instanceof Error?e.message:"Editorial facts did not validate";
     if(trace){trace.status="REJECTED";trace.reason=reason;}
@@ -373,7 +388,13 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      reason.includes("Ringside stacked")||
      reason.includes("off-screen promo target appearance")||
      reason.includes("historical footage or narrated internal video")||
-     reason.includes("private card or story metadata"));
+     reason.includes("private card or story metadata")||
+     reason.includes("show-level finish count")||
+     reason.includes("unrecorded multi-person fall victim")||
+     reason.includes("referee count of taps")||
+     reason.includes("concealed weapon strike as an official award")||
+     reason.includes("reigning champion's own belt stolen")||
+     reason.includes("specific historic video footage"));
     const rescued=rewriteFirst?null:recoverRingsideCopy(candidate,show);
     // A mechanically safe scorecard recap is NOT an acceptable replacement
     // for an important match. Try the already-authorised second Groq
