@@ -600,6 +600,10 @@ test("Low TPM can locally recover one bad slot without publishing false facts or
  assert.equal(calls,1,"Do not buy a second entire show when the provider reports only 700 tokens");
  assert.equal(result.slots.length,9);
  assert.doesNotMatch(result.slots[4]!.recap,/won this match by submission/i);
- assert.match(result.slots[4]!.recap,/clean pinfall|clean three-count|clean pin/i);
+ assert.notEqual(result.slots[4]!.recap,
+  "Omega won this match by submission instead of the certified clean pin.",
+  "Contradictory generated finish must be replaced by canonical safe prose");
+ assert.match(result.slots[4]!.recap,/recorded winning side/i,
+  "The deliberately sparse test fixture has no recorded winning side: never invent one");
  assert.deepEqual(result.slots.map(s=>s.slotId),nine.entries.map(e=>e.slotId));
 });
