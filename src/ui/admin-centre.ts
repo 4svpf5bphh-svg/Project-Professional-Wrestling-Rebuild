@@ -555,6 +555,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      e instanceof Error?e.message:"Could not inspect this benchmark",true);}
     finally{inspectFixture.disabled=false;}
    };
+   if(!data.providers?.openai)benchmark.append(el("p","ppw-admin-small",
+    "Terra paid comparisons are locked. The operator must configure OPENAI_API_KEY "+
+    "and PPW_ALLOW_PAID_AI_PREVIEW=YES in Vercel first. No API key is entered in PPW."));
    benchmark.append(inputField("Wrestling scenario",scenarioPick),rubric,
     inputField("Benchmark provider",benchmarkProvider),
     inputField("Groq model",benchmarkModel),inputField("Reasoning effort",benchmarkReasoning),
@@ -937,7 +940,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   ],"GROQ");
   const paidNotice=el("p","ppw-admin-small",data.openAiPreviewEnabled?
    "Paid Terra comparisons are private and never publish results. Two manual tests/day, one paid attempt each, and a shared £3 monthly PPW cap. Groq remains free for short-form writing.":
-   "Paid-provider testing is disabled by default. No OpenAI API calls can be made.");
+   "Paid Terra testing is off: set OPENAI_API_KEY and PPW_ALLOW_PAID_AI_PREVIEW=YES "+
+   "in Vercel to activate private comparisons. Never enter a provider key in the game.");
   const previewBtn=el("button","ppw-admin-secondary","Preview this style") as HTMLButtonElement;
   previewBtn.type="button";
   const previewDisabled=()=>!data.shows.length||
