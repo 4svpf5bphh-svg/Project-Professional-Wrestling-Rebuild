@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {generateGroqReview,inspectRingsidePrompt,immutableResultDigest,ringsideResponseSchema,diagnoseGroqBadRequest,RingsideGenerationError} from "../src/db/ringside-commentary.js";
+import {generateGroqReview,inspectRingsidePrompt,immutableResultDigest,ringsideResponseSchema,ringsidePlainTextLabels,decodeRingsidePlainText,diagnoseGroqBadRequest,RingsideGenerationError} from "../src/db/ringside-commentary.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 const show:CompletedShowView={showId:"show",year:1,week:2,crowdResponse:71,
  matchCount:1,angleCount:0,entries:[{slotId:"m",position:0,type:"MATCH",
@@ -56,8 +56,8 @@ test("eleven-item card requires eleven output objects; no missing-angle/article 
  assert.equal(schema.properties.slots.additionalProperties,false);
  const fake:typeof fetch=async(_url,init)=>{
   const body=JSON.parse(String(init?.body));
-  assert.equal(body.response_format.type,"json_object",
-   "Whole-card 120B shows must avoid Groq strict schema first-attempt 400");
+  assert.equal(body.response_format.type,"text",
+   "Full-card 120B shows must avoid provider-enforced JSON generation");
   const fields=extended.entries.map((_,i)=>"card_"+i);
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
    showHeadline:"Eleven matches",opening:"The crowd was up for it.",
@@ -423,7 +423,7 @@ test("Nine-card 120B Groq preview and read-only inspector use one compatible req
   })),matchCount:9,angleCount:0};
  const inspected=inspectRingsidePrompt(nine);
  assert.equal(inspected.callMade,false);
- assert.equal(inspected.response_format.type,"json_object");
+ assert.equal(inspected.response_format.type,"text");
  assert.deepEqual(inspected.facts.slots.map((s:{key:string})=>s.key),
   Array.from({length:9},(_,i)=>"card_"+i));
  let calls=0;
@@ -431,9 +431,10 @@ test("Nine-card 120B Groq preview and read-only inspector use one compatible req
   calls++;
   const body=JSON.parse(String(init?.body));
   assert.equal(body.model,"openai/gpt-oss-120b");
-  assert.equal(body.response_format.type,"json_object");
+  assert.equal(body.response_format.type,"text");
   assert.equal(body.response_format.json_schema,undefined);
-  assert.match(body.messages[1].content,/Return ONLY one JSON object/);
+  assert.match(body.messages[1].content,/Return ONLY these exact section markers/);
+  assert.match(body.messages[1].content,/\[\[CARD_8_RECAP\]\]/);
   assert.equal(body.max_completion_tokens,3600);
   assert.equal(body.reasoning_effort,inspected.reasoning_effort);
   assert.deepEqual(body.response_format,inspected.response_format);
@@ -448,13 +449,16 @@ test("Nine-card 120B Groq preview and read-only inspector use one compatible req
    "Two determined wrestlers traded momentum across the ring before Omega finally put a shoulder down for three.",
    "The final stretch demanded careful timing and Omega responded decisively, collecting the official clean victory."
   ];
-  const slots=Object.fromEntries(nine.entries.map((_,i)=>[
-   "card_"+i,{headline:"Omega's match "+(i+1),
-    recap:distinctRecaps[i]!}]));
-  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
-   showHeadline:"Nine bouts of Ascension",opening:"CWA had an eventful night.",
-   closing:"The card ended with the certified results intact.",slots
-  })}}]}),{status:200});
+  const plain=[
+   "[[SHOW_HEADLINE]]","Nine bouts of Ascension",
+   "[[OPENING]]","CWA had an eventful night.",
+   ...nine.entries.flatMap((_,i)=>[
+    "[[CARD_"+i+"_HEADLINE]]","Omega's match "+(i+1),
+    "[[CARD_"+i+"_RECAP]]",distinctRecaps[i]!
+   ]),
+   "[[CLOSING]]","The card ended with the certified results intact."
+  ].join("\n");
+  return new Response(JSON.stringify({choices:[{message:{content:plain}}]}),{status:200});
  });
  assert.equal(calls,1,"No wasted strict-schema attempt or immediate rate-limit retry");
  assert.equal(result.slots.length,9);
@@ -469,7 +473,7 @@ test("Nine-card 120B provider cooldown uses only one call and retains retry-afte
  await assert.rejects(()=>generateGroqReview(nine,"fixture",async(_url,init)=>{
   calls++;
   const req=JSON.parse(String(init?.body));
-  assert.equal(req.response_format.type,"json_object");
+  assert.equal(req.response_format.type,"text");
   return new Response("",{status:429,headers:{"retry-after":"24"}});
  }),e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_LIMIT"&&
   e.retryAfterSeconds===24);
@@ -500,7 +504,7 @@ test("W29-sized Groq draft with private card labels is cleaned, validated and pu
  const generated=await generateGroqReview(nine,"fixture",async(_url,init)=>{
   calls++;
   const body=JSON.parse(String(init?.body));
-  assert.equal(body.response_format.type,"json_object");
+  assert.equal(body.response_format.type,"text");
   const slots=Object.fromEntries(distinctive.map((recap,i)=>[
    "card_"+i,{headline:i===7?"card_7 saw Omega survive":"Omega wins again "+i,
     recap:i===5?"In card_5, "+recap:recap}
@@ -550,7 +554,7 @@ test("Full Ascension provider budget defers an incomplete article rather than pr
  await assert.rejects(()=>generateGroqReview(nine,"fixture",async(_u,init)=>{
   calls++;
   const req=JSON.parse(String(init?.body));
-  assert.equal(req.response_format.type,"json_object");
+  assert.equal(req.response_format.type,"text");
   assert.equal(req.max_completion_tokens,3600);
   return new Response(JSON.stringify({
    choices:[{finish_reason:"length",message:{content:""}}],
@@ -655,7 +659,7 @@ test("Groq 400 diagnostics identify token and parameter errors, safely handle in
  assert.equal(oversized.envelope,"OVERSIZED");
  assert.doesNotMatch(JSON.stringify(oversized),/X{20}/);
 });
-test("Real-sized Groq JSON-mode rejection makes one call and reports safe provider cause",async()=>{
+test("Real-sized Groq text-mode rejection makes one call and reports safe provider cause",async()=>{
  const nine:CompletedShowView={...show,entries:Array.from({length:9},(_,i)=>({
   ...show.entries[0]!,slotId:"large-"+i,position:i
  }))};
@@ -664,7 +668,7 @@ test("Real-sized Groq JSON-mode rejection makes one call and reports safe provid
  await assert.rejects(()=>generateGroqReview(nine,"fixture",async(_url,init)=>{
   calls++;
   const sent=JSON.parse(String(init?.body));
-  assert.equal(sent.response_format.type,"json_object");
+  assert.equal(sent.response_format.type,"text");
   return new Response(JSON.stringify({error:{
    code:"json_validate_failed",type:"invalid_request_error",
    message:"Failed to generate JSON. failed_generation:"+secret
@@ -673,4 +677,59 @@ test("Real-sized Groq JSON-mode rejection makes one call and reports safe provid
     /requested JSON article/.test(e.message)&&
     /json_validate_failed/.test(e.message)&&!e.message.includes(secret));
  assert.equal(calls,1,"Never retry an already-JSON Groq 400 request");
+});
+
+
+test("Plain-text sections decode in canonical order and reject omissions, duplicates and swaps",()=>{
+ const three:CompletedShowView={...show,entries:[0,1,2].map(i=>({
+  ...show.entries[0]!,position:i,slotId:"official-"+i
+ }))};
+ const labels=ringsidePlainTextLabels(three);
+ assert.deepEqual(labels,[
+  "SHOW_HEADLINE","OPENING",
+  "CARD_0_HEADLINE","CARD_0_RECAP",
+  "CARD_1_HEADLINE","CARD_1_RECAP",
+  "CARD_2_HEADLINE","CARD_2_RECAP","CLOSING"
+ ]);
+ const plain=labels.map((name,i)=>"[["+name+"]]\n"+(
+  name.endsWith("RECAP")?"Distinct bout "+i+" ended in the certified clean pinfall.":
+  "Editorial field "+i)).join("\n");
+ const decoded=decodeRingsidePlainText(plain,three) as {
+  showHeadline:string;opening:string;closing:string;
+  slots:Record<string,{headline:string;recap:string}>
+ };
+ assert.deepEqual(Object.keys(decoded.slots),["card_0","card_1","card_2"]);
+ assert.match(decoded.slots.card_1.recap,/certified clean pinfall/);
+ assert.throws(()=>decodeRingsidePlainText(
+  plain.replace("[[CARD_1_RECAP]]","[[CARD_2_RECAP]]"),three),
+  e=>e instanceof RingsideGenerationError&&e.code==="INVALID_OUTPUT");
+ assert.throws(()=>decodeRingsidePlainText(
+  plain.replace("[[CARD_2_HEADLINE]]",""),three),
+  e=>e instanceof RingsideGenerationError&&e.code==="INVALID_OUTPUT");
+ assert.throws(()=>decodeRingsidePlainText(
+  plain+"\n[[CARD_2_RECAP]]\nDuplicated.",three),
+  e=>e instanceof RingsideGenerationError&&e.code==="INVALID_OUTPUT");
+});
+
+test("The text protocol retains factual validation and rejects incorrect submission endings",async()=>{
+ const four:CompletedShowView={...show,entries:[0,1,2,3].map(i=>({
+  ...show.entries[0]!,slotId:"s-"+i,position:i
+ }))};
+ const labels=ringsidePlainTextLabels(four);
+ let calls=0;
+ const result=await generateGroqReview(four,"fixture",async(_url,init)=>{
+  calls++;
+  const req=JSON.parse(String(init?.body));
+  assert.equal(req.response_format.type,"text");
+  const plain=labels.map((name,i)=>"[["+name+"]]\n"+
+   (name==="CARD_1_RECAP"?
+    "Kenny Omega won this match by submission instead of a certified clean pinfall.":
+    name.endsWith("RECAP")?
+    "Omega turned the contest around and collected the clean pin after careful counters "+i+".":
+    "A competitive bout "+i)).join("\n");
+  return new Response(JSON.stringify({choices:[{message:{content:plain}}]}));
+ });
+ assert.equal(result.slots.length,4);
+ assert.doesNotMatch(result.slots[1].recap,/won this match by submission/);
+ assert.equal(calls,1,"Factual recovery stays local to a bad slot");
 });
