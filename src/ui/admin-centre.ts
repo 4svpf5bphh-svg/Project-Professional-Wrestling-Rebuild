@@ -315,6 +315,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
        "~$"+row.knownUsd.toFixed(4)+" known API cost")+
       (row.hasUnreportedCosts?" (failed/unreported charges excluded)":""):"");
    };
+   if(matched.length)headToHead.append(el("p","ppw-admin-small",
+    "Same settled show, not necessarily identical prompts or energy settings across historical tests."));
    for(const match of matched){
     const line=el("div","ppw-lab-period");
     line.append(el("strong","",match.showName+" · same-show comparison"),
