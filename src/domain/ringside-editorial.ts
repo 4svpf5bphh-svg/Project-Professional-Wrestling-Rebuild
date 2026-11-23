@@ -542,7 +542,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
      }
     }
    }
-   if(finish!=="SUBMISSION"&&/\b(?:won by submission|forced (?:the |a )?tap(?:-out)?|made (?:him|her|them) tap|tapped out to (?:the |a )?hold)\b/i.test(prose))
+   if(finish!=="SUBMISSION"&&/\b(?:(?:won|wins?|prevailed|victory|defeated)\b[^.!?;]{0,42}\bby (?:a |the )?(?:submission|tap[- ]?out)|forced (?:the |a )?tap(?:-out)?|made (?:him|her|them) tap|tapped out to (?:the |a )?hold)\b/i.test(prose))
     throw new Error("Contradictory submission finish");
    if(finish==="SUBMISSION"&&/\b(?:pin(?:ned|fall)? (?:for |at )?the (?:win|victory)|pinned (?:him|her|them) for (?:the )?(?:three|win)|three-count to (?:win|victory))\b/i.test(prose))
     throw new Error("Contradictory pinfall finish");
@@ -929,7 +929,7 @@ not a miracle; never force profanity or oversell a flat match.
 A two-count stops BEFORE THREE. Only a move's owner lands it;
 the wrestler kicking OUT is the recipient. Repertoire is colour, not fact.
 Headlines must be specific, not bloated; don't repeat the opening sentence.
-slot.editorialLens and director set emphasis, never new facts.
+slot.director sets emphasis, never new facts.
 Avoid "In the end", "momentum shifted", recycled moves, "looming storms",
 "unstoppable auras", "hushed reverence", "electric crowds" and invented
 camera shots. Motives and relationships need on-air evidence.
@@ -941,7 +941,7 @@ A booked championship belt is legal to own; using it to STRIKE is the foul.
 If the winner already held that championship, it is the champion's OWN belt.
 With a referee bump the foul happens unseen; the referee must recover to
 count the later cover. The referee never awards a win FOR the illegal strike.
-Match.wrestlingIQ and stipulationRules set legal win methods and pacing;
+Match.format and stipulationRules set legal win methods and pacing;
 possibleSpots are possibilities, not settled action. Invent temporary
 bell-to-bell colour, NOT winners, quotes, scores, attacks, injuries, title
 changes, debuts, turns or any lasting consequence. Never assign another

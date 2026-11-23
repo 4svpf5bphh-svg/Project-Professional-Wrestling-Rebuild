@@ -68,6 +68,33 @@ const ascension:CompletedShowView={showId:"ascension-w29",showName:"Ascension",
  crowdResponse:76.2,matchCount:4,angleCount:5,
  entries:[regal,bayne,joePromo,oreilly,gunn,joeMatch,video,title,taker]};
 
+test("W29 nine-card Groq prompt trims redundant tokens without trimming certified results",()=>{
+ const inspected=inspectRingsidePrompt(ascension);
+ const original=ringsideBrief(ascension);
+ assert.equal(inspected.response_format.type,"json_object");
+ assert.equal(inspected.max_completion_tokens,3600);
+ assert.ok(JSON.stringify(inspected.facts).length<
+  JSON.stringify(original).length-500,
+  "A 9-slot prompt must reduce redundant context to protect Groq's 8k TPM");
+ assert.deepEqual(inspected.facts.slots.map((s:{key:string})=>s.key),
+  original.slots.map(s=>s.key));
+ for(const [i,source] of original.slots.entries()){
+  const compact=inspected.facts.slots[i]!;
+  assert.equal(compact.summary,source.summary,"Never strip the settled show summary");
+  assert.equal(compact.finish,source.finish,"Never strip the certified finish");
+  assert.deepEqual(compact.director,source.director,
+   "Always preserve specific wrestling and angle narrative guidance");
+  assert.deepEqual(compact.wrestlers,source.wrestlers,
+   "Retain exact identities and owned finishing moves");
+  assert.deepEqual(compact.match?.sides,source.match?.sides);
+  assert.deepEqual(compact.match?.winners,source.match?.winners);
+  assert.equal(compact.match?.bookedWeapon,source.match?.bookedWeapon);
+  assert.equal(compact.match?.refereeSpot,source.match?.refereeSpot);
+  assert.deepEqual(compact.angle?.scriptedActions,source.angle?.scriptedActions);
+  assert.deepEqual(compact.fallout?.title,source.fallout?.title);
+ }
+});
+
 test("CWA Ascension gets one justified main headline and two recognisable supporting moments",()=>{
  const focus=directRingsideShow(ascension);
  assert.deepEqual(focus,{lead:"card_7",support:["card_0","card_8"]});

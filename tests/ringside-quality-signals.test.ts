@@ -72,6 +72,7 @@ test("Groq editorial lenses use the actual finish, format, duration and story ki
  const {show}=getWrestlingBenchmark("singles-technical")!;
  const promo={...show.entries[0]!,type:"SEGMENT" as const,segmentKind:"INTERVIEW" as const};
  assert.match(ringsideEditorialLens(promo),/no invented entrance/);
- assert.match(RINGSIDE_STYLE_GUIDE,/editorialLens/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/slot\.director/);
+ assert.match(RINGSIDE_STYLE_GUIDE,/Match\.format/);
  assert.ok(RINGSIDE_STYLE_GUIDE.length<6500);
 });
