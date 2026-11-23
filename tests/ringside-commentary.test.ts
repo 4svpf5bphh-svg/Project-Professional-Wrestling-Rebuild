@@ -437,10 +437,20 @@ test("Nine-card 120B Groq preview and read-only inspector use one compatible req
   assert.equal(body.max_completion_tokens,2965);
   assert.equal(body.reasoning_effort,inspected.reasoning_effort);
   assert.deepEqual(body.response_format,inspected.response_format);
+  const distinctRecaps=[
+   "Omega ducked a wild opening shot, established control with sharp counters and took the clean pin.",
+   "A test of patience saw Omega wrestle out of trouble before a legal cover secured his win.",
+   "Early exchanges rewarded the opponent's aggression, but Omega found room to recover and earn the three-count.",
+   "The battle around the ropes turned scrappy until Omega adjusted his footing and scored the pinfall.",
+   "Rather than rush into a brawl, Omega picked his moment and converted the opening into a legal pin.",
+   "An opponent's late rally briefly threatened the decision; Omega answered it with a clean cover.",
+   "This contest grew tense with every counter, although Omega ultimately kept his composure to win by pinfall.",
+   "Two determined wrestlers traded momentum across the ring before Omega finally put a shoulder down for three.",
+   "The final stretch demanded careful timing and Omega responded decisively, collecting the official clean victory."
+  ];
   const slots=Object.fromEntries(nine.entries.map((_,i)=>[
-   "card_"+i,{headline:"Omega wins the "+(i+1)+"th match",
-    recap:"Omega worked through a different contest number "+(i+1)+
-     " and won with a legal pinfall after a steady exchange."}]));
+   "card_"+i,{headline:"Omega's match "+(i+1),
+    recap:distinctRecaps[i]!}]));
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
    showHeadline:"Nine bouts of Ascension",opening:"CWA had an eventful night.",
    closing:"The card ended with the certified results intact.",slots
