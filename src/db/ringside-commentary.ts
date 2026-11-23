@@ -239,8 +239,9 @@ function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings
 export function inspectRingsidePrompt(show:CompletedShowView,
  settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
  memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,benchmarkFixture=false){
- const facts=boundedRingsideFacts(show,memory,
-  preferGroqJsonObject(show,settings,benchmarkFixture,"GROQ"));
+ const compactFullCard=settings.model==="openai/gpt-oss-120b"&&
+  show.entries.length>=4;
+ const facts=boundedRingsideFacts(show,memory,compactFullCard);
  const payload=ringsideRequestPayload(show,settings,facts,"",benchmarkFixture);
  return {promptVersion:RINGSIDE_PROMPT_VERSION,model:settings.model,
   ...payload,facts:JSON.parse(facts),provider:"GROQ" as const,
