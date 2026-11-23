@@ -542,7 +542,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
      }
     }
    }
-   if(finish!=="SUBMISSION"&&/\b(?:won by submission|forced (?:the |a )?tap(?:-out)?|made (?:him|her|them) tap|tapped out to (?:the |a )?hold)\b/i.test(prose))
+   if(finish!=="SUBMISSION"&&/\b(?:(?:won|wins?|prevailed|victory|defeated)\b[^.!?;]{0,42}\bby (?:a |the )?(?:submission|tap[- ]?out)|forced (?:the |a )?tap(?:-out)?|made (?:him|her|them) tap|tapped out to (?:the |a )?hold)\b/i.test(prose))
     throw new Error("Contradictory submission finish");
    if(finish==="SUBMISSION"&&/\b(?:pin(?:ned|fall)? (?:for |at )?the (?:win|victory)|pinned (?:him|her|them) for (?:the )?(?:three|win)|three-count to (?:win|victory))\b/i.test(prose))
     throw new Error("Contradictory pinfall finish");
