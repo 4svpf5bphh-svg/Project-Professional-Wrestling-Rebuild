@@ -71,7 +71,7 @@ const ascension:CompletedShowView={showId:"ascension-w29",showName:"Ascension",
 test("W29 nine-card Groq prompt trims redundant tokens without trimming certified results",()=>{
  const inspected=inspectRingsidePrompt(ascension);
  const original=ringsideBrief(ascension);
- assert.equal(inspected.response_format.type,"json_object");
+ assert.equal(inspected.response_format.type,"text");
  assert.equal(inspected.max_completion_tokens,3600);
  assert.ok(JSON.stringify(inspected.facts).length<
   JSON.stringify(original).length-500,
