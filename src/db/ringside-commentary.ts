@@ -260,12 +260,12 @@ export type RingsideGenerationTrace={attempts:Array<{
  */
 export type GroqBadRequestDiagnostic={
  category:"SCHEMA"|"TOKEN_LIMIT"|"PARAMETERS"|"CONTENT_FILTER"|"RATE_LIMIT"|"UNKNOWN";
- code:string|null;type:string|null;param:string|null;
+ code:string|null;type:string|null;param:string|null;messageHeadline:string|null;
  reason:string;envelope:"JSON"|"NON_JSON"|"OVERSIZED";bodyChars:number;
 };
 export function diagnoseGroqBadRequest(body:string):GroqBadRequestDiagnostic{
  const result:GroqBadRequestDiagnostic={
-  category:"UNKNOWN",code:null,type:null,param:null,
+  category:"UNKNOWN",code:null,type:null,param:null,messageHeadline:null,
   reason:"Groq returned HTTP 400 without an identifiable explanation.",
   envelope:"NON_JSON",bodyChars:body.length};
  if(body.length>96000){result.envelope="OVERSIZED";return result;}
@@ -289,6 +289,18 @@ export function diagnoseGroqBadRequest(body:string):GroqBadRequestDiagnostic{
  result.param=safeToken(error.param);
  const message=typeof error.message==="string"?error.message:
   typeof error.detail==="string"?error.detail:"";
+ // Preserve only a sanitised, short leading provider explanation. Large
+ // failed-generation traces, echoed prompts, account IDs, URLs and JSON
+ // snippets must NEVER appear in application logs or player-visible errors.
+ const head=message.split(/(?:\r|\n|failed_generation\s*[:=]|request_body\s*[:=]|prompt_content\s*[:=]|model_output\s*[:=])/i)[0]??"";
+ const safeHead=head.replace(/\{[\s\S]*$/,"")
+  .replace(/(?:sk|org|req|user|account|project)[_-][a-z0-9_-]{4,}/gi,"[redacted]")
+  .replace(/(?:bearer\s+)[a-z0-9_.-]+/gi,"[redacted]")
+  .replace(/https?:\/\/\S+/gi,"[url]")
+  .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi,"[email]")
+  .replace(/["“][^"”]{1,160}["”]/g,"[quoted detail]")
+  .replace(/\s+/g," ").trim().slice(0,180);
+ if(safeHead.length>=8)result.messageHeadline=safeHead;
  const signal=[result.code,result.type,result.param,message].filter(Boolean)
   .join(" ").toLowerCase().slice(0,10000);
  if(/(?:json.validate|json.?schema|structured.?output|response.?format|json.?object|failed to generate json|valid json|schema mismatch)/i.test(signal)){
@@ -426,7 +438,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      // generated wrestling text, server API key or account identifiers.
      console.warn("Ringside Groq 400 diagnostic",{
       category:detail.category,code:detail.code,type:detail.type,
-      param:detail.param,envelope:detail.envelope,
+      param:detail.param,messageHeadline:detail.messageHeadline,
+      envelope:detail.envelope,
       errorBodyChars:detail.bodyChars,responseMode:requestMode,
       requestChars:JSON.stringify(payload).length,
       requestedOutputTokens:payload.max_completion_tokens,
@@ -448,6 +461,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
       .filter(Boolean).join(" / ");
      throw new RingsideGenerationError("PROVIDER_ERROR",
       detail.reason+(identification?" Provider detail: "+identification+".":"")+
+      (detail.category==="UNKNOWN"&&detail.messageHeadline?
+       " Groq explanation: "+detail.messageHeadline+".":"")+
       " The request was not automatically retried. Official results were not changed.");
     }
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
