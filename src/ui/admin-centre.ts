@@ -84,12 +84,12 @@ function renderGenerationTrace(root:HTMLElement,trace:GenerationTrace,review:Rec
  const origins=trace.slotOrigins;
  const totalFallback=origins.filter(s=>s.source==="PPW_FALLBACK").length;
  const cleaned=origins.filter(s=>s.source==="CLEANED").length;
- root.append(el("h4","","Groq draft vs PPW final"),
+ root.append(el("h4","","Model draft vs PPW final"),
   el("p","ppw-admin-small",trace.attempts.length+" generation attempt(s) · "+
    totalFallback+" factual fallback card(s) · "+cleaned+" cleaned recap(s). "+
    "This raw trace is session-only; only the validated article is kept in AI Lab."));
  for(const attempt of trace.attempts)
-  root.append(textDisclosure("Original Groq draft "+attempt.attempt+" · "+attempt.status+
+  root.append(textDisclosure("Original model draft "+attempt.attempt+" · "+attempt.status+
    (attempt.reason?" · validator: "+attempt.reason:""),JSON.stringify(attempt.draft,null,2)));
  root.append(textDisclosure("Final accepted/recovered PPW article",JSON.stringify(review,null,2)),
   textDisclosure("Which card came from where",JSON.stringify(origins,null,2)));
