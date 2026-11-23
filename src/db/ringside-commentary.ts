@@ -282,7 +282,7 @@ export function diagnoseGroqBadRequest(body:string):GroqBadRequestDiagnostic{
  // rejected prompt fragments or account identifiers.
  const safeToken=(value:unknown):string|null=>
   typeof value==="string"&&/^[a-z][a-z0-9_.-]{0,63}$/i.test(value)&&
-  !/(?:secret|api.key|password|bearer)/i.test(value)&&
+  !/(?:secret|api[._-]?key|password|bearer|access[._-]?token)/i.test(value)&&
   !/^(?:org|user|sk|acct|account|project|req)[_-]/i.test(value)?value:null;
  result.code=safeToken(error.code);
  result.type=safeToken(error.type);
