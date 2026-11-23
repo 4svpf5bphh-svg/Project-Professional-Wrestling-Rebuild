@@ -99,11 +99,14 @@ export async function requestOpenAiEditorialPreview(input:{
 }):Promise<Response>{
  if(!input.enabled||!input.key.trim())
   return new Response("Paid AI comparisons are disabled",{status:403});
- const {temperature:_unsupported,reasoning_effort:_effort,
+ const {temperature:_unsupported,reasoning_effort:requestedEffort,
   model:_groqName,...requestFields}=input.body;
- // Terra with reasoning effort cannot accept custom temperature.
+ // Terra with reasoning effort cannot accept custom temperature, but
+ // honours the AI Lab's explicit low/medium/high reasoning selection.
+ const effort=requestedEffort==="medium"||requestedEffort==="high"?
+  requestedEffort:"low";
  const body=JSON.stringify({...requestFields,model:OPENAI_PREVIEW_MODEL,
-  reasoning_effort:"low",store:false});
+  reasoning_effort:effort,store:false});
  const completion=Number(input.body.max_completion_tokens);
  const estimate=estimatedGroqTokens(body,completion);
  if(estimate>MAX_REQUEST_ESTIMATE)

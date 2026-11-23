@@ -2,6 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {generateGroqReview,inspectRingsidePrompt,immutableResultDigest,ringsideResponseSchema,ringsidePlainTextLabels,decodeRingsidePlainText,diagnoseGroqBadRequest,RingsideGenerationError} from "../src/db/ringside-commentary.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
+import {DEFAULT_RINGSIDE_SETTINGS} from "../src/domain/ringside-settings.js";
 const show:CompletedShowView={showId:"show",year:1,week:2,crowdResponse:71,
  matchCount:1,angleCount:0,entries:[{slotId:"m",position:0,type:"MATCH",
  headline:"Omega wins",summary:"Clean pinfall",outcome:"CLEAN_PIN",
@@ -230,7 +231,8 @@ test("OpenAI preview uses the same certified Ringside validator with mocked prov
   const body=JSON.parse(String(options?.body));
   assert.equal(body.model,"gpt-6.1-terra");
   assert.equal(body.store,false);
-  assert.equal(body.reasoning_effort,"low");
+  assert.equal(body.reasoning_effort,"medium");
+  assert.match(body.messages[0].content,/WRESTLING JOURNALISM ENERGY: BOLD/);
   assert.ok(!Object.hasOwn(body,"temperature"));
   assert.equal(body.response_format.json_schema.strict,true);
   return new Response(JSON.stringify({usage:{prompt_tokens:300,completion_tokens:60},
@@ -241,8 +243,9 @@ test("OpenAI preview uses the same certified Ringside validator with mocked prov
      recap:"Each side took turns controlling the corner until a legal tag sparked a comeback. The winners earned the official fall."}}
    })}}]}));
  };
- const article=await generateGroqReview(team,"fixture",transport,undefined,undefined,
-  pool as never,"OPENAI");
+ const article=await generateGroqReview(team,"fixture",transport,
+  {...DEFAULT_RINGSIDE_SETTINGS,creativity:1.05,reasoning:"medium"},
+  undefined,pool as never,"OPENAI");
  assert.match(article.showHeadline,/Teams/);
  assert.equal(requests,1);
 });
