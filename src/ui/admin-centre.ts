@@ -54,7 +54,7 @@ type PromptInspection={promptVersion:string;provider:"GROQ";model:string;
  response_format:unknown;messages:{role:string;content:string}[];
  facts:unknown;callMade:false;historyScope:string};
 type GenerationTrace={attempts:Array<{attempt:number;status:string;reason?:string;
- draft:Recap}>;slotOrigins:{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}[]};
+ draft:Recap}>;slotOrigins:{slotId:string;source:"GROQ"|"OPENAI"|"CLEANED"|"PPW_FALLBACK"}[]};
 /** Use selectable text, not HTML injection. This remains accessible on iPhone. */
 function textDisclosure(title:string,body:string){
  const details=document.createElement("details");details.className="ppw-admin-preview";
