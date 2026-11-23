@@ -603,7 +603,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     if(quality)throw new Error(quality);
     const final=withOccasionalWrestlingHistory(accepted,show);
     if(inspection)inspection.slotOrigins=origin(accepted.slots).map((slot,i)=>
-     final.slots[i]?.recap!==accepted.slots[i]?.recap&&slot.source==="GROQ"?
+     final.slots[i]?.recap!==accepted.slots[i]?.recap&&(slot.source==="GROQ"||slot.source==="OPENAI")?
       {...slot,source:"CLEANED" as const}:slot);
     return final;
    }catch(e){

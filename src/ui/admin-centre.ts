@@ -1,6 +1,7 @@
 /** Protected operator desk. All sensitive reads and writes are server-authorised;
  * this client never stores an API key, resets a World or runs a timer. */
 import type {RingsideSettings} from "../domain/ringside-settings.js";
+import {estimateTerraStandardUsd} from "../domain/paid-editorial-cost.js";
 type ActionPlan={
  year:number;week:number;action:string;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
@@ -205,9 +206,13 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     stat("OpenAI tests · 7 days",String(total(openai,"calls"))),
     stat("Terra · £3 monthly cap",
      "£"+((Number(data.paid?.spent??0)+Number(data.paid?.reserved??0))/1_000_000).toFixed(2)+
-     " / £3.00 reserved or spent"),
+     " / £3.00 conservatively reserved or charged"),
     stat("Provider failures",String(total([...groq,...openai],"failed")))
    );
+   const priceNote=el("p","ppw-admin-small",
+    "Terra estimates use published standard USD rates ($1 input / $5 output per million tokens). "+
+    "The £3 PPW budget reserves more than the estimated provider charge to protect against "+
+    "exchange rates, VAT, uncertain failed requests and token overhead. The API invoice is separate.");
    const today=new Date().toISOString().slice(0,10);
    const live=groq.find(row=>row.day===today);
    const todaySummary=el("p","ppw-admin-small",
@@ -279,7 +284,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       successes.length+" valid / "+group.length+" attempts · "+failed+
       " failed · "+callTotal+" API calls · "+
       (known.length===group.length?tokens.toLocaleString("en-GB")+" tokens":
-       "partial token totals")));
+       "partial token totals")+
+      (group.some(x=>x.provider==="OPENAI"&&x.model==="gpt-6.1-terra")?
+       " · "+(known.length===group.length?
+        "~$"+known.reduce((sum,x)=>sum+(estimateTerraStandardUsd(x.input_tokens,x.output_tokens)??0),0).toFixed(4)+" API estimate":
+        "paid usage partly unreported"):"")));
     }
     scenarioScores.append(box);
    }
@@ -569,7 +578,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      el("h3","",review.showHeadline),
      el("p","ppw-admin-small",run.show_name+" · "+run.duration_ms+"ms · "+
       (run.input_tokens===null?"Tokens not reported":
-      (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")),
+      (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
+      runCost(run)),
      el("p","",review.opening));
     for(const slot of review.slots)target.append(
      el("h4","",slot.headline),el("p","",slot.recap));
@@ -643,6 +653,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     }catch(e){target.replaceChildren(el("p","ppw-admin-error",
      e instanceof Error?e.message:"Saved preview is unavailable"));}
    };
+   const runCost=(run:LabRun)=>{
+    if(run.provider!=="OPENAI"||run.model!=="gpt-6.1-terra")return "";
+    const usd=estimateTerraStandardUsd(run.input_tokens,run.output_tokens);
+    return usd===null?" · Paid cost unreported":" · ~$"+usd.toFixed(4)+" at standard API rates";
+   };
    const history=el("div","ppw-lab-history");
    if(data.runs.length)for(const [index,run] of data.runs.entries()){
     const item=el("div","ppw-lab-history-row");
@@ -655,7 +670,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
      " · "+(failed?"FAILED: "+(run.error_code??"Unknown safe error"):
       run.rating?run.rating+"/5":"Unrated")+
-     " · "+run.created_at.slice(0,10));
+     runCost(run)+" · "+run.created_at.slice(0,10));
     const actions=el("div","ppw-admin-actions");
     if(!failed){
      const open=el("button","ppw-admin-secondary","Read & rate") as HTMLButtonElement;
@@ -684,7 +699,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    labPanel.replaceChildren(el("h2","","AI Quality Lab"),
     el("p","ppw-admin-sub",
      "Live provider usage, model quality and your playtest notes. No public Results are changed."),
-    voiceLab,benchmark,overview,todaySummary,providerSnapshot,usage,scoreTitle,scores,
+    voiceLab,benchmark,overview,priceNote,todaySummary,providerSnapshot,usage,scoreTitle,scores,
     el("h3","","Scenario-by-scenario model scores"),scenarioScores,reportButton,
     reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
   }catch(e){labData=null;labPanel.replaceChildren(
