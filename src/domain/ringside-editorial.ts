@@ -559,6 +559,50 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
  * for one inconsistent match description. Each preserved model slot undergoes
  * the *same* final validation; only immutable, verified facts form fallbacks.
  */
+
+/**
+ * Groq may echo a PPW card label or internal editorial key while otherwise
+ * writing a complete, accurate article. These are reader-facing presentation
+ * defects, not grounds to buy another complete 9-card generation.
+ * Change ONLY enumerated backstage tokens. Never alter names, winners,
+ * moves, title facts, scores or the certified outcome. Revalidate the
+ * whole article before accepting any cleaned draft.
+ */
+export function cleanRingsidePrivateMetadata(
+ input:RingsideCopy,show:CompletedShowView):RingsideCopy|null{
+ let changed=false;
+ const scrub=(text:string,noun:"show"|"match"|"segment")=>{
+  const label=(matched:string,possessive?:string)=>
+   (/^[A-Z]/.test(matched)?"The ":"the ")+noun+(possessive??"");
+  const next=text
+   .replace(/\b(?:the\s+)?(?:card\s+segment\s+\d+|card[_\s-]*\d+|slot[_\s-]*\d+)\b(['’]s)?/giu,
+    (match,_pos:string)=>label(match,_pos))
+   .replace(/\b(?:the\s+)?week\s+\d{1,3}\b/giu,
+    match=>(/^[A-Z]/.test(match)?"The show":"the show"))
+   .replace(/\b(?:the\s+)?(?:showfocus(?:\.[a-z]+)?|editoriallens(?:\.[a-z]+)?|storythread(?:\.[a-z]+)?|director\.[a-z]+)\b/giu,
+    match=>label(match))
+   .replace(/\b(?:the\s+)?(?:rivalry thread|story thread|only recorded rivalry|recorded rivalry|official fallout|prior angles?|previous angles?|additional angles?|programme chapters?|scripted actions?)\b/giu,
+    match=>(/^[A-Z]/.test(match)?"The situation":"the situation"))
+   .replace(/[ \t]{2,}/g," ")
+   .replace(/[ \t]+([,.;!?])/g,"$1");
+  if(next!==text)changed=true;
+  return next;
+ };
+ const cleaned:RingsideCopy={
+  showHeadline:scrub(input.showHeadline,"show"),
+  opening:scrub(input.opening,"show"),
+  closing:scrub(input.closing,"show"),
+  slots:input.slots.map((slot,i)=>({
+   ...slot,
+   headline:scrub(slot.headline,show.entries[i]?.type==="MATCH"?"match":"segment"),
+   recap:scrub(slot.recap,show.entries[i]?.type==="MATCH"?"match":"segment")
+  }))
+ };
+ if(!changed)return null;
+ try{return validateRingsideCopy(cleaned,show);}
+ catch{return null;}
+}
+
 export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  {review:RingsideCopy;replaced:number}|null{
  const raw=shape(input);
