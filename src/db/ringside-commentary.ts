@@ -80,7 +80,36 @@ function decodeEditorialResponse(input:unknown,show:CompletedShowView):unknown{
  * The displayed first attempt is byte-for-byte the editorial payload sent to Groq,
  * before the Groq Director appends its chosen model and bearer token headers.
  */
-function boundedRingsideFacts(show:CompletedShowView,memory:RingsideMemory):string{
+/** Keep every current-show result, winner, scripted action and match director,
+ * while removing repeated optional wrappers from a whole-show Groq request.
+ * This is transport compression only. ringsideBrief still exposes the complete
+ * projection to deterministic tests; no World state or source data changes.
+ */
+function compactFullShowFacts(json:string):string{
+ const brief=JSON.parse(json) as {slots:Record<string,unknown>[]};
+ const dropEmpty=(object:Record<string,unknown>):void=>{
+  for(const [key,value] of Object.entries(object)){
+   if(value===null||value===undefined||
+      (Array.isArray(value)&&value.length===0)){delete object[key];continue;}
+   if(value&&typeof value==="object"&&!Array.isArray(value))
+    dropEmpty(value as Record<string,unknown>);
+   else if(Array.isArray(value))for(const item of value)
+    if(item&&typeof item==="object"&&!Array.isArray(item))
+     dropEmpty(item as Record<string,unknown>);
+  }
+ };
+ for(const slot of brief.slots){
+  // The supplied director and legal format already carry these priorities.
+  delete slot.editorialLens;
+  const match=slot.match;
+  if(match&&typeof match==="object"&&!Array.isArray(match))
+   delete (match as Record<string,unknown>).wrestlingIQ;
+  dropEmpty(slot);
+ }
+ return JSON.stringify(brief);
+}
+function boundedRingsideFacts(show:CompletedShowView,memory:RingsideMemory,
+ compactFullCard=false):string{
  if(show.entries.length>30||show.entries.length===0)
   throw new RingsideGenerationError("INVALID_OUTPUT","Show exceeds the bounded AI review limit.");
  // Each card_N key already appears in the authenticated brief and schema.
@@ -99,10 +128,12 @@ function boundedRingsideFacts(show:CompletedShowView,memory:RingsideMemory):stri
  // If the request grows too large, remove optional retrospective data before
  // losing any of the settled current-show facts or paying for a Groq request.
  let facts=JSON.stringify(ringsideBrief(show,bounded));
+ if(compactFullCard)facts=compactFullShowFacts(facts);
  while(facts.length>26000&&(bounded.priorMatches.length||bounded.programmes.length)){
   if(bounded.priorMatches.length)bounded.priorMatches.pop();
   else bounded.programmes.pop();
   facts=JSON.stringify(ringsideBrief(show,bounded));
+  if(compactFullCard)facts=compactFullShowFacts(facts);
  }
  // On a dense PPV, keep EVERY factual card and the lead story rather
  // than rejecting the whole review because optional direction grew.
@@ -173,9 +204,18 @@ function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings
  const schema=ringsideResponseSchema(show);
  const compatibilityJson=forceJsonObject||
   preferGroqJsonObject(show,settings,benchmarkFixture,previewProvider);
+ const full120b=previewProvider==="GROQ"&&
+  settings.model==="openai/gpt-oss-120b"&&show.entries.length>=4;
+ // The 9-slot W29 preview used about 5k prompt tokens and needs room for
+ // a full JSON article plus medium reasoning. Compact transport data first,
+ // then reserve modest extra completion headroom within the 8k TPM tier.
+ const outputCeiling=full120b?
+  900+show.entries.length*(settings.detail==="LONG"?340:
+   settings.detail==="SHORT"?215:300):
+  760+show.entries.length*(settings.detail==="LONG"?310:
+   settings.detail==="SHORT"?185:245);
  return {temperature:settings.creativity,
-     max_completion_tokens:Math.min(5800,760+show.entries.length*(
-      settings.detail==="LONG"?310:settings.detail==="SHORT"?185:245)),
+     max_completion_tokens:Math.min(5800,outputCeiling),
      reasoning_effort:settings.reasoning,
      // GPT-OSS does not support reasoning_format. JSON Object Mode does not need it.
      response_format:compatibilityJson?{type:"json_object"}:
@@ -199,7 +239,8 @@ function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings
 export function inspectRingsidePrompt(show:CompletedShowView,
  settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
  memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,benchmarkFixture=false){
- const facts=boundedRingsideFacts(show,memory);
+ const facts=boundedRingsideFacts(show,memory,
+  preferGroqJsonObject(show,settings,benchmarkFixture,"GROQ"));
  const payload=ringsideRequestPayload(show,settings,facts,"",benchmarkFixture);
  return {promptVersion:RINGSIDE_PROMPT_VERSION,model:settings.model,
   ...payload,facts:JSON.parse(facts),provider:"GROQ" as const,
@@ -284,7 +325,9 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  if(previewProvider==="OPENAI"&&!budgetPool)
   throw new RingsideGenerationError("INVALID_OUTPUT",
    "Paid previews require a server-side usage budget");
- const facts=boundedRingsideFacts(show,memory);
+ const compactFullCard=previewProvider==="GROQ"&&
+  settings.model==="openai/gpt-oss-120b"&&show.entries.length>=4;
+ const facts=boundedRingsideFacts(show,memory,compactFullCard);
  // Preserve the exact same local fact and editorial validation whether
  // the provider uses JSON Schema or JSON Object Mode.
  // For full-card 120B shows, starting in JSON mode avoids the real-world
