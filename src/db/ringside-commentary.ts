@@ -271,6 +271,32 @@ function groq400Category(body:string):"SCHEMA"|"TOKEN_LIMIT"|"PARAMETERS"|"UNKNO
   return "PARAMETERS";
  return "UNKNOWN";
 }
+
+/** A full 120B article nearly fills the free 8k-token minute. A second
+ * full-show call should be deferred if Groq reports too few tokens. */
+function groqFullShowCorrectionCooldown(response:Response,show:CompletedShowView,
+ settings:RingsideSettings,provider:"GROQ"|"OPENAI"):number|null{
+ if(provider!=="GROQ"||settings.model!=="openai/gpt-oss-120b"||
+  show.entries.length<4)return null;
+ const limit=Number(response.headers.get("x-ratelimit-limit-tokens"));
+ const remaining=Number(response.headers.get("x-ratelimit-remaining-tokens"));
+ if(!Number.isFinite(limit)||limit<1||!Number.isFinite(remaining)||
+  remaining<0||remaining>limit)return null;
+ if(remaining>=Math.max(3000,Math.ceil(limit*.55)))return null;
+ const reset=(response.headers.get("x-ratelimit-reset-tokens")??"").toLowerCase();
+ const minute=reset.match(/(\d+(?:\.\d+)?)m/);
+ const second=reset.match(/(\d+(?:\.\d+)?)s/);
+ const duration=(minute?Number(minute[1])*60:0)+(second?Number(second[1]):0);
+ return Math.max(15,Math.min(180,Math.ceil(duration>0?duration+2:60)));
+}
+function groqNextWindowError(seconds:number):RingsideGenerationError{
+ return new RingsideGenerationError("PROVIDER_LIMIT",
+  "Groq returned an article, but it needs a further writing correction. "+
+  "There are not enough tokens left this minute for another full-show request. "+
+  "Retry in about "+seconds+" seconds; the certified results are unchanged.",
+  seconds);
+}
+
 const validationHint=(message:string)=>message.includes("show-level finish count")?
  "Your opening or close counted more victories or submissions than the verified card has. Summarise the exact show; do not turn separate promos into match submissions.":
  message.includes("unrecorded multi-person fall victim")?
@@ -336,6 +362,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   benchmarkFixture,previewProvider);
  let correction="",groqJsonCompatibility=false;
  for(let attempt=0;attempt<2;attempt++){
+  let secondCallCooldown:number|null=null;
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),18000);
   try{
@@ -349,6 +376,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      task:"RINGSIDE",preferredModel:settings.model,key,transport,
      signal:controller.signal,pool:budgetPool,body:payload
     });
+   if(response.ok)secondCallCooldown=groqFullShowCorrectionCooldown(
+    response,show,settings,previewProvider);
    if(!response.ok){
     if(response.status===400&&previewProvider==="GROQ"){
      const errorBody=(await response.text()).slice(0,1400);
@@ -399,6 +428,19 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    const root=parsed&&typeof parsed==="object"?parsed as Record<string,unknown>:{};
    const choices=Array.isArray(root.choices)?root.choices:[];
    const answer=choices[0] as {finish_reason?:unknown;message?:{content?:unknown}}|undefined;
+   if(attempt===0&&previewProvider==="GROQ"){
+    // Diagnostics expose usage and completion status, never article text or credentials.
+    const usage=root.usage&&typeof root.usage==="object"?
+     root.usage as Record<string,unknown>:{};
+    console.info("Ringside first Groq response",{
+     finish:typeof answer?.finish_reason==="string"?
+      answer.finish_reason.slice(0,24):"missing",
+     inputTokens:typeof usage.prompt_tokens==="number"?usage.prompt_tokens:null,
+     outputTokens:typeof usage.completion_tokens==="number"?usage.completion_tokens:null,
+     remainingTokens:response.headers.get("x-ratelimit-remaining-tokens"),
+     correctionCooldown:secondCallCooldown
+    });
+   }
    if(answer?.finish_reason==="length")
     throw new RingsideGenerationError("OUTPUT_INCOMPLETE",
      "Groq ran out of output tokens before completing every match.");
@@ -486,11 +528,16 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     if(attempt===1)throw new RingsideGenerationError("FACT_VALIDATION",
      "Ringside's article failed factual validation: "+(weakRescue??reason)+
       ". All recorded results remain unchanged.");
+    if(secondCallCooldown!==null)
+     throw groqNextWindowError(secondCallCooldown);
     correction=validationHint(weakRescue??reason);
    }
   }catch(e){
    if(e instanceof RingsideGenerationError){
     if(attempt===0&&["INVALID_OUTPUT","OUTPUT_INCOMPLETE"].includes(e.code)){
+     console.warn("Ringside first Groq article incomplete",e.code);
+     if(secondCallCooldown!==null)
+      throw groqNextWindowError(secondCallCooldown);
      correction="Return ALL required cards, with short but substantial recaps. Do not omit any card.";
      continue;
     }
@@ -499,7 +546,13 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    if(controller.signal.aborted)throw new RingsideGenerationError("TIMEOUT",
     "Groq took too long to deliver a complete review. Try again with shorter length or lower reasoning.");
    if(e instanceof SyntaxError){
-    if(attempt===0){correction="Return one complete JSON object matching every required field.";continue;}
+    console.warn("Ringside Groq response could not be decoded","JSON_SYNTAX",attempt+1);
+    if(attempt===0){
+     if(secondCallCooldown!==null)
+      throw groqNextWindowError(secondCallCooldown);
+     correction="Return one complete JSON object matching every required field.";
+     continue;
+    }
     throw new RingsideGenerationError("INVALID_OUTPUT","Groq returned unreadable JSON.");
    }
    throw e;
