@@ -253,24 +253,60 @@ export type RingsideGenerationTrace={attempts:Array<{
  slots:Array<{slotId:string;headline:string;recap:string}>}}>,
  slotOrigins:Array<{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}>};
 
-/** Inspect ONLY the provider's error category; never echo raw responses,
- * potentially sensitive prompt fragments, or account information to the UI.
+/** Only expose safe provider error metadata. Groq's error.message may
+ * contain failed-generation text or echoed user content, so never log it raw.
+ * Parse the COMPLETE bounded JSON error: the former 1,400-character slice
+ * corrupted longer provider envelopes and falsely reported UNKNOWN.
  */
-function groq400Category(body:string):"SCHEMA"|"TOKEN_LIMIT"|"PARAMETERS"|"UNKNOWN"{
- let error:unknown;
- try{const parsed=JSON.parse(body) as {error?:unknown};error=parsed.error;}
- catch{return "UNKNOWN";}
- if(!error||typeof error!=="object"||Array.isArray(error))return "UNKNOWN";
- const e=error as {param?:unknown;message?:unknown;code?:unknown};
- const summary=[e.param,e.code,e.message].filter(x=>typeof x==="string")
-  .join(" ").slice(0,900).toLowerCase();
- if(/response.format|json.schema|json_object|structured.output|schema/.test(summary))
-  return "SCHEMA";
- if(/max.completion.tokens|context.length|token.limit|too.many.tokens/.test(summary))
-  return "TOKEN_LIMIT";
- if(/reasoning.effort|reasoning.format|temperature|unsupported.model|invalid.model/.test(summary))
-  return "PARAMETERS";
- return "UNKNOWN";
+export type GroqBadRequestDiagnostic={
+ category:"SCHEMA"|"TOKEN_LIMIT"|"PARAMETERS"|"CONTENT_FILTER"|"RATE_LIMIT"|"UNKNOWN";
+ code:string|null;type:string|null;param:string|null;
+ reason:string;envelope:"JSON"|"NON_JSON"|"OVERSIZED";bodyChars:number;
+};
+export function diagnoseGroqBadRequest(body:string):GroqBadRequestDiagnostic{
+ const result:GroqBadRequestDiagnostic={
+  category:"UNKNOWN",code:null,type:null,param:null,
+  reason:"Groq returned HTTP 400 without an identifiable explanation.",
+  envelope:"NON_JSON",bodyChars:body.length};
+ if(body.length>96000){result.envelope="OVERSIZED";return result;}
+ let parsed:unknown;
+ try{parsed=JSON.parse(body);}catch{return result;}
+ result.envelope="JSON";
+ if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))return result;
+ const outer=parsed as Record<string,unknown>;
+ const source=outer.error??outer.detail??outer;
+ const error=source&&typeof source==="object"&&!Array.isArray(source)?
+  source as Record<string,unknown>:
+  typeof source==="string"?{message:source}:outer;
+ // Codes and parameter names must be short ASCII tokens, never arbitrary
+ // rejected prompt fragments or account identifiers.
+ const safeToken=(value:unknown):string|null=>
+  typeof value==="string"&&/^[a-z][a-z0-9_.-]{0,63}$/i.test(value)&&
+  !/(?:secret|token|api.key|password|bearer)/i.test(value)?value:null;
+ result.code=safeToken(error.code);
+ result.type=safeToken(error.type);
+ result.param=safeToken(error.param);
+ const message=typeof error.message==="string"?error.message:
+  typeof error.detail==="string"?error.detail:"";
+ const signal=[result.code,result.type,result.param,message].filter(Boolean)
+  .join(" ").toLowerCase().slice(0,10000);
+ if(/(?:json.validate|json.?schema|structured.?output|response.?format|json.?object|failed to generate json|valid json|schema mismatch)/i.test(signal)){
+  result.category="SCHEMA";
+  result.reason="Groq rejected or failed to produce the requested JSON article.";
+ }else if(/(?:request too large|context.?length|context.?window|(?:max|maximum).?(?:completion|output).?tokens|too many tokens|token.?limit|exceeds? (?:the )?(?:token|context))/i.test(signal)){
+  result.category="TOKEN_LIMIT";
+  result.reason="Groq rejected the request size or token limit.";
+ }else if(/(?:reasoning.?effort|reasoning.?format|temperature|unsupported.?(?:model|parameter)|invalid.?(?:model|parameter)|invalid_request_parameter)/i.test(signal)){
+  result.category="PARAMETERS";
+  result.reason="Groq rejected a model or generation parameter.";
+ }else if(/(?:content.?filter|moderation|safety.?filter|policy.?violation)/i.test(signal)){
+  result.category="CONTENT_FILTER";
+  result.reason="Groq blocked the request under a content filter.";
+ }else if(/(?:rate.?limit|quota.?exceeded|too many requests)/i.test(signal)){
+  result.category="RATE_LIMIT";
+  result.reason="Groq reported an account rate-limit or quota issue.";
+ }
+ return result;
 }
 
 /** A full 120B article nearly fills the free 8k-token minute. A second
@@ -381,30 +417,37 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     response,show,settings,previewProvider);
    if(!response.ok){
     if(response.status===400&&previewProvider==="GROQ"){
-     const errorBody=(await response.text()).slice(0,1400);
-     const category=groq400Category(errorBody);
-     console.warn("Ringside Groq request rejected",category,
-      groqJsonCompatibility||compatibilityJson?"JSON_OBJECT":"JSON_SCHEMA");
+     const errorBody=await response.text();
+     const detail=diagnoseGroqBadRequest(errorBody);
+     const requestMode=groqJsonCompatibility||compatibilityJson?
+      "JSON_OBJECT":"JSON_SCHEMA";
+     // Diagnostic metadata only; never publish/log the raw provider body,
+     // generated wrestling text, server API key or account identifiers.
+     console.warn("Ringside Groq 400 diagnostic",{
+      category:detail.category,code:detail.code,type:detail.type,
+      param:detail.param,envelope:detail.envelope,
+      errorBodyChars:detail.bodyChars,responseMode:requestMode,
+      requestChars:JSON.stringify(payload).length,
+      requestedOutputTokens:payload.max_completion_tokens,
+      tokenLimit:response.headers.get("x-ratelimit-limit-tokens"),
+      remainingTokens:response.headers.get("x-ratelimit-remaining-tokens")
+     });
      // Provider-specific format errors should not require the player to
      // alter creativity or weaken canonical facts. Reuse, never ADD to, the
      // existing second attempt. JSON mode still passes every local validator.
      if(attempt===0&&!compatibilityJson&&
-      (category==="SCHEMA"||category==="UNKNOWN")){
+      (detail.category==="SCHEMA"||detail.category==="UNKNOWN")){
       groqJsonCompatibility=true;
       correction="Return one complete JSON object with showHeadline, opening, "+
        "closing and every card_N in slots, each containing headline and recap. "+
        "Keep certified facts and write the full entertaining wrestling article.";
       continue;
      }
-     const hint=category==="TOKEN_LIMIT"?
-      "The request exceeded Groq's token or context limit.":
-      category==="PARAMETERS"?
-      "Groq rejected a model or reasoning parameter.":
-      category==="SCHEMA"?
-      "Groq rejected the structured article format, including JSON compatibility.":
-      "Groq rejected the article request, including its compatibility format.";
+     const identification=[detail.code,detail.type,detail.param]
+      .filter(Boolean).join(" / ");
      throw new RingsideGenerationError("PROVIDER_ERROR",
-      hint+" The official results were not changed.");
+      detail.reason+(identification?" Provider detail: "+identification+".":"")+
+      " The request was not automatically retried. Official results were not changed.");
     }
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
      "PROVIDER_AUTH":"PROVIDER_ERROR";
