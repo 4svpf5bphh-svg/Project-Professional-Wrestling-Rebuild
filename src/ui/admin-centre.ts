@@ -2,6 +2,8 @@
  * this client never stores an API key, resets a World or runs a timer. */
 import type {RingsideSettings} from "../domain/ringside-settings.js";
 import {estimateTerraStandardUsd} from "../domain/paid-editorial-cost.js";
+import {sameShowComparisons,type SameShowProviderResult}
+ from "../domain/ai-lab-head-to-head.js";
 type ActionPlan={
  year:number;week:number;action:string;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
@@ -295,6 +297,34 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    if(!scenarioGroups.size)scenarioScores.append(
     el("p","ppw-admin-small",
      "Run the same scenario with both models, then rate each saved article to compare performance."));
+   // Compare only the same authenticated, certified show. This reuses
+   // the 40 already-loaded Lab records; no extra Neon read or API call.
+   const matched=sameShowComparisons(data.runs);
+   const headToHead=el("div","ppw-lab-scorecard");
+   const readable=(row:SameShowProviderResult)=>{
+    const quality=row.averageRating===null?"not yet rated":
+     row.averageRating.toFixed(1)+"/5 ("+row.rated+" rated)";
+    const known= row.measured===row.attempts?
+     (row.inputTokens+row.outputTokens).toLocaleString("en-GB")+" measured tokens":
+     (row.inputTokens+row.outputTokens).toLocaleString("en-GB")+
+     " known tokens from "+row.measured+"/"+row.attempts+" attempts";
+    return row.accepted+"/"+row.attempts+" valid · "+row.failed+" failed · "+
+     quality+" · "+row.providerCalls+" calls · "+known+
+     (row.provider==="OPENAI"?
+      " · "+(row.knownUsd===null?"cost unavailable":
+       "~$"+row.knownUsd.toFixed(4)+" known API cost")+
+      (row.hasUnreportedCosts?" (failed/unreported charges excluded)":""):"");
+   };
+   for(const match of matched){
+    const line=el("div","ppw-lab-period");
+    line.append(el("strong","",match.showName+" · same-show comparison"),
+     el("span","","Groq: "+readable(match.groq)),
+     el("span","","Terra: "+readable(match.terra)));
+    headToHead.append(line);
+   }
+   if(!matched.length)headToHead.append(el("p","ppw-admin-small",
+    "After Terra reviews the same certified show as Groq, success rates, "+
+    "human scores and recorded usage will appear side by side here."));
    const voiceLab=el("section","ppw-lab-benchmark");
    voiceLab.append(el("h3","","Post-show voices · Groq 20B"),
     el("p","ppw-admin-small",
@@ -701,7 +731,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      "Live provider usage, model quality and your playtest notes. No public Results are changed."),
     voiceLab,benchmark,overview,priceNote,todaySummary,providerSnapshot,usage,scoreTitle,scores,
     el("h3","","Scenario-by-scenario model scores"),scenarioScores,reportButton,
-    reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
+    reportStatus,reportFallback,
+    el("h3","","Same-show Groq vs Terra"),headToHead,
+    runsHeader,history,compare,feedbackArea);
   }catch(e){labData=null;labPanel.replaceChildren(
    el("h2","","AI Quality Lab"),
    el("p","ppw-admin-error",e instanceof Error?e.message:"AI Lab unavailable"));
