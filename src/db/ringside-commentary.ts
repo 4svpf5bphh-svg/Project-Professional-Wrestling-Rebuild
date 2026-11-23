@@ -315,7 +315,7 @@ export type RingsideGenerationTrace={attempts:Array<{
  attempt:number;status:"ACCEPTED"|"REJECTED"|"RECOVERED";reason?:string;
  draft:{showHeadline:string;opening:string;closing:string;
  slots:Array<{slotId:string;headline:string;recap:string}>}}>,
- slotOrigins:Array<{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}>};
+ slotOrigins:Array<{slotId:string;source:"GROQ"|"OPENAI"|"CLEANED"|"PPW_FALLBACK"}>};
 
 /** Only expose safe provider error metadata. Groq's error.message may
  * contain failed-generation text or echoed user content, so never log it raw.
@@ -470,6 +470,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   throw new RingsideGenerationError("INVALID_OUTPUT",
    "Paid previews require a server-side usage budget");
  const providerLabel=previewProvider==="OPENAI"?"Terra":"Groq";
+ const providerOrigin=previewProvider==="OPENAI"?"OPENAI" as const:"GROQ" as const;
  const compactFullCard=previewProvider==="GROQ"&&
   settings.model==="openai/gpt-oss-120b"&&show.entries.length>=4;
  const facts=boundedRingsideFacts(show,memory,compactFullCard);
@@ -594,7 +595,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    const origin=(current:typeof candidate.slots)=>current.map((slot,i)=>({
     slotId:slot.slotId,source:slot.headline!==candidate.slots[i]?.headline||
      slot.recap!==candidate.slots[i]?.recap?"PPW_FALLBACK" as const:
-     slot.recap!==original.slots[i]?.recap?"CLEANED" as const:"GROQ" as const
+     slot.recap!==original.slots[i]?.recap?"CLEANED" as const:providerOrigin
    }));
    try{
     const accepted=validateRingsideCopy(candidate,show);
@@ -623,7 +624,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        slotId:slot.slotId,source:
         slot.headline!==original.slots[i]?.headline||
         slot.recap!==original.slots[i]?.recap?
-         "CLEANED" as const:"GROQ" as const
+         "CLEANED" as const:providerOrigin
       }));
       console.info("Ringside repaired internal editorial labels without a second model call");
       return final;
