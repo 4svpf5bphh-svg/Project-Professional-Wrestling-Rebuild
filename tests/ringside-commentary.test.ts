@@ -626,6 +626,7 @@ test("Groq diagnostic decodes complete large JSON error without logging failed g
  assert.equal(d.param,"response_format");
  assert.equal(d.envelope,"JSON");
  assert.equal(d.bodyChars,body.length);
+ assert.equal(d.messageHeadline,"Failed to generate JSON. Please adjust your prompt.");
  assert.doesNotMatch(JSON.stringify(d),/NOT_FOR_USER|privateKey|failed_generation/);
 });
 test("Groq 400 diagnostics identify token and parameter errors, safely handle invalid bodies",()=>{
