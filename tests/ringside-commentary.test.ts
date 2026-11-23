@@ -640,6 +640,13 @@ test("Groq 400 diagnostics identify token and parameter errors, safely handle in
  }}));
  assert.equal(params.category,"PARAMETERS");
  assert.equal(params.param,"reasoning_effort");
+ const echoed=diagnoseGroqBadRequest(JSON.stringify({error:{
+  code:"structured_generation_failed",
+  message:"Sensitive user text MUST NOT appear in the UI"
+ }}));
+ assert.equal(echoed.messageHeadline,null,
+  "Unrecognised provider messages must not reach the UI or runtime logs");
+ assert.doesNotMatch(JSON.stringify(echoed),/Sensitive user text/);
  const unknown=diagnoseGroqBadRequest("Bad Request: key sk-secret-123");
  assert.equal(unknown.envelope,"NON_JSON");
  assert.equal(unknown.category,"UNKNOWN");
