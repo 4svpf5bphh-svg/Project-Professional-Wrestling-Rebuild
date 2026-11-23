@@ -646,7 +646,10 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      reason.includes("concealed weapon strike as an official award")||
      reason.includes("reigning champion's own belt stolen")||
      reason.includes("specific historic video footage"));
-    const rescued=rewriteFirst?null:recoverRingsideCopy(candidate,show);
+    // A paid quality benchmark must never disguise weak model writing using
+    // the deterministic PPW fallback. Groq production retains safe recovery.
+    const rescued=previewProvider==="OPENAI"||rewriteFirst?null:
+     recoverRingsideCopy(candidate,show);
     // A mechanically safe scorecard recap is NOT an acceptable replacement
     // for an important match. Try the already-authorised second Groq
     // correction first. No third call, additional SQL or hidden publishing.
