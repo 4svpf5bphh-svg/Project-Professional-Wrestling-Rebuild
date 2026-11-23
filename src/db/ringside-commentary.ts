@@ -469,6 +469,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  if(previewProvider==="OPENAI"&&!budgetPool)
   throw new RingsideGenerationError("INVALID_OUTPUT",
    "Paid previews require a server-side usage budget");
+ const providerLabel=previewProvider==="OPENAI"?"Terra":"Groq";
  const compactFullCard=previewProvider==="GROQ"&&
   settings.model==="openai/gpt-oss-120b"&&show.entries.length>=4;
  const facts=boundedRingsideFacts(show,memory,compactFullCard);
@@ -540,19 +541,21 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     const delay=Number.isFinite(retry)&&retry>0?Math.ceil(Math.min(1800,retry)):60;
     throw new RingsideGenerationError(code,response.status===429&&
      response.headers.get("x-ppw-budget-exhausted")==="true"?
+     previewProvider==="OPENAI"?
+     "PPW's paid preview limit has been reached (daily or £3 monthly budget). Official results remain unchanged.":
      "PPW's daily free AI allowance is exhausted. Previously published writing remains available.":
      response.status===429?
-     "Groq's short-term limit was reached. Retry in about "+delay+
+     providerLabel+"'s short-term limit was reached. Retry in about "+delay+
       " seconds; this does not mean the daily allowance is exhausted.":
-     code==="PROVIDER_AUTH"?"Groq authentication was rejected. Check the server API configuration.":
-     "Groq rejected the request (HTTP "+response.status+"). "+
+     code==="PROVIDER_AUTH"?providerLabel+" authentication was rejected. Check the server API configuration.":
+     providerLabel+" rejected the request (HTTP "+response.status+"). "+
       (compatibilityJson?"The 20B JSON benchmark request was not accepted.":
       "Try a different model or reasoning setting."),
      response.status===429?delay:undefined);
    }
    const data=await response.text();
    if(data.length>65000)throw new RingsideGenerationError("INVALID_OUTPUT",
-    "Groq returned an oversized article.");
+    providerLabel+" returned an oversized article.");
    const parsed:unknown=JSON.parse(data);
    const root=parsed&&typeof parsed==="object"?parsed as Record<string,unknown>:{};
    const choices=Array.isArray(root.choices)?root.choices:[];
@@ -572,10 +575,10 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    }
    if(answer?.finish_reason==="length")
     throw new RingsideGenerationError("OUTPUT_INCOMPLETE",
-     "Groq ran out of output tokens before completing every match.");
+     providerLabel+" ran out of output tokens before completing every match.");
    if(typeof answer?.message?.content!=="string")
     throw new RingsideGenerationError("INVALID_OUTPUT",
-     "Groq did not return a readable match review.");
+     providerLabel+" did not return a readable match review.");
    const candidate=decodeEditorialResponse(compactFullCard?
     decodeRingsidePlainOrJson(answer.message.content,show):
     JSON.parse(answer.message.content),show) as
@@ -676,7 +679,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     throw e;
    }
    if(controller.signal.aborted)throw new RingsideGenerationError("TIMEOUT",
-    "Groq took too long to deliver a complete review. Try again with shorter length or lower reasoning.");
+    providerLabel+" took too long to deliver a complete review. Try again with shorter length or lower reasoning.");
    if(e instanceof SyntaxError){
     console.warn("Ringside Groq response could not be decoded","JSON_SYNTAX",attempt+1);
     if(attempt===0&&previewProvider==="GROQ"){
@@ -685,7 +688,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      correction="Return one complete JSON object matching every required field.";
      continue;
     }
-    throw new RingsideGenerationError("INVALID_OUTPUT","Groq returned unreadable JSON.");
+    throw new RingsideGenerationError("INVALID_OUTPUT",providerLabel+" returned unreadable JSON.");
    }
    throw e;
   }finally{clearTimeout(timer);}
