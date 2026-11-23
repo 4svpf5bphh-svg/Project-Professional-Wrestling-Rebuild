@@ -836,3 +836,21 @@ test("Terra pacing 429 uses Retry-After only when OpenAI provides it",async()=>{
   e.message.includes("13 seconds")&&!e.message.includes("60 seconds"));
  assert.equal(calls,1);
 });
+
+test("PPW's own budget 429 is not confused with an OpenAI provider error",async()=>{
+ let calls=0;
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return []; // The £3 ledger refused the reservation BEFORE any API call.
+  throw Error("No daily reservation should happen");
+ }})};
+ await assert.rejects(()=>generateGroqReview(show,"fixture",async()=>{
+  calls++;
+  return new Response("Never called");
+ },undefined,undefined,pool as never,"OPENAI"),
+ (e:unknown)=>e instanceof RingsideGenerationError&&
+  e.code==="PROVIDER_LIMIT"&&
+  e.message.includes("PPW's private Terra preview allowance")&&
+  e.message.includes("No OpenAI request was made"));
+ assert.equal(calls,0);
+});

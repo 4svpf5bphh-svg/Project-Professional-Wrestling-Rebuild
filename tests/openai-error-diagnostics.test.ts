@@ -42,4 +42,6 @@ test("Provider rejection refunds safe reservations but ambiguous failures do not
   code:"unsupported_parameter",type:"invalid_request_error"}}).kind,"INVALID_REQUEST");
  assert.equal(classifyOpenAiProviderError(401,{error:{
   code:"invalid_api_key"}}).kind,"AUTH");
+ assert.equal(classifyOpenAiProviderError(403,{error:{
+  code:"model_not_found"}}).kind,"MODEL_ACCESS");
 });

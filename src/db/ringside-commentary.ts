@@ -547,6 +547,13 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
       " The request was not automatically retried. Official results were not changed.");
     }
     if(previewProvider==="OPENAI"){
+     // Our own daily/monthly guard also returns 429, and must never be
+     // mistaken for an OpenAI billing or pacing error.
+     if(response.headers.get("x-ppw-budget-exhausted")==="true")
+      throw new RingsideGenerationError("PROVIDER_LIMIT",
+       "PPW's private Terra preview allowance is exhausted (two attempts/day or "+
+       "£3 conservatively charged/reserved per month). No OpenAI request was made. "+
+       "Official show results are unchanged.");
      const kind=response.headers.get("x-ppw-openai-error-kind");
      const reasonCode=response.headers.get("x-ppw-openai-error-code");
      const retry=kind==="RATE_LIMIT"?readOpenAiRetryAfter(response.headers):null;

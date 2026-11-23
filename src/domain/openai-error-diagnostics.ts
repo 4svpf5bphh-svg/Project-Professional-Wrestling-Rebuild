@@ -42,10 +42,10 @@ export function classifyOpenAiProviderError(status:number,payload:unknown):
    return {kind:"RATE_LIMIT",code,definiteRejection:true};
   return {kind:"UNKNOWN_429",code,definiteRejection:false};
  }
- if((status===401||status===403)&&error)
-  return {kind:"AUTH",code,definiteRejection:true};
  if((status===403||status===404)&&model.has(code??""))
   return {kind:"MODEL_ACCESS",code,definiteRejection:true};
+ if((status===401||status===403)&&error)
+  return {kind:"AUTH",code,definiteRejection:true};
  if(status===400&&error&&(code||error.type==="invalid_request_error"))
   return {kind:"INVALID_REQUEST",code,definiteRejection:true};
  return {kind:"OTHER",code,definiteRejection:false};
