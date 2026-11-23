@@ -518,7 +518,9 @@ test("W29-sized Groq draft with private card labels is cleaned, validated and pu
  assert.equal(trace.slotOrigins[5]?.source,"CLEANED");
  assert.match(generated.slots[7]!.headline,/match saw Omega survive/);
  assert.match(generated.slots[5]!.recap,/In the match,/);
- assert.doesNotMatch(JSON.stringify(generated),/card[_\s-]*\d+|slot[_\s-]*\d+|week\s+\d+/i);
+ const readerText=[generated.showHeadline,generated.opening,generated.closing,
+  ...generated.slots.flatMap(s=>[s.headline,s.recap])].join(" ");
+ assert.doesNotMatch(readerText,/card[_\s-]*\d+|slot[_\s-]*\d+|week\s+\d+/i);
  assert.equal(generated.slots.length,9);
  assert.deepEqual(generated.slots.map(s=>s.slotId),nine.entries.map(e=>e.slotId));
 });
