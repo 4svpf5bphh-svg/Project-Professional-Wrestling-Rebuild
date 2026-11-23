@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {generateGroqReview,inspectRingsidePrompt,immutableResultDigest,ringsideResponseSchema,RingsideGenerationError} from "../src/db/ringside-commentary.js";
+import {generateGroqReview,inspectRingsidePrompt,immutableResultDigest,ringsideResponseSchema,diagnoseGroqBadRequest,RingsideGenerationError} from "../src/db/ringside-commentary.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 const show:CompletedShowView={showId:"show",year:1,week:2,crowdResponse:71,
  matchCount:1,angleCount:0,entries:[{slotId:"m",position:0,type:"MATCH",
@@ -384,7 +384,7 @@ test("An unknown provider 400 gets one compatible JSON attempt, never a third",a
  };
  await assert.rejects(()=>generateGroqReview(show,"fixture",fake),
   e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_ERROR"&&
-   /including its compatibility format/.test(e.message));
+   /not automatically retried/.test(e.message));
  assert.equal(calls,2);
 });
 
@@ -606,4 +606,63 @@ test("Low TPM can locally recover one bad slot without publishing false facts or
  assert.match(result.slots[4]!.recap,/recorded winning side/i,
   "The deliberately sparse test fixture has no recorded winning side: never invent one");
  assert.deepEqual(result.slots.map(s=>s.slotId),nine.entries.map(e=>e.slotId));
+});
+
+
+test("Groq diagnostic decodes complete large JSON error without logging failed generation or secrets",()=>{
+ const confidential="sk-test-NOT_FOR_USER_987";
+ const rejected={error:{
+  type:"invalid_request_error",code:"json_validate_failed",
+  param:"response_format",
+  message:"Failed to generate JSON. Please adjust your prompt. "+
+   "failed_generation: "+JSON.stringify({privateKey:confidential,generated:"x".repeat(3200)})
+ }};
+ const body=JSON.stringify(rejected);
+ assert.ok(body.length>1400,"Former truncated error reader would have thrown");
+ const d=diagnoseGroqBadRequest(body);
+ assert.equal(d.category,"SCHEMA");
+ assert.equal(d.code,"json_validate_failed");
+ assert.equal(d.type,"invalid_request_error");
+ assert.equal(d.param,"response_format");
+ assert.equal(d.envelope,"JSON");
+ assert.equal(d.bodyChars,body.length);
+ assert.doesNotMatch(JSON.stringify(d),/NOT_FOR_USER|privateKey|failed_generation/);
+});
+test("Groq 400 diagnostics identify token and parameter errors, safely handle invalid bodies",()=>{
+ assert.deepEqual(diagnoseGroqBadRequest(JSON.stringify({error:{
+  code:"invalid_request_error",param:"max_completion_tokens",
+  message:"Requested max_completion_tokens exceeds current model allowance"
+ }})).category,"TOKEN_LIMIT");
+ const params=diagnoseGroqBadRequest(JSON.stringify({error:{
+  code:"invalid_request_error",param:"reasoning_effort",
+  message:"Unsupported reasoning_effort value"
+ }}));
+ assert.equal(params.category,"PARAMETERS");
+ assert.equal(params.param,"reasoning_effort");
+ const unknown=diagnoseGroqBadRequest("Bad Request: key sk-secret-123");
+ assert.equal(unknown.envelope,"NON_JSON");
+ assert.equal(unknown.category,"UNKNOWN");
+ assert.doesNotMatch(JSON.stringify(unknown),/sk-secret-123/);
+ const oversized=diagnoseGroqBadRequest("X".repeat(100_000));
+ assert.equal(oversized.envelope,"OVERSIZED");
+ assert.doesNotMatch(JSON.stringify(oversized),/X{20}/);
+});
+test("Real-sized Groq JSON-mode rejection makes one call and reports safe provider cause",async()=>{
+ const nine:CompletedShowView={...show,entries:Array.from({length:9},(_,i)=>({
+  ...show.entries[0]!,slotId:"large-"+i,position:i
+ }))};
+ let calls=0;
+ const secret="sk-secret-dont-show";
+ await assert.rejects(()=>generateGroqReview(nine,"fixture",async(_url,init)=>{
+  calls++;
+  const sent=JSON.parse(String(init?.body));
+  assert.equal(sent.response_format.type,"json_object");
+  return new Response(JSON.stringify({error:{
+   code:"json_validate_failed",type:"invalid_request_error",
+   message:"Failed to generate JSON. failed_generation:"+secret
+  }}),{status:400});
+ }),e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_ERROR"&&
+    /requested JSON article/.test(e.message)&&
+    /json_validate_failed/.test(e.message)&&!e.message.includes(secret));
+ assert.equal(calls,1,"Never retry an already-JSON Groq 400 request");
 });
