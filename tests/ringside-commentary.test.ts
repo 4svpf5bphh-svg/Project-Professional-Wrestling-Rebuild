@@ -716,6 +716,12 @@ test("The text protocol retains factual validation and rejects incorrect submiss
   ...show.entries[0]!,slotId:"s-"+i,position:i
  }))};
  const labels=ringsidePlainTextLabels(four);
+ const recaps=[
+  "Omega countered a frantic opening charge and found the clean pin after recovering control.",
+  "The challenger forced Omega to defend until a sudden exchange left a decisive legal opening.",
+  "A tight technical contest turned when Omega escaped pressure and collected the three-count.",
+  "The final exchanges grew more urgent, but Omega kept his footing to earn a straightforward victory."
+ ];
  let calls=0;
  const result=await generateGroqReview(four,"fixture",async(_url,init)=>{
   calls++;
@@ -725,7 +731,7 @@ test("The text protocol retains factual validation and rejects incorrect submiss
    (name==="CARD_1_RECAP"?
     "Kenny Omega won this match by submission instead of a certified clean pinfall.":
     name.endsWith("RECAP")?
-    "Omega turned the contest around and collected the clean pin after careful counters "+i+".":
+    recaps[Number(name.match(/CARD_(\d+)_RECAP/)?.[1]??0)]!:
     "A competitive bout "+i)).join("\n");
   return new Response(JSON.stringify({choices:[{message:{content:plain}}]}));
  });
