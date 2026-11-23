@@ -929,7 +929,7 @@ not a miracle; never force profanity or oversell a flat match.
 A two-count stops BEFORE THREE. Only a move's owner lands it;
 the wrestler kicking OUT is the recipient. Repertoire is colour, not fact.
 Headlines must be specific, not bloated; don't repeat the opening sentence.
-slot.editorialLens and director set emphasis, never new facts.
+slot.director sets emphasis, never new facts.
 Avoid "In the end", "momentum shifted", recycled moves, "looming storms",
 "unstoppable auras", "hushed reverence", "electric crowds" and invented
 camera shots. Motives and relationships need on-air evidence.
@@ -941,7 +941,7 @@ A booked championship belt is legal to own; using it to STRIKE is the foul.
 If the winner already held that championship, it is the champion's OWN belt.
 With a referee bump the foul happens unseen; the referee must recover to
 count the later cover. The referee never awards a win FOR the illegal strike.
-Match.wrestlingIQ and stipulationRules set legal win methods and pacing;
+Match.format and stipulationRules set legal win methods and pacing;
 possibleSpots are possibilities, not settled action. Invent temporary
 bell-to-bell colour, NOT winners, quotes, scores, attacks, injuries, title
 changes, debuts, turns or any lasting consequence. Never assign another
