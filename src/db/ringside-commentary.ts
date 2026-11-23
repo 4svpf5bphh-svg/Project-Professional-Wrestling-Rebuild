@@ -311,7 +311,7 @@ export function diagnoseGroqBadRequest(body:string):GroqBadRequestDiagnostic{
   result.reason="Groq rejected the request size or token limit.";
  }else if(/(?:reasoning.?effort|reasoning.?format|temperature|unsupported.?(?:model|parameter)|invalid.?(?:model|parameter)|invalid_request_parameter)/i.test(signal)){
   result.category="PARAMETERS";
-  result.reason="Groq rejected a model or generation parameter.";
+  result.reason="Groq rejected a model or reasoning parameter.";
  }else if(/(?:content.?filter|moderation|safety.?filter|policy.?violation)/i.test(signal)){
   result.category="CONTENT_FILTER";
   result.reason="Groq blocked the request under a content filter.";
