@@ -145,3 +145,82 @@ test("Successful Terra request settles a measured charge; failed request retains
    .finally(()=>db.close());
  }
 });
+
+test("Known OpenAI 429 billing refusal releases only the monthly MONEY reservation",{
+ skip:!url?"Disposable PostgreSQL not configured":false
+},async()=>{
+ const db=postgresPool(url!,4);
+ const day="timezone('UTC',now())::date";
+ const month="date_trunc('month',timezone('UTC',now()))::date";
+ try{
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_daily_usage WHERE usage_day="+day,[]));
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]));
+  let calls=0;
+  const denied=await requestOpenAiEditorialPreview({
+   key:"fixture",enabled:true,pool:db.pool,
+   body:{max_completion_tokens:750,messages:[{role:"user",content:"fixture"}]},
+   transport:async()=>{
+    calls++;
+    return new Response(JSON.stringify({error:{type:"insufficient_quota",
+     code:"credit_balance_exhausted",message:"Do not expose any private key"}}),
+     {status:429});
+   }
+  });
+  assert.equal(denied.status,429);
+  assert.equal(denied.headers.get("x-ppw-openai-error-kind"),"CREDITS");
+  assert.equal(denied.headers.get("x-ppw-openai-error-code"),
+   "credit_balance_exhausted");
+  assert.equal(calls,1,"Never automatically retry a credit error");
+  const monthly=await withSqlClient(db.pool,sql=>sql.query<{
+   spent:string;reserved:string;calls:number
+  }>(
+   "SELECT spent_micropounds::text AS spent,reserved_micropounds::text AS reserved,"+
+   "call_count AS calls FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]));
+  assert.deepEqual(monthly[0],{spent:"0",reserved:"0",calls:1});
+  const daily=await withSqlClient(db.pool,sql=>sql.query<{
+   call_count:number;failed_calls:number
+  }>("SELECT call_count,failed_calls FROM ppw_openai_preview_daily_usage "+
+   "WHERE usage_day="+day,[]));
+  assert.deepEqual(daily[0],{call_count:1,failed_calls:1},
+   "Keep daily attempt limit to stop unlimited credit-rejection retries");
+ }finally{
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_daily_usage WHERE usage_day="+day,[]));
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]))
+   .finally(()=>db.close());
+ }
+});
+test("Unclassified 429 retains the conservative reserve to avoid undercounting",{
+ skip:!url?"Disposable PostgreSQL not configured":false
+},async()=>{
+ const db=postgresPool(url!,4);
+ const month="date_trunc('month',timezone('UTC',now()))::date";
+ const day="timezone('UTC',now())::date";
+ try{
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_daily_usage WHERE usage_day="+day,[]));
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]));
+  const resp=await requestOpenAiEditorialPreview({
+   key:"fixture",enabled:true,pool:db.pool,
+   body:{max_completion_tokens:750,messages:[]},
+   transport:async()=>new Response(JSON.stringify({error:{message:"Not enough"}}),
+    {status:429})
+  });
+  assert.equal(resp.headers.get("x-ppw-openai-error-kind"),"UNKNOWN_429");
+  const usage=await withSqlClient(db.pool,sql=>sql.query<{spent:string}>(
+   "SELECT spent_micropounds::text AS spent FROM ppw_openai_preview_monthly_usage "+
+   "WHERE usage_month="+month,[]));
+  assert.ok(Number(usage[0]!.spent)>0,
+   "Do not silently refund an error whose billing status cannot be classified");
+ }finally{
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_daily_usage WHERE usage_day="+day,[]));
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]))
+   .finally(()=>db.close());
+ }
+});
