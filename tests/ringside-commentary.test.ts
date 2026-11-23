@@ -220,15 +220,18 @@ test("OpenAI preview uses the same certified Ringside validator with mocked prov
  const pool={connect:async()=>({release(){},async query(sql:string){
   if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
    return [{day:"2026-11-07"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
   return [];
  }})};
  const transport:typeof fetch=async(url,options)=>{
   requests++;
   assert.equal(url,"https://api.openai.com/v1/chat/completions");
   const body=JSON.parse(String(options?.body));
-  assert.equal(body.model,"gpt-4o-mini");
+  assert.equal(body.model,"gpt-6.1-terra");
   assert.equal(body.store,false);
-  assert.ok(!Object.hasOwn(body,"reasoning_effort"));
+  assert.equal(body.reasoning_effort,"low");
+  assert.ok(!Object.hasOwn(body,"temperature"));
   assert.equal(body.response_format.json_schema.strict,true);
   return new Response(JSON.stringify({usage:{prompt_tokens:300,completion_tokens:60},
    choices:[{message:{content:JSON.stringify({
