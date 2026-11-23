@@ -45,7 +45,8 @@ type LabData={usage:LabDay[];runs:LabRun[];scores:{
  scenarios?:BenchmarkScenario[];
  shortformScenarios?:{id:string;name:string;expectation:string}[];
  shortformRuns?:ShortformLabRun[];
- providers?:{groq:boolean;openai:boolean}};
+ providers?:{groq:boolean;openai:boolean};
+ paid?:{month:string;spent:string;reserved:string;calls:number}|null};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
 type PromptInspection={promptVersion:string;provider:"GROQ";model:string;
@@ -202,6 +203,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     stat("Groq calls · 7 days",String(total(groq,"calls"))),
     stat("Groq reported tokens",tokens(groq).toLocaleString("en-GB")),
     stat("OpenAI tests · 7 days",String(total(openai,"calls"))),
+    stat("Terra · £3 monthly cap",
+     "£"+((Number(data.paid?.spent??0)+Number(data.paid?.reserved??0))/1_000_000).toFixed(2)+
+     " / £3.00 reserved or spent"),
     stat("Provider failures",String(total([...groq,...openai],"failed")))
    );
    const today=new Date().toISOString().slice(0,10);
@@ -403,7 +407,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    };
    const benchmarkProvider=selectControl([
     ["GROQ","Groq · free allowance"],
-    ...(data.providers?.openai?[["OPENAI","OpenAI · paid comparison"] as [string,string]]:[])
+    ...(data.providers?.openai?[["OPENAI","Terra · paid £3/month cap"] as [string,string]]:[])
    ],data.providers?.openai?benchmarkProviderChoice:"GROQ");
    benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
    const rubric=el("div","ppw-lab-rubric");
@@ -440,7 +444,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    const benchmarkStatus=el("p","ppw-admin-message",lastBenchmarkNotice);
    const runBenchmark=el("button","ppw-admin-primary","Run Wrestling IQ benchmark") as HTMLButtonElement;
    runBenchmark.type="button";
-   runBenchmark.disabled=!scenarios.length||!data.providers?.groq;
+   runBenchmark.disabled=!scenarios.length||
+    (benchmarkProvider.value==="GROQ"?!data.providers?.groq:!data.providers?.openai);
    benchmarkProvider.onchange=()=>{
     benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
     runBenchmark.disabled=!scenarios.length||(benchmarkProvider.value==="GROQ"?
@@ -470,7 +475,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      lastBenchmarkNotice="Saved "+chosen.name+" · "+
       (benchmarkProviderChoice==="GROQ"?
        (benchmarkModelChoice==="openai/gpt-oss-20b"?"20B":"120B"):
-       "OpenAI")+" · "+
+       "Terra")+" · "+
       (result.metrics.compatibilityJson?"20B JSON mode · ":"")+
       "writing energy "+benchmarkEnergyChoice+" · "+
       result.metrics.durationMs+"ms · "+result.metrics.providerCalls+
@@ -880,11 +885,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const provider=selectControl([
    ["GROQ","Groq · primary free provider"],
    ...(data.openAiPreviewEnabled?[
-    ["OPENAI","OpenAI · paid, 2 previews/day"] as [string,string]
+    ["OPENAI","Terra · paid, 2 previews/day"] as [string,string]
    ]:[])
   ],"GROQ");
   const paidNotice=el("p","ppw-admin-small",data.openAiPreviewEnabled?
-   "Paid comparison is operator-only and never publishes or replaces articles. OpenAI requests have a separate daily quota.":
+   "Paid Terra comparisons are private and never publish results. Two manual tests/day, one paid attempt each, and a shared £3 monthly PPW cap. Groq remains free for short-form writing.":
    "Paid-provider testing is disabled by default. No OpenAI API calls can be made.");
   const previewBtn=el("button","ppw-admin-secondary","Preview this style") as HTMLButtonElement;
   previewBtn.type="button";

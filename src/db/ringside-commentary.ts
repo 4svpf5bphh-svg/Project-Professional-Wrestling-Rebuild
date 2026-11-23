@@ -272,8 +272,8 @@ function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings
    settings.detail==="SHORT"?215:300):
   760+show.entries.length*(settings.detail==="LONG"?310:
    settings.detail==="SHORT"?185:245);
- return {temperature:settings.creativity,
-     max_completion_tokens:Math.min(5800,outputCeiling),
+ return {...(previewProvider==="OPENAI"?{}:{temperature:settings.creativity}),
+     max_completion_tokens:Math.min(5800,outputCeiling+(previewProvider==="OPENAI"?900:0)),
      reasoning_effort:settings.reasoning,
      // GPT-OSS does not support reasoning_format. JSON Object Mode does not need it.
      response_format:plainArticle?{type:"text"}:
@@ -479,10 +479,11 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  const compatibilityJson=preferGroqJsonObject(show,settings,
   benchmarkFixture,previewProvider)&&!compactFullCard;
  let correction="",groqJsonCompatibility=false;
- for(let attempt=0;attempt<2;attempt++){
+ // Paid comparisons are one-shot: never burn money on an automatic rewrite.
+ for(let attempt=0;attempt<(previewProvider==="OPENAI"?1:2);attempt++){
   let secondCallCooldown:number|null=null;
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),18000);
+  const timer=setTimeout(()=>controller.abort(),previewProvider==="OPENAI"?28000:18000);
   try{
    const payload=ringsideRequestPayload(show,settings,facts,correction,
     benchmarkFixture,previewProvider,groqJsonCompatibility);
@@ -655,7 +656,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      return rescued.review;
     }
     if(weakRescue)console.warn("Ringside rejected mechanical match fallback:",weakRescue);
-    if(attempt===1)throw new RingsideGenerationError("FACT_VALIDATION",
+    if(attempt===1||previewProvider==="OPENAI")throw new RingsideGenerationError("FACT_VALIDATION",
      "Ringside's article failed factual validation: "+(weakRescue??reason)+
       ". All recorded results remain unchanged.");
     if(secondCallCooldown!==null)
@@ -664,7 +665,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    }
   }catch(e){
    if(e instanceof RingsideGenerationError){
-    if(attempt===0&&["INVALID_OUTPUT","OUTPUT_INCOMPLETE"].includes(e.code)){
+    if(attempt===0&&previewProvider==="GROQ"&&
+       ["INVALID_OUTPUT","OUTPUT_INCOMPLETE"].includes(e.code)){
      console.warn("Ringside first Groq article incomplete",e.code);
      if(secondCallCooldown!==null)
       throw groqNextWindowError(secondCallCooldown);
@@ -677,7 +679,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     "Groq took too long to deliver a complete review. Try again with shorter length or lower reasoning.");
    if(e instanceof SyntaxError){
     console.warn("Ringside Groq response could not be decoded","JSON_SYNTAX",attempt+1);
-    if(attempt===0){
+    if(attempt===0&&previewProvider==="GROQ"){
      if(secondCallCooldown!==null)
       throw groqNextWindowError(secondCallCooldown);
      correction="Return one complete JSON object matching every required field.";

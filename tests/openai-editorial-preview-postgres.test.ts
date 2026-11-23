@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {postgresPool,withSqlClient} from "../src/db/postgres.js";
-import {claimOpenAiPreview,settleOpenAiPreview,requestOpenAiEditorialPreview}
+import {claimOpenAiPreview,settleOpenAiPreview,requestOpenAiEditorialPreview,
+ estimateTerraPreviewMicropounds,claimOpenAiMonthlyPreview,OPENAI_MONTHLY_CAP_MICROPOUNDS}
  from "../src/db/openai-editorial-preview.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("Paid OpenAI comparisons are off unless separately opted in",async()=>{
@@ -47,5 +48,36 @@ test("Paid preview caps simultaneous multiplayer calls and never touches Groq us
   await withSqlClient(db.pool,sql=>sql.query(
    "DELETE FROM ppw_openai_preview_daily_usage WHERE usage_day=timezone('UTC',now())::date",[]))
    .finally(()=>db.close());
+ }
+});
+
+test("Terra request reserves conservative money and strips unsupported temperature",()=>{
+ const body=JSON.stringify({messages:[{role:"user",content:"Nine-card Ascension"}],
+  max_completion_tokens:3600});
+ const reserved=estimateTerraPreviewMicropounds(body,3600);
+ assert.ok(reserved>18000&&reserved<50000);
+ assert.ok(reserved<OPENAI_MONTHLY_CAP_MICROPOUNDS);
+ assert.throws(()=>estimateTerraPreviewMicropounds(body,9000),/budget/);
+});
+test("Monthly preview budget is shared and blocks before the paid request",{
+ skip:!url?"Disposable PostgreSQL not configured":false
+},async()=>{
+ const db=postgresPool(url!,4);
+ try{
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month=date_trunc('month',timezone('UTC',now()))::date",[]));
+  const claims=await Promise.all(Array.from({length:12},
+   ()=>claimOpenAiMonthlyPreview(db.pool,300000)));
+  assert.equal(claims.filter(Boolean).length,10,"£3 aggregate budget is atomic");
+  let invoked=false;
+  const blocked=await requestOpenAiEditorialPreview({
+   key:"fixture",enabled:true,pool:db.pool,
+   body:{max_completion_tokens:500,messages:[]},
+   transport:async()=>{invoked=true;return new Response("Unexpected");}
+  });
+  assert.equal(blocked.status,429);assert.equal(invoked,false);
+ }finally{
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month=date_trunc('month',timezone('UTC',now()))::date",[])).finally(()=>db.close());
  }
 });

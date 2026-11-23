@@ -5,8 +5,19 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {estimatedGroqTokens,groqResponseUsage,type GroqUsage} from "../domain/ai-director.js";
-export const OPENAI_PREVIEW_MODEL="gpt-4o-mini";
-const MAX_DAILY_REQUESTS=2,MAX_DAILY_ESTIMATE=24000,MAX_REQUEST_ESTIMATE=12000;
+export const OPENAI_PREVIEW_MODEL="gpt-6.1-terra";
+const MAX_DAILY_REQUESTS=2,MAX_DAILY_ESTIMATE=50000,MAX_REQUEST_ESTIMATE=25000;
+// Pessimistic GBP valuation: double current $0.50/$2.50 per MTok
+// and treat $1 as £1. This protects the £3 cap from normal FX movements.
+export const OPENAI_MONTHLY_CAP_MICROPOUNDS=3_000_000;
+export function estimateTerraPreviewMicropounds(body:string,completionTokens:number){
+ if(!Number.isSafeInteger(completionTokens)||completionTokens<1||completionTokens>8000)
+  throw new Error("Invalid paid completion budget");
+ // One token cannot encode less than one UTF-8 byte. An extra 5k tokens
+ // covers provider message framing and prevents understated reservations.
+ const inputBound=Buffer.byteLength(body,"utf8")+5000;
+ return inputBound+completionTokens*5;
+}
 type BudgetClaim={day:string;estimate:number};
 export function paidPreviewEnabled(env:Record<string,string|undefined>):boolean{
  return env.PPW_ALLOW_PAID_AI_PREVIEW==="YES"&&!!env.OPENAI_API_KEY;
@@ -41,22 +52,73 @@ export async function settleOpenAiPreview(pool:TransactionPool,claim:BudgetClaim
    result.usage?.inputTokens??0,result.usage?.outputTokens??0,
    result.ok?1:0,result.ok?0:1]));
 }
+type MonthlyClaim={month:string;reserved:number};
+export async function claimOpenAiMonthlyPreview(pool:TransactionPool,reserved:number):
+ Promise<MonthlyClaim|null>{
+ if(!Number.isSafeInteger(reserved)||reserved<1||reserved>300000)
+  throw new Error("Paid AI preview exceeds the per-call money limit");
+ const rows=await withSqlClient(pool,db=>db.query<{month:string}>(
+  "INSERT INTO ppw_openai_preview_monthly_usage(usage_month,call_count,reserved_micropounds) "+
+  "VALUES(date_trunc('month',timezone('UTC',now()))::date,1,$1) "+
+  "ON CONFLICT(usage_month) DO UPDATE SET "+
+  "call_count=ppw_openai_preview_monthly_usage.call_count+1,"+
+  "reserved_micropounds=ppw_openai_preview_monthly_usage.reserved_micropounds+EXCLUDED.reserved_micropounds "+
+  "WHERE ppw_openai_preview_monthly_usage.spent_micropounds+"+
+  "ppw_openai_preview_monthly_usage.reserved_micropounds+EXCLUDED.reserved_micropounds<=$2 "+
+  "RETURNING usage_month::text AS month",
+  [reserved,OPENAI_MONTHLY_CAP_MICROPOUNDS]));
+ return rows[0]?{month:rows[0].month,reserved}:null;
+}
+async function releaseMonthlyPreview(pool:TransactionPool,claim:MonthlyClaim){
+ await withSqlClient(pool,db=>db.query(
+  "UPDATE ppw_openai_preview_monthly_usage SET "+
+  "reserved_micropounds=GREATEST(0,reserved_micropounds-$2),"+
+  "call_count=GREATEST(0,call_count-1) WHERE usage_month=$1::date",
+  [claim.month,claim.reserved]));
+}
+async function settleMonthlyPreview(pool:TransactionPool,claim:MonthlyClaim,
+ usage:GroqUsage|null){
+ // Failed/ambiguous provider requests retain their entire conservative charge.
+ // Never silently refund a request that may have been billed.
+ const cost=usage?usage.inputTokens+usage.outputTokens*5:claim.reserved;
+ await withSqlClient(pool,db=>db.query(
+  "UPDATE ppw_openai_preview_monthly_usage SET "+
+  "reserved_micropounds=GREATEST(0,reserved_micropounds-$2),"+
+  "spent_micropounds=spent_micropounds+$3,"+
+  "reported_input_tokens=reported_input_tokens+$4,"+
+  "reported_output_tokens=reported_output_tokens+$5 "+
+  "WHERE usage_month=$1::date",
+  [claim.month,claim.reserved,cost,
+   usage?.inputTokens??0,usage?.outputTokens??0]));
+}
+/** Operator-triggered paid tests only. No public results route calls this. */
 export async function requestOpenAiEditorialPreview(input:{
  key:string;enabled:boolean;body:Record<string,unknown>;
  transport:typeof fetch;pool:TransactionPool;signal?:AbortSignal;
 }):Promise<Response>{
- // Even direct accidental calls fail closed. No API calls without both
- // the server-side opt-in and a nonempty key, and no unmetered invocation.
  if(!input.enabled||!input.key.trim())
   return new Response("Paid AI comparisons are disabled",{status:403});
- const {reasoning_effort:_unsupported,model:_groqName,...requestFields}=input.body;
- const body=JSON.stringify({...requestFields,model:OPENAI_PREVIEW_MODEL,store:false});
- const estimate=estimatedGroqTokens(body,Number(input.body.max_completion_tokens));
+ const {temperature:_unsupported,reasoning_effort:_effort,
+  model:_groqName,...requestFields}=input.body;
+ // Terra with reasoning effort cannot accept custom temperature.
+ const body=JSON.stringify({...requestFields,model:OPENAI_PREVIEW_MODEL,
+  reasoning_effort:"low",store:false});
+ const completion=Number(input.body.max_completion_tokens);
+ const estimate=estimatedGroqTokens(body,completion);
  if(estimate>MAX_REQUEST_ESTIMATE)
   throw new Error("Paid AI preview exceeds the protected token budget");
- const claim=await claimOpenAiPreview(input.pool,estimate);
- if(!claim)return new Response("Paid AI preview allowance exhausted",{
+ const reservation=estimateTerraPreviewMicropounds(body,completion);
+ const monthly=await claimOpenAiMonthlyPreview(input.pool,reservation);
+ if(!monthly)return new Response("PPW's £3 monthly paid AI budget is exhausted",{
   status:429,headers:{"retry-after":"3600","x-ppw-budget-exhausted":"true"}});
+ let daily:BudgetClaim|null=null;
+ try{daily=await claimOpenAiPreview(input.pool,estimate);}
+ catch(e){await releaseMonthlyPreview(input.pool,monthly);throw e;}
+ if(!daily){
+  await releaseMonthlyPreview(input.pool,monthly);
+  return new Response("Paid AI daily preview limit reached",{
+   status:429,headers:{"retry-after":"3600","x-ppw-budget-exhausted":"true"}});
+ }
  let response:Response;
  try{
   response=await input.transport("https://api.openai.com/v1/chat/completions",{
@@ -64,14 +126,15 @@ export async function requestOpenAiEditorialPreview(input:{
    headers:{"authorization":"Bearer "+input.key,"content-type":"application/json"},
    body});
  }catch(error){
-  try{await settleOpenAiPreview(input.pool,claim,{ok:false,usage:null});}
-  catch{console.warn("Paid preview usage accounting unavailable");}
+  // Network ambiguity: reserve the entire worst-case charge for safety.
+  await settleMonthlyPreview(input.pool,monthly,null);
+  await settleOpenAiPreview(input.pool,daily,{ok:false,usage:null});
   throw error;
  }
  let usage:GroqUsage|null=null;
- try{if(response.ok)usage=groqResponseUsage(await response.clone().json());}
- catch{/* No provider usage envelope; conserve the full reservation. */}
- try{await settleOpenAiPreview(input.pool,claim,{ok:response.ok,usage});}
- catch{console.warn("Paid preview usage accounting unavailable");}
+ try{usage=groqResponseUsage(await response.clone().json());}
+ catch{/* Unknown usage is charged at reserved upper bound. */}
+ await settleMonthlyPreview(input.pool,monthly,usage);
+ await settleOpenAiPreview(input.pool,daily,{ok:response.ok,usage});
  return response;
 }
