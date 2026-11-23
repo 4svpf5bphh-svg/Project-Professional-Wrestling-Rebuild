@@ -791,3 +791,66 @@ test("The text protocol retains factual validation and rejects incorrect submiss
  assert.doesNotMatch(result.slots[1].recap,/won this match by submission/);
  assert.equal(calls,1,"Factual recovery stays local to a bad slot");
 });
+
+test("Terra credit 429 reports billing, never invents a 60-second retry",async()=>{
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-23"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
+  return [];
+ }})};
+ let requests=0;
+ await assert.rejects(generateGroqReview(show,"fixture",async()=>{
+  requests++;
+  return new Response(JSON.stringify({error:{
+   type:"insufficient_quota",code:"credit_balance_exhausted",
+   message:"Sensitive project script MUST NOT LEAK"}}),{status:429});
+ },undefined,undefined,pool as never,"OPENAI"),
+ (e:unknown)=>e instanceof RingsideGenerationError&&
+  e.code==="PROVIDER_LIMIT"&&
+  e.message.includes("API credits")&&
+  e.message.includes("credit_balance_exhausted")&&
+  !e.message.includes("Retry in about 60 seconds")&&
+  !e.message.includes("Sensitive project script")&&
+  e.retryAfterSeconds===undefined);
+ assert.equal(requests,1);
+});
+test("Terra pacing 429 uses Retry-After only when OpenAI provides it",async()=>{
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-23"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
+  return [];
+ }})};
+ let calls=0;
+ await assert.rejects(generateGroqReview(show,"fixture",async()=>{
+  calls++;
+  return new Response(JSON.stringify({error:{
+   type:"rate_limit_error",code:"rate_limit_exceeded"}}),
+   {status:429,headers:{"retry-after":"13"}});
+ },undefined,undefined,pool as never,"OPENAI"),
+ (e:unknown)=>e instanceof RingsideGenerationError&&
+  e.retryAfterSeconds===13&&
+  e.message.includes("13 seconds")&&!e.message.includes("60 seconds"));
+ assert.equal(calls,1);
+});
+
+test("PPW's own budget 429 is not confused with an OpenAI provider error",async()=>{
+ let calls=0;
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return []; // The £3 ledger refused the reservation BEFORE any API call.
+  throw Error("No daily reservation should happen");
+ }})};
+ await assert.rejects(()=>generateGroqReview(show,"fixture",async()=>{
+  calls++;
+  return new Response("Never called");
+ },undefined,undefined,pool as never,"OPENAI"),
+ (e:unknown)=>e instanceof RingsideGenerationError&&
+  e.code==="PROVIDER_LIMIT"&&
+  e.message.includes("PPW's private Terra preview allowance")&&
+  e.message.includes("No OpenAI request was made"));
+ assert.equal(calls,0);
+});

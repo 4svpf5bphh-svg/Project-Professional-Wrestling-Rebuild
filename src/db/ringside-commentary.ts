@@ -5,6 +5,7 @@ import {createHash,randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
 import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
+import {readOpenAiRetryAfter} from "../domain/openai-error-diagnostics.js";
 import {readAdminRingsideSettings} from "./admin-ringside-settings.js";
 import {DEFAULT_RINGSIDE_SETTINGS,ringsideVoiceInstruction,type RingsideSettings}
  from "../domain/ringside-settings.js";
@@ -545,14 +546,48 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
        " Groq explanation: "+detail.messageHeadline+".":"")+
       " The request was not automatically retried. Official results were not changed.");
     }
+    if(previewProvider==="OPENAI"){
+     // Our own daily/monthly guard also returns 429, and must never be
+     // mistaken for an OpenAI billing or pacing error.
+     if(response.headers.get("x-ppw-budget-exhausted")==="true")
+      throw new RingsideGenerationError("PROVIDER_LIMIT",
+       "PPW's private Terra preview allowance is exhausted (two attempts/day or "+
+       "£3 conservatively charged/reserved per month). No OpenAI request was made. "+
+       "Official show results are unchanged.");
+     const kind=response.headers.get("x-ppw-openai-error-kind");
+     const reasonCode=response.headers.get("x-ppw-openai-error-code");
+     const retry=kind==="RATE_LIMIT"?readOpenAiRetryAfter(response.headers):null;
+     const problem=kind==="CREDITS"?
+      "OpenAI rejected Terra due to missing or exhausted API credits. Check your OpenAI API Billing balance. Waiting 60 seconds will not fix this.":
+      kind==="SPEND_LIMIT"?
+      "OpenAI rejected Terra because the project or organisation spending limit was reached. Check API project/organisation Limits before retrying.":
+      kind==="USAGE_LIMIT"?
+      "OpenAI rejected Terra because the account's approved API usage limit was reached. Review the OpenAI API Limits page.":
+      kind==="RATE_LIMIT"?
+      "OpenAI rate-limited Terra."+(retry!==null?
+       " Provider Retry-After: "+retry+" seconds.":
+       " No retry time was provided; check Terra's actual request/token limits before trying again."):
+      kind==="UNKNOWN_429"?
+      "OpenAI returned HTTP 429, but did not identify whether this is a credit, spending or rate limit. Check OpenAI API Billing and Limits. No retry time is known.":
+      kind==="MODEL_ACCESS"?
+      "The OpenAI API project does not have access to the Terra model. Check model availability and API project permissions.":
+      kind==="AUTH"?
+      "OpenAI rejected the API credentials or access permissions. Check the project API key on Vercel.":
+      kind==="INVALID_REQUEST"?
+      "OpenAI rejected PPW's Terra request format. This needs an integration fix, not a creativity change.":
+      "OpenAI rejected the Terra request (HTTP "+response.status+"). Check the API project and provider status.";
+     const safeCode=reasonCode?" OpenAI error code: "+reasonCode+".":"";
+     throw new RingsideGenerationError(response.status===429?"PROVIDER_LIMIT":
+      response.status===401||response.status===403?"PROVIDER_AUTH":"PROVIDER_ERROR",
+      problem+safeCode+" No article was published; recorded results are unchanged.",
+      retry??undefined);
+    }
     const code=response.status===429?"PROVIDER_LIMIT":response.status===401||response.status===403?
      "PROVIDER_AUTH":"PROVIDER_ERROR";
     const retry=Number(response.headers.get("retry-after"));
     const delay=Number.isFinite(retry)&&retry>0?Math.ceil(Math.min(1800,retry)):60;
     throw new RingsideGenerationError(code,response.status===429&&
      response.headers.get("x-ppw-budget-exhausted")==="true"?
-     previewProvider==="OPENAI"?
-     "PPW's paid preview limit has been reached (daily or £3 monthly budget). Official results remain unchanged.":
      "PPW's daily free AI allowance is exhausted. Previously published writing remains available.":
      response.status===429?
      providerLabel+"'s short-term limit was reached. Retry in about "+delay+

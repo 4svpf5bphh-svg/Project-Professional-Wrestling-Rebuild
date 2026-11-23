@@ -5,6 +5,8 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {estimatedGroqTokens,groqResponseUsage,type GroqUsage} from "../domain/ai-director.js";
+import {classifyOpenAiProviderError,refundKnownProviderRejection}
+ from "../domain/openai-error-diagnostics.js";
 export const OPENAI_PREVIEW_MODEL="gpt-6.1-terra";
 const MAX_DAILY_REQUESTS=2,MAX_DAILY_ESTIMATE=50000,MAX_REQUEST_ESTIMATE=25000;
 // Pessimistic GBP valuation: double the $1/$5 per-MTok standard Terra
@@ -78,10 +80,12 @@ async function releaseMonthlyPreview(pool:TransactionPool,claim:MonthlyClaim){
   [claim.month,claim.reserved]));
 }
 async function settleMonthlyPreview(pool:TransactionPool,claim:MonthlyClaim,
- usage:GroqUsage|null){
- // Failed/ambiguous provider requests retain their entire conservative charge.
- // Never silently refund a request that may have been billed.
- const cost=usage?usage.inputTokens*2+usage.outputTokens*10:claim.reserved;
+ usage:GroqUsage|null,definiteRejection=false){
+ // Confirmed provider-side 4xx rejection: no model output, so release the
+ // reserved allowance. Ambiguous transport failures/unknown 429s retain
+ // the conservative charge; we never pretend an invoice has been checked.
+ const cost=usage?usage.inputTokens*2+usage.outputTokens*10:
+  definiteRejection?0:claim.reserved;
  await withSqlClient(pool,db=>db.query(
   "UPDATE ppw_openai_preview_monthly_usage SET "+
   "reserved_micropounds=GREATEST(0,reserved_micropounds-$2),"+
@@ -135,10 +139,24 @@ export async function requestOpenAiEditorialPreview(input:{
   await settleOpenAiPreview(input.pool,daily,{ok:false,usage:null});
   throw error;
  }
- let usage:GroqUsage|null=null;
- try{usage=groqResponseUsage(await response.clone().json());}
- catch{/* Unknown usage is charged at reserved upper bound. */}
- await settleMonthlyPreview(input.pool,monthly,usage);
+ let usage:GroqUsage|null=null,parsed:unknown=null;
+ try{parsed=await response.clone().json();usage=groqResponseUsage(parsed);}
+ catch{/* Unknown usage is conservatively reserved unless rejection is definite. */}
+ const diagnosis=response.ok?null:classifyOpenAiProviderError(response.status,parsed);
+ const definitelyRejected=refundKnownProviderRejection(
+  response.ok,usage!==null,diagnosis);
+ await settleMonthlyPreview(input.pool,monthly,usage,definitelyRejected);
  await settleOpenAiPreview(input.pool,daily,{ok:response.ok,usage});
- return response;
+ if(!diagnosis)return response;
+ // Do not log or display the arbitrary provider error.message: it can echo
+ // user data and private prompts. Only safe allowlisted fields are retained.
+ console.warn("PPW Terra provider rejected preview",{
+  status:response.status,kind:diagnosis.kind,code:diagnosis.code??"unclassified",
+  chargedAllowance:definitelyRejected?0:"conservative"
+ });
+ const headers=new Headers(response.headers);
+ headers.set("x-ppw-openai-error-kind",diagnosis.kind);
+ if(diagnosis.code)headers.set("x-ppw-openai-error-code",diagnosis.code);
+ return new Response(response.body,{
+  status:response.status,statusText:response.statusText,headers});
 }
