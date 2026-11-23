@@ -81,3 +81,67 @@ test("Monthly preview budget is shared and blocks before the paid request",{
    "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month=date_trunc('month',timezone('UTC',now()))::date",[])).finally(()=>db.close());
  }
 });
+
+test("Successful Terra request settles a measured charge; failed request retains a safe reserve",{
+ skip:!url?"Disposable PostgreSQL not configured":false
+},async()=>{
+ const db=postgresPool(url!,4);
+ const day="timezone('UTC',now())::date";
+ const month="date_trunc('month',timezone('UTC',now()))::date";
+ try{
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_daily_usage WHERE usage_day="+day,[]));
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]));
+  let calls=0;
+  const successful=await requestOpenAiEditorialPreview({
+   key:"test-only",enabled:true,pool:db.pool,
+   body:{max_completion_tokens:750,temperature:1.05,messages:[{role:"user",content:"fixture"}]},
+   transport:async(_url,init)=>{
+    calls++;
+    const body=JSON.parse(String(init?.body)) as Record<string,unknown>;
+    assert.equal(body.model,"gpt-6.1-terra");
+    assert.equal(body.reasoning_effort,"low");
+    assert.equal(body.temperature,undefined);
+    assert.equal(body.store,false);
+    return new Response(JSON.stringify({
+     usage:{prompt_tokens:500,completion_tokens:800},
+     choices:[{message:{content:"valid fixture"}}]
+    }),{status:200});
+   }
+  });
+  assert.equal(successful.status,200);
+  const first=await withSqlClient(db.pool,sql=>sql.query<{
+   spent:string;reserved:string;calls:number;inp:string;out:string
+  }>(
+   "SELECT spent_micropounds::text AS spent,reserved_micropounds::text AS reserved,"+
+   "call_count AS calls,reported_input_tokens::text AS inp,"+
+   "reported_output_tokens::text AS out "+
+   "FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]));
+  assert.deepEqual(first[0],{
+   spent:"9000",reserved:"0",calls:1,inp:"500",out:"800"
+  });
+  const rejected=await requestOpenAiEditorialPreview({
+   key:"test-only",enabled:true,pool:db.pool,
+   body:{max_completion_tokens:750,messages:[{role:"user",content:"second fixture"}]},
+   transport:async()=>{calls++;return new Response("Temporary provider failure",{status:502});}
+  });
+  assert.equal(rejected.status,502);
+  assert.equal(calls,2);
+  const last=await withSqlClient(db.pool,sql=>sql.query<{
+   spent:string;reserved:string;calls:number
+  }>(
+   "SELECT spent_micropounds::text AS spent,reserved_micropounds::text AS reserved,"+
+   "call_count AS calls FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]));
+  assert.equal(last[0]?.reserved,"0");
+  assert.equal(last[0]?.calls,2);
+  assert.ok(Number(last[0]?.spent)>Number(first[0]?.spent),
+   "Unknown billable failure conservatively consumes the reserved allowance");
+ }finally{
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_daily_usage WHERE usage_day="+day,[]));
+  await withSqlClient(db.pool,sql=>sql.query(
+   "DELETE FROM ppw_openai_preview_monthly_usage WHERE usage_month="+month,[]))
+   .finally(()=>db.close());
+ }
+});
