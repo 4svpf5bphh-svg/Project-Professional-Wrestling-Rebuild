@@ -2,6 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {generateGroqReview,inspectRingsidePrompt,immutableResultDigest,ringsideResponseSchema,ringsidePlainTextLabels,decodeRingsidePlainText,diagnoseGroqBadRequest,RingsideGenerationError} from "../src/db/ringside-commentary.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
+import {DEFAULT_RINGSIDE_SETTINGS} from "../src/domain/ringside-settings.js";
 const show:CompletedShowView={showId:"show",year:1,week:2,crowdResponse:71,
  matchCount:1,angleCount:0,entries:[{slotId:"m",position:0,type:"MATCH",
  headline:"Omega wins",summary:"Clean pinfall",outcome:"CLEAN_PIN",
@@ -220,15 +221,19 @@ test("OpenAI preview uses the same certified Ringside validator with mocked prov
  const pool={connect:async()=>({release(){},async query(sql:string){
   if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
    return [{day:"2026-11-07"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
   return [];
  }})};
  const transport:typeof fetch=async(url,options)=>{
   requests++;
   assert.equal(url,"https://api.openai.com/v1/chat/completions");
   const body=JSON.parse(String(options?.body));
-  assert.equal(body.model,"gpt-4o-mini");
+  assert.equal(body.model,"gpt-6.1-terra");
   assert.equal(body.store,false);
-  assert.ok(!Object.hasOwn(body,"reasoning_effort"));
+  assert.equal(body.reasoning_effort,"medium");
+  assert.match(body.messages[0].content,/WRESTLING JOURNALISM ENERGY: BOLD/);
+  assert.ok(!Object.hasOwn(body,"temperature"));
   assert.equal(body.response_format.json_schema.strict,true);
   return new Response(JSON.stringify({usage:{prompt_tokens:300,completion_tokens:60},
    choices:[{message:{content:JSON.stringify({
@@ -238,10 +243,57 @@ test("OpenAI preview uses the same certified Ringside validator with mocked prov
      recap:"Each side took turns controlling the corner until a legal tag sparked a comeback. The winners earned the official fall."}}
    })}}]}));
  };
- const article=await generateGroqReview(team,"fixture",transport,undefined,undefined,
-  pool as never,"OPENAI");
+ const article=await generateGroqReview(team,"fixture",transport,
+  {...DEFAULT_RINGSIDE_SETTINGS,creativity:1.05,reasoning:"medium"},
+  undefined,pool as never,"OPENAI");
  assert.match(article.showHeadline,/Teams/);
  assert.equal(requests,1);
+});
+
+test("Paid Terra preview does not make a second API call after incomplete output",async()=>{
+ let requests=0;
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-23"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
+  return [];
+ }})};
+ const transport:typeof fetch=async()=>{
+  requests++;
+  return new Response(JSON.stringify({usage:{prompt_tokens:4700,completion_tokens:2100},
+   choices:[{finish_reason:"length",message:{content:""}}]}));
+ };
+ await assert.rejects(
+  generateGroqReview(show,"fixture",transport,undefined,undefined,pool as never,"OPENAI"),
+  (error:unknown)=>error instanceof RingsideGenerationError&&
+   error.code==="OUTPUT_INCOMPLETE");
+ assert.equal(requests,1,"a rejected paid draft cannot silently incur a second charge");
+});
+
+test("Paid Terra benchmark rejects incomplete prose instead of masking it with PPW fallback",async()=>{
+ let calls=0;
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-23"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
+  return [];
+ }})};
+ const transport:typeof fetch=async()=>{
+  calls++;
+  return new Response(JSON.stringify({usage:{prompt_tokens:4718,completion_tokens:1400},
+   choices:[{finish_reason:"stop",message:{content:JSON.stringify({
+    showHeadline:"Omega prevails",opening:"The crowd awaited the main event.",
+    closing:"Omega's victory closed the broadcast.",
+    slots:{card_0:{headline:"A decisive pin",recap:""}}
+   })}}]}));
+ };
+ await assert.rejects(generateGroqReview(show,"fixture",transport,
+  undefined,undefined,pool as never,"OPENAI"),
+  (error:unknown)=>error instanceof RingsideGenerationError&&
+   error.code==="FACT_VALIDATION");
+ assert.equal(calls,1);
 });
 
 test("Groq response headers report real account RPD and model TPM, never inferred quotas",async()=>{

@@ -1,6 +1,9 @@
 /** Protected operator desk. All sensitive reads and writes are server-authorised;
  * this client never stores an API key, resets a World or runs a timer. */
 import type {RingsideSettings} from "../domain/ringside-settings.js";
+import {estimateTerraStandardUsd} from "../domain/paid-editorial-cost.js";
+import {sameShowComparisons,type SameShowProviderResult}
+ from "../domain/ai-lab-head-to-head.js";
 type ActionPlan={
  year:number;week:number;action:string;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
@@ -45,7 +48,8 @@ type LabData={usage:LabDay[];runs:LabRun[];scores:{
  scenarios?:BenchmarkScenario[];
  shortformScenarios?:{id:string;name:string;expectation:string}[];
  shortformRuns?:ShortformLabRun[];
- providers?:{groq:boolean;openai:boolean}};
+ providers?:{groq:boolean;openai:boolean};
+ paid?:{month:string;spent:string;reserved:string;calls:number}|null};
 type Recap={showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[]};
 type PromptInspection={promptVersion:string;provider:"GROQ";model:string;
@@ -53,7 +57,7 @@ type PromptInspection={promptVersion:string;provider:"GROQ";model:string;
  response_format:unknown;messages:{role:string;content:string}[];
  facts:unknown;callMade:false;historyScope:string};
 type GenerationTrace={attempts:Array<{attempt:number;status:string;reason?:string;
- draft:Recap}>;slotOrigins:{slotId:string;source:"GROQ"|"CLEANED"|"PPW_FALLBACK"}[]};
+ draft:Recap}>;slotOrigins:{slotId:string;source:"GROQ"|"OPENAI"|"CLEANED"|"PPW_FALLBACK"}[]};
 /** Use selectable text, not HTML injection. This remains accessible on iPhone. */
 function textDisclosure(title:string,body:string){
  const details=document.createElement("details");details.className="ppw-admin-preview";
@@ -83,12 +87,12 @@ function renderGenerationTrace(root:HTMLElement,trace:GenerationTrace,review:Rec
  const origins=trace.slotOrigins;
  const totalFallback=origins.filter(s=>s.source==="PPW_FALLBACK").length;
  const cleaned=origins.filter(s=>s.source==="CLEANED").length;
- root.append(el("h4","","Groq draft vs PPW final"),
+ root.append(el("h4","","Model draft vs PPW final"),
   el("p","ppw-admin-small",trace.attempts.length+" generation attempt(s) · "+
    totalFallback+" factual fallback card(s) · "+cleaned+" cleaned recap(s). "+
    "This raw trace is session-only; only the validated article is kept in AI Lab."));
  for(const attempt of trace.attempts)
-  root.append(textDisclosure("Original Groq draft "+attempt.attempt+" · "+attempt.status+
+  root.append(textDisclosure("Original model draft "+attempt.attempt+" · "+attempt.status+
    (attempt.reason?" · validator: "+attempt.reason:""),JSON.stringify(attempt.draft,null,2)));
  root.append(textDisclosure("Final accepted/recovered PPW article",JSON.stringify(review,null,2)),
   textDisclosure("Which card came from where",JSON.stringify(origins,null,2)));
@@ -202,8 +206,15 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     stat("Groq calls · 7 days",String(total(groq,"calls"))),
     stat("Groq reported tokens",tokens(groq).toLocaleString("en-GB")),
     stat("OpenAI tests · 7 days",String(total(openai,"calls"))),
+    stat("Terra · £3 monthly cap",
+     "£"+((Number(data.paid?.spent??0)+Number(data.paid?.reserved??0))/1_000_000).toFixed(2)+
+     " / £3.00 conservatively reserved or charged"),
     stat("Provider failures",String(total([...groq,...openai],"failed")))
    );
+   const priceNote=el("p","ppw-admin-small",
+    "Terra estimates use published standard USD rates ($1 input / $5 output per million tokens). "+
+    "The £3 PPW budget reserves more than the estimated provider charge to protect against "+
+    "exchange rates, VAT, uncertain failed requests and token overhead. The API invoice is separate.");
    const today=new Date().toISOString().slice(0,10);
    const live=groq.find(row=>row.day===today);
    const todaySummary=el("p","ppw-admin-small",
@@ -275,13 +286,47 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       successes.length+" valid / "+group.length+" attempts · "+failed+
       " failed · "+callTotal+" API calls · "+
       (known.length===group.length?tokens.toLocaleString("en-GB")+" tokens":
-       "partial token totals")));
+       "partial token totals")+
+      (group.some(x=>x.provider==="OPENAI"&&x.model==="gpt-6.1-terra")?
+       " · "+(known.length===group.length?
+        "~$"+known.reduce((sum,x)=>sum+(estimateTerraStandardUsd(x.input_tokens,x.output_tokens)??0),0).toFixed(4)+" API estimate":
+        "paid usage partly unreported"):"")));
     }
     scenarioScores.append(box);
    }
    if(!scenarioGroups.size)scenarioScores.append(
     el("p","ppw-admin-small",
      "Run the same scenario with both models, then rate each saved article to compare performance."));
+   // Compare only the same authenticated, certified show. This reuses
+   // the 40 already-loaded Lab records; no extra Neon read or API call.
+   const matched=sameShowComparisons(data.runs);
+   const headToHead=el("div","ppw-lab-scorecard");
+   const readable=(row:SameShowProviderResult)=>{
+    const quality=row.averageRating===null?"not yet rated":
+     row.averageRating.toFixed(1)+"/5 ("+row.rated+" rated)";
+    const known= row.measured===row.attempts?
+     (row.inputTokens+row.outputTokens).toLocaleString("en-GB")+" measured tokens":
+     (row.inputTokens+row.outputTokens).toLocaleString("en-GB")+
+     " known tokens from "+row.measured+"/"+row.attempts+" attempts";
+    return row.models.join(" / ")+" · "+row.accepted+"/"+row.attempts+" valid · "+row.failed+" failed · "+
+     quality+" · "+row.providerCalls+" calls · "+known+
+     (row.provider==="OPENAI"?
+      " · "+(row.knownUsd===null?"cost unavailable":
+       "~$"+row.knownUsd.toFixed(4)+" known API cost")+
+      (row.hasUnreportedCosts?" (failed/unreported charges excluded)":""):"");
+   };
+   if(matched.length)headToHead.append(el("p","ppw-admin-small",
+    "Same settled show, not necessarily identical prompts or energy settings across historical tests."));
+   for(const match of matched){
+    const line=el("div","ppw-lab-period");
+    line.append(el("strong","",match.showName+" · same-show comparison"),
+     el("span","","Groq: "+readable(match.groq)),
+     el("span","","Terra: "+readable(match.terra)));
+    headToHead.append(line);
+   }
+   if(!matched.length)headToHead.append(el("p","ppw-admin-small",
+    "After Terra reviews the same certified show as Groq, success rates, "+
+    "human scores and recorded usage will appear side by side here."));
    const voiceLab=el("section","ppw-lab-benchmark");
    voiceLab.append(el("h3","","Post-show voices · Groq 20B"),
     el("p","ppw-admin-small",
@@ -403,7 +448,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    };
    const benchmarkProvider=selectControl([
     ["GROQ","Groq · free allowance"],
-    ...(data.providers?.openai?[["OPENAI","OpenAI · paid comparison"] as [string,string]]:[])
+    ...(data.providers?.openai?[["OPENAI","Terra · paid £3/month cap"] as [string,string]]:[])
    ],data.providers?.openai?benchmarkProviderChoice:"GROQ");
    benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
    const rubric=el("div","ppw-lab-rubric");
@@ -440,7 +485,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    const benchmarkStatus=el("p","ppw-admin-message",lastBenchmarkNotice);
    const runBenchmark=el("button","ppw-admin-primary","Run Wrestling IQ benchmark") as HTMLButtonElement;
    runBenchmark.type="button";
-   runBenchmark.disabled=!scenarios.length||!data.providers?.groq;
+   runBenchmark.disabled=!scenarios.length||
+    (benchmarkProvider.value==="GROQ"?!data.providers?.groq:!data.providers?.openai);
    benchmarkProvider.onchange=()=>{
     benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
     runBenchmark.disabled=!scenarios.length||(benchmarkProvider.value==="GROQ"?
@@ -470,7 +516,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      lastBenchmarkNotice="Saved "+chosen.name+" · "+
       (benchmarkProviderChoice==="GROQ"?
        (benchmarkModelChoice==="openai/gpt-oss-20b"?"20B":"120B"):
-       "OpenAI")+" · "+
+       "Terra")+" · "+
       (result.metrics.compatibilityJson?"20B JSON mode · ":"")+
       "writing energy "+benchmarkEnergyChoice+" · "+
       result.metrics.durationMs+"ms · "+result.metrics.providerCalls+
@@ -511,6 +557,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      e instanceof Error?e.message:"Could not inspect this benchmark",true);}
     finally{inspectFixture.disabled=false;}
    };
+   if(!data.providers?.openai)benchmark.append(el("p","ppw-admin-small",
+    "Terra paid comparisons are locked. The operator must configure OPENAI_API_KEY "+
+    "and PPW_ALLOW_PAID_AI_PREVIEW=YES in Vercel first. No API key is entered in PPW."));
    benchmark.append(inputField("Wrestling scenario",scenarioPick),rubric,
     inputField("Benchmark provider",benchmarkProvider),
     inputField("Groq model",benchmarkModel),inputField("Reasoning effort",benchmarkReasoning),
@@ -564,7 +613,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      el("h3","",review.showHeadline),
      el("p","ppw-admin-small",run.show_name+" · "+run.duration_ms+"ms · "+
       (run.input_tokens===null?"Tokens not reported":
-      (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")),
+      (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
+      runCost(run)),
      el("p","",review.opening));
     for(const slot of review.slots)target.append(
      el("h4","",slot.headline),el("p","",slot.recap));
@@ -638,6 +688,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     }catch(e){target.replaceChildren(el("p","ppw-admin-error",
      e instanceof Error?e.message:"Saved preview is unavailable"));}
    };
+   const runCost=(run:LabRun)=>{
+    if(run.provider!=="OPENAI"||run.model!=="gpt-6.1-terra")return "";
+    const usd=estimateTerraStandardUsd(run.input_tokens,run.output_tokens);
+    return usd===null?" · Paid cost unreported":" · ~$"+usd.toFixed(4)+" at standard API rates";
+   };
    const history=el("div","ppw-lab-history");
    if(data.runs.length)for(const [index,run] of data.runs.entries()){
     const item=el("div","ppw-lab-history-row");
@@ -650,7 +705,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
      " · "+(failed?"FAILED: "+(run.error_code??"Unknown safe error"):
       run.rating?run.rating+"/5":"Unrated")+
-     " · "+run.created_at.slice(0,10));
+     runCost(run)+" · "+run.created_at.slice(0,10));
     const actions=el("div","ppw-admin-actions");
     if(!failed){
      const open=el("button","ppw-admin-secondary","Read & rate") as HTMLButtonElement;
@@ -679,9 +734,11 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    labPanel.replaceChildren(el("h2","","AI Quality Lab"),
     el("p","ppw-admin-sub",
      "Live provider usage, model quality and your playtest notes. No public Results are changed."),
-    voiceLab,benchmark,overview,todaySummary,providerSnapshot,usage,scoreTitle,scores,
+    voiceLab,benchmark,overview,priceNote,todaySummary,providerSnapshot,usage,scoreTitle,scores,
     el("h3","","Scenario-by-scenario model scores"),scenarioScores,reportButton,
-    reportStatus,reportFallback,runsHeader,history,compare,feedbackArea);
+    reportStatus,reportFallback,
+    el("h3","","Same-show Groq vs Terra"),headToHead,
+    runsHeader,history,compare,feedbackArea);
   }catch(e){labData=null;labPanel.replaceChildren(
    el("h2","","AI Quality Lab"),
    el("p","ppw-admin-error",e instanceof Error?e.message:"AI Lab unavailable"));
@@ -880,12 +937,13 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const provider=selectControl([
    ["GROQ","Groq · primary free provider"],
    ...(data.openAiPreviewEnabled?[
-    ["OPENAI","OpenAI · paid, 2 previews/day"] as [string,string]
+    ["OPENAI","Terra · paid, 2 previews/day"] as [string,string]
    ]:[])
   ],"GROQ");
   const paidNotice=el("p","ppw-admin-small",data.openAiPreviewEnabled?
-   "Paid comparison is operator-only and never publishes or replaces articles. OpenAI requests have a separate daily quota.":
-   "Paid-provider testing is disabled by default. No OpenAI API calls can be made.");
+   "Paid Terra comparisons are private and never publish results. Two manual tests/day, one paid attempt each, and a shared £3 monthly PPW cap. Groq remains free for short-form writing.":
+   "Paid Terra testing is off: set OPENAI_API_KEY and PPW_ALLOW_PAID_AI_PREVIEW=YES "+
+   "in Vercel to activate private comparisons. Never enter a provider key in the game.");
   const previewBtn=el("button","ppw-admin-secondary","Preview this style") as HTMLButtonElement;
   previewBtn.type="button";
   const previewDisabled=()=>!data.shows.length||

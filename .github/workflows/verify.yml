@@ -816,6 +816,14 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0155_offshow_public_world_news.sql
+      - name: Install shared £3 monthly paid preview ledger on disposable PostgreSQL
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0156_terra_monthly_preview_cap.sql
+      - name: Verify paid preview ledger migration is repeatable
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0156_terra_monthly_preview_cap.sql
       - name: Verify rejection diagnostics migration is repeatable
         env:
           PGPASSWORD: ppw_test

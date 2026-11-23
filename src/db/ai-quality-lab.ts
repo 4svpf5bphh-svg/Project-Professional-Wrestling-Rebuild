@@ -98,7 +98,7 @@ export async function saveAiLabFailure(pool:TransactionPool,
 }
 export async function readAiLabDashboard(pool:TransactionPool,worldId:string,playerId:string){
  assertScope(worldId,playerId);
- const [usage,runs,scores]=await Promise.all([
+ const [usage,runs,scores,paid]=await Promise.all([
   withSqlClient(pool,db=>db.query<{
    day:string;provider:LabProvider;calls:number;reserved:number;
    input:string;output:string;failed:number;
@@ -151,9 +151,14 @@ export async function readAiLabDashboard(pool:TransactionPool,worldId:string,pla
     FROM ppw_ai_lab_runs
     WHERE world_id=$1 AND player_id=$2 AND created_at>=now()-interval '30 days'
     GROUP BY provider,model ORDER BY total DESC LIMIT 12`,
-   [worldId,playerId]))
+   [worldId,playerId])),
+  withSqlClient(pool,db=>db.query<{month:string;spent:string;reserved:string;calls:number}>(
+   "SELECT usage_month::text AS month,spent_micropounds::text AS spent,"+
+   "reserved_micropounds::text AS reserved,call_count AS calls "+
+   "FROM ppw_openai_preview_monthly_usage "+
+   "WHERE usage_month=date_trunc('month',timezone('UTC',now()))::date",[]))
  ]);
- return {usage,runs,scores};
+ return {usage,runs,scores,paid:paid[0]??null};
 }
 export async function readAiLabReview(pool:TransactionPool,
  worldId:string,playerId:string,runId:string){
