@@ -26,7 +26,7 @@ function summarizeProvider(runs:SameShowSample[],
  const ratings=accepted.map(x=>x.rating).filter(
   (value):value is number=>typeof value==="number"&&Number.isFinite(value));
  const measured=subset.filter(x=>x.input_tokens!==null&&x.output_tokens!==null);
- const price=provider==="OPENAI"?measured.reduce((sum,x)=>
+ const price=provider==="OPENAI"&&measured.length?measured.reduce((sum,x)=>
   sum+(estimateTerraStandardUsd(x.input_tokens,x.output_tokens)??0),0):null;
  return {provider,models:[...new Set(subset.map(x=>x.model))],
   attempts:subset.length,accepted:accepted.length,

@@ -30,6 +30,17 @@ test("Only identical show IDs compare; rejected and unmetered calls count",()=>{
  assert.equal(pairs[0]?.terra.knownUsd,0.0146);
  assert.equal(pairs[0]?.terra.hasUnreportedCosts,false);
 });
+test("Unknown Terra usage never appears as zero-dollar spend",()=>{
+ const rows:SameShowSample[]=[
+  {...base,provider:"GROQ",model:"openai/gpt-oss-120b",status:"READY"},
+  {...base,provider:"OPENAI",model:"gpt-6.1-terra",
+   status:"FAILED",rating:null,input_tokens:null,output_tokens:null}
+ ];
+ const pair=sameShowComparisons(rows)[0]!;
+ assert.equal(pair.terra.knownUsd,null);
+ assert.equal(pair.terra.hasUnreportedCosts,true);
+ assert.equal(pair.terra.failed,1);
+});
 test("Same-show comparisons are newest first and bounded to six",()=>{
  const samples:SameShowSample[]=[];
  for(let i=0;i<8;i++)for(const provider of ["GROQ","OPENAI"] as const)

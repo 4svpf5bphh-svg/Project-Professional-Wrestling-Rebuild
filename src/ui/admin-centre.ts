@@ -308,7 +308,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      (row.inputTokens+row.outputTokens).toLocaleString("en-GB")+" measured tokens":
      (row.inputTokens+row.outputTokens).toLocaleString("en-GB")+
      " known tokens from "+row.measured+"/"+row.attempts+" attempts";
-    return row.accepted+"/"+row.attempts+" valid · "+row.failed+" failed · "+
+    return row.models.join(" / ")+" · "+row.accepted+"/"+row.attempts+" valid · "+row.failed+" failed · "+
      quality+" · "+row.providerCalls+" calls · "+known+
      (row.provider==="OPENAI"?
       " · "+(row.knownUsd===null?"cost unavailable":
