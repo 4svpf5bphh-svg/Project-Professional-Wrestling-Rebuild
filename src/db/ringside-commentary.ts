@@ -87,24 +87,24 @@ function decodeEditorialResponse(input:unknown,show:CompletedShowView):unknown{
  */
 function compactFullShowFacts(json:string):string{
  const brief=JSON.parse(json) as {slots:Record<string,unknown>[]};
- const dropEmpty=(object:Record<string,unknown>):void=>{
-  for(const [key,value] of Object.entries(object)){
-   if(value===null||value===undefined||
-      (Array.isArray(value)&&value.length===0)){delete object[key];continue;}
-   if(value&&typeof value==="object"&&!Array.isArray(value))
-    dropEmpty(value as Record<string,unknown>);
-   else if(Array.isArray(value))for(const item of value)
-    if(item&&typeof item==="object"&&!Array.isArray(item))
-     dropEmpty(item as Record<string,unknown>);
-  }
- };
  for(const slot of brief.slots){
   // The supplied director and legal format already carry these priorities.
   delete slot.editorialLens;
   const match=slot.match;
   if(match&&typeof match==="object"&&!Array.isArray(match))
    delete (match as Record<string,unknown>).wrestlingIQ;
-  dropEmpty(slot);
+  // Strip optional empty/null angle and fallout attributes only. Never
+  // touch scriptedActions, cast, move lists, match sides, titles or directors.
+  for(const scope of ["angle","fallout"]){
+   const details=slot[scope];
+   if(!details||typeof details!=="object"||Array.isArray(details))continue;
+   for(const [key,value] of Object.entries(details)){
+    if(value===null||value===undefined||
+      ((key==="injuries"||key==="eliminations")&&
+       Array.isArray(value)&&value.length===0))
+     delete (details as Record<string,unknown>)[key];
+   }
+  }
  }
  return JSON.stringify(brief);
 }
