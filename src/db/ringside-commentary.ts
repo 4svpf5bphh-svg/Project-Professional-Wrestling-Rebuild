@@ -588,8 +588,6 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     const delay=Number.isFinite(retry)&&retry>0?Math.ceil(Math.min(1800,retry)):60;
     throw new RingsideGenerationError(code,response.status===429&&
      response.headers.get("x-ppw-budget-exhausted")==="true"?
-     previewProvider==="OPENAI"?
-     "PPW's paid preview limit has been reached (daily or £3 monthly budget). Official results remain unchanged.":
      "PPW's daily free AI allowance is exhausted. Previously published writing remains available.":
      response.status===429?
      providerLabel+"'s short-term limit was reached. Retry in about "+delay+
