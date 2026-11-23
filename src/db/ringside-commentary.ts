@@ -275,7 +275,7 @@ export function diagnoseGroqBadRequest(body:string):GroqBadRequestDiagnostic{
  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))return result;
  const outer=parsed as Record<string,unknown>;
  const source=outer.error??outer.detail??outer;
- const error=source&&typeof source==="object"&&!Array.isArray(source)?
+ const error:Record<string,unknown>=source&&typeof source==="object"&&!Array.isArray(source)?
   source as Record<string,unknown>:
   typeof source==="string"?{message:source}:outer;
  // Codes and parameter names must be short ASCII tokens, never arbitrary
