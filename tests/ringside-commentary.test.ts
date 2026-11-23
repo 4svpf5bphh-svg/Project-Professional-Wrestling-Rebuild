@@ -475,3 +475,68 @@ test("Nine-card 120B provider cooldown uses only one call and retains retry-afte
   e.retryAfterSeconds===24);
  assert.equal(calls,1);
 });
+
+
+test("W29-sized Groq draft with private card labels is cleaned, validated and published on ONE provider call",async()=>{
+ const nine:CompletedShowView={...show,showId:"metadata-ascension-w29",
+  entries:Array.from({length:9},(_,i)=>({
+   ...show.entries[0]!,slotId:"original-card-"+i,position:i
+  })),matchCount:9,angleCount:0};
+ const distinctive=[
+  "Omega started cautiously, slipped an early attack and won the opening contest by a clean cover.",
+  "The challenger found the better rhythm initially, but Omega countered a late flurry for three.",
+  "Pace dictated the early exchanges until Omega recovered and earned a legal pinfall.",
+  "A hard scramble on the ropes ended when Omega escaped and collected the official victory.",
+  "Neither wrestler could settle the tempo before Omega seized a gap for the clean three-count.",
+  "The crowd watched a measured exchange of counters, with Omega finally finding the winning pin.",
+  "An early stretch of control faded when Omega adjusted his strategy and pinned his opponent.",
+  "The difficult middle portion rewarded Omega's patience, and a decisive cover settled the bout.",
+  "Late pressure had Omega in trouble, yet his sharp final counter brought another clean decision."
+ ];
+ let calls=0;
+ const trace:{attempts:import("../src/db/ringside-commentary.js").RingsideGenerationTrace["attempts"];
+  slotOrigins:import("../src/db/ringside-commentary.js").RingsideGenerationTrace["slotOrigins"]}=
+  {attempts:[],slotOrigins:[]};
+ const generated=await generateGroqReview(nine,"fixture",async(_url,init)=>{
+  calls++;
+  const body=JSON.parse(String(init?.body));
+  assert.equal(body.response_format.type,"json_object");
+  const slots=Object.fromEntries(distinctive.map((recap,i)=>[
+   "card_"+i,{headline:i===7?"card_7 saw Omega survive":"Omega wins again "+i,
+    recap:i===5?"In card_5, "+recap:recap}
+  ]));
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"Ascension changes the landscape",
+   opening:"Week 29 brought nine tense contests before the final bell.",
+   closing:"The show ended with fresh questions for the challengers.",slots
+  })}}]}),{status:200});
+ },undefined,undefined,undefined,"GROQ",false,trace);
+ assert.equal(calls,1,"Private label echoes should never consume an immediate second request");
+ assert.equal(trace.attempts.length,1);
+ assert.equal(trace.attempts[0]?.status,"RECOVERED");
+ assert.equal(trace.slotOrigins[7]?.source,"CLEANED");
+ assert.equal(trace.slotOrigins[5]?.source,"CLEANED");
+ assert.match(generated.slots[7]!.headline,/match saw Omega survive/);
+ assert.match(generated.slots[5]!.recap,/In the match,/);
+ const readerText=[generated.showHeadline,generated.opening,generated.closing,
+  ...generated.slots.flatMap(s=>[s.headline,s.recap])].join(" ");
+ assert.doesNotMatch(readerText,/card[_\s-]*\d+|slot[_\s-]*\d+|week\s+\d+/i);
+ assert.equal(generated.slots.length,9);
+ assert.deepEqual(generated.slots.map(s=>s.slotId),nine.entries.map(e=>e.slotId));
+});
+
+test("Metadata cleaning NEVER licenses a false finish or title claim",async()=>{
+ const {cleanRingsidePrivateMetadata}=await import("../src/domain/ringside-editorial.js");
+ const unsafe={...review,opening:"Week 29 had a tense crowd.",
+  slots:[{...review.slots[0]!,
+   recap:"In card_0, Omega won by submission rather than the certified clean pin."}]};
+ assert.equal(cleanRingsidePrivateMetadata(unsafe,show),null,
+  "Removing private labels must still enforce the certified clean pin");
+ const safe={...review,opening:"Week 29 had a tense crowd.",
+  slots:[{...review.slots[0]!,
+   recap:"In card_0, Omega nailed a V-Trigger and the One Winged Angel."}]};
+ const cleaned=cleanRingsidePrivateMetadata(safe,show);
+ assert.ok(cleaned);
+ assert.doesNotMatch(JSON.stringify(cleaned),/card[_\s-]*\d+|week\s+\d+/i);
+ assert.match(cleaned!.slots[0]!.recap,/V-Trigger and the One Winged Angel/);
+});

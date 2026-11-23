@@ -12,7 +12,7 @@ import type {TransactionPool} from "./transaction.js";
 import {readCompletedShowView} from "./show-results-view.js";
 import {readRingsideMemory,EMPTY_RINGSIDE_MEMORY,type RingsideMemory} from "./ringside-continuity.js";
 import type {CompletedShowView} from "./show-results-view.js";
-import {ringsideFacts,ringsideBrief,recoverRingsideCopy,ringsideReaderQualityIssue,withOccasionalWrestlingHistory,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
+import {ringsideFacts,ringsideBrief,recoverRingsideCopy,cleanRingsidePrivateMetadata,ringsideReaderQualityIssue,withOccasionalWrestlingHistory,removeVerbatimRecapEchoes,validateRingsideCopy,validateCachedRingsideCopy,RINGSIDE_MODEL,
  RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION,RINGSIDE_STYLE_GUIDE,type RingsideCopy}
  from "../domain/ringside-editorial.js";
 
@@ -390,6 +390,26 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     const reason=e instanceof Error?e.message:"Editorial facts did not validate";
     if(trace){trace.status="REJECTED";trace.reason=reason;}
     console.warn("Ringside validator:",reason,"attempt",attempt+1);
+    // An otherwise sound article can contain a harmless 'card 7' or
+    // 'showFocus.lead' echo. Remove only those known backstage labels and
+    // re-run the COMPLETE result and reader-quality checks locally. This
+    // prevents a needless second paid/provider call, which can itself 429.
+    if(reason.includes("private card or story metadata")||
+       reason.includes("internal storyline or card metadata")){
+     const cleaned=cleanRingsidePrivateMetadata(candidate,show);
+     if(cleaned&&!ringsideReaderQualityIssue(cleaned,show)){
+      const final=withOccasionalWrestlingHistory(cleaned,show);
+      if(trace)trace.status="RECOVERED";
+      if(inspection)inspection.slotOrigins=final.slots.map((slot,i)=>({
+       slotId:slot.slotId,source:
+        slot.headline!==original.slots[i]?.headline||
+        slot.recap!==original.slots[i]?.recap?
+         "CLEANED" as const:"GROQ" as const
+      }));
+      console.info("Ringside repaired internal editorial labels without a second model call");
+      return final;
+     }
+    }
     // Prefer one corrective pass over a bland canonical substitution for
     // repetition. We still permit only the existing two provider attempts.
     // Errors that remove the actual on-camera scene or contaminate the
