@@ -565,12 +565,12 @@ test("Full Ascension provider budget defers an incomplete article rather than pr
  assert.equal(calls,1,"A completed Groq draft must not trigger an unaffordable second request");
 });
 
-test("Insufficient token balance never permits publishing a first-draft factual error",async()=>{
+test("Low TPM can locally recover one bad slot without publishing false facts or requesting another show",async()=>{
  const nine:CompletedShowView={...show,entries:Array.from({length:9},(_,i)=>({
   ...show.entries[0]!,slotId:"m"+i,position:i
  }))};
  let calls=0;
- await assert.rejects(()=>generateGroqReview(nine,"fixture",async()=>{
+ const result=await generateGroqReview(nine,"fixture",async()=>{
   calls++;
   const distinct=[
    "Omega secured the clean pin after wrestling around the ropes.",
@@ -596,6 +596,10 @@ test("Insufficient token balance never permits publishing a first-draft factual 
    "x-ratelimit-remaining-tokens":"700",
    "x-ratelimit-reset-tokens":"41s"
   }});
- }),e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_LIMIT");
+ });
  assert.equal(calls,1,"Do not buy a second entire show when the provider reports only 700 tokens");
+ assert.equal(result.slots.length,9);
+ assert.doesNotMatch(result.slots[4]!.recap,/won this match by submission/i);
+ assert.match(result.slots[4]!.recap,/clean pinfall|clean three-count|clean pin/i);
+ assert.deepEqual(result.slots.map(s=>s.slotId),nine.entries.map(e=>e.slotId));
 });
