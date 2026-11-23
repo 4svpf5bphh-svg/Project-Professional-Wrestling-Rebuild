@@ -434,7 +434,7 @@ test("Nine-card 120B Groq preview and read-only inspector use one compatible req
   assert.equal(body.response_format.type,"json_object");
   assert.equal(body.response_format.json_schema,undefined);
   assert.match(body.messages[1].content,/Return ONLY one JSON object/);
-  assert.equal(body.max_completion_tokens,2965);
+  assert.equal(body.max_completion_tokens,3600);
   assert.equal(body.reasoning_effort,inspected.reasoning_effort);
   assert.deepEqual(body.response_format,inspected.response_format);
   const distinctRecaps=[
@@ -539,4 +539,63 @@ test("Metadata cleaning NEVER licenses a false finish or title claim",async()=>{
  assert.ok(cleaned);
  assert.doesNotMatch(JSON.stringify(cleaned),/card[_\s-]*\d+|week\s+\d+/i);
  assert.match(cleaned!.slots[0]!.recap,/V-Trigger and the One Winged Angel/);
+});
+
+
+test("Full Ascension provider budget defers an incomplete article rather than provoking a second 429",async()=>{
+ const nine:CompletedShowView={...show,entries:Array.from({length:9},(_,i)=>({
+  ...show.entries[0]!,slotId:"w29-"+i,position:i
+ }))};
+ let calls=0;
+ await assert.rejects(()=>generateGroqReview(nine,"fixture",async(_u,init)=>{
+  calls++;
+  const req=JSON.parse(String(init?.body));
+  assert.equal(req.response_format.type,"json_object");
+  assert.equal(req.max_completion_tokens,3600);
+  return new Response(JSON.stringify({
+   choices:[{finish_reason:"length",message:{content:""}}],
+   usage:{prompt_tokens:4400,completion_tokens:3300}
+  }),{status:200,headers:{
+   "x-ratelimit-limit-tokens":"8000",
+   "x-ratelimit-remaining-tokens":"867",
+   "x-ratelimit-reset-tokens":"37s"
+  }});
+ }),e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_LIMIT"&&
+  e.retryAfterSeconds===39&&/not enough tokens left this minute/.test(e.message));
+ assert.equal(calls,1,"A completed Groq draft must not trigger an unaffordable second request");
+});
+
+test("Insufficient token balance never permits publishing a first-draft factual error",async()=>{
+ const nine:CompletedShowView={...show,entries:Array.from({length:9},(_,i)=>({
+  ...show.entries[0]!,slotId:"m"+i,position:i
+ }))};
+ let calls=0;
+ await assert.rejects(()=>generateGroqReview(nine,"fixture",async()=>{
+  calls++;
+  const distinct=[
+   "Omega secured the clean pin after wrestling around the ropes.",
+   "A decisive turn gave Omega a legal three-count.",
+   "Omega fought back and finished the bout with a pinfall.",
+   "One well-timed counter led Omega to a clean cover.",
+   "Omega gathered momentum and eventually pinned his opponent.",
+   "The last scramble finished with a clean Omega pin.",
+   "The crowd watched Omega recover for a legal victory.",
+   "Omega stayed patient until he caught the opening for three.",
+   "Omega escaped trouble and ended the fight with a clean pin."
+  ];
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"Ascension delivered a long night of competition",
+   opening:"The matches tested Omega against a varied card.",
+   closing:"A clean final decision brought the night to its end.",
+   slots:Object.fromEntries(distinct.map((recap,i)=>[
+    "card_"+i,{headline:"A contest "+i,recap:i===4?
+     "Omega won this match by submission instead of the certified clean pin.":recap}
+   ]))
+  })}}]}),{status:200,headers:{
+   "x-ratelimit-limit-tokens":"8000",
+   "x-ratelimit-remaining-tokens":"700",
+   "x-ratelimit-reset-tokens":"41s"
+  }});
+ }),e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_LIMIT");
+ assert.equal(calls,1,"Do not buy a second entire show when the provider reports only 700 tokens");
 });
