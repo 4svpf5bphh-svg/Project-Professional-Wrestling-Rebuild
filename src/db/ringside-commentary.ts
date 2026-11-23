@@ -155,12 +155,24 @@ function boundedRingsideFacts(show:CompletedShowView,memory:RingsideMemory):stri
  return facts;
 
 }
+/** Groq's strict schema sometimes rejects whole-card 120B articles before
+ * producing any prose. Use its supported JSON Object Mode on substantial
+ * cards from the very first attempt. Local validators still enforce all
+ * canonical facts, exact slot IDs/order and the existing 2-call ceiling.
+ * This choice is deterministic and shared by Preview and Prompt Inspector.
+ */
+function preferGroqJsonObject(show:CompletedShowView,settings:RingsideSettings,
+ benchmarkFixture:boolean,provider:"GROQ"|"OPENAI"):boolean{
+ return provider==="GROQ"&&(
+  (settings.model==="openai/gpt-oss-120b"&&show.entries.length>=4)||
+  (settings.model==="openai/gpt-oss-20b"&&benchmarkFixture));
+}
 function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings,
  facts:string,correction:string,benchmarkFixture:boolean,
  previewProvider:"GROQ"|"OPENAI"="GROQ",forceJsonObject=false){
  const schema=ringsideResponseSchema(show);
- const compatibilityJson=forceJsonObject||(benchmarkFixture&&previewProvider==="GROQ"&&
-  settings.model==="openai/gpt-oss-20b");
+ const compatibilityJson=forceJsonObject||
+  preferGroqJsonObject(show,settings,benchmarkFixture,previewProvider);
  return {temperature:settings.creativity,
      max_completion_tokens:Math.min(5800,760+show.entries.length*(
       settings.detail==="LONG"?310:settings.detail==="SHORT"?185:245)),
@@ -273,12 +285,12 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   throw new RingsideGenerationError("INVALID_OUTPUT",
    "Paid previews require a server-side usage budget");
  const facts=boundedRingsideFacts(show,memory);
- // Player Results and 120B use strict provider schemas as before. On
- // fictional AI Lab fixtures only, 20B uses JSON object mode directly:
- // observed strict-output 400s otherwise doubled calls without better prose.
- // The exact same certified-fact validator applies to both formats.
- const compatibilityJson=benchmarkFixture&&previewProvider==="GROQ"&&
-  settings.model==="openai/gpt-oss-20b";
+ // Preserve the exact same local fact and editorial validation whether
+ // the provider uses JSON Schema or JSON Object Mode.
+ // For full-card 120B shows, starting in JSON mode avoids the real-world
+ // schema-400 -> compatibility retry -> token-429 failure cascade.
+ const compatibilityJson=preferGroqJsonObject(show,settings,
+  benchmarkFixture,previewProvider);
  let correction="",groqJsonCompatibility=false;
  for(let attempt=0;attempt<2;attempt++){
   const controller=new AbortController();
