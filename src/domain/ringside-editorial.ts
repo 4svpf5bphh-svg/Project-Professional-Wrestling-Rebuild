@@ -9,9 +9,9 @@ import {ringsideProseQualityFailure,impossibleHoldCount,reportedTapInPinfall,uns
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // New writing guidance is independently versioned. Previously published
 // reports stay immutable; an old completed show never needs a fresh API call.
-export const RINGSIDE_PROMPT_VERSION="ringside-v13";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v12";
-export const RINGSIDE_OLDER_VERSION="ringside-v11";
+export const RINGSIDE_PROMPT_VERSION="ringside-v14";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v13";
+export const RINGSIDE_OLDER_VERSION="ringside-v12";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 /** Compact, provider-neutral vocabulary. No additional model request, database
@@ -279,6 +279,46 @@ function assertMoveExecutionOwnership(entry:ShowResultEntry,prose:string):void{
  }
 }
 
+
+/** Reject editorial bookends that invent counts of completed finishes. */
+function assertCertifiedShowCounts(show:CompletedShowView,headline:string,opening:string,
+ closing:string):void{
+ const text=[headline,opening,closing].join(" ");
+ const numbers:Record<string,number>={one:1,two:2,both:2,three:3,four:4,five:5,
+  six:6,seven:7,eight:8,nine:9};
+ const claims=/\b(one|two|both|three|four|five|six|seven|eight|nine|[1-9]|a pair of)\s+(?:[\p{L}’'-]+\s+){0,3}(submissions?|tap[- ]?outs?|pinfalls?|title changes?)\b/giu;
+ const total=(kind:string)=>kind.startsWith("submis")||kind.startsWith("tap")?
+  show.entries.filter(e=>e.type==="MATCH"&&e.outcome==="SUBMISSION").length:
+  kind.startsWith("pin")?
+   show.entries.filter(e=>e.type==="MATCH"&&
+    ["CLEAN_PIN","FLASH_PIN"].includes(e.outcome)).length:
+   show.entries.filter(e=>e.type==="MATCH"&&e.fallout?.title?.changed===true).length;
+ for(const claim of text.matchAll(claims)){
+  const n=claim[1]!.toLowerCase()==="a pair of"?2:numbers[claim[1]!.toLowerCase()]??
+   Number(claim[1]);
+  if(Number.isFinite(n)&&n!==total(claim[2]!.toLowerCase()))
+   throw new Error("Ringside invented a show-level finish count");
+ }
+}
+
+/** The World knows the winning side of a triple/four-way, not the person pinned. */
+function assertUnrecordedMultiPersonVictim(entry:ShowResultEntry,prose:string):void{
+ const sides=entry.matchContext?.sides??[];
+ if(entry.type!=="MATCH"||sides.length<3||
+  !["CLEAN_PIN","FLASH_PIN","FOREIGN_OBJECT"].includes(entry.outcome))return;
+ const winners=new Set(entry.matchContext?.winnerNames??[]);
+ for(const name of sides.flat().filter(n=>!winners.has(n))){
+  const loser=literalPattern(name);
+  const finishBeforeName=new RegExp(
+   "\\b(?:cradle|roll[- ]?up|roll(?:ed|ing)?\\s+up|pin(?:ned|ning)?|cover(?:ed|ing)?|stack(?:ed|ing)?\\s+up)\\b[^.!?]{0,85}\\b"+
+   loser+"\\b","iu");
+  const nameBeforeFinish=new RegExp(
+   "\\b"+loser+"\\b[^.!?]{0,65}\\b(?:was (?:pinned|covered|rolled up|caught in a cradle)|took the (?:pin|fall|three[- ]count))\\b","iu");
+  if(finishBeforeName.test(prose)||nameBeforeFinish.test(prose))
+   throw new Error("Ringside named an unrecorded multi-person fall victim");
+ }
+}
+
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
  options:{styleWarningOnly?:boolean}={}):RingsideCopy{
  const v=shape(candidate);
@@ -332,6 +372,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   }
  }
  const fullStory=[v.showHeadline,v.opening,v.closing,...slots.flatMap(x=>[x.headline,x.recap])].join(" ");
+ assertCertifiedShowCounts(show,v.showHeadline as string,v.opening as string,v.closing as string);
  // Headline and bookends must not expose directing keys either.
  if(/\b(?:card[_\s-]*\d+|slot[_\s-]*\d+|showfocus|editoriallens|storythread|director\.[a-z]+|week\s+\d{1,3})\b/i.test(fullStory))
   throw new Error("Ringside exposed private card or story metadata");
@@ -387,6 +428,9 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   if(/\b(?:signature|trademark|famous)\s+(?:[\p{L}-]+\s+){0,3}(?:limp|scar|tattoo|injury)\b|\beyes?\s+(?:shining|sparkling)\b/iu.test(prose))
    throw new Error("Ringside invented unsupported physical traits");
   if(source.type==="SEGMENT"&&source.segmentKind==="VIDEO_PACKAGE"&&
+   /\b(?:montage|highlights?|clips?|footage|replay(?:s|ed)?)\b[^.!?]{0,135}\b(?:near[- ]falls?|suplex(?:es)?|finisher|technical exchanges?|pinfall|victor(?:y|ies)|past (?:match|bout))\b/iu.test(prose))
+   throw new Error("Ringside invented specific historic video footage");
+  if(source.type==="SEGMENT"&&source.segmentKind==="VIDEO_PACKAGE"&&
    /\b(?:last[- ]night['’]?s?|yesterday['’]?s?)\s+(?:victory|win|match|bout)\b|\b(?:did(?:\s+not|n['’]t)|does(?:\s+not|n['’]t))\s+(?:introduce|feature|add|show)\s+(?:new\s+)?(?:moves?|promos?|matches?|spots?)\b|\bno\s+new\s+(?:moves?|promos?|matches?)\b/i.test(prose))
    throw new Error("Ringside invented historical footage or narrated internal video limitations");
   assertNoUnscriptedDialogue(source,prose);
@@ -405,6 +449,19 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   if(!hadInterference&&/\b(?:outside interference|run-in (?:decided|cost|secured)|(?:manager|referee) (?:interfered|attacked)|(?:third party|outsider) interfered)\b/i.test(prose))
    throw new Error("Invented interference");
   if(source.type==="MATCH"){
+   assertUnrecordedMultiPersonVictim(source,prose);
+   if(source.outcome==="SUBMISSION"&&
+    /\b(?:count(?:ed|ing)?\s+(?:of\s+)?taps?|(?:two|three|four|\d+)\s+taps?|taps?\s+(?:were|was)\s+counted)\b/iu.test(prose))
+    throw new Error("Ringside invented a referee count of taps");
+   if(source.outcome==="FOREIGN_OBJECT"){
+    if(/\b(?:match|bout|win|victory)\s+(?:was\s+)?(?:called|awarded|granted)\b[^.!?]{0,90}\b(?:favou?r|victory|win)\b[^.!?]{0,65}\b(?:due to|because of|for)\s+(?:the\s+)?(?:illegal|weapon|belt|foul)/iu.test(prose)||
+      /\breferee\b[^.!?]{0,80}\b(?:witnessed|saw|spotted)\b[^.!?]{0,55}\b(?:weapon|belt\s+strike|illegal\s+blow)\b/iu.test(prose))
+     throw new Error("Ringside treated a concealed weapon strike as an official award");
+    if(source.matchContext?.finishProp==="CHAMPIONSHIP_BELT"&&
+      source.fallout?.title?.priorHolderName===source.fallout?.title?.winnerName&&
+      /\b(?:stole|stolen|stealing)\b[^.!?]{0,35}\b(?:championship|title|belt)\b/iu.test(prose))
+     throw new Error("Ringside called the reigning champion's own belt stolen");
+   }
    validateWrestlingMechanics(source,prose);
    if(["CLEAN_PIN","FLASH_PIN"].includes(source.outcome)){
     if(impossibleHoldCount(slot.recap))
@@ -633,6 +690,63 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
  catch{return null;}
 }
 
+
+/**
+ * Curated real-world wrestling history, independent of Groq. One short aside
+ * at most, on a deterministic minority of shows. It is commentary, NEVER a
+ * PPW career event, historical programme memory or simulated match fact.
+ * Benchmarks: Hogan/André (WrestleMania III), Michaels/Ramon (WM X),
+ * Hart/Austin (WM 13), Rock/Hogan (WM X8), Okada/Omega (Dominion 2018),
+ * Undertaker/Michaels (WM 25). The original event identities were verified.
+ * No model tokens, Neon queries, state changes, random rerolls or UI work.
+ */
+export function withOccasionalWrestlingHistory(
+ review:RingsideCopy,show:CompletedShowView):RingsideCopy{
+ const key=show.showId+"|"+show.year+"|"+show.week;
+ let hash=2166136261;
+ for(const char of key)hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+ if(hash%4!==0)return review;
+ const candidates:{i:number;line:string}[]=[];
+ for(const [i,e] of show.entries.entries()){
+  if(e.type!=="MATCH"||!e.matchContext||
+   typeof e.fallout?.ratingStars!=="number"||!review.slots[i])continue;
+  const stars=e.fallout.ratingStars;
+  const length=e.fallout.actualMinutes??e.matchContext.plannedMinutes??0;
+  const format=e.matchContext.format.toLowerCase();
+  const field=e.matchContext.sides.flat().join(" ").toLowerCase();
+  let line:string|null=null;
+  if(stars<2.5&&length>=8&&e.crowdResponse<=65)
+   line="It was Hogan versus André at WrestleMania III without the spectacle — and somehow made that old clash look like a technical masterclass.";
+  else if(/ladder|tlc/.test(format)&&e.outcome==="RETRIEVAL"&&stars>=4)
+   line="Michaels and Razor Ramon at WrestleMania X remain the ladder-match measuring stick; this at least understood why every climb must matter.";
+  else if(e.outcome==="SUBMISSION"&&stars>=4.25&&e.crowdResponse>=75)
+   line="Hart and Austin at WrestleMania 13 made resistance unforgettable. This wasn't that landmark, but the submission struggle understood the assignment.";
+  else if(stars>=4.75&&length>=22&&e.crowdResponse>=88)
+   line="For a moment the suspense invited thoughts of Undertaker and Michaels at WrestleMania 25. A lofty comparison, but the crowd had earned it.";
+  else if(stars>=4.5&&length>=25)
+   line="Okada and Omega at Dominion 2018 set a fearsome standard for endurance; this contest at least understood the value of a long, escalating fight.";
+  else if(stars>=4&&e.crowdResponse>=89)
+   line="There was a flicker of Rock–Hogan at WrestleMania X8 in the crowd's reaction: sometimes the audience becomes half the story.";
+  if(!line)continue;
+  // If a real-world reference includes an actual on-card wrestler, prefer
+  // another scene rather than implying PPW's own career has that history.
+  const nameClash=(line.includes("André")&&/hogan|andre/.test(field))||
+   (line.includes("Ramon")&&/michaels|ramon/.test(field))||
+   (line.includes("Austin")&&/hart|austin/.test(field))||
+   (line.includes("Undertaker")&&/undertaker|michaels/.test(field))||
+   (line.includes("Okada")&&/okada|omega/.test(field))||
+   (line.includes("Rock–Hogan")&&/rock|hogan/.test(field));
+  if(!nameClash&&review.slots[i]!.recap.length+line.length+2<=1800)
+   candidates.push({i,line});
+ }
+ if(!candidates.length)return review;
+ const selected=candidates[Math.floor(hash/4)%candidates.length]!;
+ const slots=review.slots.map((slot,i)=>i===selected.i?{
+  ...slot,recap:slot.recap.trimEnd()+"\n\n"+selected.line}:slot);
+ try{return validateRingsideCopy({...review,slots},show);}
+ catch{return review;}
+}
+
 /** An accurate scorecard paragraph cannot stand in for a major match review.
  * This quality gate applies only to newly generated articles and recovery,
  * never to certified World data or previously published cached reports.
@@ -757,21 +871,17 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
 
 export const RINGSIDE_STYLE_GUIDE=`You are Marty Vale, an experienced WRESTLING JOURNALIST reviewing an
 actual televised wrestling show for the game's players. You WATCHED it.
-Write an enjoyable, immersive article that makes readers relive the matches,
-characters, surprises and stakes. They came to READ a wrestling show review,
-not a scorecard or technical explanation. Be specific, vivid, discerning and
-funny when earned; criticise a weak bout without disparaging its performers.
-You are a fan with a credible columnist's judgement, NOT the game's engine,
-an AI assistant, an instruction manual, a booking report or a press release.
+Write an enjoyable, immersive article, not a scorecard. Bring matches,
+characters and stakes alive with concrete action and credible judgement.
+Be funny when earned; critique weak bouts. Never sound like the game engine.
 
 Write ONE chronological article. For EVERY match use slot.director:
 setup, turn, ONE decisive finish, rating-scaled verdict. Its exchanges
 are suggested colour, not certified spots; slot.finish always wins.
-Matches 90–150 words, squashes 55–100, angles 35–85; criticise weak bouts.
-slot.dramaticCue=PEAK alone may BURST into a live count:
-"ONE! TWO! ... KICKOUT!" or a rare earned "HOLY SHIT!" at a plausible
-near-fall. slot.dramaticCue=EARNED merits interest, not a miracle. Do not copy,
-force profanity, or manufacture miracles in short or flat matches.
+Matches 90–150 words, squashes 55–100, angles 35–85.
+Only slot.dramaticCue=PEAK may BURST into "ONE! TWO! ... KICKOUT!"
+or a rare "HOLY SHIT!" at an earned near-fall. EARNED merits interest,
+not a miracle; never force profanity or oversell a flat match.
 A two-count stops BEFORE THREE. Only a move's owner lands it;
 the wrestler kicking OUT is the recipient. Repertoire is colour, not fact.
 Headlines must be specific, not bloated; don't repeat the opening sentence.
@@ -784,6 +894,9 @@ Slot facts govern cast, finish, titles, injuries, interference and crowd.
 A belt changes hands ONLY when fallout.title.changed is true; the match
 winner is NOT automatically champion. No invented title defence.
 A booked championship belt is legal to own; using it to STRIKE is the foul.
+If the winner already held that championship, it is the champion's OWN belt.
+With a referee bump the foul happens unseen; the referee must recover to
+count the later cover. The referee never awards a win FOR the illegal strike.
 Match.wrestlingIQ and stipulationRules set legal win methods and pacing;
 possibleSpots are possibilities, not settled action. Invent temporary
 bell-to-bell colour, NOT winners, quotes, scores, attacks, injuries, title
@@ -795,14 +908,13 @@ before scoring; hot tags optional. Never invent a team fall scorer.
 Preserve multi-team sides. Triple/four-way: there are NO tags.
 Battle royals: over-the-top eliminations, not pins. Follow referee rules.
 
-In multi-person matches the fall victim may be UNRECORDED. Never name
-the person pinned unless verified. Say the winner stole the fall.
-In a pinfall, ONLY the losing wrestler's shoulders are counted down. Never
-write that the referee counted three on the official WINNER's shoulders,
-even in a disputed or foreign-object finish. Recheck winner, defeated
-wrestler, cover and method before writing the last sentence.
+Multi-person fall victims may be UNRECORDED: never name an unverified
+pinned, cradled or rolled-up rival. Say only that the winner stole the fall.
+ONLY the losing wrestler's shoulders are counted in a pinfall, NEVER
+the official WINNER's, even with a foreign object. Check cover and method.
 CLEAN_PIN requires a legal three-count; FLASH_PIN a sudden roll-up.
-SUBMISSION is a tap/stoppage, NOT a pin. Samoa Joe's Coquina Clutch
+SUBMISSION is a tap/stoppage, NOT a pin. A referee never counts taps.
+Samoa Joe's Coquina Clutch
 cannot score a pin; Muscle Buster may precede one. An earlier hold can
 set up a separate pin ONLY after the hold is released or escaped.
 In a pinfall match, nobody actually taps out; that ends the bout.
@@ -835,21 +947,20 @@ actorNames speak; angle.targetPresence distinguishes targets MENTIONED
 Do not invent outsiders, entrances, physical traits, friendship or
 partnership. BLOODIED isn't an injury; planned retaliation isn't done.
 Refusal or interruption isn't success.
-Only scoped storyThread proves history; it is a viewer-facing callback,
-not raw programme counts. Use at most one, and never invent past events.
-One earlier shared match alone does not prove a feud.
-Translate history into what viewers saw, never database bookkeeping.
-NEVER say 'third angle', 'rivalry thread', 'only recorded rivalry',
-'official fallout', 'prior angles', 'card segment' or 'Week 25'.
+Only scoped storyThread proves past events. Use one viewer-facing callback
+at most; one shared match doesn't prove a feud. Never expose raw history or database bookkeeping,
+'third angle', 'rivalry thread', 'official fallout', 'prior angles',
+'card segment' or 'Week 25'.
 A recap video sells the real issue, not a list of what it did NOT introduce.
+Do not invent montages of moves, previous near-falls or filmed historic encounters.
 Never invent a replay, prior victory or what the footage depicted.
+Do not write historical wrestling-match comparisons: PPW's editorial desk
+adds rare, carefully verified historical asides separately.
 showFocus.lead is the show's opening/headline priority; the support slots
 inform the close. Cover EVERY card chronologically. Never write card numbers,
 slot IDs, focus keys or editorial instructions into the reader's article.
 Use wrestling terms naturally. Never expose star ratings, mechanics,
 technical booking labels or equations. Avoid unsupported gender assumptions.
-No extra prose or markdown outside the response JSON. Required keys
-are card_0, card_1 etc (every card_N key once), headline and recap only.
-Do not emit slotId fields: the server restores immutable official IDs.
-Divide a recap with a double newline only when helpful.
+JSON only: card_0, card_1 etc (every card_N key once), each with
+headline and recap. Do not emit slotId fields: the server restores immutable IDs.
 `;

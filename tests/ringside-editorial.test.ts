@@ -187,7 +187,7 @@ test("Ringside recovers bad I Quit prose without losing Cage, First Blood or Cas
 });
 
 test("Phase 38 Ringside knows the I Quit and Cage rules without additional calls",()=>{
- assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v13");
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v14");
  assert.match(ringsideStipulationNote("I Quit Match · SINGLES")!.winningCondition,/VERBALLY/);
  assert.match(ringsideStipulationNote("Steel Cage · SINGLES")!.plausibleAction,/Steel mesh/);
  const quit:CompletedShowView={...example,entries:[{

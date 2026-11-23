@@ -14,7 +14,7 @@ const formats={
  SINGLES:"Contrast the opponents' verified styles. Only two wrestlers compete.",
  TAG:"Follow one legal wrestler per team, tags and tactical isolation. Do not invent the fall scorer.",
  MULTI_TEAM:"Track legal teammates, disputed openings and one recorded winner; don't guess who scored.",
- MULTI_PERSON:"All rivals can break up falls. No tags, invented allies or elimination.",
+ MULTI_PERSON:"All rivals can break up falls. No tags, invented allies or elimination. Unless specifically verified, the person pinned in a multi-person finish is UNKNOWN: do not name the victim.",
  BATTLE_ROYAL:"Survival and rope positioning. No invented elimination order."
 } as const;
 
@@ -40,7 +40,7 @@ export function directRingsideMatch(e:ShowResultEntry):MatchDirection|null{
    length!==null&&length>=12?
   "Build sustained pressure and a credible counter; ONE earned near-fall may occur before the true finish.":
   length!==null&&length>=18?
-  "Show measured control, a credible adjustment and the resulting opening. No invented title or injury.":
+  "Give a long bout a real middle act: early tactics, an opponent-led adjustment, a believable escape or counter, then a distinct closing exchange. Do not rush to a generic result or invent an injury.":
   "Show one plausible exchange or tactical counter, then move toward the finish.";
  const finish=e.outcome;
  const pin=" The defeated side's shoulders, NOT the winner's, are counted.";
@@ -49,14 +49,18 @@ export function directRingsideMatch(e:ShowResultEntry):MatchDirection|null{
   finish==="FLASH_PIN"?
   winner+" snatches a sudden cradle or roll-up for three, not an impact finisher."+pin:
   finish==="SUBMISSION"?
-  winner+" wins by the recorded submission: tap or referee stoppage, no pinfall.":
+  winner+" wins when the opponent taps or the referee stops the submission. The referee does NOT count taps: one surrender ends the bout. No pinfall.":
   finish==="FOREIGN_OBJECT"?
-  winner+" wins by concealed illegal use of "+
+  winner+" wins after secretly using "+
    (m.finishProp?concise(String(m.finishProp).toLowerCase().replaceAll("_"," ")):
     "the recorded object")+
-   (m.refereeSpot==="REF_BUMP"?" while the referee is down, before the official can count.":
-    " without the referee detecting the foul.")+
-   " Do not award a new title without a recorded title change.":
+   (m.refereeSpot==="REF_BUMP"?
+    " while the referee is down; the referee recovers, sees only a subsequent cover and counts three on the LOSER's shoulders.":
+    " out of the referee's sight; the referee can then count the legal cover on the LOSER's shoulders.")+
+   (m.finishProp==="CHAMPIONSHIP_BELT"&&e.fallout?.title?.priorHolderName&&
+    e.fallout.title.priorHolderName===e.fallout.title.winnerName?
+    " This is the reigning champion's OWN belt, not a stolen championship.":"")+
+   " The referee does NOT award victory for the illegal blow and cannot witness it; this is NOT a disqualification. Do not award a new title without a recorded title change.":
   finish==="DISQUALIFICATION"?
   winner+" is awarded a disqualification. No pinfall or tap-out decides it.":
   finish==="PROTECTED_FINISH"?
@@ -109,7 +113,7 @@ export function directRingsideAngle(e:ShowResultEntry):AngleDirection|null{
   kind==="INTERVIEW"?
   "Lead with the speaker's actual words or stance and what the interview reveals; not a generic scene summary.":
   kind==="VIDEO_PACKAGE"?
-  "Frame the advertised stakes and contrasts; report no unverified footage, meeting, outcome or flashback.":
+  "Frame the advertised stakes and contrasts; do not describe invented clips, montages of specific moves, near-falls, matches or camera footage. Only describe actual history if scoped and verified.":
   kind==="TURN"?
   "Show the recorded change of character and any certified actions; no invented friendship or betrayal.":
   kind==="CONTRACT_SIGNING"?
