@@ -7,8 +7,9 @@ import type {TransactionPool} from "./transaction.js";
 import {estimatedGroqTokens,groqResponseUsage,type GroqUsage} from "../domain/ai-director.js";
 export const OPENAI_PREVIEW_MODEL="gpt-6.1-terra";
 const MAX_DAILY_REQUESTS=2,MAX_DAILY_ESTIMATE=50000,MAX_REQUEST_ESTIMATE=25000;
-// Pessimistic GBP valuation: double current $0.50/$2.50 per MTok
-// and treat $1 as £1. This protects the £3 cap from normal FX movements.
+// Pessimistic GBP valuation: double the $1/$5 per-MTok standard Terra
+// rates and treat $1 as £1. The over-reservation covers normal FX/VAT
+// fluctuations, prompt-token uncertainty and retries that never run.
 export const OPENAI_MONTHLY_CAP_MICROPOUNDS=3_000_000;
 export function estimateTerraPreviewMicropounds(body:string,completionTokens:number){
  if(!Number.isSafeInteger(completionTokens)||completionTokens<1||completionTokens>8000)
@@ -16,7 +17,7 @@ export function estimateTerraPreviewMicropounds(body:string,completionTokens:num
  // One token cannot encode less than one UTF-8 byte. An extra 5k tokens
  // covers provider message framing and prevents understated reservations.
  const inputBound=Buffer.byteLength(body,"utf8")+5000;
- return inputBound+completionTokens*5;
+ return inputBound*2+completionTokens*10;
 }
 type BudgetClaim={day:string;estimate:number};
 export function paidPreviewEnabled(env:Record<string,string|undefined>):boolean{
@@ -80,7 +81,7 @@ async function settleMonthlyPreview(pool:TransactionPool,claim:MonthlyClaim,
  usage:GroqUsage|null){
  // Failed/ambiguous provider requests retain their entire conservative charge.
  // Never silently refund a request that may have been billed.
- const cost=usage?usage.inputTokens+usage.outputTokens*5:claim.reserved;
+ const cost=usage?usage.inputTokens*2+usage.outputTokens*10:claim.reserved;
  await withSqlClient(pool,db=>db.query(
   "UPDATE ppw_openai_preview_monthly_usage SET "+
   "reserved_micropounds=GREATEST(0,reserved_micropounds-$2),"+
