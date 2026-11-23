@@ -268,6 +268,31 @@ test("Paid Terra preview does not make a second API call after incomplete output
  assert.equal(requests,1,"a rejected paid draft cannot silently incur a second charge");
 });
 
+test("Paid Terra benchmark rejects incomplete prose instead of masking it with PPW fallback",async()=>{
+ let calls=0;
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-23"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
+  return [];
+ }})};
+ const transport:typeof fetch=async()=>{
+  calls++;
+  return new Response(JSON.stringify({usage:{prompt_tokens:4718,completion_tokens:1400},
+   choices:[{finish_reason:"stop",message:{content:JSON.stringify({
+    showHeadline:"Omega prevails",opening:"The crowd awaited the main event.",
+    closing:"Omega's victory closed the broadcast.",
+    slots:{card_0:{headline:"A decisive pin",recap:""}}
+   })}}]}));
+ };
+ await assert.rejects(generateGroqReview(show,"fixture",transport,
+  undefined,undefined,pool as never,"OPENAI"),
+  (error:unknown)=>error instanceof RingsideGenerationError&&
+   error.code==="FACT_VALIDATION");
+ assert.equal(calls,1);
+});
+
 test("Groq response headers report real account RPD and model TPM, never inferred quotas",async()=>{
  const {groqResponseLimits}=await import("../src/domain/ai-director.js");
  const actual=new Headers({
