@@ -300,7 +300,11 @@ export function diagnoseGroqBadRequest(body:string):GroqBadRequestDiagnostic{
   .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi,"[email]")
   .replace(/["“][^"”]{1,160}["”]/g,"[quoted detail]")
   .replace(/\s+/g," ").trim().slice(0,180);
- if(safeHead.length>=8)result.messageHeadline=safeHead;
+ // Only recognised provider-error prefixes are safe to echo; untrusted
+ // arbitrary message text could contain the user's own prompt or game data.
+ const providerErrorPrefix=/^(?:failed to generate json|invalid (?:json|schema|response_format|request)|request too large|too many tokens|unsupported (?:reasoning|model|parameter|temperature)|max_completion_tokens|context (?:length|window)|rate limit|quota exceeded|content filter)/i;
+ if(safeHead.length>=8&&providerErrorPrefix.test(safeHead))
+  result.messageHeadline=safeHead;
  const signal=[result.code,result.type,result.param,message].filter(Boolean)
   .join(" ").toLowerCase().slice(0,10000);
  if(/(?:json.validate|json.?schema|structured.?output|response.?format|json.?object|failed to generate json|valid json|schema mismatch)/i.test(signal)){
