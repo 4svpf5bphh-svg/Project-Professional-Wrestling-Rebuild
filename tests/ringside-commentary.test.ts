@@ -56,7 +56,9 @@ test("eleven-item card requires eleven output objects; no missing-angle/article 
  assert.equal(schema.properties.slots.additionalProperties,false);
  const fake:typeof fetch=async(_url,init)=>{
   const body=JSON.parse(String(init?.body));
-  const fields=body.response_format.json_schema.schema.properties.slots.required as string[];
+  assert.equal(body.response_format.type,"json_object",
+   "Whole-card 120B shows must avoid Groq strict schema first-attempt 400");
+  const fields=extended.entries.map((_,i)=>"card_"+i);
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
    showHeadline:"Eleven matches",opening:"The crowd was up for it.",
    closing:"Every recorded bout got its story.",
@@ -410,4 +412,66 @@ test("Fictional 20B JSON mode omits unsupported reasoning_format",async()=>{
  const payload=inspectRingsidePrompt(show,settings,undefined,true);
  assert.equal(payload.response_format.type,"json_object");
  assert.equal(Object.hasOwn(payload,"reasoning_format"),false);
+});
+
+
+test("Nine-card 120B Groq preview and read-only inspector use one compatible request",async()=>{
+ const nine:CompletedShowView={...show,showId:"w29-ascension-preview",
+  entries:Array.from({length:9},(_,i)=>({
+   ...show.entries[0]!,slotId:"ascension-"+i,position:i,
+   headline:"Ascension match "+(i+1)
+  })),matchCount:9,angleCount:0};
+ const inspected=inspectRingsidePrompt(nine);
+ assert.equal(inspected.callMade,false);
+ assert.equal(inspected.response_format.type,"json_object");
+ assert.deepEqual(inspected.facts.slots.map((s:{key:string})=>s.key),
+  Array.from({length:9},(_,i)=>"card_"+i));
+ let calls=0;
+ const result=await generateGroqReview(nine,"fixture",async(_url,init)=>{
+  calls++;
+  const body=JSON.parse(String(init?.body));
+  assert.equal(body.model,"openai/gpt-oss-120b");
+  assert.equal(body.response_format.type,"json_object");
+  assert.equal(body.response_format.json_schema,undefined);
+  assert.match(body.messages[1].content,/Return ONLY one JSON object/);
+  assert.equal(body.max_completion_tokens,2965);
+  assert.equal(body.reasoning_effort,inspected.reasoning_effort);
+  assert.deepEqual(body.response_format,inspected.response_format);
+  const distinctRecaps=[
+   "Omega ducked a wild opening shot, established control with sharp counters and took the clean pin.",
+   "A test of patience saw Omega wrestle out of trouble before a legal cover secured his win.",
+   "Early exchanges rewarded the opponent's aggression, but Omega found room to recover and earn the three-count.",
+   "The battle around the ropes turned scrappy until Omega adjusted his footing and scored the pinfall.",
+   "Rather than rush into a brawl, Omega picked his moment and converted the opening into a legal pin.",
+   "An opponent's late rally briefly threatened the decision; Omega answered it with a clean cover.",
+   "This contest grew tense with every counter, although Omega ultimately kept his composure to win by pinfall.",
+   "Two determined wrestlers traded momentum across the ring before Omega finally put a shoulder down for three.",
+   "The final stretch demanded careful timing and Omega responded decisively, collecting the official clean victory."
+  ];
+  const slots=Object.fromEntries(nine.entries.map((_,i)=>[
+   "card_"+i,{headline:"Omega's match "+(i+1),
+    recap:distinctRecaps[i]!}]));
+  return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({
+   showHeadline:"Nine bouts of Ascension",opening:"CWA had an eventful night.",
+   closing:"The card ended with the certified results intact.",slots
+  })}}]}),{status:200});
+ });
+ assert.equal(calls,1,"No wasted strict-schema attempt or immediate rate-limit retry");
+ assert.equal(result.slots.length,9);
+ assert.deepEqual(result.slots.map(s=>s.slotId),nine.entries.map(e=>e.slotId));
+});
+
+test("Nine-card 120B provider cooldown uses only one call and retains retry-after",async()=>{
+ const nine:CompletedShowView={...show,entries:Array.from({length:9},(_,i)=>({
+  ...show.entries[0]!,slotId:"m"+i,position:i
+ }))};
+ let calls=0;
+ await assert.rejects(()=>generateGroqReview(nine,"fixture",async(_url,init)=>{
+  calls++;
+  const req=JSON.parse(String(init?.body));
+  assert.equal(req.response_format.type,"json_object");
+  return new Response("",{status:429,headers:{"retry-after":"24"}});
+ }),e=>e instanceof RingsideGenerationError&&e.code==="PROVIDER_LIMIT"&&
+  e.retryAfterSeconds===24);
+ assert.equal(calls,1);
 });
