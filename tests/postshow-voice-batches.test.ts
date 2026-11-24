@@ -662,3 +662,14 @@ test("Shortform failure categories distinguish budget, provider pacing, access a
  assert.equal(result,null);assert.equal(calls,1);
  assert.equal((diagnostic as {category:string}).category,"TIMEOUT");
 });
+
+test("Wrestler speech follows its own certified finish, independent of main-event news",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const brief=getPostShowVoiceBenchmark("i-quit")!.brief;
+ const independent={...brief,mainEvent:{...brief.mainEvent!,slotId:"another-match",finish:"three-count pinfall"}};
+ assert.ok(validatePostShowVoiceCopy(independent,{wrestler:{text:
+  "I made Ronan Wolfe say I quit, and I want everyone to remember exactly what that moment meant tonight."}})?.wrestler);
+ const different={...independent,wrestler:{...brief.wrestler!,finish:"three-count pinfall"}};
+ assert.equal(validatePostShowVoiceCopy(different,{wrestler:{text:
+  "I made Ronan Wolfe say I quit, and I want everyone to remember exactly what that moment meant tonight."}}),null);
+});

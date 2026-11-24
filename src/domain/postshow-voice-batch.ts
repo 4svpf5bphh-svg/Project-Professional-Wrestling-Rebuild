@@ -23,7 +23,7 @@ export interface PostShowVoiceBrief{
   winners:string[];opponents:string[][];finish:string;crowd:string}|null;
  wrestler:{slotId:string;personId:string;displayName:string;
   recordedPost:string;verifiedEvent:string;opponentNames:string[];
-  matchType:string|null;eventKind:string|null;
+  matchType:string|null;eventKind:string|null;finish?:string|null;
   character:string|null;style:string|null}|null;
  roadAgent:{slotId:string;headline:string;recordedObservation:string;
   issue:"overrun"|"execution"|"chemistry"|"injury"|"rivalry"|"standout";
@@ -104,6 +104,7 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
    verifiedEvent:editorialSummary(socialEntry?.summary??""),
    opponentNames:opponentNames.map(name=>clipped(name,120)),
    matchType:socialMatch?.format?clipped(socialMatch.format,100):null,
+   finish:socialEntry?.type==="MATCH"?finish(socialEntry.outcome):null,
    eventKind:socialEntry?.type==="SEGMENT"?clipped(socialEntry.segmentKind??"",60):null,
    character:persona?.character?clipped(persona.character,75):null,
    style:persona?.style?clipped(persona.style,60):null}:null,
@@ -259,8 +260,9 @@ function wrestlerEventSpecific(post:string,source:PostShowVoiceBrief):boolean{
  */
 function wrestlerMisattributesSurrender(post:string,source:PostShowVoiceBrief):boolean{
  let remaining=post;
- const certifiedSurrender=source.mainEvent?.finish.includes("I Quit")&&
-  source.wrestler?.slotId===source.mainEvent?.slotId;
+ const certifiedSurrender=source.wrestler?.finish?.includes("I Quit")??
+  (source.mainEvent?.finish.includes("I Quit")&&
+   source.wrestler?.slotId===source.mainEvent?.slotId);
  for(const name of certifiedSurrender?source.wrestler?.opponentNames??[]:[]){
   const escaped=name.split("").map(ch=>
    "\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
@@ -476,10 +478,14 @@ function unverifiedWin(summary:string,source:PostShowVoiceBrief):boolean{
  const match=source.mainEvent;
  if(!match)return true;
  const winners=new Set(match.winners.map(v=>v.toLowerCase()));
- const text=summary.toLowerCase();
  return match.opponents.flat().filter(name=>!winners.has(name.toLowerCase()))
-  .some(name=>[" defeated"," beat"," pinned"," submitted"," won"," prevailed",
-   " secured the victory"].some(verb=>text.includes(name.toLowerCase()+verb)));
+  .some(name=>{
+   const escaped=[...name].map(ch=>"\\^$.*+?()[]{}|".includes(ch)?"\\"+ch:ch).join("");
+   // Headlines often use present tense, while the article uses past
+   // tense. Check both and don't match contractions such as "won't".
+   return new RegExp("(?:^|[^\\p{L}\\p{N}])"+escaped+
+    "\\s+(?:defeats?|defeated|beats?|pinn?ed|pins|submits?|submitted|wins?|won(?!['’]t)|prevails?|prevailed|secured the victory|secures the victory)\\b","iu").test(summary);
+  });
 }
 const unsourcedNews=/\b(?:injur(?:ed|y|ies)|concussion|blood(?:ied|y)|bleed(?:ing|s)?|bled|hospital|broken (?:bone|neck)|new champion|title change|signed|suspended|arrested|contract negotiation|backstage fight)\b/i;
 /** A First Blood finish proves bleeding happened, but does NOT prove an
