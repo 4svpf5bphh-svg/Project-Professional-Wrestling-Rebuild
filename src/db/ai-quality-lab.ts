@@ -9,7 +9,7 @@ import {validateCachedRingsideCopy} from "../domain/ringside-editorial.js";
 export type LabProvider="GROQ"|"OPENAI";
 export const AI_LAB_ERROR_CODES=[
  "FACT_VALIDATION","PROVIDER_LIMIT","PROVIDER_AUTH",
- "PROVIDER_ERROR","INVALID_OUTPUT","OUTPUT_INCOMPLETE","UNKNOWN"
+ "PROVIDER_ERROR","INVALID_OUTPUT","OUTPUT_INCOMPLETE","TIMEOUT","UNKNOWN"
 ] as const;
 export type AiLabErrorCode=typeof AI_LAB_ERROR_CODES[number];
 export const AI_LAB_FLAGS=[

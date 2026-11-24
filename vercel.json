@@ -3,6 +3,11 @@
   "framework": "vite",
   "buildCommand": "npm run web:build",
   "outputDirectory": "dist/web",
+  "functions": {
+    "api/admin-preview.ts": {
+      "maxDuration": 180
+    }
+  },
   "git": {
     "deploymentEnabled": {
       "**": false,

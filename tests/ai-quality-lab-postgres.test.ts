@@ -64,6 +64,16 @@ test("AI Lab saves bounded private comparisons and prevents rival reading or rat
   await assert.rejects(saveAiLabFeedback(db.pool,worldId,user,failure.runId,
    {rating:5,flags:[],notes:"False success"}),/unavailable/);
   assert.deepEqual((await readAiLabDashboard(db.pool,worldId,rival)).runs,[]);
+  const timeout=await saveAiLabFailure(db.pool,{
+   worldId,playerId:user,showId:"show-one",showName:"Friday Fire",
+   provider:"OPENAI",model:"gpt-6.1-terra",durationMs:150046,
+   providerCalls:1,inputTokens:null,outputTokens:null,errorCode:"TIMEOUT"});
+  const afterTimeout=await readAiLabDashboard(db.pool,worldId,user);
+  const failedTimeout=afterTimeout.runs.find(r=>r.run_id===timeout.runId);
+  assert.equal(failedTimeout?.error_code,"TIMEOUT");
+  assert.equal(failedTimeout?.duration_ms,150046);
+  assert.equal(failedTimeout?.input_tokens,null);
+  assert.equal(afterTimeout.scores.find(s=>s.model==="gpt-6.1-terra")?.failed,1);
   await assert.rejects(saveAiLabFailure(db.pool,{
    worldId,playerId:user,showId:"test",showName:"Test",
    provider:"GROQ",model:"openai/gpt-oss-20b",durationMs:10,

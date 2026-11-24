@@ -828,6 +828,14 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0140_shortform_voice_lab_diagnostics.sql
+      - name: Record private preview timeouts explicitly
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0157_terra_preview_timeout_telemetry.sql
+      - name: Verify timeout telemetry migration can be reapplied
+        env:
+          PGPASSWORD: ppw_test
+        run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -f db/migrations/0157_terra_preview_timeout_telemetry.sql
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
