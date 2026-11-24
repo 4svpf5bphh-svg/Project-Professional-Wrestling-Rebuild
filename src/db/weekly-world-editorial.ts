@@ -3,10 +3,10 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
 import {estimatedGroqTokens,groqResponseUsage} from "../domain/ai-director.js";
-import {weeklyEditorialAnchors,weeklyEditorialMessages,validateWeeklyEditorial,weeklyRatingsStory,type WeeklyStory,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
+import {weeklyEditorialAnchors,weeklyEditorialMessages,validateWeeklyEditorialDetailed,weeklyRatingsStory,type WeeklyStory,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
 import type {VerifiedHotTagAward} from "../domain/hot-tag-wrestler-voice.js";
 type Scope={worldId:string;year:number;week:number};
-type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string};
+type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;human_managed:boolean};
 export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Scope,key:string,transport:typeof fetch=fetch){
  const {worldId,year,week}=scope,params=[worldId,year,week];
  if(!worldId||worldId.length>200||!Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||!key)
@@ -25,8 +25,9 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
   const previous=week===1?{year:year-1,week:52}:{year,week:week-1};
   const [rows,awards,ratings,history]=await withSqlClient(pool,async db=>Promise.all([
    db.query<StoryRow>(`
-   SELECT story_key,desk,certainty,promotion_id,promotion_name,title,summary,source_kind
-   FROM ppw_world_news_items WHERE world_id=$1 AND year=$2 AND week=$3
+   SELECT n.story_key,n.desk,n.certainty,n.promotion_id,n.promotion_name,n.title,n.summary,n.source_kind,
+    EXISTS(SELECT 1 FROM ppw_promotion_controls p WHERE p.world_id=n.world_id AND p.promotion_id=n.promotion_id AND p.active) AS human_managed
+   FROM ppw_world_news_items n WHERE n.world_id=$1 AND n.year=$2 AND n.week=$3
    ORDER BY CASE WHEN story_key LIKE 'broadcast:%' THEN 0
     WHEN source_kind IN ('TITLE','EVENT') THEN 1 ELSE 2 END,desk,story_key LIMIT 40`,params),
    db.query<{kind:"MATCH"|"ANGLE";promotion_id:string;show_id:string;slot_id:string;person_ids:string[];people_names:string[]}>(`
@@ -52,7 +53,7 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
     ORDER BY story_key LIMIT 12`,[worldId,previous.year,previous.week])
   ]));
   const stories:WeeklyStory[]=rows.map(s=>({id:s.story_key,year,week,desk:s.desk,certainty:s.certainty,
-   promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind}));
+   promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,humanManaged:s.human_managed}));
   const publicAwards:VerifiedHotTagAward[]=awards.map(a=>({year,week,kind:a.kind,promotionId:a.promotion_id,
    showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names}));
   ratingStory=weeklyRatingsStory(year,week,ratings.map(r=>({promotionId:r.promotion_id,promotionName:r.promotion_name,rating:r.rating,humanManaged:r.human_managed})));
@@ -60,10 +61,14 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
    history.map(h=>({year:previous.year,week:previous.week,promotionId:h.promotion_id,title:h.title})));
   if(!anchors.length){state="EMPTY";diagnostic="NO_PUBLIC_STORIES";}
   else{
-   const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",reasoning_format:"hidden",
-    max_completion_tokens:1600,response_format:{type:"json_object"},messages:weeklyEditorialMessages(anchors)};
+   const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",
+    max_completion_tokens:1800,response_format:{type:"json_object"},messages:weeklyEditorialMessages(anchors)};
    // Hard request envelope below the observed 8k TPM, including reasoning/completion reserve.
    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
+   while(estimate>4200&&anchors.length>1){
+    anchors.pop();body.messages=weeklyEditorialMessages(anchors);
+    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
+   }
    if(estimate>4200){diagnostic="TOKEN_ENVELOPE";throw Error("Weekly editorial envelope too large");}
    const response=await requestGroqEditorial({task:"SHORT_NEWS",key,pool,body,signal:AbortSignal.timeout(16000),
     pace:true,transport:async(url,init)=>{calls++;return transport(url,init);}});
@@ -71,22 +76,31 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
     response.headers.get("x-ppw-budget-exhausted")==="true"?"BUDGET":
     response.status===429?"RATE_LIMITED":response.ok?"INVALID_RESPONSE":"HTTP_REJECTED";
    if(response.ok){
+    let rejectionSummary="";
     const raw=await response.text();
     if(raw.length<=16000){
      const envelope=JSON.parse(raw);
      const usage=groqResponseUsage(envelope);
      inputTokens=usage?.inputTokens??0;outputTokens=usage?.outputTokens??0;
      const reply=envelope?.choices?.[0];
-     if(reply?.finish_reason!=="length"&&typeof reply?.message?.content==="string"&&reply.message.content.length<=6500)
-      copy=validateWeeklyEditorial(anchors,JSON.parse(reply.message.content));
+     if(reply?.finish_reason==="length")diagnostic="TRUNCATED";
+     else if(typeof reply?.message?.content==="string"&&reply.message.content.length<=6500){
+      try{
+       const decoded=JSON.parse(reply.message.content.trim().replace(/^\s*```(?:json)?\s*|\s*```\s*$/gi,""));
+       const validated=validateWeeklyEditorialDetailed(anchors,decoded);
+       copy=validated.copy;
+       rejectionSummary=Object.entries(validated.issues).sort(([a],[b])=>a.localeCompare(b)).map(([reason,n])=>reason+":"+n).join(",").slice(0,350);
+      }catch{diagnostic="INVALID_JSON";}
+     }else diagnostic="MISSING_CONTENT";
     }
     if(Object.keys(copy).length){
      state="READY";
      diagnostic=anchors.every(a=>{
       const c=copy[a.story.id];
-      return c?.headline&&c.commentary&&c.fans&&(!a.wrestler||c.wrestler);
+      return c?.headline&&c.commentary&&c.fans?.every(Boolean)&&(!a.wrestler||c.wrestler);
      })?"ACCEPTED":"PARTIAL";
     }else if(diagnostic==="INVALID_RESPONSE")diagnostic="NO_VALID_CONTENT";
+    if(rejectionSummary)diagnostic+=" / "+rejectionSummary;
    }
   }
  }catch(error){

@@ -72,7 +72,21 @@ export function projectPopFeed(show:CompletedShowView,reactions:readonly ResultR
  const slots=new Map(show.entries.map(entry=>[entry.slotId,entry]));
  const editorial=show.shortform?.fans?.length?
   readHotTagEditorial(hotTagEditorialAnchors(show),show.shortform.fans):[];
- return reactions.slice(0,8).flatMap(reaction=>{
+ const shared:PopPost[]=[],covered=new Set<string>();
+ for(const thread of show.weeklyPublicThreads??[]){
+  const entry=slots.get(thread.slotId);
+  if(!entry||covered.has(thread.slotId))continue;
+  covered.add(thread.slotId);
+  for(const post of thread.posts.filter(p=>!p.replyTo)){
+   const reply=thread.posts.find(p=>p.replyTo===post.handle);
+   shared.push({slotId:thread.slotId,voice:"THE FRONT ROW",mood:"BUZZ",source:entry.type==="MATCH"?"MATCH":"ANGLE",
+    text:post.text,identity:{handle:post.handle,displayName:post.displayName,avatar:post.avatar},
+    likes:post.likes,comments:post.replies,reposts:post.reposts,emoji:"🔥",
+    ...(reply?{reply:{voice:"THE SKEPTICAL SMARK",text:reply.text},
+     replyIdentity:{handle:reply.handle,displayName:reply.displayName,avatar:reply.avatar}}:{})});
+  }
+ }
+ const local=reactions.filter(r=>!covered.has(r.slotId)).slice(0,8).flatMap(reaction=>{
   const entry=slots.get(reaction.slotId);
   if(!entry)return [];
   const key=show.showId+":"+reaction.slotId+":"+reaction.voice;
@@ -94,4 +108,5 @@ export function projectPopFeed(show:CompletedShowView,reactions:readonly ResultR
    emoji
   }] as PopPost[];
  });
+ return [...shared,...local].slice(0,8);
 }

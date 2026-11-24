@@ -2,6 +2,8 @@
  * At most five bounded indexed reads; no World JSON, client scores or resimulation.
  */
 import type {TransactionPool} from "./transaction.js";
+import {weeklyHotTagThread,weeklyShowMomentSlot,validateWeeklyStoryCopy,type WeeklyStory} from "../domain/weekly-world-editorial.js";
+import type {HotTagNewsPost} from "../domain/hot-tag-news.js";
 import type {RoadAgentReport} from "../domain/road-agent-report.js";
 import {readPostShowVoiceCopy,blendPostShowVoiceCopy,type PostShowVoiceCopy} from "../domain/postshow-voice-batch.js";
 import {readMatchStipulation,stipulationLabel} from "../domain/match-stipulations.js";
@@ -68,6 +70,8 @@ export interface CompletedShowView {
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
  /** One saved event-time 20B bundle; never triggers generation when read. */
  shortform?:PostShowVoiceCopy|null;
+ /** The same public thread as World News, attached only to an exact show slot. */
+ weeklyPublicThreads?:{slotId:string;posts:HotTagNewsPost[]}[];
  audience?:{format:"TV"|"PPV";householdRating:number|null;
   estimatedViewers:number|null;ppvBuys:number|null;
   ratingsWarChange?:number|null;ratingsWarOpponents?:number|null}|null;
@@ -98,7 +102,8 @@ export async function readCompletedShowView(
     production_cost:string|null;travel_cost:string|null;
     appearance_fees:string|null;total_cost:string|null;
     net_result:string|null;incremental_cash:string|null;
-    shortform_json:unknown|null;shortform_state:string|null}>(`
+    shortform_json:unknown|null;shortform_state:string|null;
+    weekly_threads:{story:WeeklyStory;copy:unknown}[]|null}>(`
    SELECT c.receipt_json,d.show_name,d.booking_class,skin.style AS results_skin,
     series_art.style AS event_poster_style,
     bpack.style AS broadcast_package, identity.name AS promotion_name,
@@ -112,7 +117,20 @@ export async function readCompletedShowView(
     report.analysis_json AS staff_report,
     gorilla.log_json AS gorilla_log,
     voices.copy_json AS shortform_json,
-    voices.state AS shortform_state FROM ppw_completed_shows c
+    voices.state AS shortform_state,
+    public_threads.threads AS weekly_threads FROM ppw_completed_shows c
+   LEFT JOIN LATERAL (
+    SELECT jsonb_agg(jsonb_build_object('story',jsonb_build_object(
+     'id',s.story_key,'year',s.year,'week',s.week,'desk',s.desk,'certainty',s.certainty,
+     'promotionId',s.promotion_id,'promotionName',s.promotion_name,'title',s.title,
+     'summary',s.summary,'sourceKind',s.source_kind),'copy',w.copy_json->s.story_key)
+     ORDER BY s.story_key) AS threads
+    FROM ppw_weekly_world_editorial w
+    JOIN ppw_world_news_items s ON s.world_id=w.world_id AND s.year=w.year AND s.week=w.week
+    WHERE w.world_id=c.world_id AND w.year=c.year AND w.week=c.week AND w.state='READY'
+     AND s.show_id=c.show_id AND s.promotion_id=c.promotion_id AND s.desk='OFFICIAL'
+     AND w.copy_json ? s.story_key
+   ) public_threads ON true
    LEFT JOIN ppw_postshow_voice_batches voices ON
     voices.world_id=c.world_id AND voices.promotion_id=c.promotion_id
     AND voices.show_id=c.show_id AND voices.player_id=$2
@@ -470,6 +488,13 @@ export async function readCompletedShowView(
   // No Groq call, publication or extra SQL occurs on a Results GET.
   show.shortform=rows[0]!.shortform_state?
    blendPostShowVoiceCopy(show,accepted):null;
+  const weeklyThreads=(rows[0]!.weekly_threads??[]).flatMap(({story,copy})=>{
+   const slotId=weeklyShowMomentSlot(story,show.showId,show.entries.map(e=>e.slotId));
+   const accepted=validateWeeklyStoryCopy(story,copy);
+   if(!slotId||!accepted?.fans?.some(Boolean))return [];
+   return [{slotId,posts:weeklyHotTagThread(story,accepted).slice(0,3)}];
+  }).slice(0,4);
+  if(weeklyThreads.length)show.weeklyPublicThreads=weeklyThreads;
   return show;
  });
 }

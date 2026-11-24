@@ -9,9 +9,9 @@ import {ringsideProseQualityFailure,impossibleHoldCount,reportedTapInPinfall,uns
 import {MATCH_STIPULATIONS,type MatchStipulation} from "./match-stipulations.js";
 // New writing guidance is independently versioned. Previously published
 // reports stay immutable; an old completed show never needs a fresh API call.
-export const RINGSIDE_PROMPT_VERSION="ringside-v14";
-export const RINGSIDE_PREVIOUS_VERSION="ringside-v13";
-export const RINGSIDE_OLDER_VERSION="ringside-v12";
+export const RINGSIDE_PROMPT_VERSION="ringside-v15";
+export const RINGSIDE_PREVIOUS_VERSION="ringside-v14";
+export const RINGSIDE_OLDER_VERSION="ringside-v13";
 export const RINGSIDE_LEGACY_VERSION="ringside-v4";
 export const RINGSIDE_MODEL="openai/gpt-oss-120b";
 /** Compact, provider-neutral vocabulary. No additional model request, database
