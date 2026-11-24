@@ -24,10 +24,18 @@ test("Staff Office sounds like distinct named colleagues, and opening advice nev
   availableManagers:[],weeklyPayroll:0,promotionCash:200000,
   employees:[],market:[],employmentHistory:[],venues:[],
   meetings:roles,scoutReport:[],notices:[]};
- let reads=0;
+ let reads=0,consultations=0;
  await page.route("**/api/session",r=>r.fulfill({json:session}));
  await page.route("**/api/card",r=>{
-  expect(r.request().postDataJSON().method).toBe("staff");reads++;
+  const method=r.request().postDataJSON().method;
+  if(method==="staffConsultation"){
+   consultations++;
+   return r.fulfill({json:{status:"READY",year:1,week:5,revision:4,items:[
+    {key:"staff-CREATIVE",role:"CREATIVE",staffName:"Emilia Fox",
+     opinion:"I'd rather give the crowd a fresh question than another familiar answer.",
+     suggestion:"Write a fresh scene with a clear motive."}]}});
+  }
+  expect(method).toBe("staff");reads++;
   return r.fulfill({json:staff});
  });
  await page.goto("/#/staff");
@@ -47,6 +55,11 @@ test("Staff Office sounds like distinct named colleagues, and opening advice nev
   "No specialist has been hired");
  await expect(notes.first().locator(".ppw-staff-meeting-boundary")).toBeVisible();
  await expect(notes.nth(2)).toContainText(/never changes/i);
+ expect(consultations).toBe(0);
+ await page.getByRole("button",{name:"Ask staff for their views"}).click();
+ await expect(page.locator(".ppw-staff-consultation")).toContainText("fresh question");
+ await expect(page.locator(".ppw-staff-consultation")).toContainText("Emilia Fox");
+ expect(consultations).toBe(1);
  await notes.nth(2).getByRole("button",{name:"Browse staff for this role"}).click();
  await expect(page.getByRole("button",{name:"Staff Market"}))
   .toHaveAttribute("aria-current","page");

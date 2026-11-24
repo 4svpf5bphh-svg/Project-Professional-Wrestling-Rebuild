@@ -166,7 +166,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    el("p","ppw-staff-muted",
     "What your hired specialists know, what they actually change and where you make the final call."));
   if(port.consult&&view.canEdit&&view.meetings?.some(m=>m.staffName)){
-   const panel=el("section","ppw-staff-meeting-brief"),content=el("div","");
+   const panel=el("section","ppw-staff-panel ppw-staff-consultation"),content=el("div","");
    panel.append(el("strong","","Consult the team"),
     el("p","ppw-staff-muted","One optional free-tier consultation each game week. Existing reports and decisions remain authoritative."));
    const control=button("Ask staff for their views",()=>{
@@ -180,7 +180,7 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
      }
      const items=response.items.filter(i=>!i.mailId);
      for(const item of items){
-      const note=el("article","ppw-staff-meeting-brief");
+      const note=el("article","ppw-staff-consultation-note");
       note.append(el("strong","",item.staffName+" · "+roles(item.role)),
        el("p","ppw-staff-dialogue",item.opinion),
        el("p","ppw-staff-meeting-recommendation",item.suggestion));content.append(note);

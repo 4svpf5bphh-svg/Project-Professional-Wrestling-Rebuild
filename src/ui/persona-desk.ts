@@ -488,7 +488,7 @@ export function mountPersonaDesk(root:HTMLElement,
      chat.append(perspective);
     }
    }
-   if(mail.kind==="STAFF"&&mail.staffDebate&&mail.canDisagree&&!mail.disagreementResponse&&port.consultStaff){
+   if(view.canEdit&&mail.kind==="STAFF"&&mail.staffDebate&&mail.canDisagree&&!mail.disagreementResponse&&port.consultStaff){
     const consultation=el("section","ppw-persona-bubble ppw-persona-in"),details=el("div","");
     const ask=button("Ask both staff for their views",()=>{
      if(ask.disabled)return;
@@ -498,7 +498,7 @@ export function mountPersonaDesk(root:HTMLElement,
       details.replaceChildren();
       const relevant=response.revision===view?.worldRevision?response.items.filter(i=>i.mailId===mail.id):[];
       for(const item of relevant){
-       const note=el("article","ppw-backstage-staff-voice");
+       const note=el("article","ppw-backstage-consultation-voice");
        note.append(el("strong","",item.staffName),el("p","",item.opinion),el("p","",item.suggestion));details.append(note);
       }
       if(!relevant.length)details.append(el("p","","No additional verified views. The original staff positions remain available."));
