@@ -121,6 +121,8 @@ test("Full generation path completes one paid request and exposes correct proven
   calls++;
   const request=JSON.parse(String(init?.body));
   assert.match(request.messages[0].content,/copy a complete line verbatim/);
+  assert.match(request.messages[0].content,/at least two distinct physical exchanges/);
+  assert.match(request.messages[0].content,/not merely paraphrase the director/);
   const slots=Object.fromEntries(raw.slots.map((s,i)=>["card_"+i,{headline:s.headline,recap:s.recap}]));
   return new Response(JSON.stringify({usage:{prompt_tokens:5257,completion_tokens:1450},
    choices:[{finish_reason:"stop",message:{content:JSON.stringify({...raw,slots})}}]}));
@@ -169,4 +171,15 @@ test("Two consecutive authored statements retain their respective speakers",()=>
  assert.equal(restoreTerraAuthoredDialogue(text,entry).unsupported,false);
  assert.equal(restoreTerraAuthoredDialogue("Lane said, ‘I’m not sure you belong here.’",entry).unsupported,false);
  assert.equal(restoreTerraAuthoredDialogue("Stone said, ‘I’m not sure you belong here.’",entry).unsupported,true);
+});
+
+test("W31 natural pinfall wording is locally polished without another request",()=>{
+ const raw=draft();
+ raw.slots[3]!.recap=raw.slots[3]!.recap.replace("secured a clean pinfall","secured a legal cover for three");
+ const out=finalizeTerraEditorial(raw,show);
+ assert.match(out.review.slots[3]!.recap,/made the cover for three/);
+ assert.doesNotMatch(out.review.slots[3]!.recap,/legal cover/);
+ assert.equal(out.diagnostics.slots[3]?.source,"CLEANED");
+ assert.ok(out.diagnostics.slots[3]?.reasons.includes("INTERNAL_LABEL"));
+ validateRingsideCopy(out.review,show,{styleWarningOnly:true});
 });
