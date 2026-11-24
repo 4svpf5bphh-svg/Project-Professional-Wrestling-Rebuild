@@ -1,4 +1,4 @@
-/** A bounded, zero-provider-call editorial desk for manual paid comparisons.
+/** A bounded, zero-provider-call editorial desk for paid Ringside articles.
  * Every returned passage must pass the existing hard factual validator.
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
@@ -149,8 +149,8 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
    if(!sameSlot(s,working.slots[i]!)){working.slots[i]=s;mark(i,"INTERNAL_LABEL");}
   });
  }
- // Keep hard facts; only subjective style/length gates become review warnings
- // in the private paid lab. Groq and live publication retain their rules.
+ // Keep every hard fact gate; subjective style/length warnings do not
+ // trigger another billable request. The Groq pipeline retains its own rules.
  const check=(copy:RingsideCopy,view=show)=>
   validateRingsideCopy(copy,view,{styleWarningOnly:true});
  let verified:RingsideCopy|null=null;

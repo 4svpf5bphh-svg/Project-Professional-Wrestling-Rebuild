@@ -1,6 +1,7 @@
 import {randomUUID} from "node:crypto";
 import type {TransactionPool} from "./transaction.js";
 import {RINGSIDE_PROMPT_VERSION} from "../domain/ringside-editorial.js";
+import {OPENAI_PREVIEW_MODEL} from "./openai-editorial-preview.js";
 import {withWorldTransaction} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {DEFAULT_RINGSIDE_SETTINGS,validateRingsideSettings,
@@ -64,8 +65,11 @@ export async function rearmFailedRingsideReport(pool:TransactionPool,
   throw new Error("Select one completed player-controlled show.");
  return withWorldTransaction(pool,async tx=>{
   await tx.query("SELECT world_id FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId]);
-  const rows=await tx.query<{state:string;attempts:number}>(`
-   SELECT r.state,r.attempts
+  const rows=await tx.query<{state:string;attempts:number;model:string;claim_expired:boolean;published:boolean}>(`
+   SELECT r.state,r.attempts,r.model,r.claim_until<=now() AS claim_expired,
+    EXISTS(SELECT 1 FROM ppw_ringside_reports old
+     WHERE old.world_id=c.world_id AND old.promotion_id=c.promotion_id
+      AND old.show_id=c.show_id AND old.state='READY') AS published
    FROM ppw_completed_shows c
    JOIN ppw_promotion_controls p ON p.world_id=c.world_id
     AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
@@ -77,9 +81,14 @@ export async function rearmFailedRingsideReport(pool:TransactionPool,
    WHERE c.world_id=$1 AND c.show_id=$3 LIMIT 1`,
    [worldId,playerId,showId,RINGSIDE_PROMPT_VERSION]);
   if(rows.length!==1)throw new Error("This is not one of your completed shows.");
-  if(rows[0]?.state==="READY")
+  if(rows[0]?.published||rows[0]?.state==="READY")
    throw new Error("This show already has a published AI report. It will not be rewritten.");
-  if(rows[0]?.state!=="FAILED"||rows[0]?.attempts!==2)
+  const row=rows[0];
+  const paid=row?.model===OPENAI_PREVIEW_MODEL;
+  const exhausted=paid?(row.state==="FAILED"||
+   (row.state==="PENDING"&&row.claim_expired)):
+   row?.state==="FAILED"&&row.attempts===2;
+  if(!exhausted)
    throw new Error("This report has not exhausted its automatic generation attempts.");
   const recent=await tx.query<{event_id:string}>(`
    SELECT event_id FROM ppw_admin_action_audit
@@ -90,8 +99,10 @@ export async function rearmFailedRingsideReport(pool:TransactionPool,
   const deleted=await tx.query<{show_id:string}>(`
    DELETE FROM ppw_ringside_reports
    WHERE world_id=$1 AND show_id=$2 AND prompt_version=$3
-    AND state='FAILED' AND attempts=2 RETURNING show_id`,
-   [worldId,showId,RINGSIDE_PROMPT_VERSION]);
+    AND ((model=$4 AND (state='FAILED' OR
+     (state='PENDING' AND claim_until<=now()))) OR
+     (state='FAILED' AND attempts=2)) RETURNING show_id`,
+   [worldId,showId,RINGSIDE_PROMPT_VERSION,OPENAI_PREVIEW_MODEL]);
   if(deleted.length!==1)throw new Error("The AI report changed. Refresh Admin.");
   await tx.query(`INSERT INTO ppw_admin_action_audit
    (world_id,event_id,player_id,action,context_json)

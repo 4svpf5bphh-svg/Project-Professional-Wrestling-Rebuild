@@ -51,7 +51,7 @@ test("one certified evidence brief contains no private booking instructions",()=
  assert.equal(brief.wrestler?.style,"TECHNICAL");
  assert.equal(brief.roadAgent,null);
  const payload=JSON.stringify(postShowVoicePrompt(brief));
- assert.ok(payload.length<5300,"The batch must stay inexpensive");
+ assert.ok(payload.length<7200,"Expanded fan batch must remain bounded");
  assert.match(payload,/Jett Mercer/);
  assert.match(payload,/Ronan Wolfe/);
  assert.doesNotMatch(payload,/GROQ_API_KEY|DATABASE_URL|private future booking/i);
@@ -91,7 +91,7 @@ test("one 20B request writes all eligible shortform voices without repeated page
   assert.equal(payload.model,"openai/gpt-oss-20b");
   assert.equal(payload.response_format.type,"json_object");
   assert.equal(payload.reasoning_format,"hidden");
-  assert.equal(payload.max_completion_tokens,650);
+  assert.equal(payload.max_completion_tokens,1000);
   assert.ok(String(payload.messages[1].content).includes(show.showId));
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(valid)}}]}),{status:200});
  });
@@ -179,7 +179,7 @@ test("shortform lab validates all three parts from a single 20B fixture response
   async(_url,init)=>{
    count++;
    const body=JSON.parse(String(init?.body));
-   assert.equal(body.max_completion_tokens,650);
+   assert.equal(body.max_completion_tokens,1000);
    assert.equal(body.response_format.type,"json_object");
    assert.equal(body.model,"openai/gpt-oss-20b");
    assert.match(body.messages[1].content,/Ronan Wolfe/);
@@ -202,7 +202,7 @@ test("20B failures expose only categorical diagnostics and never retain rejected
    wrestler:"In character reply",roadAgent:"Practical advice"}),expected:"WRONG_SHAPE"},
   {content:JSON.stringify({news:{headline:"Too short",summary:"Jett Mercer"},
    wrestler:{text:"No"},roadAgent:{note:"No"}}),expected:"ALL_REJECTED"},
-  {content:JSON.stringify(valid),expected:"ACCEPTED"}
+  {content:JSON.stringify(valid),expected:"PARTIAL"}
  ]){
   let calls=0,diagnosis:unknown=null;
   const text=sample.content;
@@ -227,9 +227,10 @@ test("20B failures expose only categorical diagnostics and never retain rejected
    assert.equal(d.roadAgent,"LENGTH_REJECTED");
   }
   assert.deepEqual(Object.keys(d).sort(),
-   ["category","news","wrestler","roadAgent"].sort(),
+   (sample.expected==="INVALID_JSON"?["category","news","wrestler","roadAgent"]:
+    ["category","news","wrestler","roadAgent","fanThreads"]).sort(),
    "Diagnostics contain no Groq prose, error body, names or content");
-  assert.equal(!!result,sample.expected==="ACCEPTED");
+  assert.equal(!!result,sample.expected==="PARTIAL");
  }
  let partial:unknown=null;
  const newsOnly=await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>
@@ -240,7 +241,7 @@ test("20B failures expose only categorical diagnostics and never retain rejected
  assert.equal(newsOnly?.wrestler,null);
  assert.equal(newsOnly?.roadAgent,null);
  assert.deepEqual(partial,{category:"PARTIAL",news:"ACCEPTED",
-  wrestler:"MISSING",roadAgent:"MISSING"});
+  wrestler:"MISSING",roadAgent:"MISSING",fanThreads:{eligible:1,accepted:0,replies:0}});
  let diagnosis:unknown;
  await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>
   new Response("provider unavailable",{status:400}),undefined,
@@ -584,4 +585,91 @@ test("HOT TAG cannot publish or replay the wrong wrestler speaking as a certifie
   "An already-cached impersonation must also be suppressed on read");
  assert.ok(readPostShowVoiceCopy(show,legitimate)?.wrestler,
   "Normal grounded cached reactions remain available");
+});
+
+test("Mixed broadcast validates five independent sources and complete fan debates in one request",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const {projectPopFeed}=await import("../src/domain/pop-social.js");
+ const {showReactionWire}=await import("../src/domain/show-reaction-wire.js");
+ const fixture=getPostShowVoiceBenchmark("mixed-broadcast")!,brief=fixture.brief;
+ assert.equal(fixture.show.entries.length,5);
+ assert.equal(new Set(fixture.show.entries.map(e=>e.slotId)).size,5);
+ assert.equal(brief.mainEvent?.slotId,"mixed-card-4");
+ assert.equal(brief.wrestler?.slotId,"mixed-card-4");
+ assert.equal(brief.roadAgent?.slotId,"mixed-card-2");
+ assert.equal(brief.roadAgent?.issue,"overrun");
+ assert.equal(brief.fans?.length,2);
+ assert.ok(brief.fans?.every(f=>f.replyVoice));
+ const fans=Object.fromEntries(brief.fans!.map((a,i)=>[a.key,{
+  text:i===0?a.participants[0]+" is exactly the sort of wrestler I want to see more of.":
+   a.participants[0]+" deserves a crowd that appreciates the craft, not just the spectacle.",
+  reply:i===0?"Nah, give me something worth cheering about instead of another argument.":
+   "I would rather feel something than sit through a technical exam."
+ }]));
+ const raw={news:valid.news,wrestler:valid.wrestler,
+  roadAgent:{note:"Rey Sol and Marcus Drake need enough time for their closing sequence. Shorten the next card or reserve a longer slot for the team."},fans};
+ let calls=0,diagnostic:unknown;
+ const copy=await generatePostShowVoiceCopy(fixture.show,"dummy",async(url,init)=>{
+  calls++;
+  assert.match(String(url),/api\.groq\.com/);
+  const body=JSON.parse(String(init?.body));
+  assert.equal(body.model,"openai/gpt-oss-20b");
+  assert.equal(body.max_completion_tokens,1000);
+  assert.ok(String(init?.body).length<12500);
+  return new Response(JSON.stringify({choices:[{finish_reason:"stop",message:{content:JSON.stringify(raw)}}]}));
+ },undefined,d=>{diagnostic=d;});
+ assert.equal(calls,1);
+ assert.ok(copy?.news&&copy.wrestler&&copy.roadAgent);
+ assert.equal(copy.fans?.length,2);
+ assert.equal((diagnostic as {category:string}).category,"ACCEPTED");
+ assert.deepEqual(readPostShowVoiceCopy(fixture.show,copy),copy);
+ const projected=projectPopFeed({...fixture.show,shortform:copy},showReactionWire(fixture.show));
+ assert.equal(projected.filter(p=>copy.fans?.some(f=>p.text===f.text&&p.reply?.text===f.reply?.text)).length,2);
+ // A factually wrong headline or unrelated staff pairing must not poison
+ // independent valid voices; the original game keeps its safe local copy.
+ const wrong=validatePostShowVoiceCopy(brief,{
+  ...raw,news:{...raw.news,headline:"Ronan Wolfe defeats Jett Mercer tonight"},
+  roadAgent:{note:"Book a rematch between Rey Sol and Marcus Drake next week to improve the pacing."}
+ });
+ assert.equal(wrong?.news,null);
+ assert.equal(wrong?.roadAgent,null);
+ assert.ok(wrong?.wrestler);
+ assert.equal(wrong?.fans?.length,2);
+ const wrongFan=brief.fans![0]!;
+ const misplaced=validatePostShowVoiceCopy(brief,{fans:{
+  [wrongFan.key]:{text:wrongFan.participants[0]+" and Jett Mercer are the two I want to see together.",
+   reply:"Nah, I would rather see a better contest."}
+ }});
+ assert.equal(misplaced,null);
+});
+test("Shortform failure categories distinguish budget, provider pacing, access and timeout without retries",async()=>{
+ for(const [status,headers,category] of [
+  [429,{"x-ppw-budget-exhausted":"true"},"BUDGET_EXHAUSTED"],
+  [429,{},"RATE_LIMITED"],[401,{},"AUTH_REJECTED"],[403,{},"AUTH_REJECTED"]
+ ] as const){
+  let calls=0,diagnostic:unknown;
+  const result=await generatePostShowVoiceCopy(fixture(),"dummy",async()=>{
+   calls++;return new Response("private provider error body",{status,headers});
+  },undefined,d=>{diagnostic=d;});
+  assert.equal(result,null);assert.equal(calls,1);
+  assert.equal((diagnostic as {category:string}).category,category);
+  assert.doesNotMatch(JSON.stringify(diagnostic),/private provider error body/);
+ }
+ let calls=0,diagnostic:unknown;
+ const result=await generatePostShowVoiceCopy(fixture(),"dummy",async()=>{
+  calls++;throw new DOMException("private network detail","TimeoutError");
+ },undefined,d=>{diagnostic=d;});
+ assert.equal(result,null);assert.equal(calls,1);
+ assert.equal((diagnostic as {category:string}).category,"TIMEOUT");
+});
+
+test("Wrestler speech follows its own certified finish, independent of main-event news",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const brief=getPostShowVoiceBenchmark("i-quit")!.brief;
+ const independent={...brief,mainEvent:{...brief.mainEvent!,slotId:"another-match",finish:"three-count pinfall"}};
+ assert.ok(validatePostShowVoiceCopy(independent,{wrestler:{text:
+  "I made Ronan Wolfe say I quit, and I want everyone to remember exactly what that moment meant tonight."}})?.wrestler);
+ const different={...independent,wrestler:{...brief.wrestler!,finish:"three-count pinfall"}};
+ assert.equal(validatePostShowVoiceCopy(different,{wrestler:{text:
+  "I made Ronan Wolfe say I quit, and I want everyone to remember exactly what that moment meant tonight."}}),null);
 });

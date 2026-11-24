@@ -76,7 +76,29 @@ test("postshow cache stays owner-scoped and a published receipt gets only one Gr
    wrestler:"FACT_OR_VOICE_REJECTED",roadAgent:"ACCEPTED",
    wrestlerReason:"NO_VERIFIED_EVENT"});
   assert.deepEqual(allSamples[1]?.copy,labCopy);
+  const fanAnchor=labFixture.brief.fans?.[0];
+  assert.ok(fanAnchor);
+  const savedFan=await saveShortformVoiceLabRun(db.pool,{
+   worldId:world,playerId:owner,scenarioId:"i-quit",durationMs:1000,
+   providerCalls:1,inputTokens:1100,outputTokens:300,
+   copy:{...labCopy,wrestler:null,fans:[{slotId:fanAnchor.slotId,voice:fanAnchor.voice,
+    text:fanAnchor.participants[0]+" is the reason I care about this rivalry. Give me more of this."}]},
+   diagnostic:{category:"PARTIAL",news:"ACCEPTED",roadAgent:"ACCEPTED",
+    wrestler:"FACT_OR_VOICE_REJECTED",wrestlerReason:"WRONG_SPEAKER",
+    fanThreads:{eligible:1,accepted:1,replies:0}}
+  });
+  assert.equal(savedFan.status,"READY");
+  const fanRun=(await readShortformVoiceLabRuns(db.pool,world,owner))[0]!;
+  assert.equal(fanRun.copy?.fans?.length,1);
+  assert.equal(fanRun.diagnostic?.wrestlerReason,"WRONG_SPEAKER");
+  assert.equal(fanRun.diagnostic?.fanThreads?.accepted,1);
   assert.deepEqual(await readShortformVoiceLabRuns(db.pool,world,"outsider"),[]);
+  const mixedFailure=await saveShortformVoiceLabRun(db.pool,{
+   worldId:world,playerId:owner,scenarioId:"mixed-broadcast",durationMs:16001,
+   providerCalls:1,inputTokens:null,outputTokens:null,copy:null,
+   diagnostic:{category:"TIMEOUT",news:"MISSING",wrestler:"MISSING",roadAgent:"MISSING"}});
+  assert.equal(mixedFailure.status,"FAILED");
+  assert.equal((await readShortformVoiceLabRuns(db.pool,world,owner))[0]?.diagnostic?.category,"TIMEOUT");
 
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`

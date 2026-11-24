@@ -1,6 +1,6 @@
-/** Paid-provider quality comparisons are an operator-only, disabled-by-default
- * side path. They NEVER run from World Lock, public results or ordinary players.
- * All generated prose is still validated by the existing Ringside rules.
+/** Shared metered Terra editorial transport for private comparisons and
+ * authenticated, certified player show reports. Never runs in World Lock.
+ * All generated prose is validated by the existing Ringside rules.
  */
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
@@ -28,6 +28,16 @@ export function estimateTerraPreviewMicropounds(body:string,completionTokens:num
 type BudgetClaim={day:string;estimate:number};
 export function paidPreviewEnabled(env:Record<string,string|undefined>):boolean{
  return env.PPW_ALLOW_PAID_AI_PREVIEW==="YES"&&!!env.OPENAI_API_KEY;
+}
+/** Terra is the live default, using the existing explicit paid opt-in.
+ * Missing credentials or disabled billing never silently spend Groq's quota.
+ * The isolated benchmark host must never publish an article. */
+export function liveRingsideProvider(env:Record<string,string|undefined>):
+ {provider:"GROQ"|"OPENAI";key:string|undefined}{
+ const provider=env.PPW_RESULTS_PROVIDER==="GROQ"?"GROQ":"OPENAI";
+ if(env.PPW_AI_BENCHMARK_PREVIEW==="YES")return {provider,key:undefined};
+ return {provider,key:provider==="GROQ"?env.GROQ_API_KEY:
+  paidPreviewEnabled(env)?env.OPENAI_API_KEY:undefined};
 }
 export async function claimOpenAiPreview(pool:TransactionPool,estimate:number):
  Promise<BudgetClaim|null>{
@@ -100,7 +110,8 @@ async function settleMonthlyPreview(pool:TransactionPool,claim:MonthlyClaim,
   [claim.month,claim.reserved,cost,
    usage?.inputTokens??0,usage?.outputTokens??0]));
 }
-/** Operator-triggered paid tests only. No public results route calls this. */
+/** One metered request; caller must authenticate and claim its certified show
+ * or explicitly authorize a private comparison before invoking this transport. */
 export async function requestOpenAiEditorialPreview(input:{
  key:string;enabled:boolean;body:Record<string,unknown>;
  transport:typeof fetch;pool:TransactionPool;signal?:AbortSignal;

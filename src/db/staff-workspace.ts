@@ -1,3 +1,4 @@
+import {contextualConsultationOptions} from "../domain/staff-consultation.js";
 /** Private Staff Office: two bounded reads, preserving original permissions.
  * Available World staff identities are seeded from the original World seed.
  */
@@ -314,7 +315,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    return {role,staffName:member?.name??null,
     personality:member?.personality??null,
     specialism:member?.specialism??null,
-    ...staffMeetingBrief(role,meetingFacts)};
+    ...staffMeetingBrief(role,meetingFacts),
+    consultationOptions:contextualConsultationOptions(role,meetingFacts)};
   });
   const venues=await tx.query<{venue_id:string;name:string;
    capacity:number|null;weekly_hire_cost:string|null}>(`

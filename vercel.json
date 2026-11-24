@@ -6,6 +6,9 @@
   "functions": {
     "api/admin-preview.ts": {
       "maxDuration": 180
+    },
+    "api/results-commentary.ts": {
+      "maxDuration": 180
     }
   },
   "git": {

@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
-import {postgresPool} from "../src/db/postgres.js";
+import {postgresPool,withSqlClient} from "../src/db/postgres.js";
+import {loadRingsideCommentary} from "../src/db/ringside-commentary.js";
+import {buildVerifiedRingsideFallback,validateRingsideCopy} from "../src/domain/ringside-editorial.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {readRingsideMemory} from "../src/db/ringside-continuity.js";
@@ -118,9 +120,68 @@ test("historic Ringside joins exactly its own settled rivalry chapters and prior
    "Five verified-show reads plus two previous-match reads, not the former eight");
   await assert.rejects(readCompletedShowView(db.pool,{...scope,playerId:"intruder"}),
    /unavailable to this controller/);
+
+  // A certified show traverses the real owner-scoped cache, claim and
+  // publication SQL. Mock provider transport and the global allowance rows
+  // only, because the concurrent budget suite independently verifies them.
+  let monthlyClaims=0,dailyClaims=0,providerCalls=0;
+  const meteredPool:TransactionPool={async connect(){
+   const c=await db.pool.connect();
+   return {release(){c.release();},async query<T extends Record<string,unknown>>(sql:string,args:readonly unknown[]=[]){
+    if(sql.includes("ppw_openai_preview_monthly_usage")){
+     if(sql.includes("INSERT INTO")){monthlyClaims++;return [{month:"2026-11-01"}] as unknown as T[];}
+     return [] as T[];
+    }
+    if(sql.includes("ppw_openai_preview_daily_usage")){
+     if(sql.includes("INSERT INTO")){dailyClaims++;return [{day:"2026-11-24"}] as unknown as T[];}
+     return [] as T[];
+    }
+    return c.query<T>(sql,args);
+   }};
+  }};
+  const draft=buildVerifiedRingsideFallback(view);
+  let entered!:()=>void,unblock!:()=>void;
+  const started=new Promise<void>(resolve=>{entered=resolve;});
+  const held=new Promise<void>(resolve=>{unblock=resolve;});
+  const transport:typeof fetch=async(url,init)=>{
+   providerCalls++;entered();
+   assert.equal(String(url),"https://api.openai.com/v1/chat/completions");
+   const body=JSON.parse(String(init?.body));
+   assert.equal(body.model,"gpt-6.1-terra");
+   assert.equal(body.store,false);
+   await held;
+   return new Response(JSON.stringify({
+    usage:{prompt_tokens:1500,completion_tokens:250},
+    choices:[{message:{content:JSON.stringify({
+     showHeadline:draft.showHeadline,opening:draft.opening,closing:draft.closing,
+     slots:Object.fromEntries(draft.slots.map((s,i)=>["card_"+i,{headline:s.headline,recap:s.recap}]))
+    })}}]
+   }),{status:200});
+  };
+  const first=loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI");
+  try{
+   await Promise.race([started,first.then(()=>{throw Error("Terra transport was not reached");})]);
+   const claim=await withSqlClient(db.pool,tx=>tx.query<{model:string;state:string;attempts:number;lease:number}>(`
+    SELECT model,state,attempts,EXTRACT(EPOCH FROM claim_until-now())::int AS lease
+    FROM ppw_ringside_reports WHERE world_id=$1 AND show_id=$2`,[worldId,scope.showId]));
+   assert.equal(claim[0]?.model,"gpt-6.1-terra");
+   assert.equal(claim[0]?.attempts,1);assert.equal(claim[0]?.state,"PENDING");
+   assert.ok((claim[0]?.lease??0)>150,"Paid lease must outlast provider timeout");
+   assert.deepEqual(await loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI"),
+    {status:"pending"});
+   assert.equal(providerCalls,1,"Concurrent report read must not duplicate the paid request");
+  }finally{unblock();}
+  const published=await first;
+  assert.equal(published.status,"ready");
+  if(published.status==="ready")assert.deepEqual(validateRingsideCopy(published.review,view,
+   {styleWarningOnly:true}),published.review);
+  assert.deepEqual(await loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI"),published);
+  assert.equal(providerCalls,1);assert.equal(monthlyClaims,1);assert.equal(dailyClaims,1);
+  const certified=await readCompletedShowView(db.pool,scope);
+  assert.deepEqual(certified,view,"Editorial publication cannot change the certified results");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_programme_resolved_activities",
+   for(const table of ["ppw_ringside_reports","ppw_programme_resolved_activities",
     "ppw_completed_show_matches","ppw_completed_show_segments","ppw_card_slots",
     "ppw_completed_shows","ppw_booking_drafts","ppw_programme_side_refs",
     "ppw_programmes","ppw_people","ppw_promotion_controls","ppw_memberships",

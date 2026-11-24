@@ -675,6 +675,15 @@ for(const width of [320,390]){
    if(x.method==="markBackstageWorldRead"){
     messages[0]!.read=true;return r.fulfill({json:{readCount:1}});
    }
+   if(x.method==="staffConsultation")return r.fulfill({json:{
+    status:"READY",year:1,week:5,revision,items:[
+     {key:"debate-MEDICAL",mailId,role:"MEDICAL",staffName:dialogue.medical.name,
+      opinion:"I would put a sustainable workload ahead of a dramatic moment every time.",
+      suggestion:"Review recorded workload and clearance before any physical booking."},
+     {key:"debate-CREATIVE",mailId,role:"CREATIVE",staffName:dialogue.creative.name,
+      opinion:"I'd give the audience a new question instead of another familiar answer.",
+      suggestion:"Write a fresh scene with a clear motive and consequence."}
+    ]}});
    if(x.method==="respondBackstageDisagreement"){
     expect(x.mailId).toBe(mailId);expect(x.decision).toBe("PRIORITISE_HEALTH");
     revision=4;messages[0]!.canDisagree=false;
@@ -693,6 +702,11 @@ for(const width of [320,390]){
   await expect(thread.locator(".ppw-backstage-staff-voice").first()).toContainText("Dr Lena Winters");
   await expect(thread.locator(".ppw-backstage-staff-voice").last()).toContainText("Jules Sterling");
   await expect(thread).toContainText("fatigue at 84");
+  expect(calls.filter(x=>x==="staffConsultation")).toHaveLength(0);
+  await page.getByRole("button",{name:"Ask both staff for their views"}).click();
+  await expect(thread.locator(".ppw-backstage-consultation-voice")).toHaveCount(2);
+  await expect(thread).toContainText("sustainable workload");
+  expect(calls.filter(x=>x==="staffConsultation")).toHaveLength(1);
   await page.getByRole("button",{name:"Prioritise medical recovery"}).click();
   await expect(thread.locator(".ppw-backstage-staff-reaction")).toHaveCount(2);
   await expect(thread).toContainText("actual fatigue level after the next World week");

@@ -822,3 +822,46 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+test("A concurrent Terra report shows certified facts without another API request or false failure",async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ let requests=0;
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>r.fulfill({json:r.request().postDataJSON().method==="resultsArchive"?
+  {items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",crowdResponse:84,
+   matchCount:1,angleCount:1}],nextCursor:null}:show}));
+ await page.route("**/api/results-commentary",r=>{
+  requests++;return r.fulfill({status:202,json:{status:"pending"}});
+ });
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await expect(page.locator(".ppw-ringside-ai-status")).toHaveText("AI DISPATCH · IN PROGRESS");
+ await expect(page.locator(".ppw-ringside-slot").first()).toBeVisible();
+ await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
+ expect(requests).toBe(1);
+});
+
+test("Slow Terra delivery leaves the verified match readable before replacing it with the article",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ let requests=0,release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>r.fulfill({json:r.request().postDataJSON().method==="resultsArchive"?
+  {items:[{showId:"omega-night",year:1,week:4,showName:"Dynamite",crowdResponse:84,
+   matchCount:1,angleCount:1}],nextCursor:null}:show}));
+ await page.route("**/api/results-commentary",async r=>{
+  requests++;await held;await r.fulfill({json:{status:"ready",review}});
+ });
+ await page.goto("/#/results");
+ try{
+  await page.getByRole("button",{name:/Read ringside report/}).click();
+  await expect(page.locator(".ppw-ringside-slot").first()).toBeVisible();
+  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
+  await expect(page.locator(".ppw-ringside-await")).toBeVisible();
+  await expect(page.locator(".ppw-results")).not.toHaveClass(/ppw-editorial-ready/);
+ }finally{release();}
+ await expect(page.getByRole("heading",{name:"Omega gives Dynamite its spark"})).toBeVisible();
+ await expect(page.locator(".ppw-ringside-slot").first()).toContainText("One Winged Angel");
+ await expect(page.locator(".ppw-ringside-await")).toHaveCount(0);
+ expect(requests).toBe(1);
+});

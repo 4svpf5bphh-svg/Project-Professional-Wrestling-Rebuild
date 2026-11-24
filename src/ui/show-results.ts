@@ -140,7 +140,12 @@ export async function mountShowResults(root:HTMLElement,port:{
     result.review.slots.length===show.entries.length&&
     result.review.slots.every((slot,i)=>slot.slotId===show.entries[i]?.slotId))
     insertRingsideEditorial(root,show,result.review);
-   else markRingsideFallback(root,show);
+   else if(result.status==="pending"){
+    const status=root.querySelector(".ppw-ringside-ai-status");
+    if(status)status.textContent="AI DISPATCH · IN PROGRESS";
+    const waiting=root.querySelector(".ppw-ringside-await");
+    if(waiting)waiting.textContent="The certified results are available below. Reopen this report later to read the finished article.";
+   }else markRingsideFallback(root,show);
   }).catch(()=>markRingsideFallback(root,show));
   else markRingsideFallback(root,show);
  }catch(e){showError(root,e);}
@@ -447,7 +452,11 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     " / 5 · "+warmth.description));
   }
   const narrative=node("div","ppw-ringside-slot");
-  narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
+  narrative.dataset.slotId=entry.slotId;
+  // A paid full-show article may take considerably longer than the results
+  // read. Keep the certified narrative available from the first render,
+  // including when another request holds the editorial claim.
+  narrative.textContent=shortResultColour(entry,show.showId);
   append(body,narrative);
   // The narrative already tells the authenticated, ordered angle script.
   // Do not show a second, mechanical on-screen moments panel.
@@ -892,7 +901,7 @@ function insertRingsideEditorial(root:HTMLElement,show:CompletedShowView,copy:Ri
   finish.open=false; // The columnist tells the story; the source decision remains one tap away.
  root.classList.add("ppw-editorial-ready");
  const status=region.querySelector(".ppw-ringside-ai-status");
- if(status)status.textContent="GROQ ARTICLE · VERIFIED RECORD";
+ if(status)status.textContent="RINGSIDE ARTICLE · VERIFIED RECORD";
  const headline=region.querySelector(".ppw-final-bell-headline");
  if(headline)headline.textContent=copy.showHeadline;
  region.append(node("p","ppw-final-bell-paragraph",copy.opening));

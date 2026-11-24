@@ -55,3 +55,16 @@ test("HOT TAG theories question reality without asserting actual backstage incid
  assert.ok(outputs.some(x=>/was that even supposed to happen\? 👀/.test(x)));
  assert.ok(outputs.every(x=>!/confirmed real fight|actual backstage altercation/i.test(x)));
 });
+
+test("Recurring fan roles use the wider existing HOT TAG community rather than the same handle every show",()=>{
+ const seen=new Set<string>();
+ for(let i=0;i<50;i++){
+  const s=fixture("John Cena","fan-season-"+i);
+  s.week=(i%52)+1;
+  const posts=projectPopFeed(s,showReactionWire(s));
+  assert.equal(posts.length,1);
+  seen.add(posts[0]!.identity.handle);
+  assert.deepEqual(projectPopFeed(s,showReactionWire(s)),posts);
+ }
+ assert.ok(seen.size>=4,"A season of shows must use multiple accounts for the same fan role");
+});

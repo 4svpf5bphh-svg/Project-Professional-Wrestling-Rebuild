@@ -75,3 +75,39 @@ test("short-term Groq cooldown avoids repeat card expansion and provider request
  assert.deepEqual(await loadRingsideCommentary(x.pool,scope,"fixture"),{status:"pending"});
  assert.equal(x.calls(),1,"shared cooldown needs only one indexed read");
 });
+
+test("Terra live default does not spend Groq when paid access is absent or benchmark host is isolated",async()=>{
+ const {liveRingsideProvider}=await import("../src/db/openai-editorial-preview.js");
+ const env={OPENAI_API_KEY:"paid-fixture",GROQ_API_KEY:"free-fixture",
+  PPW_ALLOW_PAID_AI_PREVIEW:"YES"};
+ assert.deepEqual(liveRingsideProvider(env),{provider:"OPENAI",key:"paid-fixture"});
+ assert.deepEqual(liveRingsideProvider({GROQ_API_KEY:"free-fixture"}),
+  {provider:"OPENAI",key:undefined});
+ assert.deepEqual(liveRingsideProvider({...env,PPW_AI_BENCHMARK_PREVIEW:"YES"}),
+  {provider:"OPENAI",key:undefined});
+ assert.deepEqual(liveRingsideProvider({...env,PPW_RESULTS_PROVIDER:"GROQ"}),
+  {provider:"GROQ",key:"free-fixture"});
+});
+test("Paid report lease and one-shot failure prevent duplicate provider requests on reopen",async()=>{
+ for(const [state,remaining,expected] of [
+  ["PENDING",180000,"pending"],["PENDING",-1000,"unavailable"],["FAILED",-1000,"unavailable"]
+ ] as const){
+  let reads=0;
+  const pool:TransactionPool={async connect(){return {release(){},
+   async query<T extends Record<string,unknown>>(){
+    reads++;assert.equal(reads,1,"Never expand the card after a paid attempt");
+    return [{state,model:"gpt-6.1-terra",attempts:1,report_json:null,
+     claim_until:new Date(Date.now()+remaining).toISOString()}] as unknown as T[];
+   }};}};
+  const never:typeof fetch=async()=>{throw Error("No duplicate API call");};
+  assert.deepEqual(await loadRingsideCommentary(pool,scope,"fixture",never,"OPENAI"),{status:expected});
+  reads=0;
+  assert.deepEqual(await loadRingsideCommentary(pool,scope,"fixture",never,"GROQ"),{status:expected});
+ }
+});
+test("Existing Groq article survives the Terra default without an API call",async()=>{
+ const x=fixture("ready");
+ assert.deepEqual(await loadRingsideCommentary(x.pool,scope,"paid-fixture",
+  async()=>{throw Error("No paid regeneration");},"OPENAI"),{status:"ready",review});
+ assert.equal(x.calls(),1);
+});

@@ -4,7 +4,7 @@
 import {createHash,randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
-import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
+import {requestOpenAiEditorialPreview,OPENAI_PREVIEW_MODEL} from "./openai-editorial-preview.js";
 import {readOpenAiRetryAfter} from "../domain/openai-error-diagnostics.js";
 import {finalizeTerraEditorial} from "../domain/terra-editorial-recovery.js";
 import type {TerraEditorialDiagnostics} from "../domain/terra-editorial-diagnostics.js";
@@ -509,8 +509,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  for(let attempt=0;attempt<(previewProvider==="OPENAI"?1:2);attempt++){
   let secondCallCooldown:number|null=null;
   const controller=new AbortController();
-  // Only the manually requested paid full-show preview receives the longer
-  // deadline. Groq's existing free request timeout and two-call policy stay.
+  // A paid full-show article receives the longer deadline. Groq's free
+  // request timeout and two-call policy stay unchanged.
   const timer=setTimeout(()=>controller.abort(),previewProvider==="OPENAI"?
    TERRA_PREVIEW_TIMEOUT_MS:18000);
   try{
@@ -791,7 +791,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
   "Could not produce an article faithful to the official results.");
 }
 export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
- key:string|undefined,transport:typeof fetch=fetch):Promise<RingsideResponse>{
+ key:string|undefined,transport:typeof fetch=fetch,
+ provider:"GROQ"|"OPENAI"="GROQ"):Promise<RingsideResponse>{
  // Single indexed read enforces active human control and retrieves cached
  // editorial. Reopening an already reviewed show requires no five-query slot
  // expansion, roster fetch, model call, or polling.
@@ -829,17 +830,22 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
   try{return {status:"ready",review:validateCachedRingsideCopy(saved.report_json)};}
   catch{return {status:"unavailable"};}
  }
- if(!key||saved?.attempts>=2)
-  return {status:"unavailable"};
+ if(!key)return {status:"unavailable"};
  if(saved?.state==="PENDING"&&saved.claim_until&&
     new Date(saved.claim_until).getTime()>Date.now())
   return {status:"pending"};
+ // A paid attempt (including an expired/ambiguous lease) is never retried
+ // automatically, even if the operator rolls the provider back to Groq.
+ if(saved?.attempts>=2||saved?.model===OPENAI_PREVIEW_MODEL)
+  return {status:"unavailable"};
  const settings=await readAdminRingsideSettings(pool,scope.worldId);
  const show=await readCompletedShowView(pool,scope);
  const digest=immutableResultDigest(show),params=scoped(scope);
  if(show.entries.length>30||JSON.stringify(ringsideFacts(show)).length>26000)
   return {status:"unavailable"};
- const token=randomUUID(),lease=Date.now()+45000;
+ const model=provider==="OPENAI"?OPENAI_PREVIEW_MODEL:settings.model;
+ const token=randomUUID(),lease=Date.now()+(provider==="OPENAI"?
+  TERRA_PREVIEW_TIMEOUT_MS+30_000:45_000);
  const claimed=await withSqlClient(pool,async db=>db.query<{claim_token:string}>(`
   INSERT INTO ppw_ringside_reports (world_id,promotion_id,show_id,prompt_version,
    receipt_digest,model,state,attempts,claim_token,claim_until)
@@ -849,19 +855,20 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
     attempts=ppw_ringside_reports.attempts+1,
    claim_token=excluded.claim_token,claim_until=excluded.claim_until,
    updated_at=now()
-  WHERE ppw_ringside_reports.attempts<2 AND
+  WHERE ppw_ringside_reports.attempts<2
+   AND ppw_ringside_reports.model<>$9 AND
    (ppw_ringside_reports.state='FAILED' OR
     (ppw_ringside_reports.state='PENDING' AND
       ppw_ringside_reports.claim_until<now()))
    AND ppw_ringside_reports.receipt_digest=excluded.receipt_digest
-  RETURNING claim_token`,[...params,digest,settings.model,token,lease]));
+  RETURNING claim_token`,[...params,digest,model,token,lease,OPENAI_PREVIEW_MODEL]));
  if(claimed[0]?.claim_token!==token)return {status:"pending"};
  try{
   // History is optional context; failure must not block the certified report.
   let memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY;
   try{memory=await readRingsideMemory(pool,scope,show);}
   catch{console.warn("Ringside history unavailable; generating from card facts");}
-  const review=await generateGroqReview(show,key,transport,settings,memory,pool);
+  const review=await generateGroqReview(show,key,transport,settings,memory,pool,provider);
   const write=await withSqlClient(pool,async db=>db.query<{state:string}>(`
    UPDATE ppw_ringside_reports SET state='READY',report_json=$6::jsonb,
     updated_at=now() WHERE world_id=$1 AND promotion_id=$2
@@ -869,7 +876,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
     AND state='PENDING' RETURNING state`,[...params,token,JSON.stringify(review)]));
   return write.length?{status:"ready",review}:{status:"pending"};
  }catch(error){
-  if(error instanceof RingsideGenerationError&&error.code==="PROVIDER_LIMIT"){
+  if(provider==="GROQ"&&error instanceof RingsideGenerationError&&error.code==="PROVIDER_LIMIT"){
    // Shared database cooldown for all app instances; a 429 is not a
    // permanent editorial failure, nor should it exhaust the two attempts.
    await withSqlClient(pool,async db=>db.query(`

@@ -7,8 +7,14 @@ import {chooseGroqModel,estimatedGroqTokens,groqResponseUsage,groqResponseLimits
  type AiTask,type GroqModel,type GroqUsage,type GroqLimitSnapshot} from "../domain/ai-director.js";
 const DAILY_CALLS=40,DAILY_TOKENS=160000;
 export type AiAllowanceClaim={day:string;estimate:number};
-export async function claimAiAllowance(pool:TransactionPool,estimate:number):
+export async function claimAiAllowance(pool:TransactionPool,estimate:number,task?:AiTask):
  Promise<AiAllowanceClaim|null>{
+ // Keep 8 requests / 32k tokens available for short-form publication,
+ // even when experimental Groq Ringside previews consume their allowance.
+ // No increase to the shared free-tier limit; the same atomic row is used.
+ const reserved=task==="RINGSIDE"||task==="STAFF_ADVICE";
+ const calls=reserved?DAILY_CALLS-8:DAILY_CALLS;
+ const tokens=reserved?DAILY_TOKENS-32000:DAILY_TOKENS;
  if(!Number.isSafeInteger(estimate)||estimate<1||estimate>35000)
   throw new Error("AI request exceeds the per-call safety limit");
  const rows=await withSqlClient(pool,db=>db.query<{day:string}>(`
@@ -17,17 +23,17 @@ export async function claimAiAllowance(pool:TransactionPool,estimate:number):
   ON CONFLICT (usage_day) DO UPDATE
   SET call_count=ppw_groq_daily_usage.call_count+1,
    reserved_tokens=ppw_groq_daily_usage.reserved_tokens+EXCLUDED.reserved_tokens
-  WHERE ppw_groq_daily_usage.call_count<${DAILY_CALLS}
-   AND ppw_groq_daily_usage.reserved_tokens+EXCLUDED.reserved_tokens<=${DAILY_TOKENS}
+  WHERE ppw_groq_daily_usage.call_count<${calls}
+   AND ppw_groq_daily_usage.reserved_tokens+EXCLUDED.reserved_tokens<=${tokens}
   RETURNING usage_day::text AS day`,[estimate]));
  return rows[0]?{day:rows[0].day,estimate}:null;
 }
 export async function recordAiAllowance(pool:TransactionPool,claim:AiAllowanceClaim,
  response:{ok:boolean;usage:GroqUsage|null;
-  limits?:GroqLimitSnapshot|null;model?:GroqModel}):Promise<void>{
+  limits?:GroqLimitSnapshot|null;model?:GroqModel;usageUncertain?:boolean}):Promise<void>{
  const usage=response.usage;
  const spent=usage?usage.inputTokens+usage.outputTokens:
-  response.ok?claim.estimate:0;
+  response.ok||response.usageUncertain?claim.estimate:0;
  await withSqlClient(pool,db=>db.query(`
   UPDATE ppw_groq_daily_usage SET
    reserved_tokens=GREATEST(0,reserved_tokens-$2+$3),
@@ -59,23 +65,31 @@ export async function requestGroqEditorial(input:{
  body:Record<string,unknown>;transport:typeof fetch;
  signal?:AbortSignal;pool?:TransactionPool;
 }):Promise<Response>{
+ if(input.signal?.aborted)throw input.signal.reason;
  const chosenModel=chooseGroqModel(input.task,input.preferredModel);
  const body=JSON.stringify({...input.body,model:chosenModel});
  const estimated=estimatedGroqTokens(body,Number(input.body.max_completion_tokens));
  let claim:AiAllowanceClaim|null=null;
  if(input.pool){
-  claim=await claimAiAllowance(input.pool,estimated);
+  claim=await claimAiAllowance(input.pool,estimated,input.task);
   if(!claim)return new Response("PPW free editorial allowance exhausted",{
    status:429,headers:{"retry-after":"1800","x-ppw-budget-exhausted":"true"}});
  }
  let response:Response;
+ if(input.signal?.aborted){
+  if(claim&&input.pool)try{await recordAiAllowance(input.pool,claim,{ok:false,usage:null});}
+  catch{console.warn("Groq usage reconciliation unavailable");}
+  throw input.signal.reason;
+ }
  try{response=await input.transport("https://api.groq.com/openai/v1/chat/completions",{
   method:"POST",signal:input.signal,
   headers:{"authorization":"Bearer "+input.key,"content-type":"application/json"},
   body});
  }catch(e){
   if(claim&&input.pool){
-   try{await recordAiAllowance(input.pool,claim,{ok:false,usage:null});}
+   // Transport failure can occur after Groq has processed tokens. Do not
+   // release an unconfirmed reservation and make room for more requests.
+   try{await recordAiAllowance(input.pool,claim,{ok:false,usage:null,usageUncertain:true});}
    catch{console.warn("Groq usage reconciliation unavailable");}
   }
   throw e;
@@ -88,7 +102,7 @@ export async function requestGroqEditorial(input:{
   }
   const limits=groqResponseLimits(response.headers);
   try{await recordAiAllowance(input.pool,claim,{
-   ok:response.ok,usage,limits,model:chosenModel});}
+   ok:response.ok,usage,limits,model:chosenModel,usageUncertain:response.status>=500});}
   catch{console.warn("Groq usage reconciliation unavailable");}
  }
  return response;

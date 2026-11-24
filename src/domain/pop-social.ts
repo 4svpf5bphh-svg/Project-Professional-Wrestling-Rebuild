@@ -4,6 +4,8 @@
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {ResultReaction,ReactionVoice} from "./show-reaction-wire.js";
+import {hotTagEditorialAnchors,readHotTagEditorial} from "./hot-tag-editorial.js";
+import {HOT_TAG_FAN_ACCOUNTS} from "./hot-tag-news.js";
 
 export interface PopIdentity{handle:string;displayName:string;avatar:string}
 export interface PopPost extends ResultReaction{
@@ -22,6 +24,26 @@ const profiles:Record<ReactionVoice,PopIdentity>={
  "THE RIVALRY ADDICT":{handle:"@FeudEnjoyer",displayName:"Feud Enjoyer",avatar:"🍿"},
  "THE BACK ROW":{handle:"@TheCheapSeats",displayName:"The Cheap Seats",avatar:"😂"}
 };
+
+/** Reuse the existing HOT TAG world-news accounts rather than hardcoding
+ * eight recurring fans into every results screen. Stable per show/voice,
+ * so cached model prose never swaps account when the page is reopened.
+ */
+const personaHandles:Record<ReactionVoice,readonly string[]>={
+ "THE FRONT ROW":["@FrontRowFran","@ScorpioInTheFrontRow","@CrowdNoiseCarl","@BigFightBrian","@HardcamHelen"],
+ "THE SKEPTICAL SMARK":["@WorkratePolice","@SmarkyMcSmark","@BotchSpotter","@MeltzerMaths","@TheFinishWasWrong","@FourPointNineStars"],
+ "THE TAPE TRADER":["@TapeTrader92","@VHSVintageVince","@TerritoryTruther","@ArmchairAgent","@RespectTheMidcard"],
+ "THE DIEHARD":["@BellToBellBen","@WrestlingNan","@TheRealestMark","@WrestlingIsMyTherapy","@OneMoreMatchJanet"],
+ "THE HEEL DEFENDER":["@HeelApologist","@HeelHeatHarry","@CheapHeatMerchant","@RefWasBlind","@AbsolutelyNotAPlant"],
+ "THE CONCERNED FAN":["@RingSideCare","@TowelThrower","@TablesLaddersTea","@BiscuitAndBrawls"],
+ "THE RIVALRY ADDICT":["@FeudEnjoyer","@PromoGoblin","@PopcornAndPain","@BeltCollector","@BookingCommitteeOfOne"],
+ "THE BACK ROW":["@TheCheapSeats","@TurnbuckleTwat","@MumsBasementBooker","@BackRowBec","@NobodyAskedDave","@PiledriverPigeon"]
+};
+function fanIdentity(show:CompletedShowView,voice:ReactionVoice):PopIdentity{
+ const handles=personaHandles[voice];
+ const handle=handles[hash([show.showId,show.year,show.week,voice].join(":"))%handles.length]!;
+ return HOT_TAG_FAN_ACCOUNTS.find(p=>p.handle===handle)??profiles[voice];
+}
 function hash(text:string){
  let value=2166136261;
  for(const ch of text){value^=ch.charCodeAt(0);value=Math.imul(value,16777619);}
@@ -48,6 +70,8 @@ function styleText(post:ResultReaction,entry:ShowResultEntry|undefined,key:strin
 }
 export function projectPopFeed(show:CompletedShowView,reactions:readonly ResultReaction[]):PopPost[]{
  const slots=new Map(show.entries.map(entry=>[entry.slotId,entry]));
+ const editorial=show.shortform?.fans?.length?
+  readHotTagEditorial(hotTagEditorialAnchors(show),show.shortform.fans):[];
  return reactions.slice(0,8).flatMap(reaction=>{
   const entry=slots.get(reaction.slotId);
   if(!entry)return [];
@@ -58,10 +82,12 @@ export function projectPopFeed(show:CompletedShowView,reactions:readonly ResultR
   const emoji=mood==="CONCERN"?"❤️":mood==="COLD"?"💀":
    mood==="BUZZ"?(seed%2?"🔥":"😂"):
    seed%2?"👀":"🤔";
+  const rewrite=editorial.find(f=>f.slotId===reaction.slotId&&f.voice===reaction.voice);
+  const reply=rewrite?.reply&&rewrite.reply.voice===reaction.reply?.voice?rewrite.reply:reaction.reply;
   return [{
-   ...reaction,text:styleText(reaction,entry,key),
-   identity:profiles[reaction.voice],
-   ...(reaction.reply?{replyIdentity:profiles[reaction.reply.voice]}:{}),
+   ...reaction,text:rewrite?.text??styleText(reaction,entry,key),
+   ...(reply?{reply}:{}),identity:fanIdentity(show,reaction.voice),
+   ...(reaction.reply?{replyIdentity:fanIdentity(show,reaction.reply.voice)}:{}),
    likes:base+(seed%1049),
    comments:Math.max(4,Math.round(base/8)+(Math.floor(seed/101)%145)),
    reposts:Math.max(1,Math.round(base/12)+(Math.floor(seed/13)%187)),

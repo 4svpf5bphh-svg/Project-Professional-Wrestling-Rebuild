@@ -479,6 +479,7 @@ export function mountCollectionPage(root:HTMLElement,scope:Scope){
 function staffPort(root:HTMLElement,scope:Scope,
  call:ReturnType<typeof createCardClient>):StaffPort{
  return {load:()=>call("staff"),
+  consult:()=>call("staffConsultation"),
   save:input=>call("setStaffContinuity",input),
   saveGorilla:input=>call("setGorillaPolicy",input),
   hire:input=>call("hireStaff",input),
@@ -920,6 +921,7 @@ function personaPort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope):PersonaDeskPort{
  return {
   load:personId=>call("backstage",personId?{personId}:{inboxOnly:true}),
+  consultStaff:()=>call("staffConsultation"),
   markRead:personId=>call("markBackstageRead",{personId}),
   markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),
   chooseStoryFollowUp:input=>call("chooseBackstageStoryFollowUp",input),

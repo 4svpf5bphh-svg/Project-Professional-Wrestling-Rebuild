@@ -33,20 +33,20 @@ export async function saveShortformVoiceLabRun(pool:TransactionPool,input:Input)
  const copy=input.copy?readPostShowVoiceCopy(fixture.show,input.copy):null;
  if(input.copy&&!copy)throw new Error("Voice lab facts did not match immutable fixture");
  const raw=copy?JSON.stringify(copy):null;
- if(raw&&raw.length>3600)throw new Error("Voice lab sample too large");
+ if(raw&&raw.length>5200)throw new Error("Voice lab sample too large");
  const status=copy?"READY":"FAILED";
  const errorCode=copy?null:input.errorCode??"NO_ACCEPTED_COPY";
  if(!copy&&!["NO_ACCEPTED_COPY","PROVIDER_ERROR","UNKNOWN"].includes(errorCode!))
   throw new Error("Invalid safe voice lab failure code");
  const categories=[
   "ACCEPTED","PARTIAL","ALL_REJECTED","WRONG_SHAPE","HTTP_REJECTED",
-  "INVALID_ENVELOPE","EMPTY_CONTENT","INVALID_JSON","TRUNCATED",
+  "BUDGET_EXHAUSTED","RATE_LIMITED","AUTH_REJECTED","TIMEOUT","INVALID_ENVELOPE","EMPTY_CONTENT","INVALID_JSON","TRUNCATED",
   "OVERSIZED","PROVIDER_ERROR"
  ];
  const labels=["ACCEPTED","MISSING","FORMAT_REJECTED","LENGTH_REJECTED",
   "FACT_OR_VOICE_REJECTED"];
  const wrestlerReasons=["NO_SOURCE","NO_VERIFIED_EVENT","SELF_SURRENDER",
-  "FALSE_LOSS","NO_FIRST_PERSON","DUPLICATE","BLOCKED_PROSE","UNCLASSIFIED"];
+  "FALSE_LOSS","WRONG_SPEAKER","NO_FIRST_PERSON","DUPLICATE","BLOCKED_PROSE","UNCLASSIFIED"];
  const d=input.diagnostic;
  if(d&&(!categories.includes(d.category)||!labels.includes(d.news)||
   !labels.includes(d.wrestler)||!labels.includes(d.roadAgent)||
@@ -54,9 +54,15 @@ export async function saveShortformVoiceLabRun(pool:TransactionPool,input:Input)
    (d.wrestler!=="FACT_OR_VOICE_REJECTED"||
     !wrestlerReasons.includes(d.wrestlerReason)))))
   throw new Error("Invalid categorical voice diagnostic");
+ const fan=d?.fanThreads;
+ if(fan&&(![fan.eligible,fan.accepted,fan.replies].every(n=>Number.isSafeInteger(n)&&n>=0&&n<=2)||
+  fan.replies>fan.accepted||fan.accepted>fan.eligible||
+  fan.accepted!==(copy?.fans?.length??0)||fan.replies!==(copy?.fans?.filter(x=>x.reply).length??0)))
+  throw new Error("Invalid fan editorial diagnostic");
  const diagnostics=d?JSON.stringify({
   category:d.category,news:d.news,wrestler:d.wrestler,roadAgent:d.roadAgent,
-  ...(d.wrestlerReason?{wrestlerReason:d.wrestlerReason}:{})
+  ...(d.wrestlerReason?{wrestlerReason:d.wrestlerReason}:{}),
+  ...(fan?{fanThreads:{eligible:fan.eligible,accepted:fan.accepted,replies:fan.replies}}:{})
  }):null;
  const runId=randomUUID();
  await withSqlClient(pool,db=>db.query(`
