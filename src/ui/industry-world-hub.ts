@@ -904,7 +904,9 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const content=el("div","ppw-hot-tag-thread-body");
     content.append(el("div","ppw-hot-tag-brand",
      HOT_TAG_NAME+"  /  "+HOT_TAG_TAGLINE));
-    const verified=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
+    const wrestler=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
+    const verified=wrestler&&story.editorial?.wrestler?.personId===wrestler.personId?
+     {...wrestler,text:story.editorial.wrestler.text}:wrestler;
     const broadcaster=projectHotTagBroadcasterPost(story);
     const posts=[...(broadcaster?[broadcaster]:[]),
      ...(verified?[verified]:[]),...weeklyHotTagThread(story,story.editorial)];

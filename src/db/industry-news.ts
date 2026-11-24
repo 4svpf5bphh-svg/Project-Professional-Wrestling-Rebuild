@@ -3,6 +3,7 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
+import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js";
 import {validateWeeklyStoryCopy,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
 export async function readIndustryWorldNews(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
@@ -57,7 +58,14 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
      AND b.year=i.year AND b.week=i.week AND b.state='READY'
     WHERE i.world_id=$1 AND (i.year,i.week)>=($2::integer,$3::integer)
      AND (i.year,i.week)<=($4::integer,$5::integer)
-    ORDER BY i.year DESC,i.week DESC,i.desk,i.story_key LIMIT 130`,params),
+    UNION ALL
+    SELECT b.year,b.week,b.rating_story->>'id','OFFICIAL','CONFIRMED',
+     b.rating_story->>'promotionId',b.rating_story->>'promotionName','',
+     b.rating_story->>'title',b.rating_story->>'summary','RATINGS',
+     b.copy_json->(b.rating_story->>'id')
+    FROM ppw_weekly_world_editorial b WHERE b.world_id=$1 AND b.rating_story IS NOT NULL
+     AND (b.year,b.week)>=($2::integer,$3::integer) AND (b.year,b.week)<=($4::integer,$5::integer)
+    ORDER BY year DESC,week DESC,desk,story_key LIMIT 130`,params),
    // Annual best-of can be certified only after every one of the 52 World
    // weeks has a durable publication checkpoint. Existing midyear saves
    // must not award a title using incomplete history.
@@ -125,7 +133,9 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
    const story={year:s.year,week:s.week,id:s.story_key,desk:s.desk,certainty:s.certainty,
     promotionId:s.promotion_id,promotionName:s.promotion_name,
     showId:s.show_id,title:s.title,summary:s.summary,sourceKind:s.source_kind};
-   const copy=validateWeeklyStoryCopy(story,s.editorial);
+   const speaker=projectHotTagNewsWrestlerPost(story,awards.map(a=>({year:a.year,week:a.week,kind:a.kind,
+    promotionId:a.promotion_id,showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names})));
+   const copy=validateWeeklyStoryCopy(story,s.editorial,speaker);
    const editorial:{editorial?:WeeklyStoryCopy}=copy?{editorial:copy}:{};
    return {...story,...editorial};
   })};

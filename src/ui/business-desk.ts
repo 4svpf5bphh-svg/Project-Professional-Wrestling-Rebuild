@@ -701,6 +701,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     el("p","ppw-business-muted",
      "Latest certified TV episode per promotion · past six weeks"));
    section.append(header);
+   if(view.ratingsEditorial){
+    const edition=view.ratingsEditorial,editorial=el("aside","ppw-ratings-circuit ppw-ratings-editorial");
+    editorial.append(el("span","ppw-business-kicker","WORLD TV WATCH · Y"+edition.year+" W"+edition.week),
+     el("h3","",edition.headline??edition.title),el("p","ppw-business-muted",edition.summary));
+    if(edition.commentary)editorial.append(el("small","ppw-business-muted","EDITORIAL OPINION"),el("p","",edition.commentary));
+    section.append(editorial);
+   }
    // Small human promotions compete for genuine attendance, exposure and
    // their circuit standing long before a network sells them a TV slot.
    const circuit=view.competition;

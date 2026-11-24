@@ -67,7 +67,8 @@ export async function requestGroqEditorial(input:{
  signal?:AbortSignal;pool?:TransactionPool;pace?:boolean;
 }):Promise<Response>{
  const paced=input.pace??(process.env.VERCEL_ENV==="production"||process.env.VERCEL_ENV==="preview");
- if(!paced||!input.pool)return requestGroqUnpaced(input);
+ if(!paced)return requestGroqUnpaced(input);
+ if(!input.pool)return new Response("PPW Groq shared allowance unavailable",{status:503});
  const pool=input.pool;
  const estimated=estimatedGroqTokens(JSON.stringify({...input.body,model:chooseGroqModel(input.task,input.preferredModel)}),Number(input.body.max_completion_tokens));
  if(estimated>7600)return new Response("PPW minute token envelope exceeded",{status:429,headers:{"retry-after":"65","x-ppw-paced":"true"}});
@@ -80,12 +81,21 @@ export async function requestGroqEditorial(input:{
   WHERE ppw_groq_dispatch_gate.next_allowed_at<=clock_timestamp()
   RETURNING id`,[lease]));
  if(!claimed.length)return new Response("PPW Groq cooling down",{status:429,headers:{"retry-after":"65","x-ppw-paced":"true"}});
- try{return await requestGroqUnpaced(input);}
+ let cooldown=65;
+ try{
+  const response=await requestGroqUnpaced(input);
+  if(response.status===429){
+   const retry=response.headers.get("retry-after");
+   const seconds=retry&&/^\d+$/.test(retry)?Number(retry):retry?Math.ceil((Date.parse(retry)-Date.now())/1000):NaN;
+   if(Number.isFinite(seconds))cooldown=Math.max(cooldown,Math.min(86400,seconds));
+  }
+  return response;
+ }
  finally{
   // Fence the claim; a dead invocation expires and cannot release a newer lease.
   try{await withSqlClient(pool,db=>db.query(`
-   UPDATE ppw_groq_dispatch_gate SET next_allowed_at=clock_timestamp()+interval '65 seconds'
-   WHERE id=1 AND lease_id=$1`,[lease]));}catch{/* lease expires conservatively */}
+   UPDATE ppw_groq_dispatch_gate SET next_allowed_at=clock_timestamp()+($2::integer*interval '1 second')
+   WHERE id=1 AND lease_id=$1`,[lease,cooldown]));}catch{/* lease expires conservatively */}
  }
 }
 async function requestGroqUnpaced(input:{

@@ -9,6 +9,7 @@ import {earnedPromotionIdentity} from "../domain/earned-promotion-identity.js";
 import {assessBroadcastNetwork} from "../domain/broadcast-network-review.js";
 import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
  from "./promotion-competition.js";
+import {readWeeklyRatingsStory,validateWeeklyStoryCopy,WEEKLY_RATINGS_STORY} from "../domain/weekly-world-editorial.js";
 import {recentFinanceSql,type FinanceLine,type FinanceEntry} from "./business-financial-activity.js";
 
 export async function readBusinessWorkspace(pool:TransactionPool,scope:{
@@ -31,6 +32,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    standing_business:number|null;standing_talent:number|null;
    standing_year:number|null;
    cp:PromotionCompetitionCard|null;
+   ratings_editorial:{year:number;week:number;story:unknown;copy:unknown}|null;
    finance_event_count:number;finance_categories:FinanceLine[];
    finance_recent:FinanceEntry[];
    commercial_deals:{dealId:string;kind:"BROADCAST"|"SPONSOR";offerCode:string;
@@ -81,6 +83,10 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      standing.last_evaluated_year AS standing_year,
      ${promotionCompetitionProjectionSql("w.world_id","p.promotion_id")}
       AS cp,
+     (SELECT jsonb_build_object('year',b.year,'week',b.week,'story',b.rating_story,'copy',b.copy_json->$4)
+      FROM ppw_weekly_world_editorial b WHERE b.world_id=w.world_id
+       AND (b.year,b.week)<(w.year,w.week)
+      ORDER BY b.year DESC,b.week DESC LIMIT 1) AS ratings_editorial,
      financial.finance_event_count,financial.finance_categories,financial.finance_recent,
      CASE WHEN plan.world_id IS NULL THEN NULL ELSE jsonb_build_object(
       'weeklyWageLimit',plan.weekly_wage_limit::double precision,
@@ -139,7 +145,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    LEFT JOIN ppw_promotion_spending_plans plan
     ON plan.world_id=p.world_id AND plan.promotion_id=p.promotion_id
    ${recentFinanceSql}
-   WHERE w.world_id=$1`,[worldId,playerId,promotionId]);
+   WHERE w.world_id=$1`,[worldId,playerId,promotionId,WEEKLY_RATINGS_STORY]);
   if(rows.length!==1)throw new Error("Business access denied");
   const w=rows[0]!;
   // A bounded SQL candidate set must never masquerade as a full activity total.
@@ -308,7 +314,14 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
   const earnedOffers=allQualified.filter(offer=>
    !w.commercial_deals.some(d=>d.kind===offer.kind)&&
    !w.world_partner_claims.some(held=>held.offerCode===offer.code));
+  const edition=w.ratings_editorial;
+  const ratingStory=edition?readWeeklyRatingsStory(edition.story,edition.year,edition.week):null;
+  const ratingCopy=ratingStory&&edition?validateWeeklyStoryCopy(ratingStory,edition.copy):null;
+  const ratingsEditorial:{ratingsEditorial?:{year:number;week:number;title:string;summary:string;headline?:string;commentary?:string}}=
+   ratingStory?{ratingsEditorial:{year:ratingStory.year,week:ratingStory.week,title:ratingStory.title,summary:ratingStory.summary,
+    ...(ratingCopy?.headline&&ratingCopy.commentary?{headline:ratingCopy.headline,commentary:ratingCopy.commentary}:{})}}:{};
   return {
+   ...ratingsEditorial,
    name:w.name,tier:w.tier,year:w.year,week:w.week,phase:w.phase,
    competition:w.cp??null,
    kpBrandStyle:w.kp_style,creativeIdentity,
