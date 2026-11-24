@@ -62,7 +62,7 @@ export async function saveShortformVoiceLabRun(pool:TransactionPool,input:Input)
  const diagnostics=d?JSON.stringify({
   category:d.category,news:d.news,wrestler:d.wrestler,roadAgent:d.roadAgent,
   ...(d.wrestlerReason?{wrestlerReason:d.wrestlerReason}:{}),
-  ...(fan?{fanThreads:fan}:{})
+  ...(fan?{fanThreads:{eligible:fan.eligible,accepted:fan.accepted,replies:fan.replies}}:{})
  }):null;
  const runId=randomUUID();
  await withSqlClient(pool,db=>db.query(`

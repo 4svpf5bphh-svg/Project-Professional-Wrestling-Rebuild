@@ -65,3 +65,28 @@ test("A failed fan response leaves the entire original deterministic feed intact
  assert.equal(copy,null);
  assert.deepEqual(projectPopFeed({...show,shortform:blendPostShowVoiceCopy(show,copy)},showReactionWire(show)),original);
 });
+
+test("Two-person threads are accepted or fall back as a complete conversation",()=>{
+ const anchor={key:"f0",slotId:"main",voice:"THE HEEL DEFENDER" as const,
+  replyVoice:"THE SKEPTICAL SMARK" as const,participants:["Místico","William Regal"],
+  subject:"Místico and William Regal",context:"A disputed finish"};
+ const lead="Místico is the reason I love a proper wrestling villain.";
+ assert.deepEqual(validateHotTagEditorial([anchor],{f0:{text:lead}}),[]);
+ assert.deepEqual(validateHotTagEditorial([anchor],{f0:{text:lead,reply:"Regal signed a contract today and I love it."}}),[]);
+ const full=validateHotTagEditorial([anchor],{f0:{text:lead,
+  reply:"Nah, I would rather see a proper contest."}});
+ assert.equal(full.length,1);assert.equal(full[0]?.reply?.voice,anchor.replyVoice);
+ assert.deepEqual(readHotTagEditorial([anchor],full),full);
+});
+test("Missing fan output is explicitly recorded even when the news is accepted",async()=>{
+ const show=fixture();let diagnostic:unknown;
+ const result=await generatePostShowVoiceCopy(show,"dummy",async()=>new Response(JSON.stringify({
+  choices:[{message:{content:JSON.stringify({news:{
+   headline:"Mercer gets the final answer",
+   summary:"Jett Mercer defeated Ronan Wolfe in their I Quit match by verbal surrender. The contest gave the crowd plenty to discuss."
+  }})}}]
+ })),undefined,d=>{diagnostic=d;});
+ assert.ok(result?.news);
+ assert.equal((diagnostic as {category:string}).category,"PARTIAL");
+ assert.equal((diagnostic as {fanThreads:{accepted:number}}).fanThreads.accepted,0);
+});

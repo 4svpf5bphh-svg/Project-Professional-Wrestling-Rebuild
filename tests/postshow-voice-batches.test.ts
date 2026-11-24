@@ -179,7 +179,7 @@ test("shortform lab validates all three parts from a single 20B fixture response
   async(_url,init)=>{
    count++;
    const body=JSON.parse(String(init?.body));
-   assert.equal(body.max_completion_tokens,650);
+   assert.equal(body.max_completion_tokens,1000);
    assert.equal(body.response_format.type,"json_object");
    assert.equal(body.model,"openai/gpt-oss-20b");
    assert.match(body.messages[1].content,/Ronan Wolfe/);

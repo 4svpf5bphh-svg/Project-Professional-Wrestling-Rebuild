@@ -67,8 +67,10 @@ export function validateHotTagEditorial(anchors:readonly HotTagEditorialAnchor[]
   const reply=accepted&&response&&!used.has(normalize(response))&&anchor.replyVoice?
    {voice:anchor.replyVoice,text:response}:undefined;
   if(reply)used.add(normalize(reply.text));
-  if(accepted)copy.push({slotId:anchor.slotId,voice:anchor.voice,text:accepted,
-   ...(reply?{reply}:{})});
+  // Treat a two-person conversation as a unit. Never combine a model
+  // opinion with an unrelated deterministic answer.
+  if(accepted&&(!anchor.replyVoice||reply))copy.push({
+   slotId:anchor.slotId,voice:anchor.voice,text:accepted,...(reply?{reply}:{})});
  }
  return copy;
 }

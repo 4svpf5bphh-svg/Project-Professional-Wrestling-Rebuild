@@ -175,7 +175,7 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
  ])) as Pick<ShortformVoiceDiagnostic,"news"|"wrestler"|"roadAgent">;
  const anyPresent=fields.some(field=>text[field]!==undefined&&text[field]!==null)||isRecord(text.fans);
  const structured=fields.some(field=>isRecord(text[field])||text[field]===null)||isRecord(text.fans);
- const fanThreads=isRecord(text.fans)?{eligible:source.fans?.length??0,
+ const fanThreads=source.fans?.length?{eligible:source.fans.length,
   accepted:copy?.fans?.length??0,replies:copy?.fans?.filter(f=>!!f.reply).length??0}:undefined;
  const expected={news:!!source.mainEvent,wrestler:!!source.wrestler,
   roadAgent:!!source.roadAgent};
