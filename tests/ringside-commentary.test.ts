@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {generateGroqReview,inspectRingsidePrompt,immutableResultDigest,ringsideResponseSchema,ringsidePlainTextLabels,decodeRingsidePlainText,diagnoseGroqBadRequest,RingsideGenerationError} from "../src/db/ringside-commentary.js";
 import type {CompletedShowView} from "../src/db/show-results-view.js";
 import {DEFAULT_RINGSIDE_SETTINGS} from "../src/domain/ringside-settings.js";
+import {TERRA_PREVIEW_TIMEOUT_MS,ADMIN_PREVIEW_MAX_DURATION_SECONDS}
+ from "../src/domain/paid-editorial-policy.js";
+import {readFileSync} from "node:fs";
 const show:CompletedShowView={showId:"show",year:1,week:2,crowdResponse:71,
  matchCount:1,angleCount:0,entries:[{slotId:"m",position:0,type:"MATCH",
  headline:"Omega wins",summary:"Clean pinfall",outcome:"CLEAN_PIN",
@@ -853,4 +856,78 @@ test("PPW's own budget 429 is not confused with an OpenAI provider error",async(
   e.message.includes("PPW's private Terra preview allowance")&&
   e.message.includes("No OpenAI request was made"));
  assert.equal(calls,0);
+});
+
+test("Admin function provides cleanup headroom beyond the Terra generation deadline",()=>{
+ const config=JSON.parse(readFileSync(new URL("../vercel.json",import.meta.url),"utf8"));
+ assert.equal(config.functions["api/admin-preview.ts"].maxDuration,
+  ADMIN_PREVIEW_MAX_DURATION_SECONDS);
+ assert.equal(TERRA_PREVIEW_TIMEOUT_MS,150000);
+ assert.ok(ADMIN_PREVIEW_MAX_DURATION_SECONDS*1000-TERRA_PREVIEW_TIMEOUT_MS>=30000);
+ assert.equal(config.crons,undefined,"Never schedule World Lock from a preview release");
+});
+test("Terra accepts a complete article delivered AFTER the old 28-second deadline",async t=>{
+ t.mock.timers.enable({apis:["setTimeout"]});
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-24"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
+  return [];
+ }})};
+ let started!:()=>void;const ready=new Promise<void>(resolve=>{started=resolve;});
+ let finish!:(response:Response)=>void;
+ let signal:AbortSignal|null|undefined;let calls=0;
+ const pending=generateGroqReview(show,"fixture",async(_url,init)=>{
+  calls++;signal=init?.signal;started();
+  return new Promise<Response>((resolve,reject)=>{
+   finish=resolve;
+   signal?.addEventListener("abort",()=>reject(signal?.reason),{once:true});
+  });
+ },undefined,undefined,pool as never,"OPENAI");
+ await ready;
+ t.mock.timers.tick(31000);
+ assert.equal(signal?.aborted,false,"The old 28s abort must not terminate Terra");
+ finish(new Response(JSON.stringify({
+  usage:{prompt_tokens:5100,completion_tokens:1760},
+  choices:[{finish_reason:"stop",message:{content:JSON.stringify({
+   showHeadline:review.showHeadline,opening:review.opening,closing:review.closing,
+   slots:{card_0:{headline:review.slots[0]!.headline,recap:review.slots[0]!.recap}}
+  })}}]
+ })));
+ const out=await pending;
+ assert.equal(out.slots[0]?.slotId,"m");
+ assert.equal(calls,1,"Wait for the original paid request; no new call");
+});
+test("Terra deadline aborts and settles exactly one ambiguous paid attempt",async t=>{
+ t.mock.timers.enable({apis:["setTimeout"]});
+ const updates:string[]=[];
+ const pool={connect:async()=>({release(){},async query(sql:string){
+  if(sql.includes("INSERT INTO ppw_openai_preview_daily_usage"))
+   return [{day:"2026-11-24"}];
+  if(sql.includes("INSERT INTO ppw_openai_preview_monthly_usage"))
+   return [{month:"2026-11-01"}];
+  if(sql.includes("UPDATE ppw_openai_preview"))updates.push(sql);
+  return [];
+ }})};
+ let started!:()=>void;const ready=new Promise<void>(resolve=>{started=resolve;});
+ let signal:AbortSignal|null|undefined;let calls=0;
+ const pending=generateGroqReview(show,"fixture",async(_url,init)=>{
+  calls++;signal=init?.signal;started();
+  return new Promise<Response>((_resolve,reject)=>{
+   signal?.addEventListener("abort",()=>reject(signal?.reason),{once:true});
+  });
+ },undefined,undefined,pool as never,"OPENAI");
+ const rejected=assert.rejects(pending,(error:unknown)=>
+  error instanceof RingsideGenerationError&&error.code==="TIMEOUT"&&
+  error.message.includes("150 seconds")&&error.message.includes("did not retry"));
+ await ready;
+ t.mock.timers.tick(TERRA_PREVIEW_TIMEOUT_MS-1);
+ assert.equal(signal?.aborted,false);
+ t.mock.timers.tick(1);
+ await rejected;
+ assert.equal(signal?.aborted,true);
+ assert.equal(calls,1);
+ assert.equal(updates.filter(x=>x.includes("monthly_usage")).length,1);
+ assert.equal(updates.filter(x=>x.includes("daily_usage")).length,1);
 });

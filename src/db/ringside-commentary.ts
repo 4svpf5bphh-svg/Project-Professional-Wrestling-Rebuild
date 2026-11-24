@@ -6,6 +6,8 @@ import {withSqlClient} from "./postgres.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
 import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
 import {readOpenAiRetryAfter} from "../domain/openai-error-diagnostics.js";
+import {TERRA_PREVIEW_TIMEOUT_MS,TERRA_DAILY_PREVIEW_ATTEMPTS}
+ from "../domain/paid-editorial-policy.js";
 import {readAdminRingsideSettings} from "./admin-ringside-settings.js";
 import {DEFAULT_RINGSIDE_SETTINGS,ringsideVoiceInstruction,type RingsideSettings}
  from "../domain/ringside-settings.js";
@@ -495,7 +497,10 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  for(let attempt=0;attempt<(previewProvider==="OPENAI"?1:2);attempt++){
   let secondCallCooldown:number|null=null;
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),previewProvider==="OPENAI"?28000:18000);
+  // Only the manually requested paid full-show preview receives the longer
+  // deadline. Groq's existing free request timeout and two-call policy stay.
+  const timer=setTimeout(()=>controller.abort(),previewProvider==="OPENAI"?
+   TERRA_PREVIEW_TIMEOUT_MS:18000);
   try{
    const payload=ringsideRequestPayload(show,settings,facts,correction,
     benchmarkFixture,previewProvider,groqJsonCompatibility);
@@ -551,7 +556,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
      // mistaken for an OpenAI billing or pacing error.
      if(response.headers.get("x-ppw-budget-exhausted")==="true")
       throw new RingsideGenerationError("PROVIDER_LIMIT",
-       "PPW's private Terra preview allowance is exhausted (two attempts/day or "+
+       "PPW's private Terra preview allowance is exhausted (up to "+
+       TERRA_DAILY_PREVIEW_ATTEMPTS+" attempts/day, daily token ceiling or "+
        "£3 conservatively charged/reserved per month). No OpenAI request was made. "+
        "Official show results are unchanged.");
      const kind=response.headers.get("x-ppw-openai-error-kind");
@@ -727,7 +733,11 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
     throw e;
    }
    if(controller.signal.aborted)throw new RingsideGenerationError("TIMEOUT",
-    providerLabel+" took too long to deliver a complete review. Try again with shorter length or lower reasoning.");
+    previewProvider==="OPENAI"?
+     "Terra did not finish within "+TERRA_PREVIEW_TIMEOUT_MS/1000+
+      " seconds. PPW stopped the request, saved the timeout and did not retry. "+
+      "If OpenAI reported no usage, the conservative reservation remains. Check API usage before another paid preview.":
+     providerLabel+" took too long to deliver a complete review. Try again with shorter length or lower reasoning.");
    if(e instanceof SyntaxError){
     console.warn("Ringside Groq response could not be decoded","JSON_SYNTAX",attempt+1);
     if(attempt===0&&previewProvider==="GROQ"){

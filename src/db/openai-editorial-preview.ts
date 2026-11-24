@@ -8,7 +8,11 @@ import {estimatedGroqTokens,groqResponseUsage,type GroqUsage} from "../domain/ai
 import {classifyOpenAiProviderError,refundKnownProviderRejection}
  from "../domain/openai-error-diagnostics.js";
 export const OPENAI_PREVIEW_MODEL="gpt-6.1-terra";
-const MAX_DAILY_REQUESTS=2,MAX_DAILY_ESTIMATE=50000,MAX_REQUEST_ESTIMATE=25000;
+import {TERRA_DAILY_PREVIEW_ATTEMPTS,TERRA_DAILY_TOKEN_BUDGET,
+ TERRA_PER_REQUEST_TOKEN_BUDGET} from "../domain/paid-editorial-policy.js";
+const MAX_DAILY_REQUESTS=TERRA_DAILY_PREVIEW_ATTEMPTS,
+ MAX_DAILY_ESTIMATE=TERRA_DAILY_TOKEN_BUDGET,
+ MAX_REQUEST_ESTIMATE=TERRA_PER_REQUEST_TOKEN_BUDGET;
 // Pessimistic GBP valuation: double the $1/$5 per-MTok standard Terra
 // rates and treat $1 as £1. The over-reservation covers normal FX/VAT
 // fluctuations, prompt-token uncertainty and retries that never run.
@@ -126,6 +130,12 @@ export async function requestOpenAiEditorialPreview(input:{
   await releaseMonthlyPreview(input.pool,monthly);
   return new Response("Paid AI daily preview limit reached",{
    status:429,headers:{"retry-after":"3600","x-ppw-budget-exhausted":"true"}});
+ }
+ if(input.signal?.aborted){
+  // No HTTP call was made: release money. Keep the daily attempt counted.
+  await settleMonthlyPreview(input.pool,monthly,null,true);
+  await settleOpenAiPreview(input.pool,daily,{ok:false,usage:null});
+  throw input.signal.reason??new Error("Paid preview deadline expired");
  }
  let response:Response;
  try{

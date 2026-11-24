@@ -2,6 +2,8 @@
  * this client never stores an API key, resets a World or runs a timer. */
 import type {RingsideSettings} from "../domain/ringside-settings.js";
 import {estimateTerraStandardUsd} from "../domain/paid-editorial-cost.js";
+import {TERRA_PREVIEW_TIMEOUT_MS,TERRA_DAILY_PREVIEW_ATTEMPTS,TERRA_DAILY_TOKEN_BUDGET}
+ from "../domain/paid-editorial-policy.js";
 import {sameShowComparisons,type SameShowProviderResult}
  from "../domain/ai-lab-head-to-head.js";
 type ActionPlan={
@@ -125,6 +127,21 @@ const message=(box:HTMLElement,s:string,isError=false)=>{
  box.textContent=s;box.className="ppw-admin-message"+(isError?" ppw-admin-error":"");
  box.setAttribute("role","status");
 };
+/** Local progress only: no polling, extra DB queries or provider requests. */
+function beginEditorialPreviewWait(box:HTMLElement,provider:string){
+ if(provider!=="OPENAI"){
+  message(box,"Generating a private preview; published results are unchanged.");
+  return ()=>{};
+ }
+ const started=Date.now();
+ const update=()=>message(box,"Terra is writing and checking the complete show · "+
+  Math.min(TERRA_PREVIEW_TIMEOUT_MS/1000,Math.floor((Date.now()-started)/1000))+
+  "s / "+TERRA_PREVIEW_TIMEOUT_MS/1000+"s generation allowance. "+
+  "Keep this page open; no automatic retry or public results changes.");
+ update();
+ const timer=setInterval(update,5000);
+ return ()=>clearInterval(timer);
+}
 export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  root.classList.add("ppw-admin-centre");
  root.replaceChildren(el("span","ppw-eyebrow","PPW / ADMINISTRATOR"),
@@ -182,6 +199,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  root.append(navigation,world,labPanel,studio,kpDesk,legendTrial);
  switchTab();
  let busy=false;
+ let editorialPreviewInFlight=false;
 
  /** AI Lab loads only after the operator opens its tab. General Admin
   * and ordinary game screens never fetch preview history or token trends. */
@@ -217,10 +235,15 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     "exchange rates, VAT, uncertain failed requests and token overhead. The API invoice is separate.");
    const today=new Date().toISOString().slice(0,10);
    const live=groq.find(row=>row.day===today);
+   const liveTerra=openai.find(row=>row.day===today);
    const todaySummary=el("p","ppw-admin-small",
     "Today (UTC): "+(live?.calls??0)+"/40 Groq requests · "+
     (live?.reserved??0).toLocaleString("en-GB")+
-    "/160,000 tokens used or reserved. Provider token totals can be unavailable for failed requests.");
+    "/160,000 tokens used or reserved. Terra: "+
+    (liveTerra?.calls??0)+"/"+TERRA_DAILY_PREVIEW_ATTEMPTS+
+    " attempts · "+(liveTerra?.reserved??0).toLocaleString("en-GB")+
+    "/"+TERRA_DAILY_TOKEN_BUDGET.toLocaleString("en-GB")+
+    " tokens used or reserved. Provider token totals may be unavailable for failed requests.");
    const lastGroqLimit=groq.find(day=>
     day.provider_rpd_limit!=null&&day.provider_tpm_limit!=null);
    const providerSnapshot=el("p","ppw-admin-small",
@@ -489,14 +512,19 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     (benchmarkProvider.value==="GROQ"?!data.providers?.groq:!data.providers?.openai);
    benchmarkProvider.onchange=()=>{
     benchmarkProviderChoice=benchmarkProvider.value as "GROQ"|"OPENAI";
-    runBenchmark.disabled=!scenarios.length||(benchmarkProvider.value==="GROQ"?
+    runBenchmark.disabled=editorialPreviewInFlight||!scenarios.length||(benchmarkProvider.value==="GROQ"?
      !data.providers?.groq:!data.providers?.openai);
     benchmarkModel.disabled=benchmarkProvider.value==="OPENAI";
    };
    runBenchmark.onclick=async()=>{
     if(runBenchmark.disabled)return;
-    runBenchmark.disabled=true;
-    message(benchmarkStatus,"Generating one private test; the official World remains unchanged.");
+    if(editorialPreviewInFlight){
+     message(benchmarkStatus,"A private editorial preview is already running. Do not start another paid request.",true);
+     return;
+    }
+    editorialPreviewInFlight=true;
+    runBenchmark.disabled=true;benchmarkProvider.disabled=true;
+    const stopWait=beginEditorialPreviewWait(benchmarkStatus,benchmarkProvider.value);
     try{
      const chosen=scenarios.find(item=>item.id===scenarioPick.value);
      if(!chosen)throw new Error("Choose a recognised wrestling scenario");
@@ -529,15 +557,23 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
        " · EDITORIAL WATCH: "+result.benchmark.qualityWarnings
         .map(w=>w.description).slice(0,3).join("; "):
        " · No automatic prose warnings (not a quality guarantee).");
+     stopWait();
      labData=null;
      await loadLab();
     }catch(e){
+     stopWait();
      lastBenchmarkTrace=null;lastBenchmarkReview=null;
      lastBenchmarkNotice="Benchmark failed: "+(e instanceof Error?e.message:
       "No valid model article")+
       ". Any provider attempt will appear in the AI Lab failure history. Official results were not changed.";
      labData=null;
      await loadLab();
+    }finally{
+     stopWait();
+     editorialPreviewInFlight=false;
+     benchmarkProvider.disabled=false;
+     runBenchmark.disabled=!scenarios.length||(benchmarkProvider.value==="GROQ"?
+      !data.providers?.groq:!data.providers?.openai);
     }
    };
    const inspectFixture=el("button","ppw-admin-secondary","Inspect test prompt · no Groq call") as HTMLButtonElement;
@@ -937,11 +973,14 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const provider=selectControl([
    ["GROQ","Groq · primary free provider"],
    ...(data.openAiPreviewEnabled?[
-    ["OPENAI","Terra · paid, 2 previews/day"] as [string,string]
+    ["OPENAI","Terra · paid, up to "+TERRA_DAILY_PREVIEW_ATTEMPTS+" previews/day"] as [string,string]
    ]:[])
   ],"GROQ");
   const paidNotice=el("p","ppw-admin-small",data.openAiPreviewEnabled?
-   "Paid Terra comparisons are private and never publish results. Two manual tests/day, one paid attempt each, and a shared £3 monthly PPW cap. Groq remains free for short-form writing.":
+   "Private Terra comparisons never publish results. Up to "+
+   TERRA_DAILY_PREVIEW_ATTEMPTS+" manual tests/day, one paid request each, with "+
+   TERRA_PREVIEW_TIMEOUT_MS/1000+" seconds to write a complete show. "+
+   "The daily token ceiling, three reviews/hour and shared £3 monthly PPW cap still apply. Groq remains free for short-form writing.":
    "Paid Terra testing is off: set OPENAI_API_KEY and PPW_ALLOW_PAID_AI_PREVIEW=YES "+
    "in Vercel to activate private comparisons. Never enter a provider key in the game.");
   const previewBtn=el("button","ppw-admin-secondary","Preview this style") as HTMLButtonElement;
@@ -949,10 +988,18 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const previewDisabled=()=>!data.shows.length||
    (provider.value==="GROQ"&&!data.groqConfigured);
   previewBtn.disabled=previewDisabled();
-  provider.onchange=()=>{previewBtn.disabled=previewDisabled();};
+  provider.onchange=()=>{previewBtn.disabled=busy||previewDisabled();};
   const preview=el("article","ppw-admin-preview");preview.hidden=true;
   previewBtn.onclick=async()=>{
-   if(busy)return;busy=true;previewBtn.disabled=true;message(aiStatus,"Preparing a one-off preview; no published results will be overwritten.");
+   if(busy)return;
+   if(editorialPreviewInFlight){
+    message(aiStatus,"A private editorial preview is already running. Do not start another paid request.",true);
+    return;
+   }
+   busy=true;editorialPreviewInFlight=true;
+   previewBtn.disabled=true;provider.disabled=true;latest.disabled=true;
+   preview.hidden=true;
+   const stopWait=beginEditorialPreviewWait(aiStatus,provider.value);
    try{
     const out=await request("/api/admin-preview","POST",ctx.csrfToken,{
      showId:latest.value,settings:selectedSettings(),previewProvider:provider.value
@@ -972,8 +1019,17 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
        (out.metrics.inputTokens+(out.metrics.outputTokens??0)).toLocaleString("en-GB")+" tokens")+". ":
       "")+"No World results were changed.");
     labData=null;void loadLab();
-   }catch(e){message(aiStatus,e instanceof Error?e.message:"Preview unavailable",true);}
-   finally{busy=false;previewBtn.disabled=false;}
+   }catch(e){
+    message(aiStatus,e instanceof Error?e.message:"Preview unavailable",true);
+    // Refresh failed attempts and the reserved allowance once, just as on
+    // success; no polling or repeated reads during a slow paid request.
+    labData=null;void loadLab();
+   }
+   finally{
+    stopWait();busy=false;editorialPreviewInFlight=false;
+    provider.disabled=false;latest.disabled=false;
+    previewBtn.disabled=previewDisabled();
+   }
   };
   const inspectBtn=el("button","ppw-admin-secondary","Inspect Groq prompt · no tokens") as HTMLButtonElement;
   inspectBtn.type="button";inspectBtn.disabled=!data.shows.length;

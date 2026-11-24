@@ -462,7 +462,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     try{response=await fetch(url,init);}
     catch(error){meter.reported=false;throw error;}
     let usage=null;
-    if(response.ok)try{usage=groqResponseUsage(await response.clone().json());}
+    if(response.ok||previewProvider==="OPENAI")try{
+     usage=groqResponseUsage(await response.clone().json());}
     catch{/* Provider omitted or changed usage details. */}
     if(usage){meter.input+=usage.inputTokens;meter.output+=usage.outputTokens;}
     else meter.reported=false;
@@ -495,7 +496,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     const code:AiLabErrorCode=e instanceof RingsideGenerationError?
      e.code==="PROVIDER_LIMIT"||e.code==="PROVIDER_AUTH"||
      e.code==="PROVIDER_ERROR"||e.code==="FACT_VALIDATION"||
-     e.code==="INVALID_OUTPUT"||e.code==="OUTPUT_INCOMPLETE"?
+     e.code==="INVALID_OUTPUT"||e.code==="OUTPUT_INCOMPLETE"||e.code==="TIMEOUT"?
       e.code:"UNKNOWN":"UNKNOWN";
     try{await saveAiLabFailure(pool,{
      worldId:cfg.worldId,playerId:user.playerId,showId:audit.showId,
