@@ -7,7 +7,8 @@ import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {rearmFailedRingsideReport} from "../src/db/admin-ringside-settings.js";
 import {RINGSIDE_PROMPT_VERSION} from "../src/domain/ringside-editorial.js";
 const url=process.env.PPW_NEON_TEST_URL;
-test("Admin can retry exhausted failed Ringside once without rewriting completed results",{
+for(const [model,attempts] of [["openai/gpt-oss-120b",2],["gpt-6.1-terra",1]] as const)
+test("Admin can retry exhausted "+model+" Ringside once without rewriting completed results",{
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
  const db=postgresPool(url!,3),suffix=randomUUID(),world="ai-recovery-"+suffix,
@@ -29,14 +30,11 @@ test("Admin can retry exhausted failed Ringside once without rewriting completed
    await tx.query(`INSERT INTO ppw_ringside_reports
     (world_id,promotion_id,show_id,prompt_version,receipt_digest,model,
      state,attempts,claim_token,claim_until)
-    VALUES($1,$2,$3,$4,$5,'openai/gpt-oss-120b','FAILED',2,$6,now()-interval '3 minutes')`,
-    [world,promo,show,failed,"a".repeat(64),randomUUID()]);
+    VALUES($1,$2,$3,$4,$5,$7,'FAILED',$8,$6,now()-interval '3 minutes')`,
+    [world,promo,show,failed,"a".repeat(64),randomUUID(),model,attempts]);
   });
   await assert.rejects(rearmFailedRingsideReport(db.pool,world,"intruder",show),
    /not one of your completed shows/);
-  // One actual paid attempt is exhausted, unlike the two-attempt Groq path.
-  await withWorldTransaction(db.pool,tx=>tx.query(
-   "UPDATE ppw_ringside_reports SET model='gpt-6.1-terra',attempts=1 WHERE world_id=$1",[world]));
   assert.deepEqual(await rearmFailedRingsideReport(db.pool,world,player,show),
    {status:"ARMED",showId:show});
   const rows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string;revision:string}>(`
