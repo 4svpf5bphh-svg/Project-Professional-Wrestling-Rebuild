@@ -815,12 +815,12 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
    FROM ppw_ringside_reports r
    WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
     AND r.show_id=c.show_id
-    AND (r.prompt_version=$5 OR (r.state='READY' AND
+    AND (r.prompt_version=$5 OR ((r.state='READY' OR r.model='gpt-6.1-terra') AND
       (r.prompt_version IN ($6,$7,$8) OR r.prompt_version LIKE 'ringside-v%')))
    -- Any verified old published article, including historic v2-v8, remains
    -- accessible. Never replace a saved show merely because the author rules
    -- have been improved for future broadcasts.
-   ORDER BY CASE WHEN r.state='READY' THEN 0 ELSE 1 END,
+   ORDER BY CASE WHEN r.state='READY' THEN 0 WHEN r.model='gpt-6.1-terra' THEN 1 ELSE 2 END,
      CASE WHEN r.prompt_version=$5 THEN 0 WHEN r.prompt_version=$6 THEN 1
       WHEN r.prompt_version=$7 THEN 2 WHEN r.prompt_version=$8 THEN 3 ELSE 4 END,
      r.created_at DESC

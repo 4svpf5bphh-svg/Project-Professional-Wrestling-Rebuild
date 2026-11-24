@@ -256,3 +256,27 @@ test("results projection preserves an explicitly on-screen segment target withou
  const projected=await readCompletedShowView(modified,scope);
  assert.equal(projected.entries[1]?.segmentContext?.targetPresence,"ON_SCREEN");
 });
+
+test("completed results reuse only the exact public moment within the existing five reads",async()=>{
+ const original=fake(true,true);
+ const base=original.pool;
+ const source={id:"match:show:m",year:1,week:1,title:"Star versus Rival",summary:"Star beat Rival.",desk:"OFFICIAL",certainty:"CONFIRMED",promotionName:"CWA",promotionId:"prom",sourceKind:"MATCH"};
+ const wrapped:TransactionPool={async connect(){
+  const db=await base.connect();
+  return {release:()=>db.release(),async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]=[]){
+   const rows=await db.query<T>(sql,params);
+   if(!sql.includes("FROM ppw_completed_shows"))return rows;
+   assert.match(sql,/ppw_weekly_world_editorial/);
+   assert.match(sql,/s.show_id=c.show_id AND s.promotion_id=c.promotion_id/);
+   return rows.map(row=>({...row,weekly_threads:[
+    {story:source,copy:{fans:["Star made that match worth watching.",null,null]}},
+    {story:{...source,id:"match:other:m"},copy:{fans:["Star made that match worth watching.",null,null]}}
+   ]})) as T[];
+  }};
+ }};
+ const view=await readCompletedShowView(wrapped,scope);
+ assert.equal(original.calls(),5);
+ assert.equal(view.weeklyPublicThreads?.length,1);
+ assert.equal(view.weeklyPublicThreads?.[0]?.slotId,"m");
+ assert.equal(view.weeklyPublicThreads?.[0]?.posts[0]?.text,"Star made that match worth watching.");
+});
