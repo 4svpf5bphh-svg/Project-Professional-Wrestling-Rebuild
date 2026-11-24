@@ -7,7 +7,8 @@ import {requireIsolatedPreviewHost} from "../domain/preview-host-isolation.js";
 import {manualPlaytestEnabled,aiBenchmarkPreviewOperatorEnabled} from "../domain/manual-playtest-permission.js";
 import {loadRingsideCommentary,generateGroqReview,inspectRingsidePrompt,
  RingsideGenerationError,type RingsideGenerationTrace} from "../db/ringside-commentary.js";
-import {paidPreviewEnabled,OPENAI_PREVIEW_MODEL} from "../db/openai-editorial-preview.js";
+import {paidPreviewEnabled,OPENAI_PREVIEW_MODEL,liveRingsideProvider} from "../db/openai-editorial-preview.js";
+import {RINGSIDE_PROMPT_VERSION} from "../domain/ringside-editorial.js";
 import {groqResponseUsage} from "../domain/ai-director.js";
 import {getWrestlingBenchmark,assessWrestlingBenchmark,WRESTLING_BENCHMARKS}
  from "../domain/wrestling-ai-benchmark.js";
@@ -210,17 +211,25 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
      readAdminRingsideSettings(pool,cfg.worldId),
      withSqlClient(pool,tx=>tx.query<{show_id:string;show_name:string|null;year:number;week:number}>(`
        SELECT c.show_id,d.show_name,c.year,c.week,
-        r.state AS editorial_state,r.attempts AS editorial_attempts
+        r.state AS editorial_state,r.attempts AS editorial_attempts,
+        COALESCE((r.model=$4 AND (r.state='FAILED' OR
+         (r.state='PENDING' AND r.claim_until<=now()))) OR
+         (r.state='FAILED' AND r.attempts=2),false) AS editorial_retryable
        FROM ppw_completed_shows c
        JOIN ppw_promotion_controls p ON p.world_id=c.world_id
         AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
        LEFT JOIN ppw_booking_drafts d ON d.world_id=c.world_id
         AND d.draft_id=c.show_id
-       LEFT JOIN ppw_ringside_reports r ON r.world_id=c.world_id
-        AND r.promotion_id=c.promotion_id AND r.show_id=c.show_id
-        AND r.prompt_version='ringside-v4'
+       LEFT JOIN LATERAL (
+        SELECT r.state,r.attempts,r.model,r.claim_until FROM ppw_ringside_reports r
+        WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
+         AND r.show_id=c.show_id AND (r.prompt_version=$3 OR
+          (r.state='READY' AND r.prompt_version LIKE 'ringside-v%'))
+        ORDER BY CASE WHEN r.state='READY' THEN 0 ELSE 1 END,r.created_at DESC
+        LIMIT 1
+       ) r ON TRUE
        WHERE c.world_id=$1 ORDER BY c.year DESC,c.week DESC,c.completed_at DESC LIMIT 6`,
-       [cfg.worldId,user.playerId])),
+       [cfg.worldId,user.playerId,RINGSIDE_PROMPT_VERSION,OPENAI_PREVIEW_MODEL])),
      readLegendPilot(pool,cfg.worldId),
      readPlaytestKp(pool,cfg.worldId,user.playerId),
      withSqlClient(pool,tx=>tx.query<{call_count:number;reserved_tokens:number;
@@ -580,11 +589,11 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    body.promotionId.length>200||typeof body.showId!=="string"||
    !body.showId||body.showId.length>200)return json(400,{error:"Invalid show scope"});
   try{
+   const live=liveRingsideProvider(process.env);
    const result=await loadRingsideCommentary(pool,{
     worldId:cfg.worldId,playerId:user.playerId,
     promotionId:body.promotionId,showId:body.showId},
-    process.env.PPW_AI_BENCHMARK_PREVIEW==="YES"?
-     undefined:process.env.GROQ_API_KEY);
+    live.key,fetch,live.provider);
    return json(result.status==="pending"?202:200,result);
   }catch{return json(404,{error:"No completed show available"});}
  }

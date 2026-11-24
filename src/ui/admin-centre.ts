@@ -19,7 +19,8 @@ type AdminData={plan:ActionPlan;settings:RingsideSettings;pilot:LegendPilot|null
  aiUsage?:{call_count:number;reserved_tokens:number;reported_input_tokens:string;
   reported_output_tokens:string;completed_calls:number;failed_calls:number}|null;
  groqConfigured:boolean;openAiPreviewEnabled?:boolean;shows:{show_id:string;show_name:string|null;year:number;week:number;
- editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null}[]};
+ editorial_state?:"READY"|"FAILED"|"PENDING"|null;editorial_attempts?:number|null;
+ editorial_retryable?:boolean}[]};
 type LabRun={run_id:string;show_id:string;show_name:string;
  provider:"GROQ"|"OPENAI";model:string;duration_ms:number;provider_calls:number;
  input_tokens:number|null;output_tokens:number|null;
@@ -1011,16 +1012,16 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   };
   form.append(save);
   const provider=selectControl([
-   ["GROQ","Groq · primary free provider"],
+   ["GROQ","Groq · free comparison"],
    ...(data.openAiPreviewEnabled?[
     ["OPENAI","Terra · paid, up to "+TERRA_DAILY_PREVIEW_ATTEMPTS+" previews/day"] as [string,string]
    ]:[])
   ],"GROQ");
   const paidNotice=el("p","ppw-admin-small",data.openAiPreviewEnabled?
-   "Private Terra comparisons never publish results. Up to "+
-   TERRA_DAILY_PREVIEW_ATTEMPTS+" manual tests/day, one paid request each, with "+
+   "Terra is the default live Ringside writer. Private comparisons never publish results. "+
+   TERRA_DAILY_PREVIEW_ATTEMPTS+" shared paid attempts/day, one paid request each, with "+
    TERRA_PREVIEW_TIMEOUT_MS/1000+" seconds to write a complete show. "+
-   "The daily token ceiling, three reviews/hour and shared £3 monthly PPW cap still apply. Groq remains free for short-form writing.":
+   "Live reports and private previews share the daily token and £3 monthly PPW cap. Reserve Groq for live short-form writing.":
    "Paid Terra testing is off: set OPENAI_API_KEY and PPW_ALLOW_PAID_AI_PREVIEW=YES "+
    "in Vercel to activate private comparisons. Never enter a provider key in the game.");
   const previewBtn=el("button","ppw-admin-secondary","Preview this style") as HTMLButtonElement;
@@ -1089,7 +1090,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   recover.type="button";
   const toggleRetry=()=>{
    const entry=data.shows.find(x=>x.show_id===latest.value);
-   recover.hidden=entry?.editorial_state!=="FAILED"||entry.editorial_attempts!==2;
+   recover.hidden=!(entry?.editorial_retryable??
+    (entry?.editorial_state==="FAILED"&&entry.editorial_attempts===2));
   };
   latest.addEventListener("change",toggleRetry);
   toggleRetry();

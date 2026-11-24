@@ -34,6 +34,9 @@ test("Admin can retry exhausted failed Ringside once without rewriting completed
   });
   await assert.rejects(rearmFailedRingsideReport(db.pool,world,"intruder",show),
    /not one of your completed shows/);
+  // One actual paid attempt is exhausted, unlike the two-attempt Groq path.
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_ringside_reports SET model='gpt-6.1-terra',attempts=1 WHERE world_id=$1",[world]));
   assert.deepEqual(await rearmFailedRingsideReport(db.pool,world,player,show),
    {status:"ARMED",showId:show});
   const rows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string;revision:string}>(`

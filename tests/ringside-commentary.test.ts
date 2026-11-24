@@ -931,3 +931,10 @@ test("Terra deadline aborts and settles exactly one ambiguous paid attempt",asyn
  assert.equal(updates.filter(x=>x.includes("monthly_usage")).length,1);
  assert.equal(updates.filter(x=>x.includes("daily_usage")).length,1);
 });
+
+test("Vercel live Ringside route has the same bounded runtime as the Terra Lab",()=>{
+ const config=JSON.parse(readFileSync("vercel.json","utf8"));
+ assert.equal(config.functions["api/results-commentary.ts"].maxDuration,ADMIN_PREVIEW_MAX_DURATION_SECONDS);
+ assert.ok(config.functions["api/results-commentary.ts"].maxDuration*1000>TERRA_PREVIEW_TIMEOUT_MS);
+ assert.equal(config.crons,undefined);
+});

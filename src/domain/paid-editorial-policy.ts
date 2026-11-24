@@ -1,7 +1,6 @@
-/** Manual, operator-only Terra comparison limits. Keep the provider deadline
- * shorter than the admin function runtime so validation, billing settlement
- * and saving the article finish before the platform terminates the request.
- * No normal results route or World Lock job uses this policy.
+/** Shared paid Terra comparison and certified live editorial limits.
+ * Keep the provider deadline shorter than both function runtimes so validation,
+ * billing settlement and saving the article finish. Never used by World Lock.
  */
 export const TERRA_PREVIEW_TIMEOUT_MS=150_000;
 export const ADMIN_PREVIEW_MAX_DURATION_SECONDS=180;
