@@ -14,7 +14,7 @@ function angle(i:number,kind:string,name:string,line?:string,target?:string):Sho
   actorIds:["a"+i],targetIds:target?["t"+i]:[],segmentKind:kind,
   segmentContext:{actorNames:[name],targetNames:target?[target]:[],targetPresence:target?"MENTIONED":null,
    videoPurpose:kind==="VIDEO_PACKAGE"?"PROMOTE_EVENT":null,stableDecision:null,
-   turnTargetAlignment:null,scriptedActions:line?[{action:"SPEAK",by:"a"+i",line}]:[]}};
+   turnTargetAlignment:null,scriptedActions:line?[{action:"SPEAK",by:"a"+i,line}]:[]}};
 }
 function match(i:number,winner:string,losers:string[],finish:string):ShowResultEntry{
  return {slotId:"match-"+i,position:i,type:"MATCH",headline:winner+" prevails",
