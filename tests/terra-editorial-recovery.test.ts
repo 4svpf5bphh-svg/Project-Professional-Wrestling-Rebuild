@@ -162,3 +162,11 @@ test("A quoted off-screen target does not become a speaker",()=>{
  const entry=show.entries[2]!;
  assert.equal(restoreTerraAuthoredDialogue('Místico said, “I’ll see you in the ring.”',entry).unsupported,true);
 });
+
+test("Two consecutive authored statements retain their respective speakers",()=>{
+ const entry=show.entries[4]!;
+ const text="Lane said: “I’m not sure you belong here.”. Stone said: “I’ll prove you wrong in the ring.”";
+ assert.equal(restoreTerraAuthoredDialogue(text,entry).unsupported,false);
+ assert.equal(restoreTerraAuthoredDialogue("Lane said, ‘I’m not sure you belong here.’",entry).unsupported,false);
+ assert.equal(restoreTerraAuthoredDialogue("Stone said, ‘I’m not sure you belong here.’",entry).unsupported,true);
+});

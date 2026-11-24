@@ -13,17 +13,21 @@ const textOk=(value:unknown,max:number):value is string=>
 const quoteKey=(line:string)=>line.normalize("NFKC").toLowerCase()
  .replace(/[’‘ʼ]/g,"'").replace(/[–—]/g,"-")
  .replace(/[^\p{L}\p{N}']+/gu," ").trim();
-const quotePattern=/[“"]([^”"\r\n]{1,500})[”"]|(?<![\p{L}\p{N}])‘([^‘’\r\n]{1,500})’(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])'([^'\r\n]{1,500})'(?![\p{L}\p{N}])/gu;
+const quotePattern=/[“"]([^”"\r\n]{1,500})[”"]|(?<![\p{L}\p{N}])‘((?:[^‘’\r\n]|’(?=[\p{L}\p{N}])){1,500})’(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])'((?:[^'\r\n]|'(?=[\p{L}\p{N}])){1,500})'(?![\p{L}\p{N}])/gu;
 const escaped=(s:string)=>s.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&");
 const alias=(name:string)=>[...new Set([name,name.split(/\s+/).at(-1)??name])].filter(x=>x.length>=2);
 const speech="(?:said|says|shouted|declared|announced|replied|warned|demanded|promised|asked|told|added|claimed|snarled|yelled)";
 function nearbySpeakers(text:string,at:number,length:number,names:string[]):string[]{
  const before=text.slice(Math.max(0,at-90),at);
  const after=text.slice(at+length,at+length+70);
+ const leading=names.filter(name=>alias(name).some(a=>
+  new RegExp("(?:^|[^\\p{L}\\p{N}])"+escaped(a)+"\\s+"+speech+"\\b[^.!?]{0,45}$","iu").test(before)));
+ if(leading.length)return leading;
+ // A full stop ends attribution. Do not mistake the next speaker's
+ // sentence for the owner of the preceding, correctly authored quotation.
  return names.filter(name=>alias(name).some(a=>{
   const n=escaped(a);
-  return new RegExp("(?:^|[^\\p{L}\\p{N}])"+n+"\\s+"+speech+"\\b[^.!?]{0,45}$","iu").test(before)||
-   new RegExp("^\\s*[,.;:—-]?\\s*(?:"+speech+"\\s+"+n+"|"+n+"\\s+"+speech+")\\b","iu").test(after);
+  return new RegExp("^\\s*[,—-]?\\s*(?:"+speech+"\\s+"+n+"|"+n+"\\s+"+speech+")\\b","iu").test(after);
  }));
 }
 /** Restore the exact author-written line only when its words and speaker
