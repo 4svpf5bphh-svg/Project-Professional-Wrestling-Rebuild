@@ -84,6 +84,7 @@ export type ShortformVoiceDiagnostic={
  wrestler:ShortformVoicePartStatus;
  roadAgent:ShortformVoicePartStatus;
  wrestlerReason?:import("../domain/postshow-voice-batch.js").WrestlerVoiceReason;
+ fanThreads?:{eligible:number;accepted:number;replies:number};
 };
 const emptyDiagnostic=(category:ShortformVoiceDiagnostic["category"]):
  ShortformVoiceDiagnostic=>({category,news:"MISSING",wrestler:"MISSING",
@@ -119,10 +120,10 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
  transport:typeof fetch=fetch,pool?:TransactionPool,
  diagnostic?:(result:ShortformVoiceDiagnostic)=>void){
  const source=postShowVoiceBrief(show);
- if(!source.mainEvent&&!source.wrestler&&!source.roadAgent)return null;
+ if(!source.mainEvent&&!source.wrestler&&!source.roadAgent&&!source.fans?.length)return null;
  const messages=postShowVoicePrompt(source);
  const body={model:MODEL,temperature:0.55,reasoning_effort:"low",
-  reasoning_format:"hidden",max_completion_tokens:650,
+  reasoning_format:"hidden",max_completion_tokens:source.fans?.length?1000:650,
   response_format:{type:"json_object"},messages};
  const request=await requestGroqEditorial({
   task:"SHORT_NEWS",key,transport,pool,body,
@@ -154,7 +155,7 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
   diagnostic?.(emptyDiagnostic("EMPTY_CONTENT"));
   return null;
  }
- if(message.content.length>4000){
+ if(message.content.length>5200){
   diagnostic?.(emptyDiagnostic("OVERSIZED"));
   return null;
  }
@@ -172,19 +173,22 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
  const statuses=Object.fromEntries(fields.map(field=>[
   field,partStatus(field,source,text,!!copy?.[field])
  ])) as Pick<ShortformVoiceDiagnostic,"news"|"wrestler"|"roadAgent">;
- const anyPresent=fields.some(field=>text[field]!==undefined&&text[field]!==null);
- const structured=fields.some(field=>isRecord(text[field])||text[field]===null);
+ const anyPresent=fields.some(field=>text[field]!==undefined&&text[field]!==null)||isRecord(text.fans);
+ const structured=fields.some(field=>isRecord(text[field])||text[field]===null)||isRecord(text.fans);
+ const fanThreads=isRecord(text.fans)?{eligible:source.fans?.length??0,
+  accepted:copy?.fans?.length??0,replies:copy?.fans?.filter(f=>!!f.reply).length??0}:undefined;
  const expected={news:!!source.mainEvent,wrestler:!!source.wrestler,
   roadAgent:!!source.roadAgent};
  const category:ShortformVoiceDiagnostic["category"]=!anyPresent||!structured?
   "WRONG_SHAPE":!copy?"ALL_REJECTED":
-  fields.some(field=>expected[field]&&statuses[field]!=="ACCEPTED")?
+  fields.some(field=>expected[field]&&statuses[field]!=="ACCEPTED")||
+   (fanThreads&&fanThreads.accepted<fanThreads.eligible)?
    "PARTIAL":"ACCEPTED";
  const wrestlerReason=statuses.wrestler==="FACT_OR_VOICE_REJECTED"?
   wrestlerVoiceRejectionReason(source,isRecord(text.wrestler)?
    text.wrestler.text:undefined):undefined;
  diagnostic?.({category,...statuses,
-  ...(wrestlerReason?{wrestlerReason}:{})});
+  ...(wrestlerReason?{wrestlerReason}:{}),...(fanThreads?{fanThreads}:{})});
  return copy;
 }
 

@@ -7,8 +7,13 @@ import {chooseGroqModel,estimatedGroqTokens,groqResponseUsage,groqResponseLimits
  type AiTask,type GroqModel,type GroqUsage,type GroqLimitSnapshot} from "../domain/ai-director.js";
 const DAILY_CALLS=40,DAILY_TOKENS=160000;
 export type AiAllowanceClaim={day:string;estimate:number};
-export async function claimAiAllowance(pool:TransactionPool,estimate:number):
+export async function claimAiAllowance(pool:TransactionPool,estimate:number,task?:AiTask):
  Promise<AiAllowanceClaim|null>{
+ // Keep 8 requests / 32k tokens available for short-form publication,
+ // even when experimental Groq Ringside previews consume their allowance.
+ // No increase to the shared free-tier limit; the same atomic row is used.
+ const calls=task==="RINGSIDE"?DAILY_CALLS-8:DAILY_CALLS;
+ const tokens=task==="RINGSIDE"?DAILY_TOKENS-32000:DAILY_TOKENS;
  if(!Number.isSafeInteger(estimate)||estimate<1||estimate>35000)
   throw new Error("AI request exceeds the per-call safety limit");
  const rows=await withSqlClient(pool,db=>db.query<{day:string}>(`
@@ -17,8 +22,8 @@ export async function claimAiAllowance(pool:TransactionPool,estimate:number):
   ON CONFLICT (usage_day) DO UPDATE
   SET call_count=ppw_groq_daily_usage.call_count+1,
    reserved_tokens=ppw_groq_daily_usage.reserved_tokens+EXCLUDED.reserved_tokens
-  WHERE ppw_groq_daily_usage.call_count<${DAILY_CALLS}
-   AND ppw_groq_daily_usage.reserved_tokens+EXCLUDED.reserved_tokens<=${DAILY_TOKENS}
+  WHERE ppw_groq_daily_usage.call_count<${calls}
+   AND ppw_groq_daily_usage.reserved_tokens+EXCLUDED.reserved_tokens<=${tokens}
   RETURNING usage_day::text AS day`,[estimate]));
  return rows[0]?{day:rows[0].day,estimate}:null;
 }
@@ -64,7 +69,7 @@ export async function requestGroqEditorial(input:{
  const estimated=estimatedGroqTokens(body,Number(input.body.max_completion_tokens));
  let claim:AiAllowanceClaim|null=null;
  if(input.pool){
-  claim=await claimAiAllowance(input.pool,estimated);
+  claim=await claimAiAllowance(input.pool,estimated,input.task);
   if(!claim)return new Response("PPW free editorial allowance exhausted",{
    status:429,headers:{"retry-after":"1800","x-ppw-budget-exhausted":"true"}});
  }

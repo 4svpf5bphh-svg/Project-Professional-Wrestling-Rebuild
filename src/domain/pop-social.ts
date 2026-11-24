@@ -4,6 +4,7 @@
  */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {ResultReaction,ReactionVoice} from "./show-reaction-wire.js";
+import {hotTagEditorialAnchors,readHotTagEditorial} from "./hot-tag-editorial.js";
 
 export interface PopIdentity{handle:string;displayName:string;avatar:string}
 export interface PopPost extends ResultReaction{
@@ -48,6 +49,8 @@ function styleText(post:ResultReaction,entry:ShowResultEntry|undefined,key:strin
 }
 export function projectPopFeed(show:CompletedShowView,reactions:readonly ResultReaction[]):PopPost[]{
  const slots=new Map(show.entries.map(entry=>[entry.slotId,entry]));
+ const editorial=show.shortform?.fans?.length?
+  readHotTagEditorial(hotTagEditorialAnchors(show),show.shortform.fans):[];
  return reactions.slice(0,8).flatMap(reaction=>{
   const entry=slots.get(reaction.slotId);
   if(!entry)return [];
@@ -58,9 +61,11 @@ export function projectPopFeed(show:CompletedShowView,reactions:readonly ResultR
   const emoji=mood==="CONCERN"?"❤️":mood==="COLD"?"💀":
    mood==="BUZZ"?(seed%2?"🔥":"😂"):
    seed%2?"👀":"🤔";
+  const rewrite=editorial.find(f=>f.slotId===reaction.slotId&&f.voice===reaction.voice);
+  const reply=rewrite?.reply&&rewrite.reply.voice===reaction.reply?.voice?rewrite.reply:reaction.reply;
   return [{
-   ...reaction,text:styleText(reaction,entry,key),
-   identity:profiles[reaction.voice],
+   ...reaction,text:rewrite?.text??styleText(reaction,entry,key),
+   ...(reply?{reply}:{}),identity:profiles[reaction.voice],
    ...(reaction.reply?{replyIdentity:profiles[reaction.reply.voice]}:{}),
    likes:base+(seed%1049),
    comments:Math.max(4,Math.round(base/8)+(Math.floor(seed/101)%145)),

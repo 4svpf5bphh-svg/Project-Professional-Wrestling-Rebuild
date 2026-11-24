@@ -46,3 +46,23 @@ test("Groq daily allowance atomically caps concurrent multiplayer calls",{
    .finally(()=>db.close());
  }
 });
+
+test("Ringside previews leave atomic headroom for eight shortform requests",{
+ skip:!url?"Disposable PostgreSQL unavailable":false
+},async()=>{
+ const db=postgresPool(url!,4);
+ const reset=()=>withSqlClient(db.pool,sql=>sql.query(
+  "DELETE FROM ppw_groq_daily_usage WHERE usage_day=timezone('UTC',now())::date",[]));
+ try{
+  await reset();
+  const ringside=await Promise.all(Array.from({length:40},()=>claimAiAllowance(db.pool,1000,"RINGSIDE")));
+  assert.equal(ringside.filter(Boolean).length,32);
+  const short=await Promise.all(Array.from({length:12},()=>claimAiAllowance(db.pool,1000,"SHORT_NEWS")));
+  assert.equal(short.filter(Boolean).length,8);
+  await reset();
+  const tokenLimited=await Promise.all(Array.from({length:20},()=>claimAiAllowance(db.pool,8000,"RINGSIDE")));
+  assert.equal(tokenLimited.filter(Boolean).length,16);
+  const tokenShort=await Promise.all(Array.from({length:8},()=>claimAiAllowance(db.pool,8000,"SHORT_NEWS")));
+  assert.equal(tokenShort.filter(Boolean).length,4);
+ }finally{await reset().finally(()=>db.close());}
+});

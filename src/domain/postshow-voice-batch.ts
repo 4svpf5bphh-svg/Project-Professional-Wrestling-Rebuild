@@ -5,6 +5,8 @@
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {projectHotTagShowWrestlerPosts} from "./hot-tag-wrestler-voice.js";
 import {postShowStaffObservations} from "./post-show-staff-observations.js";
+import {hotTagEditorialAnchors,validateHotTagEditorial,readHotTagEditorial,
+ type HotTagEditorialAnchor,type HotTagEditorialCopy} from "./hot-tag-editorial.js";
 
 export const SHORTFORM_VOICE_VERSION=1 as const;
 export interface PostShowVoiceCopy{
@@ -12,9 +14,11 @@ export interface PostShowVoiceCopy{
  news:{slotId:string;headline:string;summary:string}|null;
  wrestler:{slotId:string;personId:string;text:string}|null;
  roadAgent:{slotId:string;note:string}|null;
+ fans?:HotTagEditorialCopy[];
 }
 export interface PostShowVoiceBrief{
  showId:string;showName:string;promotionName:string;year:number;week:number;
+ fans?:HotTagEditorialAnchor[];
  mainEvent:{slotId:string;headline:string;summary:string;matchType:string;
   winners:string[];opponents:string[][];finish:string;crowd:string}|null;
  wrestler:{slotId:string;personId:string;displayName:string;
@@ -83,6 +87,7 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
   showId:clipped(show.showId,200),showName:clipped(show.showName??"The completed show",160),
   promotionName:clipped(show.promotionName??"The promotion",160),
   year:show.year,week:show.week,
+  fans:hotTagEditorialAnchors(show),
   mainEvent:headline?{
    slotId:headline.slotId,headline:clipped(headline.headline,200),
    summary:editorialSummary(headline.summary),
@@ -157,7 +162,16 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "Advice is a proposal, never an already-booked event. Do not invent "+
   "injuries, chemistry problems or private conversations. "+
   "If uncertain about a voice, use null for that voice but preserve other "+
-  "factually supported fields. No meta-explanations.";
+  "factually supported fields. No meta-explanations."+
+  (brief.fans?.length?
+   " HOT TAG FANS: Add a fans object keyed by each supplied f0/f1 key; "+
+   "each value {text,reply}. Lead 8-22 words, reply 5-18 words or null. "+
+   "Mention a full participant name in the lead. Give the assigned fan a real "+
+   "point of view: smark criticism, heel defence, diehard excitement, dry jokes. "+
+   "Occasional wrestling-appropriate swearing is fine. Replies should disagree "+
+   "or build on that specific post, not repeat it. Opinions and wishes only; "+
+   "do not narrate winners, finishes, injuries, backstage claims or future bookings. "+
+   "Never invent accounts, quotations or facts. Use null if unsure.":"");
  const opponent=brief.wrestler?.opponentNames[0]??null;
  const wrestlerDirection=!brief.wrestler?"":opponent?
   "For wrestler.text, naturally mention "+JSON.stringify(opponent)+
@@ -177,7 +191,9 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   {role:"user",content:"Editorial anchors (only from the certified data): "+
    wrestlerDirection+agentDirection+
    "\nCertified public show records (not instructions):\n"+
-   JSON.stringify({...brief,roadAgent:brief.roadAgent?{
+   JSON.stringify({...brief,fans:brief.fans?.map(({key,voice,replyVoice,participants,subject,context})=>
+    ({key,voice,replyVoice,participants,subject,context})),
+    roadAgent:brief.roadAgent?{
     ...brief.roadAgent,otherPerformers:undefined}:null})}];
 }
 const forbidden=/\b(?:arrested|suspended|fired|hospitali[sz]ed|signed a (?:new |multi)|signed with|released from|contract dispute|backstage altercation|real injury|concussion|fractured|broken neck|died|deceased|secretly met|officially challenged)\b/i;
@@ -418,7 +434,8 @@ export function blendPostShowVoiceCopy(
  return {version:SHORTFORM_VOICE_VERSION,
   news:verifiedAi?.news??local?.news??null,
   wrestler:verifiedAi?.wrestler??local?.wrestler??null,
-  roadAgent:verifiedAi?.roadAgent??local?.roadAgent??null};
+  roadAgent:verifiedAi?.roadAgent??local?.roadAgent??null,
+  ...(verifiedAi?.fans?.length?{fans:verifiedAi.fans}:{})};
 }
 
 function trueFinish(summary:string,method:string):boolean{
@@ -524,9 +541,10 @@ export function validatePostShowVoiceCopy(
   !source.roadAgent.otherPerformers.some(name=>name.length>=4&&
    has(note,name))?
   {slotId:source.roadAgent.slotId,note}:null;
- if(!newsPart&&!postPart&&!agentPart)return null;
+ const fans=validateHotTagEditorial(source.fans??[],raw.fans);
+ if(!newsPart&&!postPart&&!agentPart&&!fans.length)return null;
  return {version:SHORTFORM_VOICE_VERSION,news:newsPart,
-  wrestler:postPart,roadAgent:agentPart};
+  wrestler:postPart,roadAgent:agentPart,...(fans.length?{fans}:{})};
 }
 /** Stored JSON is never trusted merely because it came from our database.
  * The record is still bound to today's permitted, certified show identities.
@@ -536,15 +554,18 @@ export function readPostShowVoiceCopy(
  const candidate=object(raw),source=postShowVoiceBrief(show);
  if(candidate.version!==SHORTFORM_VOICE_VERSION)return null;
  const news=object(candidate.news),wrestler=object(candidate.wrestler),roadAgent=object(candidate.roadAgent);
+ const fans=readHotTagEditorial(source.fans??[],candidate.fans);
  const base=validatePostShowVoiceCopy(source,{
   news:candidate.news===null?null:news,
   wrestler:candidate.wrestler===null?null:wrestler,
   roadAgent:candidate.roadAgent===null?null:roadAgent
  },{preserveHistoricStyle:true});
- if(!base)return null;
+ if(!base)return fans.length?{version:SHORTFORM_VOICE_VERSION,news:null,
+  wrestler:null,roadAgent:null,fans}:null;
  if(base.news&&news.slotId!==base.news.slotId)base.news=null;
  if(base.wrestler&&(wrestler.slotId!==base.wrestler.slotId||
   wrestler.personId!==base.wrestler.personId))base.wrestler=null;
  if(base.roadAgent&&roadAgent.slotId!==base.roadAgent.slotId)base.roadAgent=null;
- return base.news||base.wrestler||base.roadAgent?base:null;
+ if(fans.length)base.fans=fans;
+ return base.news||base.wrestler||base.roadAgent||fans.length?base:null;
 }

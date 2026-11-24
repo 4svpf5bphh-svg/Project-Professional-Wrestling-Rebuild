@@ -51,7 +51,7 @@ test("one certified evidence brief contains no private booking instructions",()=
  assert.equal(brief.wrestler?.style,"TECHNICAL");
  assert.equal(brief.roadAgent,null);
  const payload=JSON.stringify(postShowVoicePrompt(brief));
- assert.ok(payload.length<5300,"The batch must stay inexpensive");
+ assert.ok(payload.length<7200,"Expanded fan batch must remain bounded");
  assert.match(payload,/Jett Mercer/);
  assert.match(payload,/Ronan Wolfe/);
  assert.doesNotMatch(payload,/GROQ_API_KEY|DATABASE_URL|private future booking/i);
@@ -91,7 +91,7 @@ test("one 20B request writes all eligible shortform voices without repeated page
   assert.equal(payload.model,"openai/gpt-oss-20b");
   assert.equal(payload.response_format.type,"json_object");
   assert.equal(payload.reasoning_format,"hidden");
-  assert.equal(payload.max_completion_tokens,650);
+  assert.equal(payload.max_completion_tokens,1000);
   assert.ok(String(payload.messages[1].content).includes(show.showId));
   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(valid)}}]}),{status:200});
  });
