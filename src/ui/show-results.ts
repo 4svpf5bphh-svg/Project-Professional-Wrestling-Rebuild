@@ -452,7 +452,11 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
     " / 5 · "+warmth.description));
   }
   const narrative=node("div","ppw-ringside-slot");
-  narrative.dataset.slotId=entry.slotId;narrative.hidden=true;
+  narrative.dataset.slotId=entry.slotId;
+  // A paid full-show article may take considerably longer than the results
+  // read. Keep the certified narrative available from the first render,
+  // including when another request holds the editorial claim.
+  narrative.textContent=shortResultColour(entry,show.showId);
   append(body,narrative);
   // The narrative already tells the authenticated, ordered angle script.
   // Do not show a second, mechanical on-screen moments panel.
