@@ -1,6 +1,7 @@
 /** One safe outbound Groq boundary and one row of shared usage per UTC day.
  * No provider calls during World Lock or from untrusted browser state.
  */
+import {randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {chooseGroqModel,estimatedGroqTokens,groqResponseUsage,groqResponseLimits,
@@ -61,6 +62,33 @@ export async function recordAiAllowance(pool:TransactionPool,claim:AiAllowanceCl
  * retry policy or validator. Future tasks can reuse this same budget and key.
  */
 export async function requestGroqEditorial(input:{
+ task:AiTask;preferredModel?:GroqModel;key:string;
+ body:Record<string,unknown>;transport:typeof fetch;
+ signal?:AbortSignal;pool?:TransactionPool;pace?:boolean;
+}):Promise<Response>{
+ const paced=input.pace??(process.env.VERCEL_ENV==="production"||process.env.VERCEL_ENV==="preview");
+ if(!paced||!input.pool)return requestGroqUnpaced(input);
+ const pool=input.pool;
+ const estimated=estimatedGroqTokens(JSON.stringify({...input.body,model:chooseGroqModel(input.task,input.preferredModel)}),Number(input.body.max_completion_tokens));
+ if(estimated>7600)return new Response("PPW minute token envelope exceeded",{status:429,headers:{"retry-after":"65","x-ppw-paced":"true"}});
+ if(input.signal?.aborted)throw input.signal.reason;
+ const lease=randomUUID();
+ const claimed=await withSqlClient(pool,db=>db.query<{id:number}>(`
+  INSERT INTO ppw_groq_dispatch_gate(id,lease_id,next_allowed_at)
+  VALUES(1,$1,clock_timestamp()+interval '5 minutes')
+  ON CONFLICT(id) DO UPDATE SET lease_id=EXCLUDED.lease_id,next_allowed_at=EXCLUDED.next_allowed_at
+  WHERE ppw_groq_dispatch_gate.next_allowed_at<=clock_timestamp()
+  RETURNING id`,[lease]));
+ if(!claimed.length)return new Response("PPW Groq cooling down",{status:429,headers:{"retry-after":"65","x-ppw-paced":"true"}});
+ try{return await requestGroqUnpaced(input);}
+ finally{
+  // Fence the claim; a dead invocation expires and cannot release a newer lease.
+  try{await withSqlClient(pool,db=>db.query(`
+   UPDATE ppw_groq_dispatch_gate SET next_allowed_at=clock_timestamp()+interval '65 seconds'
+   WHERE id=1 AND lease_id=$1`,[lease]));}catch{/* lease expires conservatively */}
+ }
+}
+async function requestGroqUnpaced(input:{
  task:AiTask;preferredModel?:GroqModel;key:string;
  body:Record<string,unknown>;transport:typeof fetch;
  signal?:AbortSignal;pool?:TransactionPool;

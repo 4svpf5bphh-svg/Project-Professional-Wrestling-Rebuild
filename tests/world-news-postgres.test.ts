@@ -10,6 +10,7 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {publishCertifiedWorldNews} from "../src/db/world-news.js";
 import {publishLateAiSigningNews} from "../src/db/late-world-signing-news.js";
 import {readIndustryWorldNews} from "../src/db/industry-news.js";
+import {publishWeeklyWorldEditorial} from "../src/db/weekly-world-editorial.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("certified human and AI shows publish public awards, kept replay-safe and inaccessible to outsiders",{
@@ -247,6 +248,31 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
     SELECT $1,1,generate_series(2,52) ON CONFLICT DO NOTHING`,[world]);
    await tx.query(`UPDATE ppw_worlds SET year=2,week=1 WHERE world_id=$1`,[world]);
   });
+  // A no-player-show week can still publish public editorial exactly once.
+  // Use the previous completed edition containing public AI and human news.
+  await withWorldTransaction(db.pool,tx=>tx.query("DELETE FROM ppw_groq_dispatch_gate WHERE id=1",[]));
+  let calls=0;
+  const transport:typeof fetch=async(_url,init)=>{
+   calls++;
+   const request=JSON.parse(String(init?.body));
+   assert.equal(request.model,"openai/gpt-oss-20b");
+   assert.ok(!JSON.stringify(request).includes("PRIVATE FUTURE PLANS"));
+   const sources=JSON.parse(request.messages[1].content) as {key:string;promotion:string}[];
+   const reply=Object.fromEntries(sources.map(s=>[s.key,{
+    headline:"Why "+s.promotion+" should demand better",
+    commentary:"I think "+s.promotion+" should give viewers another reason to care.",
+    fans:["I hope "+s.promotion+" makes the next episode worth watching.",
+     "Why should "+s.promotion+" listen to every loud opinion on here?",
+     "Nah mate, I think you are being far too harsh."]
+   }]));
+   return new Response(JSON.stringify({choices:[{finish_reason:"stop",message:{content:JSON.stringify(reply)}}],usage:{prompt_tokens:900,completion_tokens:350}}));
+  };
+  const scope={worldId:world,year:1,week:2};
+  const batches=await Promise.all([publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport),publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport)]);
+  assert.equal(calls,1);assert.ok(batches.some(b=>b.state==="READY"));
+  assert.equal((await publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport)).state,"SKIPPED");
+  assert.equal(calls,1);
+  await withWorldTransaction(db.pool,tx=>tx.query("DELETE FROM ppw_groq_dispatch_gate WHERE id=1",[]));
   const annual=await readIndustryWorldNews(db.pool,{
    worldId:world,promotionId:"promotion-0",playerId:owner});
   assert.deepEqual(annual.latestEdition,{year:1,week:52},

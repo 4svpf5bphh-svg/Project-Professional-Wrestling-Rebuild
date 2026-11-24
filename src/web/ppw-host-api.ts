@@ -29,7 +29,8 @@ import {readAdminRingsideSettings,changeAdminRingsideSettings,rearmFailedRingsid
  from "../db/admin-ringside-settings.js";
 import {validateRingsideSettings} from "../domain/ringside-settings.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
-import {postShowVoiceEnabled,publishPostShowVoiceBatches} from "../db/postshow-voice-batches.js";
+import {postShowVoiceEnabled} from "../db/postshow-voice-batches.js";
+import {publishWeeklyWorldEditorial} from "../db/weekly-world-editorial.js";
 import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-reveal-pilot.js";
 import {hasUnseenLegendReveal} from "../db/legends-vault.js";
 import {readPlaytestKp,grantPlaytestKp} from "../db/admin-kp-playtest.js";
@@ -558,12 +559,11 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    // Disabled by default; failures cannot roll back official results or week.
    if(result.status==="PUBLISHED"&&postShowVoiceEnabled(process.env,cfg.worldId)){
     try{
-     const voices=await publishPostShowVoiceBatches(pool,{
+     const voices=await publishWeeklyWorldEditorial(pool,{
       worldId:cfg.worldId,year:b.year as number,week:b.week as number},
       process.env.GROQ_API_KEY!);
      console.info("Certified shortform publishing",{
-      eligible:voices.eligible,generated:voices.generated,
-      failed:voices.failed,skipped:voices.skipped});
+      state:voices.state,providerCalls:voices.providerCalls,accepted:voices.accepted});
     }catch{
      console.warn("Shortform publishing unavailable; certified results remain intact");
     }

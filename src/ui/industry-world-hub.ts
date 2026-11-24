@@ -7,7 +7,8 @@ import type {readWorldTalentRankings,searchPublicWorldCareers} from "../db/world
 import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {certifiedCareerMoment} from "../domain/certified-career-moments.js";
-import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagNewsThread,projectHotTagBroadcasterPost,dirtSheetByline} from "../domain/hot-tag-news.js";
+import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagBroadcasterPost,dirtSheetByline} from "../domain/hot-tag-news.js";
+import {weeklyHotTagThread} from "../domain/weekly-world-editorial.js";
 import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js";
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
@@ -887,6 +888,12 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      el("p","",story.summary),
      el("small","ppw-industry-muted",story.promotionName+
       " · Year "+story.year+" · Week "+story.week));
+    if(story.editorial?.headline&&story.editorial.commentary){
+     const analysis=el("aside","ppw-news-editorial");
+     analysis.append(el("small","ppw-industry-muted",official?"EDITORIAL OPINION":"RUMOUR DISCUSSION / UNVERIFIED"),
+      el("strong","ppw-news-story-title",story.editorial.headline),el("p","",story.editorial.commentary));
+     item.append(analysis);
+    }
     // The same HOT TAG identities used for show-result reactions now have
     // persistent-looking, locally projected threads under published stories.
     // The thread reads only the public story and makes no new server request.
@@ -900,7 +907,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const verified=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
     const broadcaster=projectHotTagBroadcasterPost(story);
     const posts=[...(broadcaster?[broadcaster]:[]),
-     ...(verified?[verified]:[]),...projectHotTagNewsThread(story)];
+     ...(verified?[verified]:[]),...weeklyHotTagThread(story,story.editorial)];
     for(const post of posts){
      const personId="personId" in post && typeof post.personId==="string"?post.personId:null;
      const wrestler=personId!==null;
