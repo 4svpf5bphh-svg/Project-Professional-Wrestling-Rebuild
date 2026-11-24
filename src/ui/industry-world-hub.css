@@ -445,3 +445,7 @@
 }
 .ppw-hot-tag-reply-to{display:block;font-size:11px!important;color:#f7bda8!important;
  font-weight:800;line-height:1.4;margin-top:2px;overflow-wrap:anywhere}
+
+.ppw-news-editorial{border-left:3px solid currentColor;padding:8px 10px;margin:5px 0;display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.ppw-news-editorial .ppw-news-story-title{font-size:15px!important;line-height:1.3!important;text-transform:none!important}
+.ppw-news-editorial p{margin:2px 0!important}

@@ -3,6 +3,8 @@
  */
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
+import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js";
+import {validateWeeklyStoryCopy,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
 export async function readIndustryWorldNews(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
 }){
@@ -47,12 +49,22 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
    tx.query<{year:number;week:number;story_key:string;desk:"OFFICIAL"|"DIRT";
     certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;
     promotion_name:string;show_id:string;title:string;summary:string;
-    source_kind:string}>(`
-    SELECT year,week,story_key,desk,certainty,promotion_id,promotion_name,
-     coalesce(show_id,'') AS show_id,title,summary,source_kind
-    FROM ppw_world_news_items
-    WHERE world_id=$1 AND (year,week)>=($2::integer,$3::integer)
-     AND (year,week)<=($4::integer,$5::integer)
+    source_kind:string;editorial:unknown}>(`
+    SELECT i.year,i.week,i.story_key,i.desk,i.certainty,i.promotion_id,i.promotion_name,
+     coalesce(i.show_id,'') AS show_id,i.title,i.summary,i.source_kind,
+     b.copy_json->i.story_key AS editorial
+    FROM ppw_world_news_items i
+    LEFT JOIN ppw_weekly_world_editorial b ON b.world_id=i.world_id
+     AND b.year=i.year AND b.week=i.week AND b.state='READY'
+    WHERE i.world_id=$1 AND (i.year,i.week)>=($2::integer,$3::integer)
+     AND (i.year,i.week)<=($4::integer,$5::integer)
+    UNION ALL
+    SELECT b.year,b.week,b.rating_story->>'id','OFFICIAL','CONFIRMED',
+     b.rating_story->>'promotionId',b.rating_story->>'promotionName','',
+     b.rating_story->>'title',b.rating_story->>'summary','RATINGS',
+     b.copy_json->(b.rating_story->>'id')
+    FROM ppw_weekly_world_editorial b WHERE b.world_id=$1 AND b.rating_story IS NOT NULL
+     AND (b.year,b.week)>=($2::integer,$3::integer) AND (b.year,b.week)<=($4::integer,$5::integer)
     ORDER BY year DESC,week DESC,desk,story_key LIMIT 130`,params),
    // Annual best-of can be certified only after every one of the 52 World
    // weeks has a durable publication checkpoint. Existing midyear saves
@@ -117,10 +129,15 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
    promotionName:a.promotion_name,showId:a.show_id,showName:a.show_name,
    slotId:a.slot_id,title:a.title,peopleNames:a.people_names,
    personIds:a.person_ids,rating:Number(a.rating),ratingUnit:a.rating_unit
-  })),stories:items.map(s=>({
-   year:s.year,week:s.week,id:s.story_key,desk:s.desk,certainty:s.certainty,
-   promotionId:s.promotion_id,promotionName:s.promotion_name,
-   showId:s.show_id,title:s.title,summary:s.summary,sourceKind:s.source_kind
-  }))};
+  })),stories:items.map(s=>{
+   const story={year:s.year,week:s.week,id:s.story_key,desk:s.desk,certainty:s.certainty,
+    promotionId:s.promotion_id,promotionName:s.promotion_name,
+    showId:s.show_id,title:s.title,summary:s.summary,sourceKind:s.source_kind};
+   const speaker=projectHotTagNewsWrestlerPost(story,awards.map(a=>({year:a.year,week:a.week,kind:a.kind,
+    promotionId:a.promotion_id,showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names})));
+   const copy=validateWeeklyStoryCopy(story,s.editorial,speaker);
+   const editorial:{editorial?:WeeklyStoryCopy}=copy?{editorial:copy}:{};
+   return {...story,...editorial};
+  })};
  });
 }

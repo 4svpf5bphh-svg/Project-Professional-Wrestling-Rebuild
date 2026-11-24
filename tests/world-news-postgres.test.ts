@@ -10,6 +10,10 @@ import {submitPromotionClaim} from "../src/db/promotion-commands.js";
 import {publishCertifiedWorldNews} from "../src/db/world-news.js";
 import {publishLateAiSigningNews} from "../src/db/late-world-signing-news.js";
 import {readIndustryWorldNews} from "../src/db/industry-news.js";
+import {createWorld,addPromotion} from "../src/db/world-operations.js";
+import {readBusinessWorkspace} from "../src/db/business-workspace.js";
+import {requestGroqEditorial} from "../src/db/groq-ai-director.js";
+import {publishWeeklyWorldEditorial} from "../src/db/weekly-world-editorial.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("certified human and AI shows publish public awards, kept replay-safe and inaccessible to outsiders",{
@@ -273,5 +277,115 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[owner]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
   }).finally(()=>db.close());
+ }
+});
+
+
+test("AI-only week: one shared paced public batch, ratings, both managers, replay and failures",{skip:!url?"No disposable PostgreSQL":false},async()=>{
+ const world="weekly-editorial-"+randomUUID(),players=["editorial-a-"+randomUUID(),"editorial-b-"+randomUUID()],db=postgresPool(url!,4);
+ const reset=()=>withWorldTransaction(db.pool,async tx=>{
+  await tx.query("DELETE FROM ppw_groq_dispatch_gate WHERE id=1",[]);
+  await tx.query("DELETE FROM ppw_groq_daily_usage WHERE usage_day=timezone('UTC',now())::date",[]);
+ });
+ try{
+  await reset();
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Weekly editorial",seed:123,rulesetVersion:"test"});
+   for(const [id,name] of [["human-a","Crown Wrestling"],["human-b","Rival Wrestling"],["ai","Titan Wrestling"]])
+    await addPromotion(tx,world,{id:id!,name:name!,tier:"LOCAL"});
+   await tx.query("UPDATE ppw_worlds SET phase='OPEN',next_lock_at=now()+interval '1 day' WHERE world_id=$1",[world]);
+  });
+  for(let i=0;i<players.length;i++){
+   assert.equal((await joinWorld(db.pool,{worldId:world,playerId:players[i]!,requestId:"join-"+i,expectedRevision:i*2})).status,"APPLIED");
+   assert.equal((await submitPromotionClaim(db.pool,{worldId:world,playerId:players[i]!,promotionId:i===0?"human-a":"human-b",requestId:"claim-"+i,expectedRevision:i*2+1})).status,"APPLIED");
+  }
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,1),($1,1,2),($1,1,3)",[world]);
+   await tx.query(`INSERT INTO ppw_world_news_items(world_id,year,week,story_key,desk,certainty,promotion_id,promotion_name,title,summary,source_kind)
+    VALUES($1,1,1,'event:ai','OFFICIAL','CONFIRMED','ai','Titan Wrestling','Titan Wrestling draws strong crowd','The AI promotion held a televised event.','EVENT'),
+    ($1,1,1,'rumour:ai','DIRT','SPECULATION','ai','Titan Wrestling','Titan Wrestling faces questions','Unverified speculation about future direction.','EVENT'),
+    ($1,1,2,'event:ai2','OFFICIAL','CONFIRMED','ai','Titan Wrestling','Titan Wrestling draws another crowd','The AI promotion held another public event.','EVENT')`,[world]);
+   await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,booking_class,show_day,show_name,event_type)
+    VALUES($1,'ai-tv','ai',1,1,'SUBMITTED','REGULAR',2,'Titan TV','REGULAR'),
+    ($1,'private','human-a',1,4,'DRAFT','REGULAR',2,'PRIVATE FUTURE PLANS','REGULAR')`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
+    VALUES($1,'ai','ai-tv',1,1,'ai-receipt',88,'{}',repeat('c',64))`,[world]);
+   await tx.query(`INSERT INTO ppw_show_economics(world_id,show_id,promotion_id,year,week,attendance,expected_demand,
+    gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,total_cost,net_result,incremental_cash,
+    audience_format,tv_household_rating,estimated_viewers)
+    VALUES($1,'ai-tv','ai',1,1,1000,1000,100000,10000,10000,0,10000,30000,70000,70000,'TV',3.2,5392000)`,[world]);
+   await tx.query("UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[world]);
+  });
+  let calls=0;
+  const transport:typeof fetch=async(_url,init)=>{
+   calls++;
+   const request=JSON.parse(String(init?.body));
+   assert.equal(request.model,"openai/gpt-oss-20b");
+   assert.doesNotMatch(JSON.stringify(request),/PRIVATE FUTURE PLANS/);
+   const sources=JSON.parse(request.messages[1].content) as {key:string;promotion:string;title:string}[];
+   assert.ok(sources.some(s=>s.title.includes("TV watch")));
+   const reply=Object.fromEntries(sources.map(s=>[s.key,s.title.includes("TV watch")?{
+    headline:"Why "+s.promotion+" should chase the audience",
+    commentary:"I think "+s.promotion+" should make television feel like a weekly occasion again.",
+    fans:["I hope "+s.promotion+" gives me something worth watching on television.",
+     "Why should "+s.promotion+" worry about loud opinions when ratings are what matter?",
+     "Nah mate, I think you are being far too harsh."]
+   }:s.title.includes("faces questions")?{
+    headline:"Could "+s.promotion+" surprise the sceptics?",
+    commentary:"I think "+s.promotion+" could make the discussion more interesting without giving everything away.",
+    fans:["I think "+s.promotion+" could have a much better story to tell.",
+     "Maybe "+s.promotion+" should ignore the noise and focus on wrestling.",
+     "I would rather wait for something to actually happen."]
+   }:{
+    headline:"Why "+s.promotion+" should make crowds care",
+    commentary:"I hope "+s.promotion+" treats the audience as more than background noise.",
+    fans:["I love how "+s.promotion+" can make the crowd part of the story.",
+     "I think "+s.promotion+" still has plenty to prove.",
+     "Please give people a chance before writing them off."]
+   }]));
+   return new Response(JSON.stringify({choices:[{finish_reason:"stop",message:{content:JSON.stringify(reply)}}],usage:{prompt_tokens:900,completion_tokens:350}}));
+  };
+  const scope={worldId:world,year:1,week:1};
+  assert.equal((await publishWeeklyWorldEditorial(db.pool,{...scope,week:2},"dummy",transport)).state,"SKIPPED");
+  const batches=await Promise.all([publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport),publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport)]);
+  assert.equal(calls,1);assert.ok(batches.some(b=>b.state==="READY"));
+  assert.equal((await publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport)).state,"SKIPPED");
+  const a=await readIndustryWorldNews(db.pool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
+  const b=await readIndustryWorldNews(db.pool,{worldId:world,promotionId:"human-b",playerId:players[1]!});
+  assert.deepEqual(a.stories,b.stories);
+  assert.ok(a.stories.some(s=>s.sourceKind==="RATINGS"&&s.editorial?.fans?.length===3&&s.summary.includes("3.20")));
+  assert.ok(a.stories.some(s=>s.desk==="DIRT"&&s.editorial?.headline));
+  const business=await readBusinessWorkspace(db.pool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
+  assert.equal(business.ratingsEditorial?.headline,a.stories.find(s=>s.sourceKind==="RATINGS")?.editorial?.headline);
+  assert.equal(calls,1);
+  const paced=await requestGroqEditorial({task:"SHORT_NEWS",key:"dummy",pool:db.pool,pace:true,body:{max_completion_tokens:200,messages:[]},transport});
+  assert.equal(paced.status,429);assert.equal(calls,1);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=3 WHERE world_id=$1",[world]);
+   await tx.query("UPDATE ppw_groq_dispatch_gate SET next_allowed_at=clock_timestamp()-interval '1 second' WHERE id=1",[]);
+  });
+  const failed=await publishWeeklyWorldEditorial(db.pool,{...scope,week:2},"dummy",async()=>{
+   calls++;return new Response("limit",{status:429,headers:{"retry-after":"180"}});
+  });
+  assert.equal(failed.state,"FAILED");assert.equal(failed.providerCalls,1);assert.equal(calls,2);
+  const diagnostics=await withWorldTransaction(db.pool,tx=>tx.query<{state:string;diagnostic:string;provider_calls:number;input_tokens:number}>(`
+   SELECT state,diagnostic,provider_calls,input_tokens FROM ppw_weekly_world_editorial WHERE world_id=$1 ORDER BY week`,[world]));
+  assert.equal(diagnostics[0]?.input_tokens,900);assert.equal(diagnostics[1]?.diagnostic,"RATE_LIMITED");
+  const gate=await withWorldTransaction(db.pool,tx=>tx.query<{seconds:number}>(`
+   SELECT extract(epoch from next_allowed_at-clock_timestamp())::integer AS seconds FROM ppw_groq_dispatch_gate WHERE id=1`,[]));
+  assert.ok((gate[0]?.seconds??0)>120);
+  const after=await readIndustryWorldNews(db.pool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
+  assert.ok(after.stories.some(s=>s.id==="event:ai2"&&!s.editorial));
+  await withWorldTransaction(db.pool,tx=>tx.query("UPDATE ppw_worlds SET week=4 WHERE world_id=$1",[world]));
+  assert.equal((await publishWeeklyWorldEditorial(db.pool,{...scope,week:3},"dummy",transport)).state,"EMPTY");
+  assert.equal(calls,2);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_world_news_items","ppw_world_news_weeks","ppw_show_economics","ppw_completed_shows","ppw_booking_drafts",
+    "ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls","ppw_memberships","ppw_promotions"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[players]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>reset().finally(()=>db.close()));
  }
 });

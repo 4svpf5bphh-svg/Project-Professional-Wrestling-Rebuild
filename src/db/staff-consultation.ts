@@ -44,6 +44,9 @@ export async function readStaffConsultation(pool:TransactionPool,scope:Scope,
   status,year:office.year,week:office.week,revision:office.worldRevision,items});
  if(!office.canEdit||!(config.enabled??postShowVoiceEnabled(process.env,scope.worldId)))
   return result("UNAVAILABLE");
+ // During single-batch playtesting, private consultations remain deterministic.
+ // The injected enabled override preserves the existing isolated integration lab.
+ if(config.enabled===undefined)return result("FALLBACK");
  const key=config.key??process.env.GROQ_API_KEY;
  if(!key)return result("UNAVAILABLE");
  const mail=await withSqlClient(pool,tx=>readWorldMail(tx,scope));

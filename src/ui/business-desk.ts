@@ -829,6 +829,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
      "No certified same-slot TV challenger yet. Select a broadcaster "+
       "below to compare public TV standings."));
    section.append(compare);
+   if(view.ratingsEditorial){
+    const edition=view.ratingsEditorial,editorial=el("aside","ppw-ratings-circuit ppw-ratings-editorial");
+    editorial.append(el("span","ppw-business-kicker","WORLD TV WATCH · Y"+edition.year+" W"+edition.week),
+     el("h3","",edition.headline??edition.title),el("p","ppw-business-muted",edition.summary));
+    if(edition.commentary)editorial.append(el("small","ppw-business-muted","EDITORIAL OPINION"),el("p","",edition.commentary));
+    section.append(editorial);
+   }
    if(ownRank>=0){
     const position=el("p","ppw-ratings-war-standings",
      "YOUR POSITION  ·  #"+(ownRank+1)+" OF "+ranking.length+
