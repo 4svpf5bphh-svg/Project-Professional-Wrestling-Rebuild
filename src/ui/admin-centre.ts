@@ -55,6 +55,9 @@ type LabData={usage:LabDay[];runs:LabRun[];scores:{
  scenarios?:BenchmarkScenario[];
  shortformScenarios?:{id:string;name:string;expectation:string}[];
  shortformRuns?:ShortformLabRun[];
+ weeklyWorldRuns?:{year:number;week:number;state:string;diagnostic:string;provider_calls:number;
+  estimated_tokens:number;input_tokens:number;output_tokens:number;accepted_stories:number;
+  fan_threads:number;editorials:number;wrestler_posts:number}[];
  providers?:{groq:boolean;openai:boolean};
  paid?:{month:string;spent:string;reserved:string;calls:number}|null};
 type Recap={showHeadline:string;opening:string;closing:string;
@@ -289,6 +292,20 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    }
    if(!data.usage.length)usage.append(el("p","ppw-admin-small",
     "No recorded provider requests during the last seven days."));
+   const weeklyWorld=el("section","ppw-lab-benchmark");
+   weeklyWorld.append(el("h3","","Live weekly World editorial"),
+    el("p","ppw-admin-small","One shared free Groq batch per completed game week. News, Dirt Sheets, HOT TAG and Ratings War use the same cached edition. Private consultations use PPW fallback during this pilot."));
+   const weeklyRuns=data.weeklyWorldRuns??[];
+   if(!weeklyRuns.length)weeklyWorld.append(el("p","ppw-admin-small","No weekly public batch yet. Advance a game week normally to populate this report."));
+   for(const run of weeklyRuns){
+    const row=el("article","ppw-lab-period");
+    row.append(el("strong","","Y"+run.year+" W"+run.week+" · "+run.state+" / "+run.diagnostic),
+     el("span","",run.provider_calls+" Groq request(s) · "+run.estimated_tokens.toLocaleString("en-GB")+" estimated token ceiling · "+
+      (run.input_tokens+run.output_tokens).toLocaleString("en-GB")+" reported tokens"),
+     el("span","",run.accepted_stories+" covered stories · "+run.fan_threads+" fan threads · "+
+      run.editorials+" opinion pieces · "+run.wrestler_posts+" wrestler posts"));
+    weeklyWorld.append(row);
+   }
    const scoreTitle=el("h3","","Editorial scorecard · 30 days");
    const scores=el("div","ppw-lab-scorecard");
    if(data.scores.length)for(const row of data.scores){
@@ -811,7 +828,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    labPanel.replaceChildren(el("h2","","AI Quality Lab"),
     el("p","ppw-admin-sub",
      "Live provider usage, model quality and your playtest notes. No public Results are changed."),
-    voiceLab,benchmark,overview,priceNote,todaySummary,providerSnapshot,usage,scoreTitle,scores,
+    weeklyWorld,voiceLab,benchmark,overview,priceNote,todaySummary,providerSnapshot,usage,scoreTitle,scores,
     el("h3","","Scenario-by-scenario model scores"),scenarioScores,reportButton,
     reportStatus,reportFallback,
     el("h3","","Same-show Groq vs Terra"),headToHead,

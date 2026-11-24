@@ -30,7 +30,7 @@ import {readAdminRingsideSettings,changeAdminRingsideSettings,rearmFailedRingsid
 import {validateRingsideSettings} from "../domain/ringside-settings.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
 import {postShowVoiceEnabled} from "../db/postshow-voice-batches.js";
-import {publishWeeklyWorldEditorial} from "../db/weekly-world-editorial.js";
+import {publishWeeklyWorldEditorial,readWeeklyWorldEditorialRuns} from "../db/weekly-world-editorial.js";
 import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-reveal-pilot.js";
 import {hasUnseenLegendReveal} from "../db/legends-vault.js";
 import {readPlaytestKp,grantPlaytestKp} from "../db/admin-kp-playtest.js";
@@ -194,6 +194,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
      scenarios:WRESTLING_BENCHMARKS,
      shortformScenarios:POSTSHOW_VOICE_SCENARIOS,
      shortformRuns:await readShortformVoiceLabRuns(pool,cfg.worldId,user.playerId),
+     weeklyWorldRuns:normalOperator?await readWeeklyWorldEditorialRuns(pool,cfg.worldId):[],
      providers:{groq:!!process.env.GROQ_API_KEY,
       openai:paidPreviewEnabled(process.env)}
     });

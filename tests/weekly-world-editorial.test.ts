@@ -45,3 +45,13 @@ test("wrestler voice is attached only to the verified public award identity",()=
  assert.deepEqual(validateWeeklyEditorial(anchors,{s0:{wrestler:"I pinned him and I guarantee my next match."}}),{});
  assert.deepEqual(validateWeeklyEditorial(weeklyEditorialAnchors([dirt]),{s0:{wrestler:"I think the fans deserve more than that."}}),{});
 });
+
+test("one previous public source per promotion, no duplicate threads across stories",()=>{
+ const second={...official,id:"event:other",title:"Crown Wrestling future direction"};
+ const anchors=weeklyEditorialAnchors([official,second],[],[
+  {year:1,week:29,promotionId:"a",title:"Public prior headline"},
+  {year:1,week:31,promotionId:"a",title:"Private future plans"}]);
+ assert.match(weeklyEditorialMessages(anchors)[1]!.content,/Public prior headline/);
+ assert.doesNotMatch(weeklyEditorialMessages(anchors)[1]!.content,/Private future plans/);
+ assert.equal(Object.keys(validateWeeklyEditorial(anchors,{s0:copy,s1:copy})).length,1);
+});

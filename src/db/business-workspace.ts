@@ -83,7 +83,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      standing.last_evaluated_year AS standing_year,
      ${promotionCompetitionProjectionSql("w.world_id","p.promotion_id")}
       AS cp,
-     (SELECT jsonb_build_object('year',b.year,'week',b.week,'story',b.rating_story,'copy',b.copy_json->$4)
+     (SELECT jsonb_build_object('year',b.year,'week',b.week,'story',b.rating_story,'copy',b.copy_json->($4::text))
       FROM ppw_weekly_world_editorial b WHERE b.world_id=w.world_id
        AND (b.year,b.week)<(w.year,w.week)
       ORDER BY b.year DESC,b.week DESC LIMIT 1) AS ratings_editorial,

@@ -11,6 +11,7 @@ import {publishCertifiedWorldNews} from "../src/db/world-news.js";
 import {publishLateAiSigningNews} from "../src/db/late-world-signing-news.js";
 import {readIndustryWorldNews} from "../src/db/industry-news.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
+import {readBusinessWorkspace} from "../src/db/business-workspace.js";
 import {requestGroqEditorial} from "../src/db/groq-ai-director.js";
 import {publishWeeklyWorldEditorial} from "../src/db/weekly-world-editorial.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
@@ -322,13 +323,25 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
    assert.equal(request.model,"openai/gpt-oss-20b");
    assert.doesNotMatch(JSON.stringify(request),/PRIVATE FUTURE PLANS/);
    const sources=JSON.parse(request.messages[1].content) as {key:string;promotion:string;title:string}[];
-   assert.ok(sources.some(s=>s.title.includes("TV standings")));
-   const reply=Object.fromEntries(sources.map(s=>[s.key,{
-    headline:"Why "+s.promotion+" should demand better",
-    commentary:"I think "+s.promotion+" should give viewers another reason to care.",
-    fans:["I hope "+s.promotion+" makes the next episode worth watching.",
-     "Why should "+s.promotion+" listen to every loud opinion on here?",
+   assert.ok(sources.some(s=>s.title.includes("TV watch")));
+   const reply=Object.fromEntries(sources.map(s=>[s.key,s.title.includes("TV watch")?{
+    headline:"Why "+s.promotion+" should chase the audience",
+    commentary:"I think "+s.promotion+" should make television feel like a weekly occasion again.",
+    fans:["I hope "+s.promotion+" gives me something worth watching on television.",
+     "Why should "+s.promotion+" worry about loud opinions when ratings are what matter?",
      "Nah mate, I think you are being far too harsh."]
+   }:s.title.includes("faces questions")?{
+    headline:"Could "+s.promotion+" surprise the sceptics?",
+    commentary:"I think "+s.promotion+" could make the discussion more interesting without giving everything away.",
+    fans:["I think "+s.promotion+" could have a much better story to tell.",
+     "Maybe "+s.promotion+" should ignore the noise and focus on wrestling.",
+     "I would rather wait for something to actually happen."]
+   }:{
+    headline:"Why "+s.promotion+" should make crowds care",
+    commentary:"I hope "+s.promotion+" treats the audience as more than background noise.",
+    fans:["I love how "+s.promotion+" can make the crowd part of the story.",
+     "I think "+s.promotion+" still has plenty to prove.",
+     "Please give people a chance before writing them off."]
    }]));
    return new Response(JSON.stringify({choices:[{finish_reason:"stop",message:{content:JSON.stringify(reply)}}],usage:{prompt_tokens:900,completion_tokens:350}}));
   };
@@ -342,6 +355,9 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
   assert.deepEqual(a.stories,b.stories);
   assert.ok(a.stories.some(s=>s.sourceKind==="RATINGS"&&s.editorial?.fans?.length===3&&s.summary.includes("3.20")));
   assert.ok(a.stories.some(s=>s.desk==="DIRT"&&s.editorial?.headline));
+  const business=await readBusinessWorkspace(db.pool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
+  assert.equal(business.ratingsEditorial?.headline,a.stories.find(s=>s.sourceKind==="RATINGS")?.editorial?.headline);
+  assert.equal(calls,1);
   const paced=await requestGroqEditorial({task:"SHORT_NEWS",key:"dummy",pool:db.pool,pace:true,body:{max_completion_tokens:200,messages:[]},transport});
   assert.equal(paced.status,429);assert.equal(calls,1);
   await withWorldTransaction(db.pool,async tx=>{
