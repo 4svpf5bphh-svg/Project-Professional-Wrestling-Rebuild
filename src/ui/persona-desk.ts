@@ -10,11 +10,13 @@ import {describeBookingCommitment} from "../domain/backstage-booking-commitment.
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 import type {WorldMail,WorldMailAction} from "../db/backstage-world-mail.js";
+import type {StaffConsultation} from "../domain/staff-consultation.js";
 import {staffDebateReaction} from "../domain/backstage-staff-dialogue.js";
 import {STORY_FOLLOW_UPS,type StoryFollowUpChoice}
  from "../domain/programme-story-follow-up.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
+ consultStaff?():Promise<StaffConsultation>;
  markRead(personId:string):Promise<{readCount:number}>;
  markWorldRead?(mailId:string):Promise<{readCount:number}>;
  respondNetwork?(input:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
@@ -485,6 +487,25 @@ export function mountPersonaDesk(root:HTMLElement,
       el("p","",staff.position));
      chat.append(perspective);
     }
+   }
+   if(mail.kind==="STAFF"&&mail.staffDebate&&mail.canDisagree&&!mail.disagreementResponse&&port.consultStaff){
+    const consultation=el("section","ppw-persona-bubble ppw-persona-in"),details=el("div","");
+    const ask=button("Ask both staff for their views",()=>{
+     if(ask.disabled)return;
+     ask.disabled=true;details.replaceChildren(el("p","","Consulting the team…"));
+     void port.consultStaff!().then(response=>{
+      if(!details.isConnected)return;
+      details.replaceChildren();
+      const relevant=response.revision===view?.worldRevision?response.items.filter(i=>i.mailId===mail.id):[];
+      for(const item of relevant){
+       const note=el("article","ppw-backstage-staff-voice");
+       note.append(el("strong","",item.staffName),el("p","",item.opinion),el("p","",item.suggestion));details.append(note);
+      }
+      if(!relevant.length)details.append(el("p","","No additional verified views. The original staff positions remain available."));
+     }).catch(()=>{if(details.isConnected)details.replaceChildren(el("p","","Consultation unavailable. The original discussion remains available."));})
+      .finally(()=>{if(ask.isConnected)ask.disabled=false;});
+    });
+    consultation.append(ask,details);chat.append(consultation);
    }
    if(!mail.storyChapter)chat.append(el("p","ppw-backstage-world-evidence",
     mail.contentConcern?"From a completed television match with a verified hardcore stipulation.":

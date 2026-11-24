@@ -1,5 +1,5 @@
 /** Editorial model routing. Never authorises World state changes. */
-export type AiTask="RINGSIDE"|"SHORT_NEWS"|"CREATIVE_PITCH";
+export type AiTask="RINGSIDE"|"SHORT_NEWS"|"CREATIVE_PITCH"|"STAFF_ADVICE";
 export type GroqModel="openai/gpt-oss-120b"|"openai/gpt-oss-20b";
 export const DEFAULT_GROQ_MODEL:GroqModel="openai/gpt-oss-120b";
 export function chooseGroqModel(task:AiTask,preferred?:GroqModel):GroqModel{

@@ -12,8 +12,9 @@ export async function claimAiAllowance(pool:TransactionPool,estimate:number,task
  // Keep 8 requests / 32k tokens available for short-form publication,
  // even when experimental Groq Ringside previews consume their allowance.
  // No increase to the shared free-tier limit; the same atomic row is used.
- const calls=task==="RINGSIDE"?DAILY_CALLS-8:DAILY_CALLS;
- const tokens=task==="RINGSIDE"?DAILY_TOKENS-32000:DAILY_TOKENS;
+ const reserved=task==="RINGSIDE"||task==="STAFF_ADVICE";
+ const calls=reserved?DAILY_CALLS-8:DAILY_CALLS;
+ const tokens=reserved?DAILY_TOKENS-32000:DAILY_TOKENS;
  if(!Number.isSafeInteger(estimate)||estimate<1||estimate>35000)
   throw new Error("AI request exceeds the per-call safety limit");
  const rows=await withSqlClient(pool,db=>db.query<{day:string}>(`

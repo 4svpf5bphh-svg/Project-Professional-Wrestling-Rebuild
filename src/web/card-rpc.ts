@@ -1,4 +1,5 @@
 import type {WorldApiContext} from "../api/world-service.js";
+import {readStaffConsultation} from "../db/staff-consultation.js";
 import {BACKSTAGE_LABELS,type BackstageDecision}
  from "../domain/backstage-conversations.js";
 import {overviewAsActor,dismissAttentionAsActor,dismissAttentionBatchAsActor} from "../api/world-service.js";
@@ -54,6 +55,11 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  }
  if(method==="contracts")return contractDeskAsActor(context,worldId,promotionId);
  if(method==="staff")return staffWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="staffConsultation"){
+  if(Object.keys(p).some(k=>!["method","worldId","promotionId","showId"].includes(k)))
+   throw Error("Invalid staff consultation request");
+  return readStaffConsultation(context.pool,{worldId,promotionId,playerId:context.actor.playerId});
+ }
  if(method==="gorillaWorkspace")return gorillaWorkspaceAsActor(context,worldId,promotionId);
  if(method==="industry")return industryWorldAsActor(context,worldId,promotionId);
  if(method==="industryNews")return industryNewsAsActor(context,worldId,promotionId);

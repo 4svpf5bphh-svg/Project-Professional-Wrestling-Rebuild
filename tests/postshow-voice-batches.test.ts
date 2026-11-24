@@ -202,7 +202,7 @@ test("20B failures expose only categorical diagnostics and never retain rejected
    wrestler:"In character reply",roadAgent:"Practical advice"}),expected:"WRONG_SHAPE"},
   {content:JSON.stringify({news:{headline:"Too short",summary:"Jett Mercer"},
    wrestler:{text:"No"},roadAgent:{note:"No"}}),expected:"ALL_REJECTED"},
-  {content:JSON.stringify(valid),expected:"ACCEPTED"}
+  {content:JSON.stringify(valid),expected:"PARTIAL"}
  ]){
   let calls=0,diagnosis:unknown=null;
   const text=sample.content;
@@ -227,9 +227,10 @@ test("20B failures expose only categorical diagnostics and never retain rejected
    assert.equal(d.roadAgent,"LENGTH_REJECTED");
   }
   assert.deepEqual(Object.keys(d).sort(),
-   ["category","news","wrestler","roadAgent"].sort(),
+   (sample.expected==="INVALID_JSON"?["category","news","wrestler","roadAgent"]:
+    ["category","news","wrestler","roadAgent","fanThreads"]).sort(),
    "Diagnostics contain no Groq prose, error body, names or content");
-  assert.equal(!!result,sample.expected==="ACCEPTED");
+  assert.equal(!!result,sample.expected==="PARTIAL");
  }
  let partial:unknown=null;
  const newsOnly=await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>
@@ -240,7 +241,7 @@ test("20B failures expose only categorical diagnostics and never retain rejected
  assert.equal(newsOnly?.wrestler,null);
  assert.equal(newsOnly?.roadAgent,null);
  assert.deepEqual(partial,{category:"PARTIAL",news:"ACCEPTED",
-  wrestler:"MISSING",roadAgent:"MISSING"});
+  wrestler:"MISSING",roadAgent:"MISSING",fanThreads:{eligible:1,accepted:0,replies:0}});
  let diagnosis:unknown;
  await generatePostShowVoiceCopy(fixture.show,"dummy",async()=>
   new Response("provider unavailable",{status:400}),undefined,

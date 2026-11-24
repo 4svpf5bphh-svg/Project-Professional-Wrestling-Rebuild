@@ -2,6 +2,7 @@
  * No extra bottom navigation. Only the controlling player can sign staff.
  */
 import type {readStaffWorkspace} from "../db/staff-workspace.js";
+import type {StaffConsultation} from "../domain/staff-consultation.js";
 import {STAFF_ROLES,type StaffRole} from "../domain/world-staff.js";
 import {GORILLA_POLICIES,type GorillaPolicy} from "../domain/gorilla-position.js";
 import {staffMeetingDialogue,staffRecommendationVoice} from "./staff-meeting-voice.js";
@@ -11,6 +12,7 @@ import "./staff-office-themes.css";
 export type StaffView=Awaited<ReturnType<typeof readStaffWorkspace>>;
 export interface StaffPort{
  load():Promise<StaffView>;
+ consult?():Promise<StaffConsultation>;
  saveGorilla?(input:{requestId:string;expectedRevision:number;policy:GorillaPolicy}):Promise<unknown>;
  save(input:{requestId:string;expectedRevision:number;
   allowUnfinishedFallback:boolean;allowLogisticsFallback:boolean;
@@ -163,6 +165,37 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    el("h2","","Around the table"),
    el("p","ppw-staff-muted",
     "What your hired specialists know, what they actually change and where you make the final call."));
+  if(port.consult&&view.canEdit&&view.meetings?.some(m=>m.staffName)){
+   const panel=el("section","ppw-staff-meeting-brief"),content=el("div","");
+   panel.append(el("strong","","Consult the team"),
+    el("p","ppw-staff-muted","One optional free-tier consultation each game week. Existing reports and decisions remain authoritative."));
+   const control=button("Ask staff for their views",()=>{
+    if(control.disabled)return;
+    control.disabled=true;content.replaceChildren(el("p","ppw-staff-muted","Consulting your staff…"));
+    void port.consult!().then(response=>{
+     if(!content.isConnected)return;
+     content.replaceChildren();
+     if(response.revision!==view?.worldRevision){
+      content.append(el("p","ppw-staff-muted","The office has changed. Use the current reports."));return;
+     }
+     const items=response.items.filter(i=>!i.mailId);
+     for(const item of items){
+      const note=el("article","ppw-staff-meeting-brief");
+      note.append(el("strong","",item.staffName+" · "+roles(item.role)),
+       el("p","ppw-staff-dialogue",item.opinion),
+       el("p","ppw-staff-meeting-recommendation",item.suggestion));content.append(note);
+     }
+     if(!items.length)content.append(el("p","ppw-staff-muted",response.status==="PENDING"?
+      "The weekly consultation is already claimed. Your ordinary reports remain available.":
+      "No additional verified advice is available. Use the existing reports below."));
+     if(response.items.some(i=>i.mailId))content.append(el("p","ppw-staff-muted",
+      "Your unresolved staff disagreement also has consultation views in Backstage."));
+    }).catch(()=>{if(content.isConnected)content.replaceChildren(el("p","ppw-staff-muted",
+     "Consultation unavailable. Your ordinary staff advice remains below."));})
+     .finally(()=>{if(control.isConnected)control.disabled=false;});
+   });
+   panel.append(control,content);meeting.append(panel);
+  }
   const attendees=el("div","ppw-staff-meeting-grid");
   // Put genuinely urgent staffed decisions first; vacancies stay last.
   // Pure sorting, no extra World query or editor state change.
