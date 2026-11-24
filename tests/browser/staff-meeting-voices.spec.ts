@@ -31,7 +31,7 @@ test("Staff Office sounds like distinct named colleagues, and opening advice nev
   if(method==="staffConsultation"){
    consultations++;
    return r.fulfill({json:{status:"READY",year:1,week:5,revision:4,items:[
-    {key:"staff-CREATIVE",role:"CREATIVE",staffName:"Emilia Fox",
+    {key:"staff-CREATIVE",role:"CREATIVE",staffName:"Emilia Fox",target:"programmes",
      opinion:"I'd rather give the crowd a fresh question than another familiar answer.",
      suggestion:"Write a fresh scene with a clear motive."}]}});
   }
@@ -59,6 +59,7 @@ test("Staff Office sounds like distinct named colleagues, and opening advice nev
  await page.getByRole("button",{name:"Ask staff for their views"}).click();
  await expect(page.locator(".ppw-staff-consultation")).toContainText("fresh question");
  await expect(page.locator(".ppw-staff-consultation")).toContainText("Emilia Fox");
+ await expect(page.locator(".ppw-staff-consultation").getByRole("button",{name:"Review programmes"})).toBeVisible();
  expect(consultations).toBe(1);
  await notes.nth(2).getByRole("button",{name:"Browse staff for this role"}).click();
  await expect(page.getByRole("button",{name:"Staff Market"}))

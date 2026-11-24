@@ -134,6 +134,14 @@ test("One private Groq staff consultation serves Staff Office and Backstage, nev
   assert.equal(cached.items.filter(x=>x.mailId===debate.id).length,2);
   assert.ok(cached.items.some(x=>!x.mailId));
   assert.equal(cached.revision,claimed.revision);
+  assert.equal(cached.items.find(x=>x.role==="MEDICAL"&&!x.mailId)?.target,"roster");
+  assert.equal(cached.items.find(x=>x.role==="CREATIVE"&&!x.mailId)?.target,"programmes");
+  // A process killed during an advisory request cannot hold the screen in
+  // an indefinite waiting state or unlock another provider attempt.
+  await withSqlClient(db.pool,tx=>tx.query(
+   "UPDATE ppw_staff_consultations SET state='PENDING',copy_json=NULL,claimed_at=clock_timestamp()-interval '60 seconds' WHERE world_id=$1",[worldId]));
+  const expired=await readStaffConsultation(db.pool,scope,opts);
+  assert.equal(expired.status,"FALLBACK");assert.equal(calls,1);
   assert.deepEqual(await withSqlClient(db.pool,tx=>readWorldMail(tx,scope)),before);
   await assert.rejects(readStaffConsultation(db.pool,{...scope,playerId:"outsider"},opts),/access denied/);
   assert.equal(calls,1);

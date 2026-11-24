@@ -6,7 +6,12 @@ CREATE TABLE IF NOT EXISTS ppw_staff_consultations(
  digest text NOT NULL CHECK(length(digest)=64),
  state text NOT NULL CHECK(state IN ('PENDING','READY','FAILED')),
  copy_json jsonb,
+ claimed_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  PRIMARY KEY(world_id,promotion_id,player_id),
  CHECK((state='READY' AND copy_json IS NOT NULL AND jsonb_typeof(copy_json)='object'
   AND length(copy_json::text)<=4000) OR (state<>'READY' AND copy_json IS NULL))
 );
+
+-- Remains safe to reapply to a staged database with the original cache.
+ALTER TABLE ppw_staff_consultations ADD COLUMN IF NOT EXISTS claimed_at
+ timestamptz NOT NULL DEFAULT clock_timestamp();

@@ -183,7 +183,14 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
       const note=el("article","ppw-staff-consultation-note");
       note.append(el("strong","",item.staffName+" · "+roles(item.role)),
        el("p","ppw-staff-dialogue",item.opinion),
-       el("p","ppw-staff-meeting-recommendation",item.suggestion));content.append(note);
+       el("p","ppw-staff-meeting-recommendation",item.suggestion));
+      const action=item.target==="contracts"?port.openContracts:
+       item.target==="roster"?port.openRoster:item.target==="programmes"?port.openProgrammes:
+       item.target==="gorilla"?port.openGorilla:item.target==="market"?port.openMarket:undefined;
+      const labels={contracts:"Review contracts",roster:"Review roster",programmes:"Review programmes",
+       gorilla:"Open Gorilla Position",market:"Browse Talent Market",staff:"Review staff"};
+      if(action&&item.target)note.append(button(labels[item.target],()=>action()));
+      content.append(note);
      }
      if(!items.length)content.append(el("p","ppw-staff-muted",response.status==="PENDING"?
       "The weekly consultation is already claimed. Your ordinary reports remain available.":

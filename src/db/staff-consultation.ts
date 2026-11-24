@@ -11,7 +11,7 @@ import {CONSULTATION_OPTIONS,consultationMessages,validateConsultation,consultat
  type ConsultationAnchor,type StaffConsultation} from "../domain/staff-consultation.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
 type Office=Awaited<ReturnType<typeof readStaffWorkspace>>;
-type Cached={week_index:number;digest:string;state:string;copy_json:unknown};
+type Cached={week_index:number;digest:string;state:string;copy_json:unknown;expired:boolean};
 const rank={ACTION:0,WATCH:1,CLEAR:2} as const;
 export function consultationAnchors(office:Office,mails:readonly WorldMail[]):ConsultationAnchor[]{
  const staff=office.meetings.filter(m=>m.staffName&&m.personality&&m.urgency!=="CLEAR")
@@ -19,14 +19,21 @@ export function consultationAnchors(office:Office,mails:readonly WorldMail[]):Co
  const anchors:ConsultationAnchor[]=staff.map(m=>({
   key:"staff-"+m.role,role:m.role,staffName:m.staffName!,personality:m.personality!,
   specialism:m.specialism,observation:m.message.slice(0,340),nextStep:m.nextStep.slice(0,340),
-  options:CONSULTATION_OPTIONS[m.role]
+  options:m.consultationOptions,target:m.target
  }));
  const debate=mails.find(m=>m.kind==="STAFF"&&m.canDisagree&&!m.disagreementResponse&&m.staffDebate);
  if(debate?.staffDebate)for(const [role,member] of [
   ["MEDICAL",debate.staffDebate.medical],["CREATIVE",debate.staffDebate.creative]] as const){
   anchors.push({key:"debate-"+role,role,staffName:member.name,personality:member.personality,
    specialism:null,observation:member.position.slice(0,340),nextStep:debate.body.slice(0,340),
-   mailId:debate.id,options:CONSULTATION_OPTIONS[role]});
+   mailId:debate.id,target:role==="MEDICAL"?"roster":"programmes",
+   options:role==="MEDICAL"?[
+    "Review the actual fatigue warning and all existing clearance restrictions before physical booking.",
+    "Consider a lighter schedule and non-physical presentation; reassess actual fatigue rather than assuming recovery."
+   ]:[
+    "Write a different, non-physical chapter for the existing programme that respects the Medical concern.",
+    "Consider a meaningful ending or a fresh motive, without requiring another demanding match."
+   ]});
  }
  return anchors;
 }
@@ -48,12 +55,19 @@ export async function readStaffConsultation(pool:TransactionPool,scope:Scope,
  })).digest("hex");
  const params=[scope.worldId,scope.promotionId,scope.playerId,week,digest,office.worldRevision];
  const cached=await withSqlClient(pool,tx=>tx.query<Cached&Record<string,unknown>>(`
-  SELECT week_index,digest,state,copy_json FROM ppw_staff_consultations
-  WHERE world_id=$1 AND promotion_id=$2 AND player_id=$3`,params.slice(0,3)));
+  SELECT s.week_index,s.digest,s.state,s.copy_json,
+   s.claimed_at < clock_timestamp()-interval '45 seconds' AS expired
+  FROM ppw_staff_consultations s JOIN ppw_worlds w ON w.world_id=s.world_id
+  JOIN ppw_promotion_controls c ON c.world_id=s.world_id AND c.promotion_id=s.promotion_id
+   AND c.player_id=s.player_id AND c.active
+  JOIN ppw_memberships m ON m.world_id=s.world_id AND m.player_id=s.player_id AND m.status='ACTIVE'
+  WHERE s.world_id=$1 AND s.promotion_id=$2 AND s.player_id=$3
+   AND w.revision=$4 AND w.phase='OPEN' AND w.next_lock_at>clock_timestamp()`,
+  [...params.slice(0,3),office.worldRevision]));
  const existing=cached[0];
  if(existing&&existing.week_index>=week){
   if(existing.week_index!==week||existing.digest!==digest)return result("FALLBACK");
-  if(existing.state==="PENDING")return result("PENDING");
+  if(existing.state==="PENDING")return result(existing.expired?"FALLBACK":"PENDING");
   const items=validateConsultation(anchors,existing.copy_json);
   return result(existing.state==="READY"&&items.length?"READY":"FALLBACK",items);
  }
@@ -67,7 +81,8 @@ export async function readStaffConsultation(pool:TransactionPool,scope:Scope,
   WHERE w.world_id=$1 AND w.phase='OPEN' AND w.next_lock_at>clock_timestamp()
    AND (w.year-1)*52+w.week-1=$4 AND w.revision=$6
   ON CONFLICT(world_id,promotion_id,player_id) DO UPDATE
-   SET week_index=EXCLUDED.week_index,digest=EXCLUDED.digest,state='PENDING',copy_json=NULL
+   SET week_index=EXCLUDED.week_index,digest=EXCLUDED.digest,state='PENDING',copy_json=NULL,
+    claimed_at=clock_timestamp()
    WHERE ppw_staff_consultations.week_index<EXCLUDED.week_index
   RETURNING week_index`,params));
  if(claims.length!==1)return result("PENDING");
