@@ -52,3 +52,14 @@ test("Same-show comparisons are newest first and bounded to six",()=>{
  assert.equal(result[0]?.showId,"show-7");
  assert.equal(result.at(-1)?.showId,"show-2");
 });
+
+test("Assisted Terra samples remain readable but do not inflate model-only ratings",()=>{
+ const samples:SameShowSample[]=[
+  {...base,provider:"GROQ",model:"groq",status:"READY"},
+  {...base,provider:"OPENAI",model:"gpt-6.1-terra",status:"READY",rating:5,editorial_assisted:true},
+  {...base,provider:"OPENAI",model:"gpt-6.1-terra",status:"READY",rating:2}
+ ];
+ const terra=sameShowComparisons(samples)[0]!.terra;
+ assert.equal(terra.accepted,2);assert.equal(terra.assisted,1);
+ assert.equal(terra.rated,1);assert.equal(terra.averageRating,2);
+});

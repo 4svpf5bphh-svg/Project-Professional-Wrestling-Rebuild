@@ -479,7 +479,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     showName:meter.showName,provider:previewProvider,model:meter.model,
     durationMs,providerCalls:meter.calls,
     inputTokens:meter.reported?meter.input:null,
-    outputTokens:meter.reported?meter.output:null,review
+    outputTokens:meter.reported?meter.output:null,review,
+    terraEditorial:trace.terraEditorial
    });
    tracked=null;
    return json(200,{review,preview:true,labRunId:recorded.runId,trace,
