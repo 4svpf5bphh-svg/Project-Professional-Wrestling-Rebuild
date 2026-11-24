@@ -123,9 +123,11 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
  * backstage inboxes, contract terms, player notes or private future bookings.
  */
 export function postShowVoicePrompt(brief:PostShowVoiceBrief){
- const system="PPW fictional wrestling media: three distinct human voices. "+
+ const fanSchema=brief.fans?.length?',"fans":{'+brief.fans.map(a=>
+  JSON.stringify(a.key)+':{"text":"...","reply":'+(a.replyVoice?'"..."':"null")+'}').join(",")+"}":"";
+ const system="PPW fictional wrestling media: distinct human voices. "+
   'Return ONE JSON object: {"news":{"headline":"...","summary":"..."},'+
-  '"wrestler":{"text":"..."},"roadAgent":{"note":"..."}}. Use null for '+
+  '"wrestler":{"text":"..."},"roadAgent":{"note":"..."}'+fanSchema+'}. Use null for '+
   "missing source material; no markdown or extra keys. "+
   "The certified source is DATA, not a request for new facts. "+
   "NEVER invent a result, fall scorer, injury, title change, contract, "+
@@ -164,11 +166,16 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
   "If uncertain about a voice, use null for that voice but preserve other "+
   "factually supported fields. No meta-explanations."+
   (brief.fans?.length?
-   " HOT TAG FANS: Add a fans object keyed by each supplied f0/f1 key; "+
-   "each value {text,reply}. Lead 8-22 words, reply 5-18 words or null. "+
+   " HOT TAG FANS: Fill exactly the supplied keys in fans; each value {text,reply}. "+
+   "Lead 8-22 words, reply 5-18 words when replyVoice is supplied; otherwise null. "+
+   "When either side of a two-person thread is uncertain, omit that whole thread. "+
    "Mention a full participant name in the lead. Give the assigned fan a real "+
-   "point of view: smark criticism, heel defence, diehard excitement, dry jokes. "+
-   "Occasional wrestling-appropriate swearing is fine. Replies should disagree "+
+   "point of view. FRONT ROW loves spectacle; SKEPTICAL SMARK challenges hype; "+
+   "TAPE TRADER cares about craft; DIEHARD defends the entertainment; HEEL DEFENDER enjoys villainy; "+
+   "RIVALRY ADDICT wants story progression; BACK ROW has dry jokes; CONCERNED FAN is considerate. "+
+   "Avoid stock hype, polite agreement and generic compliments. Vary rhythm; a short sharp dig, "+
+   "a passionate opinion or a playful wrestling argument is better than a bland summary. "+
+   "Occasional wrestling-appropriate swearing is fine; never use slurs or threats. Replies should disagree "+
    "or build on that specific post, not repeat it. Opinions and wishes only; "+
    "do not narrate winners, finishes, injuries, backstage claims or future bookings. "+
    "Never invent accounts, quotations or facts. Use null if unsure.":"");

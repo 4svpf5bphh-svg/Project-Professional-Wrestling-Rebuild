@@ -37,7 +37,7 @@ export interface HotTagNewsPost{
  /** A fan can reply to another fan, never pretend to be a verified source. */
  replyTo?:string;
 }
-const commentators=[
+export const HOT_TAG_FAN_ACCOUNTS=[
  {handle:"@WorkratePolice",displayName:"The Workrate Police",avatar:"🧐"},
  {handle:"@CurtainWatcher",displayName:"Curtain Watcher",avatar:"👀"},
  {handle:"@HeelApologist",displayName:"Heel Apologist",avatar:"😈"},
@@ -489,9 +489,9 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  const count=3+seed%4; // Three to six actual comments, not an identical trio every time.
  for(let i=0;i<count;i++){
   const key=story.id+":"+story.year+":"+story.week+":"+i;
-  let person=stableHotTagHash(key+":persona")%commentators.length;
-  while(handles.has(commentators[person]!.handle))person=(person+1)%commentators.length;
-  const voice=commentators[person]!;handles.add(voice.handle);
+  let person=stableHotTagHash(key+":persona")%HOT_TAG_FAN_ACCOUNTS.length;
+  while(handles.has(HOT_TAG_FAN_ACCOUNTS[person]!.handle))person=(person+1)%HOT_TAG_FAN_ACCOUNTS.length;
+  const voice=HOT_TAG_FAN_ACCOUNTS[person]!;handles.add(voice.handle);
   // The first reaction anchors itself to real story context. The other fans
   // can be sarcastic, insightful or utterly unhelpful without inventing facts.
   const candidates=i===0&&pressSpecific.length?pressSpecific:

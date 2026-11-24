@@ -90,3 +90,17 @@ test("Missing fan output is explicitly recorded even when the news is accepted",
  assert.equal((diagnostic as {category:string}).category,"PARTIAL");
  assert.equal((diagnostic as {fanThreads:{accepted:number}}).fanThreads.accepted,0);
 });
+
+test("The explicit JSON response contract includes every eligible fan thread",async()=>{
+ const fixtureShow=fixture();
+ const brief=postShowVoiceBrief(fixtureShow);
+ assert.ok(brief.fans?.length);
+ const {postShowVoicePrompt}=await import("../src/domain/postshow-voice-batch.js");
+ const system=postShowVoicePrompt(brief)[0]!.content;
+ const shape=system.match(/Return ONE JSON object: (\{.+?\})\. Use null/);
+ assert.ok(shape,"A single concrete JSON output example is supplied");
+ const schema=JSON.parse(shape[1]!);
+ assert.deepEqual(Object.keys(schema.fans),brief.fans!.map(f=>f.key));
+ assert.match(system,/HEEL DEFENDER enjoys villainy/);
+ assert.match(system,/When either side of a two-person thread is uncertain/);
+});

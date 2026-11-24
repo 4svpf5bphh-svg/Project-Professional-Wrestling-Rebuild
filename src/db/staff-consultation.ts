@@ -7,7 +7,7 @@ import {readStaffWorkspace} from "./staff-workspace.js";
 import {readWorldMail,type WorldMail} from "./backstage-world-mail.js";
 import {postShowVoiceEnabled} from "./postshow-voice-batches.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
-import {CONSULTATION_OPTIONS,consultationMessages,validateConsultation,consultationCacheCopy,
+import {consultationMessages,validateConsultation,consultationCacheCopy,
  type ConsultationAnchor,type StaffConsultation} from "../domain/staff-consultation.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
 type Office=Awaited<ReturnType<typeof readStaffWorkspace>>;
