@@ -136,6 +136,13 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
   }else if(headline.changed||recap.changed){
    s.headline=headline.text;s.recap=recap.text;mark(i,"QUOTE_NORMALIZED");
   }
+  // Polish narrow mechanical echoes in otherwise valid copy, never change
+  // the winner or how the fall was awarded. Revalidate below.
+  if(show.entries[i]?.type==="MATCH"){
+   const polished=s.recap.replace(/\b(?:a|the) separate (?:legal )?cover\b/gi,"a cover")
+    .replace(/\bsecured a legal cover\b/gi,"made the cover");
+   if(polished!==s.recap){s.recap=polished;mark(i,"INTERNAL_LABEL");}
+  }
   const deduped=removeVerbatimRecapEchoes(s.recap);
   if(deduped!==s.recap){s.recap=deduped;mark(i,"REPEATED_SENTENCE");}
  }

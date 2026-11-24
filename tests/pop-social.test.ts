@@ -68,3 +68,16 @@ test("Recurring fan roles use the wider existing HOT TAG community rather than t
  }
  assert.ok(seen.size>=4,"A season of shows must use multiple accounts for the same fan role");
 });
+
+test("Results HOT TAG reuses shared public fan handles, copy and exact source slot",()=>{
+ const s=fixture();
+ const first={handle:"@PublicFan",displayName:"Public Fan",avatar:"🔥",text:"Cena made that worth watching.",likes:40,replies:3,reposts:2};
+ const reply={...first,handle:"@OtherFan",displayName:"Other Fan",text:"I prefer a proper wrestling match.",replyTo:first.handle};
+ s.weeklyPublicThreads=[{slotId:"main",posts:[first,reply]}];
+ const posts=projectPopFeed(s,showReactionWire(s));
+ assert.equal(posts.length,1);assert.equal(posts[0]?.identity.handle,first.handle);
+ assert.equal(posts[0]?.text,first.text);assert.equal(posts[0]?.reply?.text,reply.text);
+ assert.equal(posts[0]?.replyIdentity?.handle,reply.handle);assert.equal(posts[0]?.likes,40);
+ s.weeklyPublicThreads=[{slotId:"phantom",posts:[first]}];
+ assert.notEqual(projectPopFeed(s,showReactionWire(s))[0]?.identity.handle,first.handle);
+});

@@ -189,7 +189,7 @@ test("Rivalry history is presented as a viewer callback, never angle/week counts
 test("Prompt Inspector receives the SAME bounded one-call focus and director facts",()=>{
  const inspected=inspectRingsidePrompt(ascension);
  assert.equal(inspected.callMade,false);
- assert.equal(inspected.promptVersion,"ringside-v14");
+ assert.equal(inspected.promptVersion,"ringside-v15");
  const facts=inspected.facts as ReturnType<typeof ringsideBrief>;
  assert.deepEqual(facts.showFocus,{lead:"card_7",support:["card_0","card_8"]});
  const matchDirector=facts.slots[3]!.director;
@@ -274,7 +274,7 @@ test("A dense 30-card PPV retains every certified finish within the existing tok
 });
 
 test("Phase 66 starts as an entertaining TV wrestling review for real game readers",()=>{
- assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v14");
+ assert.equal(RINGSIDE_PROMPT_VERSION,"ringside-v15");
  assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/experienced WRESTLING JOURNALIST/);
  assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/televised wrestling show/);
  assert.match(RINGSIDE_STYLE_GUIDE.slice(0,430),/game's players/);
