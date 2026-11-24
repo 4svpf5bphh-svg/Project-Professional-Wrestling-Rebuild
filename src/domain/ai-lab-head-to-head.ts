@@ -7,10 +7,11 @@ export type SameShowSample={
  show_id:string;show_name:string;provider:"GROQ"|"OPENAI";model:string;
  created_at:string;status?:"READY"|"FAILED";rating:number|null;
  provider_calls:number;input_tokens:number|null;output_tokens:number|null;
+ editorial_assisted?:boolean;
 };
 export type SameShowProviderResult={
  provider:"GROQ"|"OPENAI";models:string[];
- attempts:number;accepted:number;failed:number;
+ attempts:number;accepted:number;failed:number;assisted:number;
  rated:number;averageRating:number|null;providerCalls:number;
  measured:number;inputTokens:number;outputTokens:number;
  knownUsd:number|null;hasUnreportedCosts:boolean;
@@ -23,14 +24,14 @@ function summarizeProvider(runs:SameShowSample[],
  provider:"GROQ"|"OPENAI"):SameShowProviderResult{
  const subset=runs.filter(x=>x.provider===provider);
  const accepted=subset.filter(x=>x.status!=="FAILED");
- const ratings=accepted.map(x=>x.rating).filter(
+ const ratings=accepted.filter(x=>!x.editorial_assisted).map(x=>x.rating).filter(
   (value):value is number=>typeof value==="number"&&Number.isFinite(value));
  const measured=subset.filter(x=>x.input_tokens!==null&&x.output_tokens!==null);
  const price=provider==="OPENAI"&&measured.length?measured.reduce((sum,x)=>
   sum+(estimateTerraStandardUsd(x.input_tokens,x.output_tokens)??0),0):null;
  return {provider,models:[...new Set(subset.map(x=>x.model))],
   attempts:subset.length,accepted:accepted.length,
-  failed:subset.length-accepted.length,rated:ratings.length,
+  failed:subset.length-accepted.length,assisted:accepted.filter(x=>x.editorial_assisted).length,rated:ratings.length,
   averageRating:ratings.length?ratings.reduce((sum,n)=>sum+n,0)/ratings.length:null,
   providerCalls:subset.reduce((sum,x)=>sum+x.provider_calls,0),
   measured:measured.length,

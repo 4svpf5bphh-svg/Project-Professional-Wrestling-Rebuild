@@ -6,6 +6,8 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import type {RingsideCopy} from "../domain/ringside-editorial.js";
 import {validateCachedRingsideCopy} from "../domain/ringside-editorial.js";
+import {validateTerraDiagnostics,isAssistedTerra,type TerraEditorialDiagnostics}
+ from "../domain/terra-editorial-diagnostics.js";
 export type LabProvider="GROQ"|"OPENAI";
 export const AI_LAB_ERROR_CODES=[
  "FACT_VALIDATION","PROVIDER_LIMIT","PROVIDER_AUTH",
@@ -39,6 +41,7 @@ export interface AiLabPreviewInput{
  worldId:string;playerId:string;showId:string;showName:string;
  provider:LabProvider;model:string;durationMs:number;providerCalls:number;
  inputTokens:number|null;outputTokens:number|null;review:RingsideCopy;
+ terraEditorial?:TerraEditorialDiagnostics;
 }
 function validateRunMetrics(input:Omit<AiLabPreviewInput,"review">,failed=false){
  assertScope(input.worldId,input.playerId);
@@ -65,14 +68,17 @@ export async function saveAiLabPreview(pool:TransactionPool,input:AiLabPreviewIn
  const review=validateCachedRingsideCopy(input.review);
  const json=JSON.stringify(review);
  if(json.length>40000)throw new Error("AI lab preview exceeds safe storage limit");
+ const editorial=input.terraEditorial?
+  validateTerraDiagnostics(input.terraEditorial,review.slots.map(s=>s.slotId)):null;
+ if(editorial&&input.provider!=="OPENAI")throw new Error("Terra metadata requires Terra provider");
  const runId=randomUUID();
  await withSqlClient(pool,db=>db.query(`
   INSERT INTO ppw_ai_lab_runs(run_id,world_id,player_id,show_id,show_name,
-   provider,model,duration_ms,provider_calls,input_tokens,output_tokens,review_json)
-  VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)`,[
+   provider,model,duration_ms,provider_calls,input_tokens,output_tokens,review_json,editorial_json,editorial_assisted)
+  VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14)`,[
   runId,input.worldId,input.playerId,input.showId,input.showName,
   input.provider,input.model,input.durationMs,input.providerCalls,
-  input.inputTokens,input.outputTokens,json
+  input.inputTokens,input.outputTokens,json,editorial?JSON.stringify(editorial):null,isAssistedTerra(editorial)
  ]));
  await pruneAiLabHistory(pool,input.worldId,input.playerId);
  return {runId};
@@ -133,21 +139,23 @@ export async function readAiLabDashboard(pool:TransactionPool,worldId:string,pla
    model:string;duration_ms:number;provider_calls:number;
    input_tokens:number|null;output_tokens:number|null;rating:number|null;
    flags:LabFlag[];notes:string;created_at:string;
-   status:"READY"|"FAILED";error_code:AiLabErrorCode|null}>(`
+   status:"READY"|"FAILED";error_code:AiLabErrorCode|null;
+   editorial_json:TerraEditorialDiagnostics|null;editorial_assisted:boolean}>(`
     SELECT run_id::text,show_id,show_name,provider,model,duration_ms,
      provider_calls,input_tokens,output_tokens,rating,flags,notes,
-     created_at::text,status,error_code FROM ppw_ai_lab_runs
+     created_at::text,status,error_code,editorial_json,editorial_assisted FROM ppw_ai_lab_runs
     WHERE world_id=$1 AND player_id=$2
     ORDER BY created_at DESC,run_id DESC LIMIT 40`,
    [worldId,playerId])),
   withSqlClient(pool,db=>db.query<{
    provider:LabProvider;model:string;total:number;reviewed:number;
-   successful:number;failed:number;average_score:number|null}>(`
+   successful:number;failed:number;assisted:number;average_score:number|null}>(`
     SELECT provider,model,count(*)::integer AS total,
-     count(rating)::integer AS reviewed,
+     count(rating) FILTER (WHERE NOT editorial_assisted)::integer AS reviewed,
      count(*) FILTER (WHERE status='READY')::integer AS successful,
      count(*) FILTER (WHERE status='FAILED')::integer AS failed,
-     round(avg(rating)::numeric,1)::double precision AS average_score
+     count(*) FILTER (WHERE editorial_assisted)::integer AS assisted,
+     round((avg(rating) FILTER (WHERE NOT editorial_assisted))::numeric,1)::double precision AS average_score
     FROM ppw_ai_lab_runs
     WHERE world_id=$1 AND player_id=$2 AND created_at>=now()-interval '30 days'
     GROUP BY provider,model ORDER BY total DESC LIMIT 12`,

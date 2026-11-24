@@ -74,6 +74,19 @@ test("AI Lab saves bounded private comparisons and prevents rival reading or rat
   assert.equal(failedTimeout?.duration_ms,150046);
   assert.equal(failedTimeout?.input_tokens,null);
   assert.equal(afterTimeout.scores.find(s=>s.model==="gpt-6.1-terra")?.failed,1);
+  const assisted=await saveAiLabPreview(db.pool,{worldId,playerId:user,
+   showId:"show-one",showName:"Friday Fire",provider:"OPENAI",model:"gpt-6.1-terra",
+   durationMs:48112,providerCalls:1,inputTokens:5257,outputTokens:1450,review,
+   terraEditorial:{version:1,slots:[{slotId:"one",source:"PPW_FALLBACK",
+    reasons:["UNSCRIPTED_DIALOGUE"]}],bookendsRepaired:false,warnings:[]}});
+  await saveAiLabFeedback(db.pool,worldId,user,assisted.runId,{rating:5,flags:[],notes:"Assisted"});
+  const assistedDash=await readAiLabDashboard(db.pool,worldId,user);
+  const assistedRow=assistedDash.runs.find(x=>x.run_id===assisted.runId)!;
+  assert.equal(assistedRow.editorial_assisted,true);
+  assert.equal(assistedRow.editorial_json?.slots[0]?.source,"PPW_FALLBACK");
+  assert.equal(assistedDash.scores.find(s=>s.model==="gpt-6.1-terra")?.assisted,1);
+  assert.equal(assistedDash.scores.find(s=>s.model==="gpt-6.1-terra")?.reviewed,0);
+  await assert.rejects(readAiLabReview(db.pool,worldId,rival,assisted.runId),/unavailable/);
   await assert.rejects(saveAiLabFailure(db.pool,{
    worldId,playerId:user,showId:"test",showName:"Test",
    provider:"GROQ",model:"openai/gpt-oss-20b",durationMs:10,

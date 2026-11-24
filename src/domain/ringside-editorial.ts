@@ -319,6 +319,9 @@ function assertUnrecordedMultiPersonVictim(entry:ShowResultEntry,prose:string):v
  }
 }
 
+export class RingsideSlotValidationError extends Error{
+ constructor(public readonly slotIndex:number,message:string){super(message);}
+}
 export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
  options:{styleWarningOnly?:boolean}={}):RingsideCopy{
  const v=shape(candidate);
@@ -330,7 +333,8 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   const s=shape(raw),canonical=show.entries[i];
   if(!s||Object.keys(s).some(k=>!["slotId","headline","recap"].includes(k))||
    s.slotId!==canonical.slotId||!printable(s.headline,150)||
-   !printable(s.recap,1800))throw new Error("Ringside review changed card order or slot facts");
+   !printable(s.recap,1800)||!String(s.headline).trim()||!String(s.recap).trim())
+   throw new RingsideSlotValidationError(i,"Ringside review changed card order or slot facts");
   return {slotId:s.slotId as string,headline:s.headline as string,recap:s.recap as string};
  });
  // Show-specific move names may appear only in a slot whose current roster
@@ -349,25 +353,25 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
   const recap=" "+moveSurface(s.headline+" "+s.recap)+" ";
   for(const [move,owners] of allMoves){
    if(recap.includes(" "+move+" ")&&![...owners].some(id=>ids.has(id)))
-    throw new Error("Ringside used an unowned signature move");
+    throw new RingsideSlotValidationError(i,"Ringside used an unowned signature move");
   }
  }
  // Reject unpublished editorial echoes without modifying canonical match facts.
  const usedSentences=new Set<string>();
  const openers=new Map<string,number>();
- for(const slot of slots){
+ for(const [i,slot] of slots.entries()){
   for(const sentence of slot.recap.split(/(?<=[.!?])\s+|\n+/)){
    const normalized=moveSurface(sentence);
    if(normalized.length>=65){
     if(usedSentences.has(normalized))
-     throw new Error("Ringside repeated a full sentence across card entries");
+     throw new RingsideSlotValidationError(i,"Ringside repeated a full sentence across card entries");
     usedSentences.add(normalized);
    }
   }
   const opener=moveSurface(slot.recap).split(" ").slice(0,7).join(" ");
   if(opener.split(" ").length===7){
    const count=(openers.get(opener)??0)+1;
-   if(count>=3)throw new Error("Ringside repeated a stock opening across card entries");
+   if(count>=3)throw new RingsideSlotValidationError(i,"Ringside repeated a stock opening across card entries");
    openers.set(opener,count);
   }
  }
@@ -384,11 +388,12 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
  // Programme history informs the correspondent; it is NOT a list of
  // editor/database events to narrate to the paying audience.
  const internal=/\b(?:rivalry thread|story thread|only recorded rivalry|recorded rivalry|prior angles?|previous angles?|additional angles?|official fallout|match card changed|reported change to the match card|card segment\s+\d+|programme chapters?|scripted actions?|week\s+\d{1,3}\b)\b|\b(?:three|four|five|third|fourth|fifth|\d+)\s+angles?\b/i;
- for(const slot of slots)if(internal.test(slot.headline+" "+slot.recap))
-  throw new Error("Ringside exposed internal storyline or card metadata");
+ for(const [i,slot] of slots.entries())if(internal.test(slot.headline+" "+slot.recap))
+  throw new RingsideSlotValidationError(i,"Ringside exposed internal storyline or card metadata");
  if(/\b\d{1,3}\s*\/\s*100\b|\b\d{2,3}\.\d+\b|\b\d{1,3}\s*%\s*(?:crowd|cheers|reaction)\b|\b[0-5](?:\.\d{1,2})?[\s\-\u2010-\u2015]*stars?\b/i.test(fullStory))
   throw new Error("Ringside leaked numerical score into editorial");
  for(const [i,slot] of slots.entries()){
+  try{
   const source=show.entries[i]!;
   const prose=slot.headline+" "+slot.recap;
   const hadTitleChange=source.fallout?.title?.changed===true;
@@ -551,6 +556,8 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
    if(finish==="FLASH_PIN"&&/\b(?:finished (?:him|her|them) with the [A-Za-z ]{4,50}|knocked (?:him|her|them) out for the pin)\b/i.test(prose))
     throw new Error("Flash pin described as an impact finish");
   }
+  }catch(error){throw new RingsideSlotValidationError(i,error instanceof Error?
+   error.message:"Editorial facts did not validate");}
  }
  return {showHeadline:v.showHeadline as string,opening:v.opening as string,
   closing:v.closing as string,slots};
@@ -568,7 +575,7 @@ export function validateRingsideCopy(candidate:unknown,show:CompletedShowView,
  * moves, title facts, scores or the certified outcome. Revalidate the
  * whole article before accepting any cleaned draft.
  */
-export function cleanRingsidePrivateMetadata(
+export function scrubRingsidePrivateMetadata(
  input:RingsideCopy,show:CompletedShowView):RingsideCopy|null{
  let changed=false;
  const scrub=(text:string,noun:"show"|"match"|"segment")=>{
@@ -598,21 +605,21 @@ export function cleanRingsidePrivateMetadata(
    recap:scrub(slot.recap,show.entries[i]?.type==="MATCH"?"match":"segment")
   }))
  };
- if(!changed)return null;
+ return changed?cleaned:null;
+}
+export function cleanRingsidePrivateMetadata(
+ input:RingsideCopy,show:CompletedShowView):RingsideCopy|null{
+ const cleaned=scrubRingsidePrivateMetadata(input,show);
+ if(!cleaned)return null;
  try{return validateRingsideCopy(cleaned,show);}
  catch{return null;}
 }
 
-export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
- {review:RingsideCopy;replaced:number}|null{
- const raw=shape(input);
- if(!raw||!Array.isArray(raw.slots)||raw.slots.length!==show.entries.length||
-  show.entries.length<4)return null;
- const maxFallback=Math.min(2,Math.floor(show.entries.length/3));
+export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCopy{
  // When one AI slot fails, report its actual wrestlers and official method
  // instead of printing the old "decision in the ring" non-story. These
  // sentences contain no invented moves, dialogue, feud outcome or scorer.
- const base:RingsideCopy={
+ return {
   showHeadline:"Ringside: "+(show.showName??"The show").slice(0,90),
   opening:(show.promotionName??"The promotion")+" presented "+
    (show.showName??"its next card")+". Every finish below comes from the show.",
@@ -708,6 +715,14 @@ export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
      when+result+". "+reaction).slice(0,1750)};
   })
  };
+}
+export function recoverRingsideCopy(input:unknown,show:CompletedShowView):
+ {review:RingsideCopy;replaced:number}|null{
+ const raw=shape(input);
+ if(!raw||!Array.isArray(raw.slots)||raw.slots.length!==show.entries.length||
+  show.entries.length<4)return null;
+ const maxFallback=Math.min(2,Math.floor(show.entries.length/3));
+ const base=buildVerifiedRingsideFallback(show);
  try{validateRingsideCopy(base,show);}catch{return null;}
  const next:RingsideCopy={...base,slots:[...base.slots]};
  if(typeof raw.showHeadline==="string"&&typeof raw.opening==="string"&&

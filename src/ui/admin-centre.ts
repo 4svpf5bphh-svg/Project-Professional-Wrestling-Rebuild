@@ -2,6 +2,7 @@
  * this client never stores an API key, resets a World or runs a timer. */
 import type {RingsideSettings} from "../domain/ringside-settings.js";
 import {estimateTerraStandardUsd} from "../domain/paid-editorial-cost.js";
+import type {TerraEditorialDiagnostics} from "../domain/terra-editorial-diagnostics.js";
 import {TERRA_PREVIEW_TIMEOUT_MS,TERRA_DAILY_PREVIEW_ATTEMPTS,TERRA_DAILY_TOKEN_BUDGET}
  from "../domain/paid-editorial-policy.js";
 import {sameShowComparisons,type SameShowProviderResult}
@@ -23,7 +24,8 @@ type LabRun={run_id:string;show_id:string;show_name:string;
  provider:"GROQ"|"OPENAI";model:string;duration_ms:number;provider_calls:number;
  input_tokens:number|null;output_tokens:number|null;
  rating:number|null;flags:string[];notes:string;created_at:string;
- status?:"READY"|"FAILED";error_code?:string|null};
+ status?:"READY"|"FAILED";error_code?:string|null;
+ editorial_json?:TerraEditorialDiagnostics|null;editorial_assisted?:boolean};
 type LabDay={day:string;provider:"GROQ"|"OPENAI";calls:number;reserved:number;
  input:string;output:string;failed:number;
  provider_rpd_limit?:number|null;provider_rpd_remaining?:number|null;
@@ -46,7 +48,7 @@ type ShortformLabRun={runId:string;scenarioId:string;scenarioName:string;
  diagnostic?:ShortformLabDiagnostic|null};
 type LabData={usage:LabDay[];runs:LabRun[];scores:{
  provider:string;model:string;total:number;reviewed:number;average_score:number|null;
- successful?:number;failed?:number}[];
+ successful?:number;failed?:number;assisted?:number}[];
  scenarios?:BenchmarkScenario[];
  shortformScenarios?:{id:string;name:string;expectation:string}[];
  shortformRuns?:ShortformLabRun[];
@@ -59,7 +61,8 @@ type PromptInspection={promptVersion:string;provider:"GROQ";model:string;
  response_format:unknown;messages:{role:string;content:string}[];
  facts:unknown;callMade:false;historyScope:string};
 type GenerationTrace={attempts:Array<{attempt:number;status:string;reason?:string;
- draft:Recap}>;slotOrigins:{slotId:string;source:"GROQ"|"OPENAI"|"CLEANED"|"PPW_FALLBACK"}[]};
+ draft:Recap}>;slotOrigins:{slotId:string;source:"GROQ"|"OPENAI"|"CLEANED"|"PPW_FALLBACK"}[];
+ terraEditorial?:TerraEditorialDiagnostics};
 /** Use selectable text, not HTML injection. This remains accessible on iPhone. */
 function textDisclosure(title:string,body:string){
  const details=document.createElement("details");details.className="ppw-admin-preview";
@@ -85,6 +88,17 @@ function renderPromptInspection(root:HTMLElement,inspection:PromptInspection){
   textDisclosure("Verified match records as structured data",JSON.stringify(inspection.facts,null,2)),
   textDisclosure("Complete request payload (excluding secret API key)",JSON.stringify(request,null,2)));
 }
+function editorialNote(d:TerraEditorialDiagnostics|null|undefined):string{
+ if(!d)return "";
+ const fallback=d.slots.filter(s=>s.source==="PPW_FALLBACK").length;
+ const cleaned=d.slots.filter(s=>s.source==="CLEANED").length;
+ return (fallback||d.bookendsRepaired?"Assisted preview — ":"Terra preview — ")+
+  (d.slots.length-fallback)+"/"+d.slots.length+" model-written cards; "+
+  cleaned+" locally edited; "+fallback+" verified PPW replacements"+
+  (d.bookendsRepaired?"; introduction/close edited":"")+
+  (d.warnings.length?"; quality warnings: "+d.warnings.map(w=>
+   w==="STOCK_PROSE"?"stock phrases":"underwritten important match").join(", "):"")+".";
+}
 function renderGenerationTrace(root:HTMLElement,trace:GenerationTrace,review:Recap){
  const origins=trace.slotOrigins;
  const totalFallback=origins.filter(s=>s.source==="PPW_FALLBACK").length;
@@ -92,7 +106,9 @@ function renderGenerationTrace(root:HTMLElement,trace:GenerationTrace,review:Rec
  root.append(el("h4","","Model draft vs PPW final"),
   el("p","ppw-admin-small",trace.attempts.length+" generation attempt(s) · "+
    totalFallback+" factual fallback card(s) · "+cleaned+" cleaned recap(s). "+
-   "This raw trace is session-only; only the validated article is kept in AI Lab."));
+   "This raw trace is session-only; the validated article and safe editorial provenance are kept in AI Lab."));
+ if(trace.terraEditorial)root.append(el("p","ppw-admin-small",editorialNote(trace.terraEditorial)),
+  textDisclosure("Local editorial changes",JSON.stringify(trace.terraEditorial,null,2)));
  for(const attempt of trace.attempts)
   root.append(textDisclosure("Original model draft "+attempt.attempt+" · "+attempt.status+
    (attempt.reason?" · validator: "+attempt.reason:""),JSON.stringify(attempt.draft,null,2)));
@@ -278,7 +294,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      el("span","",row.reviewed?row.average_score+
       "/5 average from "+row.reviewed+" rated tests":"Not yet rated"),
      el("span","",row.total+" recorded tests · "+
-      (row.successful??row.total)+" readable · "+(row.failed??0)+" failed"));
+      (row.successful??row.total)+" readable · "+(row.failed??0)+" failed"+
+      (row.assisted?" · "+row.assisted+" assisted (excluded from model-only ratings)":"")));
     scores.append(line);
    }else scores.append(el("p","ppw-admin-small",
     "Run a preview and rate it to build your model comparisons."));
@@ -331,7 +348,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      (row.inputTokens+row.outputTokens).toLocaleString("en-GB")+" measured tokens":
      (row.inputTokens+row.outputTokens).toLocaleString("en-GB")+
      " known tokens from "+row.measured+"/"+row.attempts+" attempts";
-    return row.models.join(" / ")+" · "+row.accepted+"/"+row.attempts+" valid · "+row.failed+" failed · "+
+    return row.models.join(" / ")+" · "+row.accepted+"/"+row.attempts+" readable · "+row.failed+" failed · "+
+     (row.assisted?row.assisted+" assisted · ":"")+
      quality+" · "+row.providerCalls+" calls · "+known+
      (row.provider==="OPENAI"?
       " · "+(row.knownUsd===null?"cost unavailable":
@@ -652,8 +670,15 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
       runCost(run)),
      el("p","",review.opening));
-    for(const slot of review.slots)target.append(
-     el("h4","",slot.headline),el("p","",slot.recap));
+    if(run.editorial_json)target.append(el("p","ppw-admin-small",editorialNote(run.editorial_json)));
+    for(const slot of review.slots){
+     const provenance=run.editorial_json?.slots.find(s=>s.slotId===slot.slotId);
+     target.append(el("h4","",slot.headline));
+     if(provenance&&provenance.source!=="OPENAI")target.append(el("p","ppw-admin-small",
+      (provenance.source==="PPW_FALLBACK"?"Verified PPW replacement":"Locally edited Terra prose")+
+      " · "+provenance.reasons.join(", ").toLowerCase().replaceAll("_"," ")));
+     target.append(el("p","",slot.recap));
+    }
     target.append(el("p","",review.closing));
    };
    const flags=[
@@ -717,7 +742,9 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
        finally{save.disabled=false;}
       };
       feedbackArea.append(el("p","ppw-admin-small",
-       "Rate the overall writing, flag problems, and note what felt right or wrong."),
+       run.editorial_assisted?
+        "Rate this assisted article as a reader. The score is excluded from model-only averages.":
+        "Rate the overall writing, flag problems, and note what felt right or wrong."),
        stars,el("p","ppw-admin-small","Specific issues"),chips,
        inputField("Playtest notes",notes),save,status);
      }
@@ -741,7 +768,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       (run.input_tokens+(run.output_tokens??0)).toLocaleString("en-GB")+" tokens")+
      " · "+(failed?"FAILED: "+(run.error_code??"Unknown safe error"):
       run.rating?run.rating+"/5":"Unrated")+
-     runCost(run)+" · "+run.created_at.slice(0,10));
+     runCost(run)+(run.editorial_assisted?" · ASSISTED":"")+
+     (run.editorial_json?.warnings.length?" · QUALITY WARNING":"")+" · "+run.created_at.slice(0,10));
     const actions=el("div","ppw-admin-actions");
     if(!failed){
      const open=el("button","ppw-admin-secondary","Read & rate") as HTMLButtonElement;
