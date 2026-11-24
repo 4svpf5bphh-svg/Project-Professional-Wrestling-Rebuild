@@ -441,8 +441,12 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       const d=sample.diagnostic;
       const readable:Record<string,string>={
        ACCEPTED:"Verified",PARTIAL:"Partially verified",
-       ALL_REJECTED:"All three texts rejected",WRONG_SHAPE:"Unexpected JSON fields",
+       ALL_REJECTED:"All generated voices rejected",WRONG_SHAPE:"Unexpected JSON fields",
        HTTP_REJECTED:"Groq rejected the request",
+       BUDGET_EXHAUSTED:"PPW free daily allowance exhausted (no provider call)",
+       RATE_LIMITED:"Groq rate limit reached; use PPW fallback",
+       AUTH_REJECTED:"Groq key or access rejected",
+       TIMEOUT:"Groq request timed out; no automatic retry",
        INVALID_ENVELOPE:"Invalid provider response",
        EMPTY_CONTENT:"Empty model response",INVALID_JSON:"Invalid model JSON",
        TRUNCATED:"Model ran out of output space",

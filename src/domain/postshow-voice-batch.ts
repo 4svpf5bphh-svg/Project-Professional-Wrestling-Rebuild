@@ -28,7 +28,7 @@ export interface PostShowVoiceBrief{
  roadAgent:{slotId:string;headline:string;recordedObservation:string;
   issue:"overrun"|"execution"|"chemistry"|"injury"|"rivalry"|"standout";
   suggestedNextStep:string;reporter:string;
-  participantNames:string[];otherPerformers:string[]}|null;
+  participantNames:string[];otherPerformers:string[];sides?:string[][]}|null;
 }
 const clipped=(s:string,max:number)=>s.replace(/[\u0000-\u001f]/g," ").trim().slice(0,max);
 const editorialSummary=(s:string)=>clipped(s,260)
@@ -116,7 +116,8 @@ export function postShowVoiceBrief(show:CompletedShowView):PostShowVoiceBrief{
     show.entries.find(e=>e.slotId===staff.slotId)?.matchContext?.format??null),
    reporter:clipped(show.staffReport?.reporter??"Road Agent",120),
    participantNames:staffParticipants.slice(0,24).map(n=>clipped(n,120)),
-   otherPerformers:otherPerformers.map(n=>clipped(n,120))}:null
+   otherPerformers:otherPerformers.map(n=>clipped(n,120)),
+   sides:staffEntry?.matchContext?.sides.map(side=>side.map(n=>clipped(n,120)))}:null
  };
 }
 /** JSON-only, inexpensive one-call 20B message. The producer never forwards
@@ -493,11 +494,12 @@ function hasUnverifiedNewsConsequence(summary:string,method:string):boolean{
  * "rematch." Such advice was incorrectly passed in a real 20B tag trial.
  */
 function proposesTeammateRematch(note:string,source:PostShowVoiceBrief):boolean{
- if(!source.mainEvent||source.roadAgent?.slotId!==source.mainEvent.slotId)
-  return false;
+ const sides=source.roadAgent?.sides??(
+  source.roadAgent?.slotId===source.mainEvent?.slotId?source.mainEvent?.opponents:undefined);
+ if(!sides)return false;
  const copy=note.toLowerCase();
  if(!/\b(?:match|rematch|bout|fight)\b/.test(copy))return false;
- return source.mainEvent.opponents.some(side=>side.length>1&&
+ return sides.some(side=>side.length>1&&
   side.some((a,i)=>side.some((b,j)=>j>i&&[
    "between "+a+" and "+b,
    "between "+b+" and "+a,
@@ -519,8 +521,9 @@ export function validatePostShowVoiceCopy(
   has(summary,n))&&factTokens.test(summary)&&
   trueFinish(summary,source.mainEvent.finish)&&
   (options.preserveHistoricStyle||!mechanicalNews.test(summary))&&
-  !unverifiedWin(summary,source)&&
-  !hasUnverifiedNewsConsequence(summary,source.mainEvent.finish)){
+  !unverifiedWin(summary,source)&&!unverifiedWin(headline,source)&&
+  !hasUnverifiedNewsConsequence(summary,source.mainEvent.finish)&&
+  !hasUnverifiedNewsConsequence(headline,source.mainEvent.finish)){
   const winner=source.mainEvent.winners[0]!;
   // Do not invert the main-event finish or pass off a submission as a pin.
   const outcome=source.mainEvent.finish;

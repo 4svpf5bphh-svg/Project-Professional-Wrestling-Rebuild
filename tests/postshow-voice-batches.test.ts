@@ -586,3 +586,79 @@ test("HOT TAG cannot publish or replay the wrong wrestler speaking as a certifie
  assert.ok(readPostShowVoiceCopy(show,legitimate)?.wrestler,
   "Normal grounded cached reactions remain available");
 });
+
+test("Mixed broadcast validates five independent sources and complete fan debates in one request",async()=>{
+ const {getPostShowVoiceBenchmark}=await import("../src/domain/postshow-voice-lab.js");
+ const {projectPopFeed}=await import("../src/domain/pop-social.js");
+ const {showReactionWire}=await import("../src/domain/show-reaction-wire.js");
+ const fixture=getPostShowVoiceBenchmark("mixed-broadcast")!,brief=fixture.brief;
+ assert.equal(fixture.show.entries.length,5);
+ assert.equal(new Set(fixture.show.entries.map(e=>e.slotId)).size,5);
+ assert.equal(brief.mainEvent?.slotId,"mixed-card-4");
+ assert.equal(brief.wrestler?.slotId,"mixed-card-4");
+ assert.equal(brief.roadAgent?.slotId,"mixed-card-2");
+ assert.equal(brief.roadAgent?.issue,"overrun");
+ assert.equal(brief.fans?.length,2);
+ assert.ok(brief.fans?.every(f=>f.replyVoice));
+ const fans=Object.fromEntries(brief.fans!.map((a,i)=>[a.key,{
+  text:i===0?a.participants[0]+" is exactly the sort of wrestler I want to see more of.":
+   a.participants[0]+" deserves a crowd that appreciates the craft, not just the spectacle.",
+  reply:i===0?"Nah, give me something worth cheering about instead of another argument.":
+   "I would rather feel something than sit through a technical exam."
+ }]));
+ const raw={news:valid.news,wrestler:valid.wrestler,
+  roadAgent:{note:"Rey Sol and Marcus Drake need enough time for their closing sequence. Shorten the next card or reserve a longer slot for the team."},fans};
+ let calls=0,diagnostic:unknown;
+ const copy=await generatePostShowVoiceCopy(fixture.show,"dummy",async(url,init)=>{
+  calls++;
+  assert.match(String(url),/api\.groq\.com/);
+  const body=JSON.parse(String(init?.body));
+  assert.equal(body.model,"openai/gpt-oss-20b");
+  assert.equal(body.max_completion_tokens,1000);
+  assert.ok(String(init?.body).length<12500);
+  return new Response(JSON.stringify({choices:[{finish_reason:"stop",message:{content:JSON.stringify(raw)}}]}));
+ },undefined,d=>{diagnostic=d;});
+ assert.equal(calls,1);
+ assert.ok(copy?.news&&copy.wrestler&&copy.roadAgent);
+ assert.equal(copy.fans?.length,2);
+ assert.equal((diagnostic as {category:string}).category,"ACCEPTED");
+ assert.deepEqual(readPostShowVoiceCopy(fixture.show,copy),copy);
+ const projected=projectPopFeed({...fixture.show,shortform:copy},showReactionWire(fixture.show));
+ assert.equal(projected.filter(p=>copy.fans?.some(f=>p.text===f.text&&p.reply?.text===f.reply?.text)).length,2);
+ // A factually wrong headline or unrelated staff pairing must not poison
+ // independent valid voices; the original game keeps its safe local copy.
+ const wrong=validatePostShowVoiceCopy(brief,{
+  ...raw,news:{...raw.news,headline:"Ronan Wolfe defeats Jett Mercer tonight"},
+  roadAgent:{note:"Book a rematch between Rey Sol and Marcus Drake next week to improve the pacing."}
+ });
+ assert.equal(wrong?.news,null);
+ assert.equal(wrong?.roadAgent,null);
+ assert.ok(wrong?.wrestler);
+ assert.equal(wrong?.fans?.length,2);
+ const wrongFan=brief.fans![0]!;
+ const misplaced=validatePostShowVoiceCopy(brief,{fans:{
+  [wrongFan.key]:{text:wrongFan.participants[0]+" and Jett Mercer are the two I want to see together.",
+   reply:"Nah, I would rather see a better contest."}
+ }});
+ assert.equal(misplaced,null);
+});
+test("Shortform failure categories distinguish budget, provider pacing, access and timeout without retries",async()=>{
+ for(const [status,headers,category] of [
+  [429,{"x-ppw-budget-exhausted":"true"},"BUDGET_EXHAUSTED"],
+  [429,{},"RATE_LIMITED"],[401,{},"AUTH_REJECTED"],[403,{},"AUTH_REJECTED"]
+ ] as const){
+  let calls=0,diagnostic:unknown;
+  const result=await generatePostShowVoiceCopy(fixture(),"dummy",async()=>{
+   calls++;return new Response("private provider error body",{status,headers});
+  },undefined,d=>{diagnostic=d;});
+  assert.equal(result,null);assert.equal(calls,1);
+  assert.equal((diagnostic as {category:string}).category,category);
+  assert.doesNotMatch(JSON.stringify(diagnostic),/private provider error body/);
+ }
+ let calls=0,diagnostic:unknown;
+ const result=await generatePostShowVoiceCopy(fixture(),"dummy",async()=>{
+  calls++;throw new DOMException("private network detail","TimeoutError");
+ },undefined,d=>{diagnostic=d;});
+ assert.equal(result,null);assert.equal(calls,1);
+ assert.equal((diagnostic as {category:string}).category,"TIMEOUT");
+});

@@ -6,6 +6,7 @@ import {showReactionWire,type ReactionVoice} from "./show-reaction-wire.js";
 export interface HotTagEditorialAnchor{
  key:string;slotId:string;voice:ReactionVoice;replyVoice?:ReactionVoice;
  participants:string[];subject:string;context:string;
+ otherPerformers?:string[];
 }
 export interface HotTagEditorialCopy{
  slotId:string;voice:ReactionVoice;text?:string;
@@ -29,7 +30,12 @@ export function hotTagEditorialAnchors(show:CompletedShowView):HotTagEditorialAn
   return [{key:"f"+i,slotId:r.slotId,voice:r.voice,
    ...(r.reply?{replyVoice:r.reply.voice}:{}),participants,
    subject:tidy(entry.headline,130),
-   context:tidy(r.text,210)}];
+   context:tidy(r.text,210),
+   otherPerformers:[...new Set(show.entries.filter(e=>e.slotId!==r.slotId).flatMap(e=>
+    e.matchContext?.sides.flat()??[...(e.segmentContext?.actorNames??[]),
+     ...(e.segmentContext?.targetNames??[])]))]
+    .filter(n=>n.trim().length>=4&&!participants.some(p=>normalize(p)===normalize(n)))
+    .map(n=>tidy(n,100)).slice(0,60)}];
  });
 }
 const object=(value:unknown):Record<string,unknown>=>value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{};
@@ -50,6 +56,8 @@ function opinionText(raw:unknown,anchor:HotTagEditorialAnchor,reply=false):strin
  // directly without restating its name. Exact word-boundary name match.
  const norm=" "+normalize(text)+" ";
  if(!reply&&!anchor.participants.some(n=>norm.includes(" "+normalize(n)+" ")))return null;
+ // Don't let a fan transplant an unrelated wrestler into this slot.
+ if(anchor.otherPerformers?.some(n=>norm.includes(" "+normalize(n)+" ")))return null;
  if(normalize(text)===normalize(anchor.context))return null;
  return text;
 }

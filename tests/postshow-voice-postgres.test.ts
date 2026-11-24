@@ -93,6 +93,12 @@ test("postshow cache stays owner-scoped and a published receipt gets only one Gr
   assert.equal(fanRun.diagnostic?.wrestlerReason,"WRONG_SPEAKER");
   assert.equal(fanRun.diagnostic?.fanThreads?.accepted,1);
   assert.deepEqual(await readShortformVoiceLabRuns(db.pool,world,"outsider"),[]);
+  const mixedFailure=await saveShortformVoiceLabRun(db.pool,{
+   worldId:world,playerId:owner,scenarioId:"mixed-broadcast",durationMs:16001,
+   providerCalls:1,inputTokens:null,outputTokens:null,copy:null,
+   diagnostic:{category:"TIMEOUT",news:"MISSING",wrestler:"MISSING",roadAgent:"MISSING"}});
+  assert.equal(mixedFailure.status,"FAILED");
+  assert.equal((await readShortformVoiceLabRuns(db.pool,world,owner))[0]?.diagnostic?.category,"TIMEOUT");
 
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(`

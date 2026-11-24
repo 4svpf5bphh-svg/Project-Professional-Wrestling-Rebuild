@@ -78,7 +78,7 @@ export type ShortformVoicePartStatus=
  "FACT_OR_VOICE_REJECTED";
 export type ShortformVoiceDiagnostic={
  category:"ACCEPTED"|"PARTIAL"|"ALL_REJECTED"|"WRONG_SHAPE"|
-  "HTTP_REJECTED"|"INVALID_ENVELOPE"|"EMPTY_CONTENT"|
+  "HTTP_REJECTED"|"BUDGET_EXHAUSTED"|"RATE_LIMITED"|"AUTH_REJECTED"|"TIMEOUT"|"INVALID_ENVELOPE"|"EMPTY_CONTENT"|
   "INVALID_JSON"|"TRUNCATED"|"OVERSIZED"|"PROVIDER_ERROR";
  news:ShortformVoicePartStatus;
  wrestler:ShortformVoicePartStatus;
@@ -125,15 +125,29 @@ export async function generatePostShowVoiceCopy(show:CompletedShowView,key:strin
  const body={model:MODEL,temperature:0.55,reasoning_effort:"low",
   reasoning_format:"hidden",max_completion_tokens:source.fans?.length?1000:650,
   response_format:{type:"json_object"},messages};
- const request=await requestGroqEditorial({
-  task:"SHORT_NEWS",key,transport,pool,body,
-  signal:AbortSignal.timeout(16000)
- });
- if(!request.ok){
-  diagnostic?.(emptyDiagnostic("HTTP_REJECTED"));
+ let request:Response,raw:string;
+ const signal=AbortSignal.timeout(16000);
+ try{
+  request=await requestGroqEditorial({task:"SHORT_NEWS",key,transport,pool,body,signal});
+ }catch(error){
+  const timedOut=signal.aborted||(error instanceof Error&&
+   ["AbortError","TimeoutError"].includes(error.name));
+  diagnostic?.(emptyDiagnostic(timedOut?"TIMEOUT":"PROVIDER_ERROR"));
   return null;
  }
- const raw=await request.text();
+ if(!request.ok){
+  const category=request.headers.get("x-ppw-budget-exhausted")==="true"?"BUDGET_EXHAUSTED":
+   request.status===429?"RATE_LIMITED":
+   request.status===401||request.status===403?"AUTH_REJECTED":"HTTP_REJECTED";
+  diagnostic?.(emptyDiagnostic(category));
+  return null;
+ }
+ try{raw=await request.text();}
+ catch(error){
+  diagnostic?.(emptyDiagnostic(signal.aborted||(error instanceof Error&&
+   ["AbortError","TimeoutError"].includes(error.name))?"TIMEOUT":"PROVIDER_ERROR"));
+  return null;
+ }
  if(raw.length>12000){
   diagnostic?.(emptyDiagnostic("OVERSIZED"));
   return null;

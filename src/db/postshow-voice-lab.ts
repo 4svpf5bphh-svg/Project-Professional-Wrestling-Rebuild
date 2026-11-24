@@ -40,7 +40,7 @@ export async function saveShortformVoiceLabRun(pool:TransactionPool,input:Input)
   throw new Error("Invalid safe voice lab failure code");
  const categories=[
   "ACCEPTED","PARTIAL","ALL_REJECTED","WRONG_SHAPE","HTTP_REJECTED",
-  "INVALID_ENVELOPE","EMPTY_CONTENT","INVALID_JSON","TRUNCATED",
+  "BUDGET_EXHAUSTED","RATE_LIMITED","AUTH_REJECTED","TIMEOUT","INVALID_ENVELOPE","EMPTY_CONTENT","INVALID_JSON","TRUNCATED",
   "OVERSIZED","PROVIDER_ERROR"
  ];
  const labels=["ACCEPTED","MISSING","FORMAT_REJECTED","LENGTH_REJECTED",

@@ -161,3 +161,29 @@ test("One private Groq staff consultation serves Staff Office and Backstage, nev
   }).finally(()=>reset().finally(()=>db.close()));
  }
 });
+
+test("Uncertain Groq transport and 5xx failures retain estimated tokens; known rejection releases them",{
+ skip:!url?"Disposable PostgreSQL unavailable":false
+},async()=>{
+ const db=postgresPool(url!,3);
+ const reset=()=>withSqlClient(db.pool,sql=>sql.query(
+  "DELETE FROM ppw_groq_daily_usage WHERE usage_day=timezone('UTC',now())::date",[]));
+ const read=async()=> (await withSqlClient(db.pool,sql=>sql.query<{call_count:number;reserved_tokens:number}>(
+  "SELECT call_count,reserved_tokens FROM ppw_groq_daily_usage WHERE usage_day=timezone('UTC',now())::date",[])))[0];
+ const base={task:"SHORT_NEWS" as const,key:"dummy",pool:db.pool,body:{max_completion_tokens:1000,messages:[]}};
+ try{
+  await reset();
+  await assert.rejects(requestGroqEditorial({...base,transport:async()=>{throw new Error("uncertain transport");}}),/uncertain transport/);
+  const first=await read();assert.ok(first&&first.reserved_tokens>=1000);assert.equal(first.call_count,1);
+  await requestGroqEditorial({...base,transport:async()=>new Response("unavailable",{status:503})});
+  const second=await read();assert.ok(second&&second.reserved_tokens>first.reserved_tokens);
+  await requestGroqEditorial({...base,transport:async()=>new Response("rate limited",{status:429})});
+  const third=await read();assert.equal(third?.call_count,3);
+  assert.equal(third?.reserved_tokens,second.reserved_tokens);
+  const controller=new AbortController();controller.abort();
+  let calls=0;
+  await assert.rejects(requestGroqEditorial({...base,signal:controller.signal,
+   transport:async()=>{calls++;throw new Error("Unexpected request");}}));
+  assert.equal(calls,0);assert.deepEqual(await read(),third);
+ }finally{await reset().finally(()=>db.close());}
+});
