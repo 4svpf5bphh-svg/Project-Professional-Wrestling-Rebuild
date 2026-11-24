@@ -12,7 +12,8 @@ export type TerraEditorialDiagnostics={
  warnings:TerraQualityWarning[];
 };
 export function isAssistedTerra(d?:TerraEditorialDiagnostics|null):boolean{
- return !!d&&(d.bookendsRepaired||d.slots.some(s=>s.source==="PPW_FALLBACK"));
+ return !!d&&(d.bookendsRepaired||d.slots.some(s=>s.source==="PPW_FALLBACK"||
+  s.reasons.includes("UNSCRIPTED_DIALOGUE")));
 }
 export function validateTerraDiagnostics(value:unknown,slotIds:readonly string[]):
  TerraEditorialDiagnostics{

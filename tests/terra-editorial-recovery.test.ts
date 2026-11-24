@@ -25,13 +25,18 @@ function match(i:number,winner:string,losers:string[],finish:string):ShowResultE
   fallout:{ratingStars:3.5,actualMinutes:12,injuries:[],eliminations:[]}};
 }
 const regalLine="That’s right, ladies and gentlemen. I’ve arrived to deal with these scallywags.";
+const interview=angle(4,"INTERVIEW","Lane","I’m not sure you belong here.","Stone");
+interview.segmentContext!.targetPresence="ON_SCREEN";
+interview.segmentContext!.scriptedActions=[
+ {action:"SPEAK",by:"a4",line:"I’m not sure you belong here.",to:"t4"},
+ {action:"REPLY",by:"t4",line:"I’ll prove you wrong in the ring.",to:"a4"}];
 const show:CompletedShowView={showId:"ascension-regression",showName:"Ascension",year:1,week:29,
  promotionName:"CWA",crowdResponse:76,matchCount:4,angleCount:5,entries:[
  angle(0,"DEBUT","William Regal",regalLine),
  match(1,"Parker",["Jones","King"],"FLASH_PIN"),
  angle(2,"PROMO","Joe","I’ll see you in the ring.","Místico"),
  match(3,"Reed",["Ellis"],"CLEAN_PIN"),
- angle(4,"INTERVIEW","Lane","I’m not sure you belong here."),
+ interview,
  match(5,"Joe",["Smith"],"SUBMISSION"),
  angle(6,"VIDEO_PACKAGE","Mr Perfect"),
  match(7,"Morgan",["William Regal"],"FOREIGN_OBJECT"),
@@ -128,4 +133,32 @@ test("Typography repair is literal and refuses changed words",()=>{
  const entry=show.entries[0]!;
  assert.equal(restoreTerraAuthoredDialogue('“I am the champion.”',entry).unsupported,true);
  assert.equal(restoreTerraAuthoredDialogue("Regal’s debut",entry).unsupported,false);
+});
+
+test("A fabricated quoted sentence does not destroy the rest of a substantial angle",()=>{
+ const raw=draft();
+ const preserved="Regal's arrival drew a strong response. The veteran's introduction gave this opening scene purpose, and the audience had plenty to consider heading into the first contest.";
+ raw.slots[0]!.recap='Regal declared, “I will retire every wrestler in the company”. '+preserved;
+ const out=finalizeTerraEditorial(raw,show);
+ assert.equal(out.diagnostics.slots[0]?.source,"CLEANED");
+ assert.ok(out.diagnostics.slots[0]?.reasons.includes("UNSCRIPTED_DIALOGUE"));
+ assert.ok(out.review.slots[0]!.recap.includes(preserved));
+ assert.ok(out.review.slots[0]!.recap.includes(regalLine));
+ assert.doesNotMatch(out.review.slots[0]!.recap,/retire every wrestler/);
+ assert.equal(isAssistedTerra(out.diagnostics),true);
+});
+test("Multi-speaker direct speech must be attributed to the verified speaker",()=>{
+ const raw=draft();
+ raw.slots[4]!.recap='Stone said, “I’m not sure you belong here.”';
+ assert.equal(restoreTerraAuthoredDialogue(raw.slots[4]!.recap,show.entries[4]!).unsupported,true);
+ const repaired=finalizeTerraEditorial(raw,show);
+ assert.match(repaired.review.slots[4]!.recap,/Lane said: “I’m not sure you belong here\.”/);
+ assert.match(repaired.review.slots[4]!.recap,/Stone said: “I’ll prove you wrong in the ring\.”/);
+ assert.equal(repaired.diagnostics.slots[4]?.source,"PPW_FALLBACK");
+ assert.equal(restoreTerraAuthoredDialogue('Lane said: “I’m not sure you belong here.”',
+  show.entries[4]!).unsupported,false);
+});
+test("A quoted off-screen target does not become a speaker",()=>{
+ const entry=show.entries[2]!;
+ assert.equal(restoreTerraAuthoredDialogue('Místico said, “I’ll see you in the ring.”',entry).unsupported,true);
 });

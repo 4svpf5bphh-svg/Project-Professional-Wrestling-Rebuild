@@ -615,6 +615,21 @@ export function cleanRingsidePrivateMetadata(
  catch{return null;}
 }
 
+/** Resolve the actual author of a booked line, including visible targets. */
+export function verifiedRingsideSpeaker(entry:ShowResultEntry,personId:string):string|null{
+ const c=entry.segmentContext;
+ const actor=c?.actorNames[entry.actorIds.indexOf(personId)];
+ const target=c?.targetPresence==="ON_SCREEN"?
+  c.targetNames[entry.targetIds.indexOf(personId)]:undefined;
+ return actor??target??null;
+}
+export function verifiedRingsideDialogue(entry:ShowResultEntry):{speaker:string;line:string}[]{
+ return (entry.segmentContext?.scriptedActions??[]).flatMap(a=>{
+  const speaker=verifiedRingsideSpeaker(entry,a.by);
+  const line=a.line?.trim();
+  return speaker&&line&&printable(line,160)&&!/[“”"]/.test(line)?[{speaker,line}]:[];
+ });
+}
 export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCopy{
  // When one AI slot fails, report its actual wrestlers and official method
  // instead of printing the old "decision in the ring" non-story. These
@@ -656,15 +671,8 @@ export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCo
       (context?.videoPurpose==="FEUD_RECAP"?
        ", revisiting the issue between them without adding a new confrontation.":"."):
      entry.summary.split(" The action unfolded:")[0]!.slice(0,250);
-    const lines=(context?.scriptedActions??[]).filter(a=>
-     typeof a.line==="string"&&a.line.trim().length>0).slice(0,3).map(a=>{
-      const whoIndex=entry.actorIds.indexOf(a.by);
-      const who=actors[whoIndex]??speaker;
-      const toIndex=typeof a.to==="string"?entry.targetIds.indexOf(a.to):-1;
-      const to=targets[toIndex]??"";
-      return who+(to?" called out "+to:" said")+
-       ": “"+a.line!.trim()+"”";
-     });
+    const lines=verifiedRingsideDialogue(entry).slice(0,3).map(a=>
+     a.speaker+" said: “"+a.line+"”");
     const scripted=lines.length?" "+lines.join(". ")+".":"";
     const end=entry.outcome==="REFUSED"?
      " The request was refused on air.":entry.outcome==="INTERRUPTED"?

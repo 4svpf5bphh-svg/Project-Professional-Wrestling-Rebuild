@@ -4,7 +4,7 @@
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import {buildVerifiedRingsideFallback,RingsideSlotValidationError,
  removeVerbatimRecapEchoes,scrubRingsidePrivateMetadata,validateRingsideCopy,
- ringsideReaderQualityIssue,withOccasionalWrestlingHistory,type RingsideCopy}
+ ringsideReaderQualityIssue,withOccasionalWrestlingHistory,verifiedRingsideDialogue,type RingsideCopy}
  from "./ringside-editorial.js";
 import {ringsideProseQualityFailure} from "./ringside-prose-quality.js";
 import type {TerraEditorialDiagnostics,TerraEditReason} from "./terra-editorial-diagnostics.js";
@@ -13,26 +13,68 @@ const textOk=(value:unknown,max:number):value is string=>
 const quoteKey=(line:string)=>line.normalize("NFKC").toLowerCase()
  .replace(/[’‘ʼ]/g,"'").replace(/[–—]/g,"-")
  .replace(/[^\p{L}\p{N}']+/gu," ").trim();
-/** Restore the exact author-written line only when its words match.
- * Unknown direct speech is not paraphrased into an unsupported claim. */
+const quotePattern=/[“"]([^”"\r\n]{1,500})[”"]|(?<![\p{L}\p{N}])‘([^‘’\r\n]{1,500})’(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])'([^'\r\n]{1,500})'(?![\p{L}\p{N}])/gu;
+const escaped=(s:string)=>s.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&");
+const alias=(name:string)=>[...new Set([name,name.split(/\s+/).at(-1)??name])].filter(x=>x.length>=2);
+const speech="(?:said|says|shouted|declared|announced|replied|warned|demanded|promised|asked|told|added|claimed|snarled|yelled)";
+function nearbySpeakers(text:string,at:number,length:number,names:string[]):string[]{
+ const before=text.slice(Math.max(0,at-90),at);
+ const after=text.slice(at+length,at+length+70);
+ return names.filter(name=>alias(name).some(a=>{
+  const n=escaped(a);
+  return new RegExp("(?:^|[^\\p{L}\\p{N}])"+n+"\\s+"+speech+"\\b[^.!?]{0,45}$","iu").test(before)||
+   new RegExp("^\\s*[,.;:—-]?\\s*(?:"+speech+"\\s+"+n+"|"+n+"\\s+"+speech+")\\b","iu").test(after);
+ }));
+}
+/** Restore the exact author-written line only when its words and speaker
+ * agree. Unknown or ambiguous direct speech is not laundered as fact. */
 export function restoreTerraAuthoredDialogue(text:string,entry:ShowResultEntry):
  {text:string;changed:boolean;unsupported:boolean}{
  if(entry.type!=="SEGMENT")return {text,changed:false,unsupported:false};
- const lines=(entry.segmentContext?.scriptedActions??[])
-  .map(a=>a.line?.trim()).filter((x):x is string=>!!x);
+ const lines=verifiedRingsideDialogue(entry);
+ const visible=[...new Set([...(entry.segmentContext?.actorNames??[]),
+  ...(entry.segmentContext?.targetPresence==="ON_SCREEN"?entry.segmentContext.targetNames:[])])];
+ const names=[...new Set([...visible,...(entry.segmentContext?.targetNames??[])])];
  let unsupported=false;
- const replace=(whole:string,quoted:string)=>{
+ const next=text.replace(quotePattern,(whole:string,double:string|undefined,
+  curly:string|undefined,single:string|undefined,at:number)=>{
+  const quoted=double??curly??single??"";
   const key=quoteKey(quoted);
-  const matches=[...new Set(lines.filter(line=>quoteKey(line)===key))];
-  if(key&&matches.length===1)return "“"+matches[0]+"”";
-  if(quoted.trim()&&lines.some(line=>line.includes(quoted.trim())))
-   return "“"+quoted.trim()+"”";
+  const exact=lines.filter(a=>key&&quoteKey(a.line)===key);
+  const excerpts=key.split(" ").length>=4?lines.filter(a=>a.line.includes(quoted.trim())):[];
+  const matching=exact.length?exact:excerpts;
+  const speakers=nearbySpeakers(text,at,whole.length,names);
+  const eligible=matching.filter(a=>speakers.length===1?speakers[0]===a.speaker:
+   speakers.length===0&&visible.length===1&&visible[0]===a.speaker);
+  const unique=[...new Set(eligible.map(a=>exact.length?a.line:quoted.trim()))];
+  if(unique.length===1)return "“"+unique[0]+"”";
   unsupported=true;return whole;
- };
- let next=text.replace(/[“"]([^”"\r\n]{1,500})[”"]/gu,replace);
- next=next.replace(/(?<![\p{L}\p{N}])‘([^‘’\r\n]{1,500})’(?![\p{L}\p{N}])/gu,replace);
- next=next.replace(/(?<![\p{L}\p{N}])'([^'\r\n]{1,500})'(?![\p{L}\p{N}])/gu,replace);
+ });
  return {text:next,changed:next!==text,unsupported};
+}
+/** Mask whole quotations before splitting; punctuation within fabricated
+ * speech cannot leave half of the invented claim in the final recap. */
+function dialogueSentences(text:string):string[]{
+ const saved:string[]=[];
+ const masked=text.replace(quotePattern,whole=>"\x00"+(saved.push(whole)-1)+"\x00");
+ return masked.split(/(?<=[.!?])\s+|\n+/).map(part=>
+  part.replace(/\x00(\d+)\x00/g,(_whole,i:string)=>saved[Number(i)]??"").trim()).filter(Boolean);
+}
+const wordCount=(s:string)=>s.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu)?.length??0;
+function repairDialoguePassage(text:string,entry:ShowResultEntry):string|null{
+ const kept=dialogueSentences(text).flatMap(sentence=>{
+  const result=restoreTerraAuthoredDialogue(sentence,entry);
+  return result.unsupported?[]:[result.text];
+ });
+ const body=kept.join(" ");
+ if(wordCount(body)<20||wordCount(body)<wordCount(text.replace(quotePattern," "))*0.5)
+  return null;
+ const authored=verifiedRingsideDialogue(entry).filter(a=>!body.includes(a.line))
+  .map(a=>a.speaker+" said: “"+a.line+"”");
+ const restored=body+(authored.length?" "+authored.join(" "):"");
+ if(!textOk(restored,1800))return null;
+ const result=restoreTerraAuthoredDialogue(restored,entry);
+ return result.unsupported?null:result.text;
 }
 const sameSlot=(a:RingsideCopy["slots"][number],b:RingsideCopy["slots"][number])=>
  a.headline===b.headline&&a.recap===b.recap;
@@ -63,7 +105,8 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
   const origin=diagnostics.slots[i];
   if(!origin||origin.source==="PPW_FALLBACK"||
    diagnostics.slots.filter(s=>s.source==="PPW_FALLBACK").length>=maxFallback)
-   throw new Error("Terra exceeded the bounded factual repair allowance");
+   throw new Error("Terra exceeded the bounded factual repair allowance at card "+(i+1)+
+    " ("+reason.toLowerCase().replaceAll("_"," ")+")");
   working.slots[i]={...fallback.slots[i]!};mark(i,reason,true);
  }
  let bookendsReplaced=false;
@@ -82,9 +125,11 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
   const headline=restoreTerraAuthoredDialogue(s.headline,show.entries[i]!);
   const recap=restoreTerraAuthoredDialogue(s.recap,show.entries[i]!);
   if(headline.unsupported||recap.unsupported){
-   replaceSlot(i,"UNSCRIPTED_DIALOGUE");continue;
-  }
-  if(headline.changed||recap.changed){
+   const repaired=recap.unsupported?repairDialoguePassage(s.recap,show.entries[i]!):recap.text;
+   if(!repaired){replaceSlot(i,"UNSCRIPTED_DIALOGUE");continue;}
+   s.headline=headline.unsupported?fallback.slots[i]!.headline:headline.text;
+   s.recap=repaired;mark(i,"UNSCRIPTED_DIALOGUE");
+  }else if(headline.changed||recap.changed){
    s.headline=headline.text;s.recap=recap.text;mark(i,"QUOTE_NORMALIZED");
   }
   const deduped=removeVerbatimRecapEchoes(s.recap);
@@ -132,5 +177,10 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
  final.slots.forEach((slot,i)=>{
   if(!sameSlot(slot,verified!.slots[i]!))mark(i,"HISTORICAL_ASIDE");
  });
+ for(const [i,s] of final.slots.entries()){
+  if(restoreTerraAuthoredDialogue(s.headline,show.entries[i]!).unsupported||
+   restoreTerraAuthoredDialogue(s.recap,show.entries[i]!).unsupported)
+   throw new Error("Terra could not verify quoted speech at card "+(i+1));
+ }
  return {review:check(final),diagnostics};
 }

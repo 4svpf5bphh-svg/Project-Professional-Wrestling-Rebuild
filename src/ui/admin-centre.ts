@@ -2,7 +2,7 @@
  * this client never stores an API key, resets a World or runs a timer. */
 import type {RingsideSettings} from "../domain/ringside-settings.js";
 import {estimateTerraStandardUsd} from "../domain/paid-editorial-cost.js";
-import type {TerraEditorialDiagnostics} from "../domain/terra-editorial-diagnostics.js";
+import {isAssistedTerra,type TerraEditorialDiagnostics} from "../domain/terra-editorial-diagnostics.js";
 import {TERRA_PREVIEW_TIMEOUT_MS,TERRA_DAILY_PREVIEW_ATTEMPTS,TERRA_DAILY_TOKEN_BUDGET}
  from "../domain/paid-editorial-policy.js";
 import {sameShowComparisons,type SameShowProviderResult}
@@ -92,7 +92,7 @@ function editorialNote(d:TerraEditorialDiagnostics|null|undefined):string{
  if(!d)return "";
  const fallback=d.slots.filter(s=>s.source==="PPW_FALLBACK").length;
  const cleaned=d.slots.filter(s=>s.source==="CLEANED").length;
- return (fallback||d.bookendsRepaired?"Assisted preview — ":"Terra preview — ")+
+ return (isAssistedTerra(d)?"Assisted preview — ":"Terra preview — ")+
   (d.slots.length-fallback)+"/"+d.slots.length+" model-written cards; "+
   cleaned+" locally edited; "+fallback+" verified PPW replacements"+
   (d.bookendsRepaired?"; introduction/close edited":"")+
@@ -315,7 +315,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      const group=runs.filter(x=>x.provider+" · "+x.model===groupKey);
      const successes=group.filter(x=>x.status!=="FAILED");
      const failed=group.length-successes.length;
-     const rated=successes.filter(x=>x.rating!==null);
+     const rated=successes.filter(x=>!x.editorial_assisted&&x.rating!==null);
      const average=rated.length?
       (rated.reduce((sum,x)=>sum+x.rating!,0)/rated.length).toFixed(1)+"/5":
       "Unrated";
@@ -323,8 +323,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      const known=group.filter(x=>x.input_tokens!==null&&x.output_tokens!==null);
      const tokens=known.reduce((n,x)=>n+x.input_tokens!+x.output_tokens!,0);
      box.append(el("span","",groupKey+" · "+average+" · "+
-      successes.length+" valid / "+group.length+" attempts · "+failed+
-      " failed · "+callTotal+" API calls · "+
+      successes.length+" readable / "+group.length+" attempts · "+failed+
+      " failed · "+successes.filter(x=>x.editorial_assisted).length+" assisted · "+callTotal+" API calls · "+
       (known.length===group.length?tokens.toLocaleString("en-GB")+" tokens":
        "partial token totals")+
       (group.some(x=>x.provider==="OPENAI"&&x.model==="gpt-6.1-terra")?
