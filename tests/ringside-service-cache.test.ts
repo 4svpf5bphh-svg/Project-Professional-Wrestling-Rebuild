@@ -14,9 +14,9 @@ const fixture=(mode:"ready"|"no-key"|"denied"|"cooldown")=>{
    calls++;
    assert.match(sql,/JOIN ppw_promotion_controls/);
    assert.match(sql,/JOIN ppw_memberships/);
-   assert.match(sql,/r\.prompt_version=\$5 OR \(r\.state='READY' AND/);
+   assert.match(sql,/r\.prompt_version=\$5 OR \(\(r\.state='READY' OR r\.model='gpt-6\.1-terra'\) AND/);
    assert.match(sql,/r\.prompt_version LIKE 'ringside-v%'/);
-   assert.match(sql,/ORDER BY CASE WHEN r\.state='READY' THEN 0 ELSE 1 END/);
+   assert.match(sql,/ORDER BY CASE WHEN r\.state='READY' THEN 0 WHEN r\.model='gpt-6\.1-terra' THEN 1 ELSE 2 END/);
    assert.match(sql,/CASE WHEN r\.prompt_version=\$5 THEN 0 WHEN r\.prompt_version=\$6 THEN 1/);
    assert.deepEqual(params,[scope.worldId,scope.playerId,scope.promotionId,scope.showId,
     RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION]);
