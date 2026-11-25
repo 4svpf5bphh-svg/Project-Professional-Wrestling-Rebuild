@@ -835,7 +835,7 @@ test("A concurrent Terra report shows certified facts without another API reques
  });
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await expect(page.locator(".ppw-ringside-ai-status")).toHaveText("AI DISPATCH · IN PROGRESS");
+ await expect(page.locator(".ppw-ringside-ai-status")).toHaveText("RINGSIDE ARTICLE · PREPARING");
  await expect(page.locator(".ppw-ringside-slot").first()).toBeVisible();
  await expect(page.locator(".ppw-ringside-slot").first()).toContainText("Kenny Omega");
  expect(requests).toBe(1);

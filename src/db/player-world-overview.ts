@@ -953,7 +953,7 @@ export async function readPlayerWorldOverview(
       FROM ppw_completed_shows c
       JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
       WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
-      ORDER BY c.year DESC,c.week DESC,c.show_id DESC LIMIT 1) AS latest_show
+      ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,c.show_id DESC LIMIT 1) AS latest_show
    ) dashboard ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;

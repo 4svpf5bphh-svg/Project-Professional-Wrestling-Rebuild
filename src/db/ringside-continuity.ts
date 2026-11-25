@@ -1,6 +1,6 @@
 /** Once-per-new-article, verified retrospective only. No mutable AI memory,
  * no other promotion's results and no additional reads on READY cache hits.
- * Historical matches are filtered strictly BEFORE the reviewed show's week.
+ * Historical matches precede the reviewed broadcast, including earlier same-week TV.
  */
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
@@ -17,7 +17,7 @@ export type RingsideMemory={
 export const EMPTY_RINGSIDE_MEMORY:RingsideMemory={priorMatches:[],programmes:[]};
 type Scope={worldId:string;promotionId:string;showId:string;playerId:string};
 type HistoricRow={promotion_id:string;year:number;week:number;actual_finish:string;
- actual_winner_side:string;payload:unknown};
+ actual_winner_side:string;payload:unknown;show_day?:number|null;current_day?:number|null};
 const valid=(s:string)=>typeof s==="string"&&!!s&&s.length<=200;
 
 export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
@@ -34,31 +34,34 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
   // The same authenticated human controller must own the promotion.
   // One bounded set of recent historical cards (not the entire World).
   const rows=await db.query<HistoricRow>(`
-   SELECT old.promotion_id,old.year,old.week,match.actual_finish,match.actual_winner_side,
+   SELECT old.promotion_id,old.year,old.week,old.show_day,old.current_day,match.actual_finish,match.actual_winner_side,
     card.payload FROM (
-     SELECT c.world_id,c.promotion_id,c.show_id,c.year,c.week FROM ppw_completed_shows c
+     SELECT c.world_id,c.promotion_id,c.show_id,c.year,c.week,old_card.show_day,current_card.show_day AS current_day FROM ppw_completed_shows c
+     JOIN ppw_booking_drafts old_card ON old_card.world_id=c.world_id AND old_card.draft_id=c.show_id
+     JOIN ppw_booking_drafts current_card ON current_card.world_id=c.world_id AND current_card.draft_id=$4 AND current_card.promotion_id=c.promotion_id
      JOIN ppw_promotion_controls pc ON pc.world_id=c.world_id
       AND pc.promotion_id=c.promotion_id AND pc.player_id=$3 AND pc.active
      JOIN ppw_memberships membership ON membership.world_id=pc.world_id
       AND membership.player_id=pc.player_id AND membership.status='ACTIVE'
      WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.show_id<>$4
-      AND ((c.year-1)*52+c.week-1)<$5
-     ORDER BY c.year DESC,c.week DESC,c.completed_at DESC LIMIT 10
+      AND (((c.year-1)*52+c.week-1)<$5 OR (((c.year-1)*52+c.week-1)=$5 AND old_card.show_day<current_card.show_day))
+     ORDER BY c.year DESC,c.week DESC,old_card.show_day DESC NULLS LAST,c.completed_at DESC LIMIT 10
     ) old JOIN ppw_completed_show_matches match
      ON match.world_id=old.world_id AND match.show_id=old.show_id
     JOIN ppw_card_slots card ON card.world_id=match.world_id
      AND card.draft_id=match.show_id AND card.slot_id=match.match_id
      AND card.kind='MATCH'
-   ORDER BY old.year DESC,old.week DESC,match.position DESC LIMIT 36`,
+   ORDER BY old.year DESC,old.week DESC,old.show_day DESC NULLS LAST,match.position DESC LIMIT 36`,
    [scope.worldId,scope.promotionId,scope.playerId,scope.showId,weekIndex]);
-  const shortlist:{year:number;week:number;finish:string;
+  const shortlist:{year:number;week:number;day?:number;finish:string;
    winners:string[];people:string[];sides:string[][]}[]=[];
   const people=new Set<string>(ids);
   for(const row of rows){
    // Defence in depth: reject future or other-promotion receipts even if a
    // future SQL refactor accidentally widens the bounded owner-scoped query.
    const then=(row.year-1)*52+row.week-1;
-   if(row.promotion_id!==scope.promotionId||!Number.isInteger(then)||then<0||then>=weekIndex)continue;
+   if(row.promotion_id!==scope.promotionId||!Number.isInteger(then)||then<0||then>weekIndex)continue;
+   if(then===weekIndex&&(!Number.isInteger(row.show_day)||!Number.isInteger(row.current_day)||row.show_day!<1||row.current_day!>7||row.show_day!>=row.current_day!))continue;
    try{
     const match=readCanonicalMatchLayout(row.payload);
     const cast=match.participants.map(x=>x.personId);
@@ -67,7 +70,7 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
      !cast.some(id=>people.has(id)))continue;
     const winning=match.sides.find(x=>x.sideId===row.actual_winner_side);
     if(!winning)continue;
-    shortlist.push({year:row.year,week:row.week,finish:row.actual_finish,
+    shortlist.push({year:row.year,week:row.week,...(then===weekIndex?{day:row.show_day!}:{}),finish:row.actual_finish,
      winners:winning.participants.map(p=>p.personId),people:cast,sides});
     if(shortlist.length>=8)break;
    }catch{/* Older incompatible lineups never become historical claims. */}
@@ -85,7 +88,7 @@ export async function readRingsideMemory(pool:TransactionPool,scope:Scope,
     (s):s is string=>!!s));
    if(winners.length!==row.winners.length||wrestlers.length!==row.people.length||
     sides.some((side,i)=>side.length!==row.sides[i]!.length))return [];
-   return [{when:"Y"+row.year+" W"+row.week,wrestlers,winners,finish:row.finish,sides}];
+   return [{when:"Y"+row.year+" W"+row.week+(row.day===undefined?"":" D"+row.day),wrestlers,winners,finish:row.finish,sides}];
   }).slice(0,5);
   // Settled, promotion-owned programme chapters already arrive with each
   // completed show slot in readCompletedShowView. Re-querying every active

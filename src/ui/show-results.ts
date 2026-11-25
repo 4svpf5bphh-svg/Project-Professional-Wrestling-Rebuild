@@ -142,7 +142,7 @@ export async function mountShowResults(root:HTMLElement,port:{
     insertRingsideEditorial(root,show,result.review);
    else if(result.status==="pending"){
     const status=root.querySelector(".ppw-ringside-ai-status");
-    if(status)status.textContent="AI DISPATCH · IN PROGRESS";
+    if(status)status.textContent="RINGSIDE ARTICLE · PREPARING";
     const waiting=root.querySelector(".ppw-ringside-await");
     if(waiting)waiting.textContent="The certified results are available below. Reopen this report later to read the finished article.";
    }else markRingsideFallback(root,show);
@@ -282,9 +282,9 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const feature=node("section","ppw-final-bell ppw-ringside-dispatch");
  feature.dataset.showId=show.showId;
  append(feature,node("span","ppw-eyebrow","PPW / RINGSIDE"),
-  node("span","ppw-ringside-ai-status","AI dispatch · checking"),
+  node("span","ppw-ringside-ai-status","Ringside article · loading"),
   node("h2","ppw-final-bell-headline","THE NIGHT AT RINGSIDE"),
-  node("p","ppw-ringside-await","The results are final. The ringside dispatch is being prepared."));
+  node("p","ppw-ringside-await","The results are final. Loading your saved ringside article."));
  const reactions=projectPopFeed(show,showReactionWire(show));
  const wrestlerPosts=projectHotTagShowWrestlerPosts(show).map(post=>
   show.shortform?.wrestler?.personId===post.personId&&
@@ -931,7 +931,7 @@ function markRingsideFallback(root:HTMLElement,show:CompletedShowView){
  region.querySelector(".ppw-ringside-await")?.remove();
  region.dataset.aiStatus="fallback";
  const status=region.querySelector(".ppw-ringside-ai-status");
- if(status)status.textContent="RECORDED RESULT · AI ARTICLE UNAVAILABLE";
+ if(status)status.textContent="RECORDED RESULT · OFFICIAL REPORT";
  const peak=show.entries.reduce((best,e)=>!best||e.crowdResponse>best.crowdResponse?e:best,
   undefined as ShowResultEntry|undefined);
  region.append(node("p","ppw-final-bell-paragraph",peak?.headline??

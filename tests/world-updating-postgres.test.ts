@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {postgresPool,withSqlClient} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
+import {loadRingsideCommentary} from "../src/db/ringside-commentary.js";
 import {startWorldUpdating,processWorldUpdate} from "../src/db/world-updating.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 
@@ -54,6 +55,10 @@ test("World Updating: all human shows are queued, failure is isolated, and concu
    await startWorldUpdating(tx,scope);
   });
   assert.deepEqual(await read("SELECT show_id FROM ppw_world_update_jobs WHERE world_id=$1 ORDER BY show_day"),[{show_id:"tv"},{show_id:"rival-tv"},{show_id:"premium"}]);
+  const noDispatch:typeof fetch=async()=>{throw Error("Viewer must not dispatch Terra");};
+  const viewer={worldId,playerId:owner,promotionId:"home",showId:"tv"};
+  assert.deepEqual(await loadRingsideCommentary(db.pool,viewer,"mock",noDispatch,"OPENAI"),{status:"pending"});
+  await assert.rejects(loadRingsideCommentary(db.pool,{...viewer,playerId:rival},"mock",noDispatch,"OPENAI"),/unavailable to this controller/);
   const deps={terraKey:"mock",groqKey:"mock",
    generate:async(_pool:typeof db.pool,s:{showId:string})=>{
     calls.push(s.showId);
@@ -75,6 +80,7 @@ test("World Updating: all human shows are queued, failure is isolated, and concu
   assert.equal((await processWorldUpdate(db.pool,scope,deps))?.status,"PUBLISHED");
   assert.deepEqual(calls,["tv","rival-tv","premium"]);
   assert.equal(publicCalls,1);
+  assert.deepEqual(await loadRingsideCommentary(db.pool,{...viewer,showId:"premium"},"mock",noDispatch,"OPENAI"),{status:"unavailable"});
   assert.deepEqual(await read("SELECT show_id,state FROM ppw_world_update_jobs WHERE world_id=$1 ORDER BY show_day"),[{show_id:"tv",state:"READY"},{show_id:"rival-tv",state:"READY"},{show_id:"premium",state:"FALLBACK"}]);
   assert.deepEqual(await read("SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1"),[{year:1,week:2,phase:"OPEN"}]);
  }finally{release();await db.close();}
