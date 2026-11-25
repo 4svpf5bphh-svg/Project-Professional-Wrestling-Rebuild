@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
-import {withWorldTransaction} from "../src/db/transaction.js";
+import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {setGorillaPolicy} from "../src/db/gorilla-position.js";
@@ -11,6 +11,8 @@ import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {driveWorldResolution,planNextWorldResolutionAction}
  from "../src/db/world-resolution-pipeline.js";
 import {inspectWeekConflicts} from "../src/db/week-conflicts.js";
+import {resolveCanonicalShow} from "../src/db/resolve-canonical-show.js";
+import {processWorldUpdate} from "../src/db/world-updating.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -210,7 +212,7 @@ test("two promotions resolve, certify and publish after restart without double c
 
 /** Regression: the calendar's premium event is a genuinely separate show,
  * not a second name on television or a second World Lock. */
-test("a regular card plus an independently submitted PPV resolve and settle in one World week",
+test("a recorded regular card resumes into a linked triple-threat PPV, then queues both editorial jobs once",
  {skip:!url?"No disposable PostgreSQL":false},async()=>{
  const db=postgresPool(url!,4),id=randomUUID(),worldId="dual-journey-"+id;
  const resolutionId="resolution-dual-"+id,promotions=["host-"+id,"visitor-"+id];
@@ -279,12 +281,44 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",[worldId]));
   assert.equal((await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:1})).status,"APPLIED");
-  const stages=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:12});
+  // Reproduce the live recovery boundary: the whole week's contract
+  // accounting has already committed, and television is certified while
+  // the premium card still awaits its detailed settlement.
+  const prepared=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:5});
+  assert.equal(prepared.status,"LIMIT_REACHED");
+  assert.deepEqual(prepared.steps.map(s=>s.action),[
+   "ASSESS_CONTINUITY","FINALIZE_PREPARED_SHOWS","BEGIN_RESOLUTION",
+   "CLEAR_RESOURCES","RESOLVE_LEGACY_SHOWS"]);
+  const tv={worldId,promotionId:promotions[0]!,showId:showIds[0]!,
+   year:1,week:1,resolutionId};
+  assert.equal(await resolveCanonicalShow(db.pool,tv),"RECORDED");
+  const before=await read<{show_id:string;receipt_digest:string}>(
+   "SELECT show_id,receipt_digest FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
+  assert.equal(before.length,1);
+  assert.equal(before[0]!.show_id,showIds[0]);
+  const stages=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:12,deferEditorial:true});
   assert.equal(stages.status,"PUBLISHED");
   assert.deepEqual(stages.steps.map(s=>s.action),[
-   "ASSESS_CONTINUITY","FINALIZE_PREPARED_SHOWS","BEGIN_RESOLUTION",
-   "CLEAR_RESOURCES","RESOLVE_LEGACY_SHOWS","RESOLVE_DETAILED_SHOWS",
-   "CERTIFY_WEEK","PUBLISH_WEEK"]);
+   "RESOLVE_DETAILED_SHOWS","CERTIFY_WEEK","PUBLISH_WEEK"]);
+  assert.deepEqual(await read<{show_id:string;receipt_digest:string}>(
+   "SELECT show_id,receipt_digest FROM ppw_completed_shows WHERE world_id=$1 AND show_id=$2",
+   [worldId,showIds[0]]),before,"Resuming the PPV must preserve the earlier certified TV receipt");
+  assert.deepEqual(await read("SELECT phase FROM ppw_worlds WHERE world_id=$1",[worldId]),[{phase:"UPDATING"}]);
+  assert.deepEqual(await read("SELECT show_id,state FROM ppw_world_update_jobs WHERE world_id=$1 ORDER BY show_day",[worldId]),
+   [{show_id:showIds[0],state:"WAITING"},{show_id:showIds[1],state:"WAITING"}]);
+  const editorials:string[]=[];
+  const deps={terraKey:"mock",groqKey:"mock",
+   generate:async(_pool:TransactionPool,scope:{showId:string})=>{
+    editorials.push(scope.showId);
+    return {status:"ready" as const,review:{showHeadline:"Headline",opening:"Opening",closing:"Closing",slots:[]}};
+   },
+   publish:async()=>{editorials.push("public");throw Error("Mock public fallback");}};
+  const outgoing={worldId,year:1,week:1};
+  assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"LIMIT_REACHED");
+  assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"LIMIT_REACHED");
+  assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"PUBLISHED");
+  assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"PUBLISHED");
+  assert.deepEqual(editorials,[showIds[0],showIds[1],"public"]);
   const dates=await read<{show_id:string;dates_charged:number}>(
    "SELECT show_id,dates_charged FROM ppw_show_resolutions WHERE world_id=$1 ORDER BY show_id",[worldId]);
   assert.equal(dates.length,3);
@@ -337,7 +371,7 @@ test("a regular card plus an independently submitted PPV resolve and settle in o
    [worldId]))[0]!.n,2,"Replay never adds a second incident log");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_programme_resolved_activities",
+   for(const table of ["ppw_world_update_jobs","ppw_world_update_runs","ppw_programme_resolved_activities",
     "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
     "ppw_wrestler_relationships","ppw_completed_match_evidence",
     "ppw_completed_show_segments",
