@@ -1,7 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
-import {serviceCapacityDatesPerWeek,purchasedDateLimits,maxPurchasedDates,maxExclusiveTermWeeks,type ExistingCommitment,type Stage} from "../domain/contract-economics.js";
+import {serviceCapacityDatesPerWeek,purchasedDateLimits,maxPurchasedDates,maxExclusiveTermWeeks,unpackSignedCommitments,type CompactSignedCommitment,type Stage} from "../domain/contract-economics.js";
 import {forecastTalentBudget} from "../domain/talent-budget.js";
 import {worldTalentManagers} from "../domain/world-staff.js";
 import type {ContractAvailabilityInput} from "../domain/contract-availability.js";
@@ -68,7 +68,7 @@ export async function readContractDesk(
    popularity:number|null;recognition:number|null;morale:number|null;
    career_stage:string|null;in_ring_quality:number|null;match_craft:number|null;
    presentation:number|null;stamina:number|null;fatigue:number|null;weekly_service_capacity:number|null;
-   other_density:number;other_term_overlap:boolean;other_commitments:ExistingCommitment[]|null;
+   other_commitments:CompactSignedCommitment[]|null;
    backstage_contract_request_id:string|null;renewal_secured:boolean;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
@@ -76,21 +76,9 @@ export async function readContractDesk(
      c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation,
      p.popularity,p.recognition,p.morale,p.career_stage,p.in_ring_quality,
      p.match_craft,p.presentation,p.stamina,p.fatigue,p.weekly_service_capacity,
-     coalesce((SELECT sum(CASE WHEN other.family='EXCLUSIVE' THEN 1.0
-       ELSE greatest(0,coalesce(other.remaining_dates,0))::double precision /
-        greatest(1,other.expires_week_index-greatest($3::integer,other.start_week_index)+1)
-      END) FROM ppw_contracts other
-      WHERE other.world_id=c.world_id AND other.person_id=c.person_id
-       AND other.contract_id<>c.contract_id AND other.status='SIGNED'
-       AND other.start_week_index<=c.expires_week_index+52
-       AND other.expires_week_index>=c.expires_week_index+1),0)::double precision AS other_density,
-     (SELECT jsonb_agg(jsonb_build_object('contractId',other.contract_id,'family',other.family,'status',other.status,'remainingDates',other.remaining_dates,'startWeekIndex',other.start_week_index,'expiresWeekIndex',other.expires_week_index))
-      FROM ppw_contracts other WHERE other.world_id=c.world_id AND other.person_id=c.person_id AND other.contract_id<>c.contract_id AND other.status='SIGNED' AND other.expires_week_index>=$3) AS other_commitments,
-     EXISTS(SELECT 1 FROM ppw_contracts other
-      WHERE other.world_id=c.world_id AND other.person_id=c.person_id
-       AND other.contract_id<>c.contract_id AND other.status='SIGNED'
-       AND other.start_week_index<=c.expires_week_index+52
-       AND other.expires_week_index>=c.expires_week_index+1) AS other_term_overlap,
+     (SELECT jsonb_agg(jsonb_build_array(other.family='EXCLUSIVE',other.remaining_dates,other.start_week_index,other.expires_week_index))
+      FROM ppw_contracts other WHERE other.world_id=c.world_id AND other.person_id=c.person_id
+       AND other.contract_id<>c.contract_id AND other.status='SIGNED' AND other.expires_week_index>=$3) AS other_commitments,
      EXISTS(SELECT 1 FROM ppw_contract_offers accepted
       WHERE accepted.world_id=c.world_id AND accepted.promotion_id=c.promotion_id
        AND accepted.person_id=c.person_id
@@ -216,7 +204,14 @@ export async function readContractDesk(
      showTalentLimit:Number(auth[0]!.plan_show_talent_limit),
      cashReserve:Number(auth[0]!.plan_cash_reserve)},
    worldRevision:Number(auth[0]!.revision),canEdit:auth[0]!.can_edit,
-   roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;return {...c,
+   roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;
+    const commitments=unpackSignedCommitments(cost.other_commitments);
+    const exclusiveLimit=maxExclusiveTermWeeks(cost.expires_week_index+1,commitments);
+    const density=commitments.filter(other=>other.startWeekIndex<=cost.expires_week_index+52&&
+     other.expiresWeekIndex>=cost.expires_week_index+1).reduce((sum,other)=>sum+
+      (other.family==="EXCLUSIVE"?1:Math.max(0,other.remainingDates??0)/
+       Math.max(1,other.expiresWeekIndex-Math.max(currentWeekIndex,other.startWeekIndex)+1)),0);
+    return {...c,
     startWeekIndex:cost.start_week_index,
     dateEntitlement:cost.date_entitlement,weeklyGuarantee:Number(cost.weekly_guarantee),
     appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
@@ -232,13 +227,13 @@ export async function readContractDesk(
     nextTermServiceDensity:cost.stamina!==null&&cost.fatigue!==null&&
      ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(cost.career_stage??"")?
       Math.max(0,serviceCapacityDatesPerWeek({careerStage:cost.career_stage as Stage,
-       stamina:cost.stamina,fatigue:cost.fatigue})-cost.other_density):null,
+       stamina:cost.stamina,fatigue:cost.fatigue})-density):null,
     renewalDateLimits:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
-     purchasedDateLimits({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},cost.expires_week_index+1,cost.other_commitments??[],currentWeekIndex):null,
+     purchasedDateLimits({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},cost.expires_week_index+1,commitments,currentWeekIndex):null,
     maxAdditionalDates:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
-     Math.max(0,maxPurchasedDates({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},currentWeekIndex,c.weeksRemaining,cost.other_commitments??[],currentWeekIndex)-(c.remainingDates??0)):null,
-    renewalExclusiveTermLimit:maxExclusiveTermWeeks(cost.expires_week_index+1,cost.other_commitments??[]),
-    nextTermHasOverlap:cost.other_term_overlap,
+     Math.max(0,maxPurchasedDates({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},currentWeekIndex,c.weeksRemaining,commitments,currentWeekIndex)-(c.remainingDates??0)):null,
+    renewalExclusiveTermLimit:exclusiveLimit,
+    nextTermHasOverlap:exclusiveLimit<52,
     pendingNegotiation:pendingIds.has(c.contractId),
     pendingRenewal:renewalIds.has(c.contractId),
     pendingRenewalOffer:awaitingRenewalOfferIds.has(c.contractId),

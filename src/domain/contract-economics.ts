@@ -20,6 +20,14 @@ export interface ExistingCommitment {
  contractId:string;family:Family;status:string;remainingDates:number|null;
  startWeekIndex:number;expiresWeekIndex:number;
 }
+/** The market/desk need only signed service windows, not other employers' identities or prices. */
+export type CompactSignedCommitment=readonly [exclusive:boolean,remainingDates:number|null,startWeekIndex:number,expiresWeekIndex:number];
+export function unpackSignedCommitments(rows:readonly CompactSignedCommitment[]|null|undefined):ExistingCommitment[]{
+ return (rows??[]).map(([exclusive,remainingDates,startWeekIndex,expiresWeekIndex],i)=>({
+  contractId:"window:"+i,family:exclusive?"EXCLUSIVE":"LIMITED_NON_EXCLUSIVE",status:"SIGNED",
+  remainingDates,startWeekIndex,expiresWeekIndex
+ }));
+}
 const ROLES:Record<Role,number>={DEVELOPMENTAL:25,REGULAR:45,FEATURED:62,UPPER_CARD:76,MAIN_EVENT:90,SPECIAL_ATTRACTION:88};
 const TIERS:Record<string,number>={LOCAL:25,INDEPENDENT:42,RISING:58,NATIONAL:75,GLOBAL:92};
 const moneyKeys=["money","role","prestige","schedule","loyalty","exposure"] as const;

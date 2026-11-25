@@ -85,3 +85,11 @@ test("exclusive availability stops at the next signed agreement, not any contrac
  assert.equal(maxExclusiveTermWeeks(40,[other]),0);
  assert.equal(maxExclusiveTermWeeks(52,[other]),52);
 });
+
+test("compact service windows retain eligibility without private employer terms",async()=>{
+ const {unpackSignedCommitments,maxExclusiveTermWeeks}=await import("../src/domain/contract-economics.js");
+ const windows=unpackSignedCommitments([[false,30,26,51],[true,null,55,62]]);
+ assert.equal(maxPurchasedDates({...person,stamina:38},33,1,windows,32),2);
+ assert.equal(maxExclusiveTermWeeks(52,windows),3);
+ assert.equal(windows[1]?.family,"EXCLUSIVE");
+});
