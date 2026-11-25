@@ -1,3 +1,4 @@
+import {startWorldUpdating} from "./world-updating.js";
 import type {TransactionPool} from "./transaction.js";
 import {settleLivingWrestlerCareers} from "./living-world-career-settlement.js";
 import {settleWorldHeritage} from "./world-heritage.js";
@@ -38,6 +39,7 @@ export interface AdvanceResolvedWeekInput {
   worldId:string; requestId:string; expectedRevision:number;
   /** Explicit trusted Admin recovery only, never an ordinary clock rollover. */
   manualRecovery?:boolean;
+  deferEditorial?:boolean;
 }
 
 /** Trusted scheduler/recovery entry point, NOT a player API.
@@ -330,6 +332,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         "INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload) VALUES($1,$2,$3,'WORLD_WEEK_COMPLETED',$4::jsonb)",
         [input.worldId,year,week,JSON.stringify({resolvedPromotions:resolved})],
       );
+      if(input.manualRecovery&&input.deferEditorial)await startWorldUpdating(tx,{worldId:input.worldId,year,week});
       return {completedYear:year,completedWeek:week,
         nextYear:moved[0]!.year,nextWeek:moved[0]!.week,resolvedPromotions:resolved};
     },

@@ -4,6 +4,7 @@
   "buildCommand": "npm run web:build",
   "outputDirectory": "dist/web",
   "functions": {
+    "api/playtest-week.ts": {"maxDuration": 180},
     "api/admin-preview.ts": {
       "maxDuration": 180
     },

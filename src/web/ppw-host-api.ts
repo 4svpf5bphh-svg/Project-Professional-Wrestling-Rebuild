@@ -28,9 +28,10 @@ import {planNextWorldResolutionAction} from "../db/world-resolution-pipeline.js"
 import {readAdminRingsideSettings,changeAdminRingsideSettings,rearmFailedRingsideReport}
  from "../db/admin-ringside-settings.js";
 import {validateRingsideSettings} from "../domain/ringside-settings.js";
+import {processWorldUpdate} from "../db/world-updating.js";
 import {advancePlaytestWeek,extendPlaytestBooking} from "../db/manual-playtest-week.js";
 import {postShowVoiceEnabled} from "../db/postshow-voice-batches.js";
-import {publishWeeklyWorldEditorial,readWeeklyWorldEditorialRuns} from "../db/weekly-world-editorial.js";
+import {readWeeklyWorldEditorialRuns} from "../db/weekly-world-editorial.js";
 import {readLegendPilot,armLegendPilot,cancelLegendPilot} from "../db/legend-reveal-pilot.js";
 import {hasUnseenLegendReveal} from "../db/legends-vault.js";
 import {readPlaytestKp,grantPlaytestKp} from "../db/admin-kp-playtest.js";
@@ -555,21 +556,14 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    !Number.isSafeInteger(b.year)||!Number.isSafeInteger(b.week))
    return json(400,{error:"Confirm the exact shared World week before advancing"});
   try{
-   const result=await advancePlaytestWeek(pool,cfg.worldId,b.year as number,b.week as number);
-   // One post-PUBLISH_WEEK batch, outside ALL World Lock transactions.
-   // Disabled by default; failures cannot roll back official results or week.
-   if(result.status==="PUBLISHED"&&postShowVoiceEnabled(process.env,cfg.worldId)){
-    try{
-     const voices=await publishWeeklyWorldEditorial(pool,{
-      worldId:cfg.worldId,year:b.year as number,week:b.week as number},
-      process.env.GROQ_API_KEY!);
-     console.info("Certified shortform publishing",{
-      state:voices.state,providerCalls:voices.providerCalls,accepted:voices.accepted});
-    }catch{
-     console.warn("Shortform publishing unavailable; certified results remain intact");
-    }
-   }
-   return json(200,result);
+   const scope={worldId:cfg.worldId,year:b.year as number,week:b.week as number};
+   const live=liveRingsideProvider(process.env);
+   const editorial=await processWorldUpdate(pool,scope,{
+    terraKey:live.provider==="OPENAI"?live.key:undefined,
+    groqKey:postShowVoiceEnabled(process.env,cfg.worldId)?process.env.GROQ_API_KEY:undefined});
+   if(editorial)return json(200,editorial);
+   const result=await advancePlaytestWeek(pool,scope.worldId,scope.year,scope.week,true);
+   return json(200,result.status==="PUBLISHED"?{...result,status:"LIMIT_REACHED"}:result);
   }catch(e){
    const message=e instanceof Error?e.message:"";
    return json(409,{error:/must confirm its regular show/i.test(message)?

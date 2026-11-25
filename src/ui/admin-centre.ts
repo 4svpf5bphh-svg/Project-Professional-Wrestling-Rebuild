@@ -854,7 +854,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   const actions=el("div","ppw-admin-actions");
   const info=el("p","ppw-admin-message","");
   if(lastNotice)message(info,lastNotice,lastError);
-  const advance=el("button","ppw-admin-primary","Advance Week") as HTMLButtonElement;
+  const advance=el("button","ppw-admin-primary",p.ready.phase==="UPDATING"?"Resume World Updating":"Advance Week") as HTMLButtonElement;
   advance.type="button";
   advance.onclick=async()=>{
    if(busy)return;
@@ -882,7 +882,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       message(info,"No progress recorded; review diagnostics and retry.",true);
       break;
      }
-     message(info,`Advancing Week ${p.week}… processing World shows (batch ${batch+1}).`);
+     message(info,result.steps.some(step=>["PUBLISH_WEEK","PREPARE_SHOW_ARTICLE"].includes(step.action))?"World Updating… preparing show results and public news.":`Advancing Week ${p.week}… processing World shows (batch ${batch+1}).`);
      if(batch===23)message(info,"The safe batch limit was reached; press Advance Week again to resume.",true);
     }
     lastNotice=info.textContent??"";lastError=!finished;
