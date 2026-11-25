@@ -44,8 +44,8 @@ export async function requestAdditionalDates(pool:TransactionPool,input:RequestA
      if((contract.date_entitlement??contract.remaining_dates??0)+input.additionalDates>104)
        throw new Error("Purchased date allowance exceeds 104");
      const availableWeeks=contract.expires_week_index-weekIndex+1;
-     if(contract.remaining_dates+input.additionalDates>availableWeeks)
-       throw new Error("Only "+Math.max(0,availableWeeks-contract.remaining_dates)+
+     if(contract.remaining_dates+input.additionalDates>2*availableWeeks)
+       throw new Error("Only "+Math.max(0,2*availableWeeks-contract.remaining_dates)+
         " extra appearances fit before this contract expires");
      const existing=await tx.query<{request_id:string}>(`
        SELECT request_id FROM ppw_contract_date_requests

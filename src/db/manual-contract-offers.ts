@@ -76,7 +76,7 @@ export async function submitManualContractOffer(pool:TransactionPool,input:Manua
    if(accepted.length)throw new Error("Renewal already arranged");
   } else if(input.terms.startWeekIndex!==current)
    throw new Error("Recruitment offer must start in the current week");
-  const reason=canAcceptTerms(p,input.terms,signed.map(commitment),current);
+  const reason=canAcceptTerms(p,{...input.terms,startWeekIndex:Math.max(input.terms.startWeekIndex,current+1)},signed.map(commitment),current);
   if(reason)throw new Error(reason);
   const pending=await tx.query<{offer_id:string}>(`SELECT offer_id FROM ppw_contract_offers
    WHERE world_id=$1 AND person_id=$2 AND promotion_id=$3 AND status='PENDING' LIMIT 1`,
@@ -182,7 +182,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
    if(b.source_contract_id&&(!source||source.status!=="SIGNED"||source.expires_week_index<current
     ||t.startWeekIndex!==source.expires_week_index+1||t.family==="ONE_OFF"))
     reason="renewal source is no longer available";
-   if(!reason)reason=canAcceptTerms(p,t,signed,current);
+   if(!reason)reason=canAcceptTerms(p,{...t,startWeekIndex:Math.max(t.startWeekIndex,current+1)},signed,current);
    if(!reason&&t.family==="EXCLUSIVE"&&signed.some(c=>c.status==="SIGNED"&&
      c.startWeekIndex<=t.startWeekIndex+t.termWeeks-1&&c.expiresWeekIndex>=t.startWeekIndex))
     reason="overlapping signed contract";
@@ -192,7 +192,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
     charges.set(b.promotion_id,(charges.get(b.promotion_id)??0)+t.signingBonus);
     signed.push({contractId:"offer:"+b.offer_id,family:t.family,status:"SIGNED",
      remainingDates:t.family==="EXCLUSIVE"?null:t.dateEntitlement,
-     startWeekIndex:t.startWeekIndex,expiresWeekIndex:t.startWeekIndex+t.termWeeks-1});
+     startWeekIndex:Math.max(t.startWeekIndex,current+1),expiresWeekIndex:Math.max(t.startWeekIndex,current+1)+t.termWeeks-1});
    }
    decisions.push({id:b.offer_id,status:reason?"REJECTED":"ACCEPTED",score:b.score,reason});
   };
