@@ -184,3 +184,10 @@ test("HOT TAG rotates a large fictional population with rowdy takes and occasion
  assert.ok(hasRudeness&&hasHumour,
   "Wrestling-social comments should include both colourful language and absurdity");
 });
+
+test("wild entertainment receives story-specific fallback jokes without treating gossip as fact",()=>{
+ const concert={...rumour,title:"A locker-room concert?",summary:"A tipster claims an impromptu encore might have happened."};
+ const court={...rumour,id:"wild:s2",title:"Wrestlers' Court over a missing dessert?",summary:"A pudding allegedly vanished."};
+ assert.match(projectHotTagNewsThread(concert)[0]!.text,/encore|soundcheck/i);
+ assert.match(projectHotTagNewsThread(court)[0]!.text,/pudding|dessert/i);
+});

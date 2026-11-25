@@ -19,7 +19,8 @@ test("World Updating: dark week publishes once, crosses year boundary, resumes w
    await tx.query("UPDATE ppw_worlds SET year=2,week=1,phase='OPEN' WHERE world_id=$1",[worldId]);
    await startWorldUpdating(tx,scope);
   });
-  const deps={groqKey:"mock",publish:async()=>{calls++;throw Error("simulated provider failure");}};
+  const deps={terraKey:"mock",publish:async(_pool:typeof db.pool,_scope:typeof scope,key:string,_transport?:typeof fetch,terra?:string)=>{
+   assert.equal(key,"");assert.equal(terra,"mock");calls++;throw Error("simulated provider failure");}};
   assert.equal((await processWorldUpdate(db.pool,{worldId,year:2,week:1},deps))?.status,"BLOCKED");
   assert.equal((await processWorldUpdate(db.pool,scope,deps))?.status,"PUBLISHED");
   assert.equal((await processWorldUpdate(db.pool,scope,deps))?.status,"PUBLISHED");

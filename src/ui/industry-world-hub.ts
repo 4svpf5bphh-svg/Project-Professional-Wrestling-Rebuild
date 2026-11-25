@@ -903,13 +903,13 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      item.append(el("div","ppw-dirt-outlet",byline.name),
       el("span","ppw-dirt-byline",byline.byline+" · INSIDE REPORT"));
     }
-    item.append(el("span","ppw-news-desk",official?(story.editorial?.headline&&story.editorial.commentary?"EDITORIAL / CONFIRMED SOURCE":"CONFIRMED / OFFICIAL"):
+    item.append(el("span","ppw-news-desk",official?(story.editorial?.commentary?"EDITORIAL / CONFIRMED SOURCE":"CONFIRMED / OFFICIAL"):
      wild?"UNVERIFIED / DISPUTED REPORT 👀":"RUMOUR / NOT CONFIRMED"),
      el("strong","ppw-news-story-title",story.editorial?.headline??story.title),
      el("p","",story.editorial?.commentary??story.summary),
      el("small","ppw-industry-muted",story.promotionName+
       " · Year "+story.year+" · Week "+story.week));
-    if(story.editorial?.headline&&story.editorial.commentary){
+    if(story.editorial?.commentary){
      // Groq writes the reader-facing lead. Keep the actual public record
      // readily accessible and separate from opinion, not a duplicated article.
      const facts=document.createElement("details");

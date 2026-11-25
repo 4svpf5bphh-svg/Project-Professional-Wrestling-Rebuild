@@ -72,8 +72,13 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
    // Pack the largest safe edition into ONE free call. Never split into a
    // second immediately rate-limited request or extend the World lock.
+   if(estimate>7000&&anchors[0]?.recentFanCopy?.length){
+    anchors=anchors.map(a=>({...a,recentFanCopy:a.recentFanCopy?.slice(0,4)}));
+    body=build();estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
+   }
    while(anchors.length>1&&estimate>7000){
-    anchors=anchors.slice(0,-1);body=build();
+    const drop=anchors.map((a,i)=>({a,i})).filter(x=>x.i>0&&x.a.story.desk==="OFFICIAL").at(-1)?.i??anchors.length-1;
+    anchors=anchors.filter((_,i)=>i!==drop);body=build();
     estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
    }
    if(estimate>7000){diagnostic="TOKEN_ENVELOPE";throw Error("Weekly editorial envelope too large");}

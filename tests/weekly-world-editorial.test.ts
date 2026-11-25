@@ -107,11 +107,12 @@ test("weekly ratings snapshot cannot establish promotion growth",()=>{
 });
 
 test("four full-sized weekly editorial sources fit the shared dispatch reservation",()=>{
- const anchors=weeklyEditorialAnchors(Array.from({length:4},(_,i)=>({...official,id:"story:"+i,title:"x".repeat(200),summary:"x".repeat(500),promotionName:"p".repeat(110)})));
- const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",max_completion_tokens:2400,
+ const sources=Array.from({length:3},(_,i)=>({...official,id:"title:"+i,sourceKind:"TITLE",humanManaged:true,promotionId:"p"+i,title:"x".repeat(200),summary:"x".repeat(500),promotionName:"p".repeat(110)}));
+ const anchors=weeklyEditorialAnchors([...sources,{...dirt,id:"wild:show",title:"y".repeat(200),summary:"y".repeat(500)}]);
+ const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",max_completion_tokens:2600,
   response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
- assert.equal(anchors.length,1);
- assert.ok(estimatedGroqTokens(JSON.stringify(body),2400)<=7000);
+ assert.equal(anchors.length,4);
+ assert.ok(estimatedGroqTokens(JSON.stringify(body),2600)<=7000);
 });
 
 test("persona labels and false TV rivalry framing do not leak into the weekly edition",()=>{
@@ -120,6 +121,7 @@ test("persona labels and false TV rivalry framing do not leak into the weekly ed
   headline:"WWE outpaces CHA",commentary:"CWA has a smaller television audience this week.",
   fan1:"Passionate promotion loyalist: CWA deserves more viewers.",fan2:"CWA needs time to build a following.",reply:"Fair enough, give it time.",wrestler:null}});
  assert.equal(result.copy[story.id]?.headline,undefined);
+ assert.equal(result.copy[story.id]?.commentary,"CWA has a smaller television audience this week.");
  assert.equal(result.copy[story.id]?.fans?.[0],"CWA deserves more viewers.");
  assert.equal(result.issues.UNVERIFIED_RATINGS_TREND,1);
 });

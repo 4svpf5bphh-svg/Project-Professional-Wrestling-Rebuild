@@ -102,7 +102,7 @@ export function validateWeeklyStoryCopy(story:WeeklyStory,value:unknown,speaker?
   /\b(?:i|my|me|we|our|us)\b/i.test(speech)&&
   !/\b(?:next (?:match|show|week)|i promise|i challenge|i accept|i demand|i will face)\b/i.test(speech)?speech:undefined;
  if(speaker&&!publicSpeech)diagnose("wrestler","NO_VERIFIED_VOICE");
- const copy:WeeklyStoryCopy={...(headline&&commentary?{headline,commentary}:{}),...(fans.some(Boolean)?{fans}:{}),
+ const copy:WeeklyStoryCopy={...(commentary?{commentary,...(headline?{headline}:{})}:{}),...(fans.some(Boolean)?{fans}:{}),
   ...(speaker&&publicSpeech?{wrestler:{personId:speaker.personId,text:publicSpeech}}:{})};
  return Object.keys(copy).length?copy:null;
 }
@@ -218,7 +218,7 @@ export function validateWeeklyEditorialDetailed(anchors:readonly WeeklyAnchor[],
   const fans:[string|null,string|null,string|null,...(string|null)[]]=[first,second,third,...(validated.fans?.slice(3,5).map(v=>unique(v,true))??[])];
   const wrestler=unique(validated.wrestler?.text);
   const accepted:WeeklyStoryCopy={
-   ...(headline&&commentary?{headline,commentary}:{}),
+   ...(commentary?{commentary,...(headline?{headline}:{})}:{}),
    ...(fans.some(Boolean)?{fans}:{}),
    ...(wrestler&&validated.wrestler?{wrestler:{...validated.wrestler,text:wrestler}}:{})
   };

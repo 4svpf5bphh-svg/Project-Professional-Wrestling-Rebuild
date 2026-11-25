@@ -8,6 +8,7 @@ const stories=[
   certainty:"CONFIRMED",promotionId:"home",promotionName:"CWA",
   showId:"s52",title:"The Year Ends With a Champion",summary:"A certified title change.",
   sourceKind:"TITLE"},
+ {id:"signing:brief",year:2,week:52,desk:"OFFICIAL",certainty:"CONFIRMED",promotionId:"rival",promotionName:"Rival Wrestling",showId:"s52",title:"Rival Wrestling signs a prospect",summary:"A public signing, not a debut.",sourceKind:"EVENT"},
  {id:"week51:official",year:2,week:51,desk:"OFFICIAL",
   certainty:"CONFIRMED",promotionId:"home",promotionName:"CWA",
   showId:"s51",title:"The Road to the Finale",summary:"The official rivalry grew.",
@@ -60,6 +61,13 @@ for(const width of [320,390]){
    await expect(news.locator(".ppw-news-previous-clock")).toHaveText("YEAR 2 · WEEK 51");
    await expect(news.locator(".ppw-news-previous-weeks")).toContainText(older);
    await expect(news.locator(".ppw-hot-tag-thread")).toHaveCount(2);
+   if(desk==="Official News"){
+    const digest=news.locator(".ppw-news-edition-current .ppw-news-digest");
+    await expect(digest).toContainText("ELSEWHERE THIS WEEK");
+    await digest.getByText("Rival Wrestling signs a prospect").click();
+    await expect(digest.getByText("A public signing, not a debut.")).toBeVisible();
+    await expect(digest.locator(".ppw-hot-tag-thread")).toHaveCount(0);
+   }
    const safe=await page.evaluate(()=>
     document.documentElement.scrollWidth-innerWidth);
    expect(safe,`No ${desk} iPhone horizontal overflow`).toBeLessThanOrEqual(1);

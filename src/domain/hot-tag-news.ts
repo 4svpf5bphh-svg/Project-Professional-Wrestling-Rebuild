@@ -484,7 +484,27 @@ export function projectHotTagNewsThread(story:HotTagNewsStory,minimum=3):HotTagN
    "On-record words beat six anonymous locker-room theories. I respect that. 🧐",
    "The manager has spoken; now we'll see whether the next show backs it up. 👀"
   ]:[];
- const pool=[...specific,...pressSpecific,...reactions[kind],...expanded[kind],...rowdy[kind]];
+ const wildSpecific=rumour&&story.id.startsWith("wild:")?
+  /concert|encore|microphone/.test(text)?[
+   "If there was an encore in the locker room, I hope somebody got a setlist. 🎸",
+   "Imagine trying to rehearse your entrance while the dressing room is doing a soundcheck."
+  ]:/court|dessert|pudding/.test(text)?[
+   "Wrestlers' Court over a pudding is exactly the sort of wrestling nonsense I live for.",
+   "If dessert really went missing, the catering table needs its own referee. 😂"
+  ]:/mascot|inflatable/.test(text)?[
+   "An inflatable mascot with its own title belt? Give it a ridiculous entrance too.",
+   "If the mascot gets a push before my favourite wrestler I'm done. 😂"
+  ]:/music|entrance theme/.test(text)?[
+   "An entrance music prank would be hilarious right up until the wrestler hears it.",
+   "Imagine hitting the stage with absolutely the wrong theme. I'd pay to see the reaction."
+  ]:/merch|shirt/.test(text)?[
+   "If that merchandise ever appears at the arena, someone is absolutely buying it.",
+   "The merchandise table has potential to be the funniest part of the whole rumour."
+  ]:/quiz|trivia/.test(text)?[
+   "A locker-room quiz would expose every self-proclaimed wrestling historian in seconds.",
+   "If there's a quiz trophy, I want a ridiculously dramatic presentation ceremony."
+  ]:[]:[];
+ const pool=[...wildSpecific,...specific,...pressSpecific,...reactions[kind],...expanded[kind],...rowdy[kind]];
  const used=new Set<string>(),handles=new Set<string>(),posts:HotTagNewsPost[]=[];
  const count=Math.max(Math.min(6,minimum),3+seed%4); // Three to six actual comments, not an identical trio every time.
  for(let i=0;i<count;i++){
@@ -494,15 +514,16 @@ export function projectHotTagNewsThread(story:HotTagNewsStory,minimum=3):HotTagN
   const voice=HOT_TAG_FAN_ACCOUNTS[person]!;handles.add(voice.handle);
   // The first reaction anchors itself to real story context. The other fans
   // can be sarcastic, insightful or utterly unhelpful without inventing facts.
-  const candidates=i===0&&pressSpecific.length?pressSpecific:
+  const candidates=i===0&&wildSpecific.length?wildSpecific:i===0&&pressSpecific.length?pressSpecific:
    i===0&&specific.length?specific:
    i===0?lead[kind]:i===1?rowdy[kind]:pool;
   let choice=stableHotTagHash(key+":dialogue")%candidates.length;
   let message=candidates[choice]!;
-  while(used.has(message)){
+  for(let tries=0;used.has(message)&&tries<candidates.length;tries++){
    choice=(choice+1)%candidates.length;
    message=candidates[choice]!;
   }
+  if(used.has(message))message=pool.find(t=>!used.has(t))??message;
   const replies=count>=5&&i===count-1&&seed%3===0;
   const response=[
    "You read all that and THAT'S your take? Mate. 😂",

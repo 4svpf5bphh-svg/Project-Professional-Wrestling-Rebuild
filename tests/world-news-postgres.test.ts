@@ -323,7 +323,8 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
    assert.equal(request.model,"openai/gpt-oss-20b");
    assert.doesNotMatch(JSON.stringify(request),/PRIVATE FUTURE PLANS/);
    const sources=JSON.parse(request.messages[1].content) as {key:string;promotion:string;title:string}[];
-   assert.ok(sources.some(s=>s.title.includes("TV watch")));
+   assert.ok(sources.some(s=>s.title==="Titan Wrestling draws strong crowd"));
+   assert.ok(!sources.some(s=>s.title.includes("TV watch")),"Routine ratings must not displace the main event.");
    const reply=Object.fromEntries(sources.map(s=>[s.key,s.title.includes("TV watch")?{
     headline:"Why "+s.promotion+" should chase the audience",
     commentary:"I think "+s.promotion+" should make television feel like a weekly occasion again.",
@@ -341,7 +342,9 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
     commentary:"I hope "+s.promotion+" treats the audience as more than background noise.",
     fans:["I love how "+s.promotion+" can make the crowd part of the story.",
      "I think "+s.promotion+" still has plenty to prove.",
-     "Please give people a chance before writing them off."]
+     "Please give people a chance before writing them off.",
+     "Titan Wrestling needs to make the next event even more entertaining.",
+     "I would rather see Titan Wrestling concentrate on its own audience."]
    }]));
    return new Response(JSON.stringify({choices:[{finish_reason:"stop",message:{content:JSON.stringify(reply)}}],usage:{prompt_tokens:900,completion_tokens:350}}));
   };
@@ -353,7 +356,8 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
   const a=await readIndustryWorldNews(db.pool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
   const b=await readIndustryWorldNews(db.pool,{worldId:world,promotionId:"human-b",playerId:players[1]!});
   assert.deepEqual(a.stories,b.stories);
-  assert.ok(a.stories.some(s=>s.sourceKind==="RATINGS"&&s.editorial?.fans?.length===3&&s.summary.includes("3.20")));
+  assert.ok(a.stories.some(s=>s.sourceKind==="RATINGS"&&!s.editorial&&s.summary.includes("3.20")));
+  assert.equal(a.stories.find(s=>s.id==="event:ai")?.editorial?.fans?.filter(Boolean).length,5);
   assert.ok(a.stories.some(s=>s.desk==="DIRT"&&s.editorial?.headline));
   const business=await readBusinessWorkspace(db.pool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
   assert.equal(business.ratingsEditorial?.headline,a.stories.find(s=>s.sourceKind==="RATINGS")?.editorial?.headline);
