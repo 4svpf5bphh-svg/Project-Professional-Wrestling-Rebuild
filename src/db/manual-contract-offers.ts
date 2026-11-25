@@ -183,9 +183,6 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
     ||t.startWeekIndex!==source.expires_week_index+1||t.family==="ONE_OFF"))
     reason="renewal source is no longer available";
    if(!reason)reason=canAcceptTerms(p,{...t,startWeekIndex:Math.max(t.startWeekIndex,current+1)},signed,current);
-   if(!reason&&t.family==="EXCLUSIVE"&&signed.some(c=>c.status==="SIGNED"&&
-     c.startWeekIndex<=t.startWeekIndex+t.termWeeks-1&&c.expiresWeekIndex>=t.startWeekIndex))
-    reason="overlapping signed contract";
    if(!reason){
     if(source)renewals.push({source:source.contract_id,promotion:b.promotion_id,person:b.person_id,offerId:b.offer_id,terms:t});
     else contractsToSign.push({id:"offer:"+b.offer_id,promotion:b.promotion_id,person:b.person_id,terms:t});

@@ -1,6 +1,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import {estimatedGroqTokens} from "../src/domain/ai-director.js";
 import {weeklyEditorialAnchors,weeklyEditorialMessages,weeklyEditorialResponseFormat,validateWeeklyEditorial,validateWeeklyEditorialDetailed,weeklyShowMomentSlot,weeklyHotTagThread,weeklyRatingsStory,readWeeklyRatingsStory,type WeeklyStory} from "../src/domain/weekly-world-editorial.js";
 const official:WeeklyStory={id:"broadcast:ratings",year:1,week:30,title:"Crown Wrestling ratings decline",summary:"Crown Wrestling recorded a lower audience.",promotionName:"Crown Wrestling",promotionId:"a",desk:"OFFICIAL",certainty:"CONFIRMED"};
 const dirt:WeeklyStory={...official,id:"rumour:1",desk:"DIRT",certainty:"SPECULATION",title:"Rival Wrestling future uncertain",promotionId:"b",promotionName:"Rival Wrestling"};
@@ -103,4 +104,12 @@ test("weekly ratings snapshot cannot establish promotion growth",()=>{
  assert.equal(result.issues.UNVERIFIED_RATINGS_TREND,1);
  assert.equal(result.copy[story.id]?.fans?.[0],null);
  assert.equal(result.copy[story.id]?.fans?.[1],"Crown Wrestling has a respectable audience.");
+});
+
+test("four full-sized weekly editorial sources fit the shared dispatch reservation",()=>{
+ const anchors=weeklyEditorialAnchors(Array.from({length:4},(_,i)=>({...official,id:"story:"+i,title:"x".repeat(200),summary:"x".repeat(500),promotionName:"p".repeat(110)})));
+ const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",max_completion_tokens:2400,
+  response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
+ assert.equal(anchors.length,4);
+ assert.ok(estimatedGroqTokens(JSON.stringify(body),2400)<=7000);
 });

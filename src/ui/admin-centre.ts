@@ -10,7 +10,7 @@ import {sameShowComparisons,type SameShowProviderResult}
 type ActionPlan={
  year:number;week:number;action:string;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
-  cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number};
+  cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number;editorialProgress?:{total:number;completed:number}};
 };
 type LegendPilot={status:"ARMED"|"CONSUMED"|"CANCELLED";promotionId:string;
  armedYear:number;armedWeek:number;consumedYear:number|null;consumedWeek:number|null};
@@ -849,6 +849,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     "Advance when ready. With one human player and no show booked, your promotion takes an off-week. The AI World continues.":
     "Processing the shared World. A stopped run can resume without replaying completed results."),
    el("p","",ready.phase==="OPEN"?"No automatic deadline during the solo playtest.":
+    ready.phase==="UPDATING"?`Show reports prepared: ${ready.editorialProgress?.completed??0}/${ready.editorialProgress?.total??0}. Public news follows.`:
     `Completed shows: ${ready.detailedResolved}/${ready.submitted}`));
   if(p.blockers.length)status.append(el("p","ppw-admin-warning",`Needs attention: ${p.blockers.join(", ").replaceAll("_"," ")}`));
   const actions=el("div","ppw-admin-actions");

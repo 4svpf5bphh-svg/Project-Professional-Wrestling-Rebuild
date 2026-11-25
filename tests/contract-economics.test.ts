@@ -72,3 +72,8 @@ test("one-off alongside Takeshita's non-exclusive agreement uses its actual rema
  assert.match(canAcceptTerms(takeshita,oneOff,[{...existing,family:"EXCLUSIVE"}],32)??"",/exclusive/);
  assert.equal(maxPurchasedDates(takeshita,33,1,[existing,{...existing,contractId:"other",remainingDates:2,startWeekIndex:33,expiresWeekIndex:33}],32),0);
 });
+
+test("explicit wrestler weekly ceiling still prevents two bookings in one week",()=>{
+ assert.equal(maxPurchasedDates({...person,weeklyServiceCapacity:1},33,1,[],32),1);
+ assert.equal(maxPurchasedDates({...person,weeklyServiceCapacity:1},33,13,[],32),13);
+});

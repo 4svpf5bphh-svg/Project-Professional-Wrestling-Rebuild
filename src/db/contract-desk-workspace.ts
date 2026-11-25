@@ -232,7 +232,7 @@ export async function readContractDesk(
     nextTermServiceDensity:cost.stamina!==null&&cost.fatigue!==null&&
      ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(cost.career_stage??"")?
       Math.max(0,serviceCapacityDatesPerWeek({careerStage:cost.career_stage as Stage,
-       stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity})-cost.other_density):null,
+       stamina:cost.stamina,fatigue:cost.fatigue})-cost.other_density):null,
     renewalDateLimits:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
      purchasedDateLimits({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},cost.expires_week_index+1,cost.other_commitments??[],currentWeekIndex):null,
     maxAdditionalDates:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?

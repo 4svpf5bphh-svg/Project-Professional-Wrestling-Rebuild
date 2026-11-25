@@ -35,6 +35,7 @@ type Dependencies={terraKey?:string;groqKey?:string;transport?:typeof fetch;
 /** One invocation, one provider stage. No transaction spans a provider call.
  * Claims are fenced; an expired paid attempt is never automatically repeated. */
 export async function processWorldUpdate(pool:TransactionPool,requested:Scope,deps:Dependencies){
+ if(!requested.worldId||!Number.isSafeInteger(requested.year)||requested.year<1||!Number.isSafeInteger(requested.week)||requested.week<1||requested.week>52)throw Error("Invalid World update scope");
  const claim=await withWorldTransaction<Claim>(pool,async tx=>{
   const worlds=await tx.query<{year:number;week:number;phase:string}>(
    "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[requested.worldId]);

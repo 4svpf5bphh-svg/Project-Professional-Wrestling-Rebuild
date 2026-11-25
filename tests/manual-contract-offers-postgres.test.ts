@@ -125,7 +125,7 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   await assert.rejects(requestAdditionalDates(db.pool,{
    worldId:world,playerId:playerA,promotionId:pA,contractId:source,
    requestId:"overcapacity-"+id,expectedRevision:9,
-   additionalDates:12,additionalPayment:0}),/extra appearances fit/);
+   additionalDates:25,additionalPayment:0}),/extra appearances fit/);
 
   // Convert the signed limited contract to EXCLUSIVE on its NEXT paid term.
   // It must remain limited while this World is still in Week 1.
