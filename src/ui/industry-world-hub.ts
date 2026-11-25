@@ -883,7 +883,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      item.append(el("div","ppw-dirt-outlet",byline.name),
       el("span","ppw-dirt-byline",byline.byline+" · INSIDE REPORT"));
     }
-    item.append(el("span","ppw-news-desk",official?"CONFIRMED / OFFICIAL":
+    item.append(el("span","ppw-news-desk",official?(story.editorial?.headline&&story.editorial.commentary?"EDITORIAL / CONFIRMED SOURCE":"CONFIRMED / OFFICIAL"):
      wild?"UNVERIFIED / DISPUTED REPORT 👀":"RUMOUR / NOT CONFIRMED"),
      el("strong","ppw-news-story-title",story.editorial?.headline??story.title),
      el("p","",story.editorial?.commentary??story.summary),

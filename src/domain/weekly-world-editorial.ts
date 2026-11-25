@@ -219,8 +219,8 @@ export function weeklyHotTagThread(story:WeeklyStory,copy:unknown):HotTagNewsPos
  return [...written,...local.filter(p=>!p.replyTo&&!written.some(q=>q.handle===p.handle)).slice(0,1)];
 }
 export function weeklyShowMomentSlot(story:WeeklyStory,showId:string,slots:readonly string[]):string|null{
- if(story.desk!=="OFFICIAL"||!["MATCH","ANGLE"].includes(story.sourceKind??""))return null;
- const prefix=(story.sourceKind==="MATCH"?"match:":"angle:")+showId+":";
+ if(story.desk!=="OFFICIAL"||!["MATCH","ANGLE","TITLE"].includes(story.sourceKind??""))return null;
+ const prefix=story.sourceKind!.toLowerCase()+":"+showId+":";
  if(!story.id.startsWith(prefix))return null;
  const slot=story.id.slice(prefix.length);
  return slots.includes(slot)?slot:null;

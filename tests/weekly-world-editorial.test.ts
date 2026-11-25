@@ -137,3 +137,10 @@ test("accepted Groq comments do not get padded with unrelated template replies",
  assert.equal(posts[0]?.text,"Crown Wrestling needs better stories.");
  assert.equal(posts[1]?.replyTo,undefined);
 });
+
+test("title-win discussion reaches the exact match on the correct completed show",()=>{
+ const s={...official,id:"title:extreme:main",sourceKind:"TITLE"};
+ assert.equal(weeklyShowMomentSlot(s,"extreme",["main"]),"main");
+ assert.equal(weeklyShowMomentSlot(s,"ascension",["main"]),null);
+ assert.equal(weeklyShowMomentSlot({...s,desk:"DIRT"},"extreme",["main"]),null);
+});

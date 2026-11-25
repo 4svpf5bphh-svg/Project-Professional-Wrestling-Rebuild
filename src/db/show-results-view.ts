@@ -488,7 +488,8 @@ export async function readCompletedShowView(
   // No Groq call, publication or extra SQL occurs on a Results GET.
   show.shortform=rows[0]!.shortform_state?
    blendPostShowVoiceCopy(show,accepted):null;
-  const weeklyThreads=(rows[0]!.weekly_threads??[]).flatMap(({story,copy})=>{
+  const seenWeeklySlots=new Set<string>();
+   const weeklyThreads=[...(rows[0]!.weekly_threads??[])].sort((a,b)=>Number(b.story.sourceKind==="TITLE")-Number(a.story.sourceKind==="TITLE")).flatMap(({story,copy})=>{
    const slotId=weeklyShowMomentSlot(story,show.showId,show.entries.map(e=>e.slotId));
    const accepted=validateWeeklyStoryCopy(story,copy);
    if(!slotId||!accepted?.fans?.some(Boolean))return [];
