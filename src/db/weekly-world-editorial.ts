@@ -86,7 +86,7 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
    if(!calls&&terraKey&&(!response||!response.ok)){
     provider="TERRA";
     response=await requestOpenAiEditorialPreview({key:terraKey,enabled:true,pool,body,
-     signal:AbortSignal.timeout(25000),transport:measured});
+     signal:AbortSignal.timeout(25000),transport:measured,feature:"WEEKLY_MEDIA"});
    }
    if(!response)throw Error("No public editorial provider available");
    diagnostic=response.headers.get("x-ppw-paced")==="true"?"PACING":

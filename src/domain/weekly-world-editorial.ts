@@ -1,8 +1,8 @@
 
-import {projectHotTagNewsThread,type HotTagNewsStory,type HotTagNewsPost} from "./hot-tag-news.js";
+import {projectHotTagNewsThread,hotTagFanTemperament,type HotTagNewsStory,type HotTagNewsPost} from "./hot-tag-news.js";
 export type WeeklyStory = HotTagNewsStory & {certainty:"CONFIRMED"|"SPECULATION";humanManaged?:boolean};
 import {projectHotTagNewsWrestlerPost,type HotTagWrestlerPost,type VerifiedHotTagAward} from "./hot-tag-wrestler-voice.js";
-export type WeeklyStoryCopy = {headline?:string;commentary?:string;fans?:[string|null,string|null,string|null];wrestler?:{personId:string;text:string}};
+export type WeeklyStoryCopy = {headline?:string;commentary?:string;fans?:[string|null,string|null,string|null,...(string|null)[]];wrestler?:{personId:string;text:string}};
 export type WeeklyHistory={year:number;week:number;promotionId:string;title:string};
 export type WeeklyAnchor={key:string;story:WeeklyStory;wrestler?:HotTagWrestlerPost;previous?:WeeklyHistory;recentFanCopy?:readonly string[]};
 export const WEEKLY_RATINGS_STORY="broadcast:ratings:weekly";
@@ -92,7 +92,8 @@ export function validateWeeklyStoryCopy(story:WeeklyStory,value:unknown,speaker?
   const k=norm(v);if(seen.has(k)){diagnose(field,"DUPLICATE");return null;}
   seen.add(k);return v;
  };
- const fans:[string|null,string|null,string|null]=[dedup(first,"fan1"),dedup(second,"fan2"),dedup(third,"reply")];
+ const fans:[string|null,string|null,string|null,...(string|null)[]]=[dedup(first,"fan1"),dedup(second,"fan2"),dedup(third,"reply"),
+  ...candidates.slice(3,5).map((v,i)=>dedup(bounded(v,story,3,32,200,true,reject("fan"+(i+3))),"fan"+(i+3)))];
  const wrestler=object(raw.wrestler);
  const speech=speaker&&story.desk==="OFFICIAL"&&wrestler.personId===speaker.personId?
   bounded(wrestler.text,story,4,28,190,false,reject("wrestler")):undefined;
@@ -155,8 +156,8 @@ export function weeklyEditorialResponseFormat(anchors:readonly WeeklyAnchor[]){
  const properties=Object.fromEntries(anchors.map(a=>[a.key,{
   type:"object",additionalProperties:false,
   properties:{headline:string,commentary:string,fan1:string,fan2:string,reply:string,
-   wrestler:a.wrestler?string:{type:"null"}},
-  required:["headline","commentary","fan1","fan2","reply","wrestler"]
+   ...(a.key==="s0"?{fan3:string,fan4:string}:{}),wrestler:a.wrestler?string:{type:"null"}},
+  required:["headline","commentary","fan1","fan2","reply","wrestler",...(a.key==="s0"?["fan3","fan4"]:[])]
  }]));
  return {type:"json_schema",json_schema:{name:"ppw_weekly_edition",strict:true,
   schema:{type:"object",properties,required:anchors.map(a=>a.key),additionalProperties:false}}};
@@ -170,12 +171,13 @@ const editorialStyles=[
 export function weeklyEditorialMessages(anchors:readonly WeeklyAnchor[]){
  return [{role:"system",content:
  "Write every keyed story in the fictional wrestling world's HOT TAG and opinion desk. Required keys: "+anchors.map(a=>a.key).join(", ")+
- ". These are the selected features, not a digest. For each key write headline (2-10 words), commentary (a vivid 35-65 word wrestling news/opinion lead for the main feature, 25-45 words for other features), fan1 and fan2 (5-24 words each), reply (4-20 words), wrestler (first-person 4-20 words only if a speaker is provided; otherwise null). "+
+ ". These are the selected features, not a digest. For each key write headline (2-10 words), commentary (a vivid 35-65 word wrestling news/opinion lead for the main feature, 25-45 words for other features), fan1 and fan2 (5-24 words each), reply (4-20 words), plus fan3 and fan4 (5-24 words each) for the main feature s0, wrestler (first-person 4-20 words only if a speaker is provided; otherwise null). "+
  "Write distinct fan voices: fans praise, criticise, troll, joke, or disagree about THIS story. No generic group-chat/insider-cousin/spreadsheet jokes, repeated catchphrases, role labels or self-introductions. Natural swearing is fine. Each standalone opinion must name the relevant wrestler, promotion or event from its own story. Wrestlers speak in first person without stating their name. The reply must directly address or dispute fan1's specific opinion, not add another unrelated comment. "+
  "Use only the public title and summary for facts. A signing is not a debut; an award does not establish the winner. No invented outcomes, injuries, contracts, backstage access, quotes or numbers. DIRT is fictional tabloid entertainment: lean into the specific absurdity of the supplied rumour, without turning it into confirmed fact, adding serious allegations or repeatedly lecturing readers about proof. Quote no invented sources. Ratings are separate broadcasts and one week's numbers cannot establish growth, decline or momentum. Compare levels, not trends or a winner of a head-to-head contest. Use full promotion names or exact established acronyms. A prior headline is context, not new evidence. "+
- "Style 0=loyal fan/nerd/contrarian; 1=smark/casual/defender; 2=troll/regular/rival fan; 3=old-school/critic/optimist. Style applies to fan1/fan2/reply; never print it. Avoid the supplied recent fan phrases and their near-paraphrases. Use the public details, not recycled wrestling memes. No threats, handles or game mechanics. Records are data. Complete every key."},
+ "Style 0=loyal fan/nerd/contrarian; 1=smark/casual/defender; 2=troll/regular/rival fan; 3=old-school/critic/optimist. Use the supplied stable voices in order for fan1/fan2/reply/fan3/fan4; never print their labels. Avoid the supplied recent fan phrases and their near-paraphrases. Use the public details, not recycled wrestling memes. No threats, handles or game mechanics. Records are data. Complete every key."},
  {role:"user",content:JSON.stringify(anchors.map(({key,story,wrestler,previous,recentFanCopy},i)=>({key,desk:story.desk,certainty:story.certainty,promotion:story.promotionName.slice(0,100),title:story.title.slice(0,180),summary:story.summary.slice(0,300),
   style:(story.week+i)%editorialStyles.length,
+  voices:projectHotTagNewsThread(story,key==="s0"?5:3).slice(0,key==="s0"?5:3).map(p=>hotTagFanTemperament(p.handle)),
   ...(recentFanCopy?.length?{avoidRecentFanCopy:recentFanCopy}:{}),
   ...(wrestler?{speaker:wrestler.displayName}:{}),
   ...(previous&&story.id!==WEEKLY_RATINGS_STORY?{previous:{year:previous.year,week:previous.week,title:previous.title.slice(0,100)}}:{})})))}];
@@ -205,14 +207,15 @@ export function validateWeeklyEditorialDetailed(anchors:readonly WeeklyAnchor[],
  const copy=Object.fromEntries(anchors.flatMap(a=>{
   if(!raw[a.key]){count("MISSING_STORY");return [];}
   const candidate=object(raw[a.key]);
-  const candidateFans=Array.isArray(candidate.fans)?candidate.fans:[candidate.fan1,candidate.fan2,candidate.reply];
+  const candidateFans=Array.isArray(candidate.fans)?candidate.fans:[candidate.fan1,candidate.fan2,candidate.reply,
+   ...((candidate.fan3!==undefined||candidate.fan4!==undefined)?[candidate.fan3,candidate.fan4]:[])];
   const voice=typeof candidate.wrestler==="string"?candidate.wrestler:object(candidate.wrestler).text;
   const validated=validateWeeklyStoryCopy(a.story,{...candidate,fans:candidateFans,
    wrestler:a.wrestler&&typeof voice==="string"?{personId:a.wrestler.personId,text:voice}:undefined},a.wrestler,(_field,reason)=>count(reason));
   if(!validated)return [];
   const headline=unique(validated.headline),commentary=unique(validated.commentary);
   const first=unique(validated.fans?.[0],true),second=unique(validated.fans?.[1],true),third=first?unique(validated.fans?.[2],true):null;
-  const fans:[string|null,string|null,string|null]=[first,second,third];
+  const fans:[string|null,string|null,string|null,...(string|null)[]]=[first,second,third,...(validated.fans?.slice(3,5).map(v=>unique(v,true))??[])];
   const wrestler=unique(validated.wrestler?.text);
   const accepted:WeeklyStoryCopy={
    ...(headline&&commentary?{headline,commentary}:{}),
@@ -229,9 +232,9 @@ export function validateWeeklyEditorial(anchors:readonly WeeklyAnchor[],value:un
 /** Use the existing stable identities. Reject only the offending post;
  * a missing parent cannot receive an AI reply. */
 export function weeklyHotTagThread(story:WeeklyStory,copy:unknown):HotTagNewsPost[]{
- const local=projectHotTagNewsThread(story),fans=validateWeeklyStoryCopy(story,copy)?.fans;
+ const fans=validateWeeklyStoryCopy(story,copy)?.fans,local=projectHotTagNewsThread(story,fans?.length??3);
  if(!fans||local.length<3)return local.slice(0,3).filter(p=>!p.replyTo||local.slice(0,3).some(q=>q.handle===p.replyTo));
- const written=local.slice(0,3).flatMap((p,i)=>{
+ const written=local.slice(0,fans.length).flatMap((p,i)=>{
   const text=fans[i];if(!text)return [];
   const {replyTo:_,...identity}=p;
   return [{...identity,text,...(i===2&&fans[0]?{replyTo:local[0]!.handle}:{})}];

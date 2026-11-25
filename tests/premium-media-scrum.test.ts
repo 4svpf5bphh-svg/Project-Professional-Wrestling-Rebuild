@@ -116,3 +116,10 @@ test("an officially won championship after concealed cheating prompts a real que
  assert.match(qs[1]!.question,/Maki Itoh captured.*after a controversial finish/);
  assert.doesNotMatch(qs.map(q=>q.question).join(" "),/victorious|championship champion/i);
 });
+
+ test("Terra press endings remain questions rather than fabricated facts",async()=>{
+ const {readTerraPressQuestionTails}=await import("../src/domain/premium-media-scrum.js");
+ const result=readTerraPressQuestionTails({MAIN_EVENT:"How do you justify that championship finish?",BIG_PICTURE:"How do you respond to the fans who expected more?",NEXT_CHAPTER:"Will Undertaker face a new challenger next week?"});
+ assert.deepEqual(result,{MAIN_EVENT:"How do you justify that championship finish?",BIG_PICTURE:"How do you respond to the fans who expected more?"});
+ assert.deepEqual(readTerraPressQuestionTails({MAIN_EVENT:"What do you think about the injury after the main event?",BIG_PICTURE:"How did the game decide that show?",NEXT_CHAPTER:"What did you promise the fans next?"}),{});
+ });

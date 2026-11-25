@@ -1,4 +1,5 @@
 import {finishPropLabel} from "./bookable-match.js";
+import {readTerraPressQuestionTails,type TerraPressQuestionTails} from "./premium-media-scrum.js";
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
@@ -78,6 +79,7 @@ function verifiedStipulationNote(format:string,finish:string){
 export interface RingsideCopy{
  showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[];
+ pressQuestions?:TerraPressQuestionTails;
 }
 export function ringsideFacts(show:CompletedShowView){
  return {
@@ -105,7 +107,7 @@ const shape=(x:unknown)=>x&&typeof x==="object"&&!Array.isArray(x)?
 /** A cache hit must be type-safe without expanding the show or reading more rows. */
 export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
  const v=shape(candidate);
- if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
+ if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots","pressQuestions"].includes(k))||
   !printable(v.showHeadline,140)||!printable(v.opening,900)||
   !printable(v.closing,650)||!Array.isArray(v.slots)||
   v.slots.length===0||v.slots.length>30)throw new Error("Invalid Ringside cache");
@@ -118,8 +120,9 @@ export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
   seen.add(s.slotId as string);
   return {slotId:s.slotId as string,headline:s.headline as string,recap:s.recap as string};
  });
+ const pressQuestions=readTerraPressQuestionTails(v.pressQuestions);
  return {showHeadline:v.showHeadline as string,opening:v.opening as string,
-  closing:v.closing as string,slots};
+  closing:v.closing as string,slots,...(Object.keys(pressQuestions).length?{pressQuestions}:{})};
 }
 /** Treat spaces, hyphens (including non-breaking broadcast hyphens), and
  * punctuation consistently; keep word boundaries so short move names cannot

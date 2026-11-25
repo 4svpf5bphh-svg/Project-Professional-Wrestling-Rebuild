@@ -869,18 +869,20 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     section.append(el("p","ppw-industry-empty",official?
      "No major certified headlines yet. The next completed World week will publish its highlights.":
      "No new rumours from the locker room this week. The next World Lock may give the wrestling press something to argue about."));
-   const usedFanText=new Set<string>();
    const editions=new Map<string,typeof published>();
    for(const story of published){const key=story.year+":"+story.week;const items=editions.get(key)??[];items.push(story);editions.set(key,items);}
    for(const stories of editions.values()){
-    const features=weeklyEditorialAnchors(stories.map(s=>({...s,humanManaged:s.promotionId===view.ownPromotionId})),news?.awards??[]);
+    const usedFanText=new Set<string>();
+    const features=weeklyEditorialAnchors(stories.map(s=>({...s,humanManaged:s.promotionId===view?.ownPromotionId})),news?.awards??[]);
     const featureIds=new Set(features.map(a=>a.story.id));
-    const ordered=[...stories].sort((a,b)=>Number(featureIds.has(b.id))-Number(featureIds.has(a.id))||weeklyStoryPriority(b)-weeklyStoryPriority(a)||a.id.localeCompare(b.id));
+    const isFeatured=(s:typeof stories[number])=>!official||featureIds.has(s.id)||!!s.editorial||!!projectHotTagNewsWrestlerPost(s,news?.awards??[])||!!projectHotTagBroadcasterPost(s);
+    const first=features[0]?.story.id;
+    const ordered=[...stories].sort((a,b)=>Number(b.id===first)-Number(a.id===first)||Number(isFeatured(b))-Number(isFeatured(a))||weeklyStoryPriority(b)-weeklyStoryPriority(a)||a.id.localeCompare(b.id));
     // AI coverage can include the other human promotion, not visible as an
     // owned promotion on this client. Preserve those saved features too.
     const lead=ordered[0]?.id;let digest:HTMLElement|null=null;
     for(const story of ordered){
-     const isFeature=!official||featureIds.has(story.id)||!!story.editorial||!!projectHotTagNewsWrestlerPost(story,news?.awards??[])||!!projectHotTagBroadcasterPost(story);
+     const isFeature=isFeatured(story);
      if(!isFeature){
       if(!digest){digest=el("section","ppw-news-digest");digest.dataset.newsYear=String(story.year);digest.dataset.newsWeek=String(story.week);digest.append(el("h3","ppw-news-eyebrow","ELSEWHERE THIS WEEK"));section.append(digest);}
       const brief=document.createElement("details");brief.className="ppw-news-brief";

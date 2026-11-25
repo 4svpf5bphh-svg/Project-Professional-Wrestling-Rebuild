@@ -89,9 +89,9 @@ test("strict weekly response requires every anchor, with distinct fan fields and
  const schema=response.json_schema.schema;
  assert.deepEqual(schema.required,["s0","s1","s2"]);
  assert.equal(schema.additionalProperties,false);
- for(const field of Object.values(schema.properties)){
+ for(const [key,field] of Object.entries(schema.properties)){
   assert.equal(field.additionalProperties,false);
-  assert.deepEqual(field.required,["headline","commentary","fan1","fan2","reply","wrestler"]);
+  assert.deepEqual(field.required,["headline","commentary","fan1","fan2","reply","wrestler",...(key==="s0"?["fan3","fan4"]:[])]);
  }
  const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([official]),{s0:{
   headline:copy.headline,commentary:copy.commentary,fan1:copy.fans[0],fan2:copy.fans[1],reply:copy.fans[2],wrestler:null
@@ -158,4 +158,13 @@ test("title-win discussion reaches the exact match on the correct completed show
  assert.equal(result.copy[official.id]?.fans?.[0],null);
  assert.equal(result.copy[official.id]?.fans?.[1],copy.fans[1]);
  assert.equal(result.copy[official.id]?.fans?.[2],null);
+ });
+
+ test("five lead reactions use stable identities and a real reply, without extra provider requests",()=>{
+ const anchors=weeklyEditorialAnchors([official]);
+ const saved=validateWeeklyEditorial(anchors,{s0:{...copy,fans:[...copy.fans,"Crown Wrestling has to give the fans a reason to tune in.","I reckon Crown Wrestling should put wrestling before the hype."]}});
+ const posts=weeklyHotTagThread(official,saved[official.id]);
+ assert.equal(posts.length,5);assert.equal(new Set(posts.map(p=>p.handle)).size,5);
+ assert.equal(posts[2]?.replyTo,posts[0]?.handle);
+ assert.deepEqual(posts,weeklyHotTagThread(official,saved[official.id]));
  });

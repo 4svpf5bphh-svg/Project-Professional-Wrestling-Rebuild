@@ -5,7 +5,7 @@ import type {TransactionPool} from "./transaction.js";
 import {withWorldTransaction} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {readCompletedShowView} from "./show-results-view.js";
-import {premiumScrumQuestions,type ScrumQuestionId} from "../domain/premium-media-scrum.js";
+import {premiumScrumQuestions,applyTerraPressQuestions,type ScrumQuestionId} from "../domain/premium-media-scrum.js";
 import {publishablePressEditorial} from "../domain/premium-press-editorial.js";
 export interface PremiumScrumScope{
  worldId:string;promotionId:string;playerId:string;showId:string;
@@ -15,15 +15,18 @@ export async function readPremiumScrum(pool:TransactionPool,s:PremiumScrumScope)
  if(!Object.values(s).every(valid))throw new Error("Invalid media session");
  const show=await readCompletedShowView(pool,s);
  if(show.bookingClass!=="PREMIUM")throw new Error("Press scrums follow premium events only");
- const questions=premiumScrumQuestions(show);
- const rows=await withSqlClient(pool,tx=>tx.query<{
+ const [rows,editorial]=await withSqlClient(pool,tx=>Promise.all([tx.query<{
   question_id:ScrumQuestionId|"DISMISSED";answer_index:number}>(`
   SELECT a.question_id,a.answer_index FROM ppw_premium_media_scrum_answers a
   JOIN ppw_promotion_controls c ON c.world_id=a.world_id
    AND c.promotion_id=a.promotion_id AND c.player_id=a.player_id AND c.active
   WHERE a.world_id=$1 AND a.promotion_id=$2
    AND a.player_id=$3 AND a.show_id=$4
-  ORDER BY a.question_id LIMIT 4`,[s.worldId,s.promotionId,s.playerId,s.showId]));
+  ORDER BY a.question_id LIMIT 4`,[s.worldId,s.promotionId,s.playerId,s.showId]),
+  tx.query<{questions:unknown}>(`SELECT report_json->'pressQuestions' AS questions FROM ppw_ringside_reports
+   WHERE world_id=$1 AND promotion_id=$2 AND show_id=$3 AND state='READY' AND model='gpt-6.1-terra'
+    AND report_json ? 'pressQuestions' ORDER BY created_at DESC LIMIT 1`,[s.worldId,s.promotionId,s.showId])]));
+ const questions=applyTerraPressQuestions(show,editorial[0]?.questions);
  const answered=new Map(rows.map(r=>[r.question_id,r.answer_index]));
  return {showId:show.showId,showName:show.showName,
   dismissed:answered.has("DISMISSED"),questions:questions.map(q=>({

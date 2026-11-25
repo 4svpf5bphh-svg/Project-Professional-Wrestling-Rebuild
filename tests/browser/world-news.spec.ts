@@ -97,7 +97,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await page.locator(".ppw-news-official").screenshot({
   path:testInfo.outputPath("phase45-official-news-390.png")});
 
- const officialThread=page.locator(".ppw-news-official .ppw-hot-tag-thread").first();
+ const officialThread=page.locator(".ppw-news-official .ppw-news-story").filter({hasText:"A certified classic"}).locator(".ppw-hot-tag-thread");
  await officialThread.locator("summary").click();
  const comment=officialThread.locator(".ppw-hot-tag-news-copy p").first();
  await expect(comment).toBeVisible();
@@ -109,7 +109,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toHaveCount(1);
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toContainText("Cara");
  await expect(officialThread.getByRole("button",{name:"View wrestler dossier"})).toHaveCount(1);
- const networkThread=page.locator(".ppw-news-official .ppw-hot-tag-thread").nth(2);
+ const networkThread=page.locator(".ppw-news-official .ppw-news-story").filter({hasText:"BBS Sports demands better television"}).locator(".ppw-hot-tag-thread");
  await networkThread.locator("summary").click();
  const networkPost=networkThread.locator(".ppw-hot-tag-network");
  await expect(networkPost).toHaveCount(1);
@@ -177,7 +177,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  expect(calls).toEqual(["industry","industryNews"]);
  // The owned, certified angle opens the regular creative desk with the
  // real wrestler selected. Rival-company posts never grant this action.
- const owned=page.locator(".ppw-news-official .ppw-hot-tag-thread").nth(1);
+ const owned=page.locator(".ppw-news-official .ppw-news-story").filter({hasText:"Alice turns at Fight Night"}).locator(".ppw-hot-tag-thread");
  await owned.locator("summary").click();
  await expect(owned.locator(".ppw-hot-tag-wrestler")).toContainText("Alice");
  await expect(officialThread.getByRole("button",{name:"Develop programme"})).toHaveCount(0);

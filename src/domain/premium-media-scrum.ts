@@ -69,3 +69,39 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
   ]
  }];
 }
+
+export type TerraPressQuestionTails=Partial<Record<ScrumQuestionId,string>>;
+/** Terra writes only the question ending; PPW owns the factual lead and
+ * the existing three answers. A rejected ending leaves the canonical
+ * question intact. No new result, promise or participant can be asserted. */
+export function readTerraPressQuestionTails(input:unknown):TerraPressQuestionTails{
+ const value=input&&typeof input==="object"&&!Array.isArray(input)?input as Record<string,unknown>:{};
+ const themes:Record<ScrumQuestionId,RegExp>={
+  MAIN_EVENT:/\b(?:finish|result|main event|championship|match|title|ending)\b/i,
+  BIG_PICTURE:/\b(?:event|night|audience|show|performance|card|fans)\b/i,
+  NEXT_CHAPTER:/\b(?:next|future|follow|direction|title picture|moving forward)\b/i
+ };
+ const safe:TerraPressQuestionTails={};
+ for(const id of ["MAIN_EVENT","BIG_PICTURE","NEXT_CHAPTER"] as const){
+  const raw=value[id];if(typeof raw!=="string")continue;
+  const t=raw.trim();
+  if(t.length<18||t.length>155||! /^(?:How|What|Why|Do|Does|Where|Would|Is|Can|Should|Will)\b/.test(t)||
+   !/^[^.!?]+\?$/.test(t)||/[\u0000-\u001f<>0-9“”"@]/.test(t)||
+   /\b(?:won|lost|defeated|retained|signed|released|injured|injury|medical|arrested|backstage|sources?|rumou?r|confirmed|announced|booked|guarantee|promise|simulation|game|player|contract|fired|leak|already|yesterday|told|said)\b/i.test(t)||
+   /\b[A-Z][a-z]+\b/.test(t.slice(1))||!themes[id].test(t))continue;
+  safe[id]=t;
+ }
+ return safe;
+}
+export function applyTerraPressQuestions(show:CompletedShowView,candidate:unknown):ScrumQuestion[]{
+ const safe=readTerraPressQuestionTails(candidate);
+ return premiumScrumQuestions(show).map(q=>{
+  const tail=safe[q.id];if(!tail)return q;
+  // Keep every certified contextual sentence, including who took a title
+  // and the exact event. Where the fallback is a single question, anchor
+  // the AI ending explicitly to this completed show.
+  const stem=q.question.match(/^(.*[.!])\s+[^.!?]+\?$/)?.[1];
+  const event=show.showName||"the premium event";
+  return {...q,question:stem?stem+" "+tail:"After "+event+", "+tail[0]!.toLowerCase()+tail.slice(1)};
+ });
+}

@@ -116,7 +116,7 @@ export function dirtSheetByline(id:string){
  * score or template. Dirt-sheet theories remain explicitly unverified.
  * Feed is deterministic from the article; zero write amplification on Neon.
  */
-export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
+export function projectHotTagNewsThread(story:HotTagNewsStory,minimum=3):HotTagNewsPost[]{
  const seed=stableHotTagHash([story.id,story.year,story.week,story.desk].join(":"));
  const text=(story.title+" "+story.summary).toLowerCase();
  const rumour=story.desk==="DIRT";
@@ -486,7 +486,7 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
   ]:[];
  const pool=[...specific,...pressSpecific,...reactions[kind],...expanded[kind],...rowdy[kind]];
  const used=new Set<string>(),handles=new Set<string>(),posts:HotTagNewsPost[]=[];
- const count=3+seed%4; // Three to six actual comments, not an identical trio every time.
+ const count=Math.max(Math.min(6,minimum),3+seed%4); // Three to six actual comments, not an identical trio every time.
  for(let i=0;i<count;i++){
   const key=story.id+":"+story.year+":"+story.week+":"+i;
   let person=stableHotTagHash(key+":persona")%HOT_TAG_FAN_ACCOUNTS.length;
@@ -520,4 +520,15 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    likes:13+h%1300,replies:2+(h>>>7)%130,reposts:1+(h>>>12)%170});
  }
  return posts;
+}
+
+/** Stable fictional identities carry an editorial temperament, not a random
+ * personality that changes from one edition to the next. */
+export function hotTagFanTemperament(handle:string):string{
+ if(/Workrate|TapeTrader|BellToBell|Star|VHS|Armchair|Botch|Meltzer|Maths|Accountant/i.test(handle))return "technical wrestling nerd; specific, demanding and occasionally pedantic";
+ if(/Heel|CheapHeat|Twat|Goblin|Hooligan|NobodyAsked|Basement|Pigeon|TheFinishWasWrong/i.test(handle))return "provocative wind-up merchant; sarcastic, occasionally sweary, argues in good humour";
+ if(/Ratings|Contract|Territory/i.test(handle))return "business-obsessed fan; cares about genuine wrestling industry stakes";
+ if(/Nan|Tea|Row|Fran|Karen|Darren|Janet|Entrance/i.test(handle))return "casual regular; emotional, funny and speaks plainly";
+ if(/Belt|BigFight|Feud|Stipulation|Respect|Popcorn/i.test(handle))return "invested storyline fan; wants stakes, rivalries and satisfying payoffs";
+ return ["cheeky optimist","sceptical smark","passionate loyalist","dry contrarian"][stableHotTagHash(handle)%4]!;
 }

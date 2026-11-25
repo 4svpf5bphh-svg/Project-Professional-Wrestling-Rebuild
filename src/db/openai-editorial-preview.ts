@@ -115,6 +115,7 @@ async function settleMonthlyPreview(pool:TransactionPool,claim:MonthlyClaim,
 export async function requestOpenAiEditorialPreview(input:{
  key:string;enabled:boolean;body:Record<string,unknown>;
  transport:typeof fetch;pool:TransactionPool;signal?:AbortSignal;
+ feature?:"RINGSIDE"|"PREVIEW"|"WEEKLY_MEDIA"|"STAFF_CONSULTATION";
 }):Promise<Response>{
  if(!input.enabled||!input.key.trim())
   return new Response("Paid AI comparisons are disabled",{status:403});
@@ -168,6 +169,11 @@ export async function requestOpenAiEditorialPreview(input:{
   response.ok,usage!==null,diagnosis);
  await settleMonthlyPreview(input.pool,monthly,usage,definitelyRejected);
  await settleOpenAiPreview(input.pool,daily,{ok:response.ok,usage});
+ // Feature-labelled token telemetry, no extra database writes, prompts,
+ // private identifiers or generated dialogue in the application logs.
+ console.info("PPW Terra usage",{feature:input.feature??"PREVIEW",status:response.status,
+  inputTokens:usage?.inputTokens??null,outputTokens:usage?.outputTokens??null,
+  estimatedUsd:usage?(usage.inputTokens+5*usage.outputTokens)/1_000_000:null});
  if(!diagnosis)return response;
  // Do not log or display the arbitrary provider error.message: it can echo
  // user data and private prompts. Only safe allowlisted fields are retained.
