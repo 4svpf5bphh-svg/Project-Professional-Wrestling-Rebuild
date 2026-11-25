@@ -296,7 +296,7 @@ test("a recorded regular card resumes into a linked triple-threat PPV, then queu
    "SELECT show_id,receipt_digest FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
   assert.equal(before.length,1);
   assert.equal(before[0]!.show_id,showIds[0]);
-  const stages=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:12,deferEditorial:true});
+  const stages=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:12,manualRecovery:true,deferEditorial:true});
   assert.equal(stages.status,"PUBLISHED");
   assert.deepEqual(stages.steps.map(s=>s.action),[
    "RESOLVE_DETAILED_SHOWS","CERTIFY_WEEK","PUBLISH_WEEK"]);
