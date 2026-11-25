@@ -46,7 +46,7 @@ export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:
  SELECT d.contract_id,d.person_id,d.family,d.date_entitlement,d.remaining_dates,d.career_stage,d.stamina,d.fatigue,d.weekly_service_capacity,
   (SELECT jsonb_agg(jsonb_build_object('contractId',c.contract_id,'family',c.family,'status',c.status,
    'remainingDates',c.remaining_dates,'startWeekIndex',c.start_week_index,'expiresWeekIndex',c.expires_week_index))
-   FROM ppw_contracts c WHERE c.world_id=$1 AND c.person_id=d.person_id AND c.status='SIGNED'
+   FROM ppw_signed_service_windows c WHERE c.world_id=$1 AND c.person_id=d.person_id AND c.status='SIGNED'
     AND c.expires_week_index>$2) AS commitments
  FROM decisions d WHERE d.retain
  AND NOT EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals r WHERE r.world_id=$1 AND r.contract_id=d.contract_id AND r.status='ACCEPTED')

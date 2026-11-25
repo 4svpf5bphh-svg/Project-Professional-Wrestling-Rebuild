@@ -77,7 +77,7 @@ export async function readContractDesk(
      p.popularity,p.recognition,p.morale,p.career_stage,p.in_ring_quality,
      p.match_craft,p.presentation,p.stamina,p.fatigue,p.weekly_service_capacity,
      (SELECT jsonb_agg(jsonb_build_array(other.family='EXCLUSIVE',other.remaining_dates,other.start_week_index,other.expires_week_index))
-      FROM ppw_contracts other WHERE other.world_id=c.world_id AND other.person_id=c.person_id
+      FROM ppw_signed_service_windows other WHERE other.world_id=c.world_id AND other.person_id=c.person_id
        AND other.contract_id<>c.contract_id AND other.status='SIGNED' AND other.expires_week_index>=$3) AS other_commitments,
      EXISTS(SELECT 1 FROM ppw_contract_offers accepted
       WHERE accepted.world_id=c.world_id AND accepted.promotion_id=c.promotion_id

@@ -226,7 +226,7 @@ export async function readWrestlerDirectory(
       FILTER(WHERE c.family='EXCLUSIVE' AND c.start_week_index>$3))[1]
       AS future_exclusive_to
      ${f.view==="MARKET"?`,jsonb_agg(jsonb_build_array(c.family='EXCLUSIVE',c.remaining_dates,c.start_week_index,c.expires_week_index)) AS commitments`:""}
-    FROM ppw_contracts c WHERE c.world_id=p.world_id
+    FROM ${f.view==="MARKET"?"ppw_signed_service_windows":"ppw_contracts"} c WHERE c.world_id=p.world_id
      AND c.person_id=p.person_id AND c.status='SIGNED'
      AND c.expires_week_index >= $3
    ) contracts

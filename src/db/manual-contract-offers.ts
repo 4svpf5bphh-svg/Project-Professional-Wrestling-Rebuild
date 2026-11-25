@@ -12,7 +12,7 @@ type ProfileRow={
  morale:number|null;contract_priorities:PersonEconomics["priorities"]|null;
 };
 type ContractRow={contract_id:string;person_id:string;promotion_id:string;family:ExistingCommitment["family"];
- status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number};
+ status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number;is_renewal:boolean};
 type PendingRow={offer_id:string;person_id:string;promotion_id:string;source_contract_id:string|null;
  submitted_week_index:number;terms:OfferTerms;tier:string;media_reach:number|null;
  has_history:boolean;backstage_trust:number;};
@@ -36,7 +36,7 @@ const peopleSql=`SELECT person_id,status,recognition,popularity,in_ring_quality,
  presentation,stamina,fatigue,weekly_service_capacity,career_stage,morale,contract_priorities
  FROM ppw_people WHERE world_id=$1 AND person_id=$2`;
 const contractsSql=`SELECT contract_id,person_id,promotion_id,family,status,remaining_dates,
- start_week_index,expires_week_index FROM ppw_contracts
+ start_week_index,expires_week_index,is_renewal FROM ppw_signed_service_windows
  WHERE world_id=$1 AND person_id=$2 AND status='SIGNED' ORDER BY expires_week_index,contract_id LIMIT 100`;
 export interface ManualContractOfferInput {
  worldId:string;playerId:string;promotionId:string;personId:string;sourceContractId?:string|null;
@@ -62,7 +62,7 @@ export async function submitManualContractOffer(pool:TransactionPool,input:Manua
   const signed=await tx.query<ContractRow>(contractsSql,[input.worldId,input.personId]);
   const source=input.sourceContractId??null;
   if(source){
-   const sourceRow=signed.find(c=>c.contract_id===source);
+   const sourceRow=signed.find(c=>c.contract_id===source&&!c.is_renewal);
    if(!sourceRow||sourceRow.promotion_id!==input.promotionId||sourceRow.family==="ONE_OFF"
     ||sourceRow.expires_week_index<current)throw new Error("Invalid renewal source contract");
    if(input.terms.startWeekIndex!==sourceRow.expires_week_index+1)
@@ -178,7 +178,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
    if(b.score<threshold)reason="offer utility below acceptance threshold";
    if(people[0]!.status==="RETIRED")reason="wrestler retired";
    if(t.startWeekIndex<current)reason="offer start has passed";
-   const source=b.source_contract_id?existing.find(c=>c.contract_id===b.source_contract_id):null;
+   const source=b.source_contract_id?existing.find(c=>c.contract_id===b.source_contract_id&&!c.is_renewal):null;
    if(b.source_contract_id&&(!source||source.status!=="SIGNED"||source.expires_week_index<current
     ||t.startWeekIndex!==source.expires_week_index+1||t.family==="ONE_OFF"))
     reason="renewal source is no longer available";

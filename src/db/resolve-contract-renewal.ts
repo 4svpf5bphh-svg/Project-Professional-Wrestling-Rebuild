@@ -76,7 +76,7 @@ export async function resolveRenewal(pool:TransactionPool,input:RenewalDecision,
      const signed=await tx.query<{contract_id:string;family:ExistingCommitment["family"];
       status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number}>(`
       SELECT contract_id,family,status,remaining_dates,start_week_index,expires_week_index
-      FROM ppw_contracts WHERE world_id=$1 AND person_id=$2 AND status='SIGNED'
+      FROM ppw_signed_service_windows WHERE world_id=$1 AND person_id=$2 AND status='SIGNED'
       ORDER BY contract_id LIMIT 100`,[input.worldId,proposal.person_id]);
      const active:ExistingCommitment[]=signed.map(c=>({contractId:c.contract_id,
       family:c.family,status:c.status,remainingDates:c.remaining_dates,
