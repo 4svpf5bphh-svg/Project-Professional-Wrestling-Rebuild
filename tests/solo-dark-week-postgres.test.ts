@@ -5,6 +5,7 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {advancePlaytestWeek} from "../src/db/manual-playtest-week.js";
+import {processWorldUpdate} from "../src/db/world-updating.js";
 const url=process.env.PPW_NEON_TEST_URL;
 /** The live player has NO Week 4 show and an intact Week 5 card. A solo
  * Advance Week must be able to close the real off-week while AI runs and
@@ -65,11 +66,14 @@ test("solo dark week advances with AI results, without fabricating the owner's s
   });
   let result:Awaited<ReturnType<typeof advancePlaytestWeek>>|null=null;
   for(let i=0;i<8;i++){
-   result=await advancePlaytestWeek(db.pool,worldId,1,1);
+   result=await advancePlaytestWeek(db.pool,worldId,1,1,true);
    if(result.status==="PUBLISHED"||result.status==="BLOCKED")break;
   }
   assert.equal(result?.status,"PUBLISHED",
    "All official AI and original World stages must complete with one operator's request");
+  assert.deepEqual(await read("SELECT phase FROM ppw_worlds WHERE world_id=$1",[worldId]),[{phase:"UPDATING"}]);
+  assert.deepEqual(await read("SELECT show_id FROM ppw_world_update_jobs WHERE world_id=$1",[worldId]),[]);
+  assert.equal((await processWorldUpdate(db.pool,{worldId,year:1,week:1},{}))?.status,"PUBLISHED");
   assert.deepEqual(await read<{year:number;week:number;phase:string}>(
    "SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1",[worldId]),
    [{year:1,week:2,phase:"OPEN"}]);
@@ -97,7 +101,7 @@ test("solo dark week advances with AI results, without fabricating the owner's s
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    // Remove medical records before deleting their referenced completed show.
-   for(const table of ["ppw_medical_absences","ppw_completed_match_evidence","ppw_completed_show_segments",
+   for(const table of ["ppw_world_update_jobs","ppw_world_update_runs","ppw_medical_absences","ppw_completed_match_evidence","ppw_completed_show_segments",
     "ppw_individual_field_career_effects","ppw_tag_match_career_effects",
     "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions",
     "ppw_week_resolution_seals","ppw_week_resource_clearances",

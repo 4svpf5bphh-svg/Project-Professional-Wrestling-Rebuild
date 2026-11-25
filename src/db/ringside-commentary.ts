@@ -25,7 +25,7 @@ export type RingsideResponse={status:"ready";review:RingsideCopy}|
  {status:"pending"|"unavailable"};
 type Scope={worldId:string;promotionId:string;showId:string;playerId:string};
 type CacheRow={state:"PENDING"|"READY"|"FAILED";report_json:unknown;
- receipt_digest:string;model:string;attempts:number;claim_until:string|null;update_state:string|null};
+ receipt_digest:string;model:string;attempts:number;claim_until:string|null;update_state:string|null;locked_current:boolean};
 const scoped=(s:Scope)=>[s.worldId,s.promotionId,s.showId,RINGSIDE_PROMPT_VERSION] as const;
 export function immutableResultDigest(show:CompletedShowView):string{
  const summary={
@@ -804,8 +804,10 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  // editorial. Reopening an already reviewed show requires no five-query slot
  // expansion, roster fetch, model call, or polling.
  const current=await withSqlClient(pool,async db=>db.query<CacheRow>(`
-  SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts,r.claim_until,j.state AS update_state
+  SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts,r.claim_until,j.state AS update_state,
+   ((c.year,c.week)>=(w.year,w.week) AND w.phase<>'OPEN') AS locked_current
   FROM ppw_completed_shows c
+  JOIN ppw_worlds w ON w.world_id=c.world_id
   LEFT JOIN ppw_world_update_jobs j ON j.world_id=c.world_id AND j.year=c.year AND j.week=c.week AND j.show_id=c.show_id
   JOIN ppw_promotion_controls p ON p.world_id=c.world_id
    AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
@@ -838,6 +840,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
   try{return {status:"ready",review:validateCachedRingsideCopy(saved.report_json)};}
   catch{return {status:"unavailable"};}
  }
+ if(mode==="VIEWER"&&saved?.locked_current)return {status:"pending"};
  if(mode==="VIEWER"&&saved?.update_state)return {status:["WAITING","PROCESSING"].includes(saved.update_state)?"pending":"unavailable"};
  if(!key)return {status:"unavailable"};
  if(saved?.state==="PENDING"&&saved.claim_until&&
