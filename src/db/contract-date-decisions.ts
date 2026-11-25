@@ -43,26 +43,26 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
      ||contract.start_week_index>current
      ||(contract.date_entitlement??contract.remaining_dates??0)+r.additional_dates>104
      ||(contract.remaining_dates??0)+r.additional_dates>
-       contract.expires_week_index-current+1)
+       2*(contract.expires_week_index-current+1))
      decision="REJECTED";
    if(decision==="ACCEPTED"){
     const persons=await tx.query<{career_stage:PersonEconomics["careerStage"];morale:number;
      recognition:number;popularity:number;in_ring_quality:number;match_craft:number;
-     presentation:number;stamina:number;fatigue:number;contract_priorities:PersonEconomics["priorities"]}>(`
+     presentation:number;stamina:number;fatigue:number;weekly_service_capacity:number|null;contract_priorities:PersonEconomics["priorities"]}>(`
      SELECT career_stage,morale,recognition,popularity,in_ring_quality,match_craft,presentation,
-       stamina,fatigue,contract_priorities FROM ppw_people WHERE world_id=$1 AND person_id=$2`,
+       stamina,fatigue,weekly_service_capacity,contract_priorities FROM ppw_people WHERE world_id=$1 AND person_id=$2`,
      [input.worldId,r.person_id]);
     if(persons.length!==1)throw new Error("Wrestler not found");
     const person=persons[0]!;
     const p:PersonEconomics={careerStage:person.career_stage,morale:person.morale,
      recognition:person.recognition,popularity:person.popularity,inRingQuality:person.in_ring_quality,
      matchCraft:person.match_craft,presentation:person.presentation,stamina:person.stamina,
-     fatigue:person.fatigue,priorities:person.contract_priorities};
+     fatigue:person.fatigue,weeklyServiceCapacity:person.weekly_service_capacity,priorities:person.contract_priorities};
     requireEconomics(p);
     const others=await tx.query<{contract_id:string;family:ExistingCommitment["family"];
      status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number}>(`
      SELECT contract_id,family,status,remaining_dates,start_week_index,expires_week_index
-     FROM ppw_contracts WHERE world_id=$1 AND person_id=$2 AND status='SIGNED'
+     FROM ppw_signed_service_windows WHERE world_id=$1 AND person_id=$2 AND status='SIGNED'
      AND contract_id<>$3 ORDER BY contract_id LIMIT 100`,
      [input.worldId,r.person_id,r.contract_id]);
     const commitments:ExistingCommitment[]=others.map(c=>({
@@ -98,7 +98,7 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
      AND family='LIMITED_NON_EXCLUSIVE' AND status='SIGNED'
      AND remaining_dates IS NOT NULL AND remaining_dates<=$5
      AND COALESCE(date_entitlement,remaining_dates)+$4<=104
-     AND remaining_dates+$4<=expires_week_index-$6+1
+     AND remaining_dates+$4<=2*(expires_week_index-$6+1)
      AND expires_week_index>=$6 RETURNING contract_id`,
      [input.worldId,input.promotionId,r.contract_id,r.additional_dates,
       2147483647-r.additional_dates,current]);

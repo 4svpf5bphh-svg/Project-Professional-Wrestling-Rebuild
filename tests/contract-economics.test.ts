@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {marketWeeklyValue,minimumExclusiveWeeklyGuarantee,
- canAcceptTerms,canAddDates,offerUtility,
+ canAcceptTerms,canAddDates,offerUtility,maxPurchasedDates,
  type PersonEconomics,type OfferTerms} from "../src/domain/contract-economics.js";
 
 const person:PersonEconomics={recognition:80,popularity:70,inRingQuality:80,matchCraft:80,
@@ -42,13 +42,13 @@ test("date addenda price only the newly purchased dates, not a fresh term",async
  assert.equal(higher,addendumUtility(person,{roleExpectation:"REGULAR",appearanceFee:10000},2,4000,13,ctx));
 });
 
-test("limited deals and addenda never sell more dates than calendar weeks",()=>{
- assert.throws(()=>canAcceptTerms(person,{...limited,termWeeks:5,dateEntitlement:6},[],0),
-  /cannot exceed contract weeks/);
+test("limited deals allow TV and premium shows while enforcing service capacity",()=>{
+ assert.throws(()=>canAcceptTerms(person,{...limited,termWeeks:5,dateEntitlement:11},[],0),
+  /cannot exceed twice the contract weeks/);
  const contract={contractId:"existing",family:"LIMITED_NON_EXCLUSIVE" as const,
   status:"SIGNED",remainingDates:3,startWeekIndex:0,expiresWeekIndex:5};
  assert.equal(canAddDates(person,contract,1,[],2),null);
- assert.match(canAddDates(person,contract,2,[],2)??"",/contract weeks/);
+ assert.match(canAddDates(person,contract,6,[],2)??"",/contract weeks/);
 });
 
 test("exclusive hard minimum is visible and exactly matches the original accepted weekly guarantee",()=>{
@@ -61,4 +61,35 @@ test("exclusive hard minimum is visible and exactly matches the original accepte
  assert.equal(canAcceptTerms(person,{...limited,family:"EXCLUSIVE",
   dateEntitlement:13,appearanceFee:0,weeklyGuarantee:minimum},[],0),null);
  assert.throws(()=>minimumExclusiveWeeklyGuarantee(NaN),/Invalid wrestler/);
+});
+
+test("one-off alongside Takeshita's non-exclusive agreement uses its actual remaining window",()=>{
+ const takeshita={...person,stamina:38,fatigue:0,careerStage:"PRIME" as const};
+ const existing={contractId:"aew",family:"LIMITED_NON_EXCLUSIVE" as const,status:"SIGNED",remainingDates:30,startWeekIndex:26,expiresWeekIndex:51};
+ const oneOff:OfferTerms={...limited,family:"ONE_OFF",startWeekIndex:33,termWeeks:1,dateEntitlement:1,weeklyGuarantee:0,creativeControl:"NONE"};
+ assert.equal(canAcceptTerms(takeshita,oneOff,[existing],32),null);
+ assert.equal(maxPurchasedDates(takeshita,33,1,[existing],32),2);
+ assert.match(canAcceptTerms(takeshita,oneOff,[{...existing,family:"EXCLUSIVE"}],32)??"",/exclusive/);
+ assert.equal(maxPurchasedDates(takeshita,33,1,[existing,{...existing,contractId:"other",remainingDates:2,startWeekIndex:33,expiresWeekIndex:33}],32),0);
+});
+
+test("explicit wrestler weekly ceiling still prevents two bookings in one week",()=>{
+ assert.equal(maxPurchasedDates({...person,weeklyServiceCapacity:1},33,1,[],32),1);
+ assert.equal(maxPurchasedDates({...person,weeklyServiceCapacity:1},33,13,[],32),13);
+});
+
+test("exclusive availability stops at the next signed agreement, not any contract in the next year",async()=>{
+ const {maxExclusiveTermWeeks}=await import("../src/domain/contract-economics.js");
+ const other={contractId:"future",status:"SIGNED",family:"LIMITED_NON_EXCLUSIVE" as const,startWeekIndex:40,expiresWeekIndex:51,remainingDates:5};
+ assert.equal(maxExclusiveTermWeeks(33,[other]),7);
+ assert.equal(maxExclusiveTermWeeks(40,[other]),0);
+ assert.equal(maxExclusiveTermWeeks(52,[other]),52);
+});
+
+test("compact service windows retain eligibility without private employer terms",async()=>{
+ const {unpackSignedCommitments,maxExclusiveTermWeeks}=await import("../src/domain/contract-economics.js");
+ const windows=unpackSignedCommitments([[false,30,26,51],[true,null,55,62]]);
+ assert.equal(maxPurchasedDates({...person,stamina:38},33,1,windows,32),2);
+ assert.equal(maxExclusiveTermWeeks(52,windows),3);
+ assert.equal(windows[1]?.family,"EXCLUSIVE");
 });

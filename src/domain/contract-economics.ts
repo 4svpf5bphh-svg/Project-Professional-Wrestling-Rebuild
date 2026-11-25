@@ -13,12 +13,20 @@ export interface OfferTerms {
 }
 export interface PersonEconomics {
  recognition:number;popularity:number;inRingQuality:number;matchCraft:number;
- presentation:number;stamina:number;fatigue:number;careerStage:Stage;
+ presentation:number;stamina:number;fatigue:number;careerStage:Stage;weeklyServiceCapacity?:number|null;
  morale:number; priorities:Record<"money"|"role"|"prestige"|"schedule"|"loyalty"|"exposure",number>;
 }
 export interface ExistingCommitment {
  contractId:string;family:Family;status:string;remainingDates:number|null;
  startWeekIndex:number;expiresWeekIndex:number;
+}
+/** The market/desk need only signed service windows, not other employers' identities or prices. */
+export type CompactSignedCommitment=readonly [exclusive:boolean,remainingDates:number|null,startWeekIndex:number,expiresWeekIndex:number];
+export function unpackSignedCommitments(rows:readonly CompactSignedCommitment[]|null|undefined):ExistingCommitment[]{
+ return (rows??[]).map(([exclusive,remainingDates,startWeekIndex,expiresWeekIndex],i)=>({
+  contractId:"window:"+i,family:exclusive?"EXCLUSIVE":"LIMITED_NON_EXCLUSIVE",status:"SIGNED",
+  remainingDates,startWeekIndex,expiresWeekIndex
+ }));
 }
 const ROLES:Record<Role,number>={DEVELOPMENTAL:25,REGULAR:45,FEATURED:62,UPPER_CARD:76,MAIN_EVENT:90,SPECIAL_ATTRACTION:88};
 const TIERS:Record<string,number>={LOCAL:25,INDEPENDENT:42,RISING:58,NATIONAL:75,GLOBAL:92};
@@ -45,8 +53,8 @@ export function validateOfferTerms(t:OfferTerms,currentWeek:number):void {
   throw new Error("One-off agreements are one purchased appearance without weekly guarantee");
  if(t.family==="EXCLUSIVE"&&(t.appearanceFee!==0||t.dateEntitlement!==t.termWeeks))
   throw new Error("Exclusive employment has unlimited appearances and no appearance fee");
- if(t.family!=="EXCLUSIVE"&&t.dateEntitlement>t.termWeeks)
-  throw new Error("Purchased appearances cannot exceed contract weeks");
+ if(t.family==="LIMITED_NON_EXCLUSIVE"&&t.dateEntitlement>2*t.termWeeks)
+  throw new Error("Purchased appearances cannot exceed twice the contract weeks");
 }
 export function marketWeeklyValue(p:PersonEconomics):number {
  requireEconomics(p);
@@ -66,6 +74,47 @@ export function serviceCapacityDatesPerWeek(p:Pick<PersonEconomics,"careerStage"
  const base=p.careerStage==="PRIME"?1.9:p.careerStage==="PROSPECT"?1.55:p.careerStage==="VETERAN"?1.4:1;
  return base*(.8+p.stamina/250)*Math.max(.65,1-p.fatigue/200);
 }
+type ServiceProfile=Pick<PersonEconomics,"careerStage"|"stamina"|"fatigue"|"weeklyServiceCapacity">;
+/** Purchased dates are flexible obligations, not fixed weekly reservations.
+ * Existing show-day and weekly booking clearance remains authoritative.
+ */
+export function maxPurchasedDates(p:ServiceProfile,start:number,weeks:number,
+ contracts:readonly ExistingCommitment[],currentWeek:number,ignoreContractId:string|null=null):number{
+ if(!Number.isSafeInteger(start)||!Number.isSafeInteger(weeks)||weeks<1||weeks>104||start<currentWeek)return 0;
+ const end=start+weeks-1;
+ const signed=contracts.filter(c=>c.status==="SIGNED"&&c.contractId!==ignoreContractId&&c.expiresWeekIndex>=currentWeek);
+ if(signed.some(c=>c.family==="EXCLUSIVE"&&c.startWeekIndex<=end&&c.expiresWeekIndex>=start))return 0;
+ const weeklyLimit=Math.min(2,Math.max(0,p.weeklyServiceCapacity??2));
+ const rate=Math.min(weeklyLimit,Math.max(0,serviceCapacityDatesPerWeek(p)));
+ const capacity=(length:number)=>Math.min(weeklyLimit*length,Math.ceil(rate*length-.000001));
+ const commitments=signed.filter(c=>c.family!=="EXCLUSIVE"&&(c.remainingDates??0)>0).map(c=>({
+  start:Math.max(currentWeek,c.startWeekIndex),end:c.expiresWeekIndex,dates:c.remainingDates??0
+ }));
+ let left=start,right=end;
+ for(let i=0;i<=commitments.length;i++){
+  const relevant=commitments.filter(c=>c.start<=right&&c.end>=left);
+  const lo=Math.min(left,...relevant.map(c=>c.start)),hi=Math.max(right,...relevant.map(c=>c.end));
+  if(lo===left&&hi===right)break;left=lo;right=hi;
+ }
+ const relevant=commitments.filter(c=>c.start<=right&&c.end>=left);
+ const starts=[...new Set([start,...relevant.map(c=>c.start).filter(n=>n<=start)])];
+ const ends=[...new Set([end,...relevant.map(c=>c.end).filter(n=>n>=end)])];
+ let maximum=Math.min(104,capacity(weeks));
+ for(const lo of starts)for(const hi of ends){
+  const used=relevant.reduce((sum,c)=>sum+(c.start>=lo&&c.end<=hi?c.dates:0),0);
+  maximum=Math.min(maximum,capacity(hi-lo+1)-used);
+ }
+ return Math.max(0,maximum);
+}
+/** Exclusive rights can only extend up to the first competing signed term. */
+export function maxExclusiveTermWeeks(start:number,contracts:readonly ExistingCommitment[]):number{
+ if(!Number.isSafeInteger(start)||start<0)return 0;
+ return Math.max(0,Math.min(52,...contracts.filter(c=>c.status==="SIGNED"&&c.expiresWeekIndex>=start)
+  .map(c=>c.startWeekIndex-start)));
+}
+export function purchasedDateLimits(p:ServiceProfile,start:number,contracts:readonly ExistingCommitment[],currentWeek:number,ignoreContractId:string|null=null){
+ return Array.from({length:52},(_,i)=>maxPurchasedDates(p,start,i+1,contracts,currentWeek,ignoreContractId));
+}
 export function canAcceptTerms(p:PersonEconomics,t:OfferTerms,contracts:readonly ExistingCommitment[],
  currentWeek:number,ignoreContractId:string|null=null):string|null {
  validateOfferTerms(t,currentWeek);requireEconomics(p);
@@ -74,16 +123,10 @@ export function canAcceptTerms(p:PersonEconomics,t:OfferTerms,contracts:readonly
  const end=t.startWeekIndex+t.termWeeks-1;
  const overlapping=contracts.filter(c=>c.status==="SIGNED"&&c.contractId!==ignoreContractId
  &&c.startWeekIndex<=end&&c.expiresWeekIndex>=t.startWeekIndex);
- if(t.family==="EXCLUSIVE"&&overlapping.length) return "exclusive offer overlaps another signed agreement";
- if(t.family!=="EXCLUSIVE"&&overlapping.some(c=>c.family==="EXCLUSIVE"))
-  return "existing exclusive contract blocks outside work";
- const density=overlapping.reduce((sum,c)=>{
-  if(c.family==="EXCLUSIVE")return sum+1;
-  const remaining=Math.max(0,c.remainingDates??0);
-  const weeks=Math.max(1,c.expiresWeekIndex-Math.max(currentWeek,c.startWeekIndex)+1);
-  return sum+remaining/weeks;
- },0)+(t.family==="EXCLUSIVE"?1:t.dateEntitlement/t.termWeeks);
- return density>serviceCapacityDatesPerWeek(p)+.001?"service capacity exceeded":null;
+ if(t.family==="EXCLUSIVE")return overlapping.length?"exclusive offer overlaps another signed agreement":null;
+ if(overlapping.some(c=>c.family==="EXCLUSIVE"))return "existing exclusive contract blocks outside work";
+ return t.dateEntitlement>maxPurchasedDates(p,t.startWeekIndex,t.termWeeks,contracts,currentWeek,ignoreContractId)
+  ?"service capacity exceeded":null;
 }
 export function canAddDates(p:PersonEconomics,source:ExistingCommitment,extra:number,
  others:readonly ExistingCommitment[],currentWeek:number):string|null{
@@ -91,18 +134,14 @@ export function canAddDates(p:PersonEconomics,source:ExistingCommitment,extra:nu
  if(source.status!=="SIGNED"||source.family!=="LIMITED_NON_EXCLUSIVE"
  ||source.expiresWeekIndex<currentWeek||source.startWeekIndex>currentWeek
  ||!Number.isSafeInteger(extra)||extra<1||extra>104) return "invalid date addendum";
- const weeks=Math.max(1,source.expiresWeekIndex-currentWeek+1);
- // Only one contracted date can be used per calendar week, including when
- // a weekly broadcast and premium event share a week.
- if(Math.max(0,source.remainingDates??0)+extra>weeks)
-  return "additional dates exceed remaining contract weeks";
+ const weeks=source.expiresWeekIndex-currentWeek+1;
+ const total=Math.max(0,source.remainingDates??0)+extra;
+ if(total>Math.min(104,2*weeks))return "additional dates exceed remaining contract weeks";
  if(others.some(c=>c.status==="SIGNED"&&c.family==="EXCLUSIVE"
  &&c.startWeekIndex<=source.expiresWeekIndex&&c.expiresWeekIndex>=currentWeek))
   return "exclusive agreement blocks additional dates";
- const committed=others.filter(c=>c.status==="SIGNED"&&c.startWeekIndex<=source.expiresWeekIndex&&c.expiresWeekIndex>=currentWeek)
- .reduce((sum,c)=>sum+(c.family==="EXCLUSIVE"?1:Math.max(0,c.remainingDates??0)/Math.max(1,c.expiresWeekIndex-Math.max(currentWeek,c.startWeekIndex)+1)),0);
- return committed+(Math.max(0,source.remainingDates??0)+extra)/weeks>Math.max(1,serviceCapacityDatesPerWeek(p))+.001
- ?"additional dates exceed remaining-term service capacity":null;
+ return total>maxPurchasedDates(p,currentWeek,weeks,others,currentWeek,source.contractId)
+  ?"additional dates exceed remaining-term service capacity":null;
 }
 function randomUtility(seed:string):number{
  let h=0x811c9dc5;

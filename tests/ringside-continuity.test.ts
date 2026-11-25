@@ -92,3 +92,19 @@ test("Ringside discards future and another promotion's receipts even if an unexp
  assert.equal(seen,1,"No extra programme or name lookup for unsafe historical rows");
  assert.deepEqual(history,{priorMatches:[],programmes:[]});
 });
+
+test("Sunday PPV can recall Friday TV but Friday cannot recall Sunday or same-day results",async()=>{
+ let calls=0;
+ const pool:TransactionPool={async connect(){return {release(){},async query<T extends Record<string,unknown>>(sql:string){
+  calls++;
+  if(sql.includes("ppw_completed_show_matches")){
+   assert.match(sql,/old_card.show_day<current_card.show_day/);
+   return [5,7,6].map(day=>({promotion_id:"player-promo",year:1,week:3,show_day:day,current_day:6,
+    actual_finish:"FLASH_PIN",actual_winner_side:"B",payload:{participants:[{personId:"omega",contractId:"c1"},{personId:"opponent",contractId:"c2"}],scriptedWinner:"opponent"}})) as unknown as T[];
+  }
+  return [{person_id:"omega",name:"Kenny Omega"},{person_id:"opponent",name:"Rival"}] as unknown as T[];
+ }}}};
+ const result=await readRingsideMemory(pool,scope,show);
+ assert.equal(calls,2);
+ assert.deepEqual(result.priorMatches.map(x=>x.when),["Y1 W3 D5"]);
+});

@@ -8,18 +8,18 @@ import {canAcceptTerms,offerUtility,requireEconomics,validateOfferTerms,
 type ProfileRow={
  person_id:string;status:string;recognition:number|null;popularity:number|null;
  in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
- stamina:number|null;fatigue:number|null;career_stage:PersonEconomics["careerStage"]|null;
+ stamina:number|null;fatigue:number|null;weekly_service_capacity:number|null;career_stage:PersonEconomics["careerStage"]|null;
  morale:number|null;contract_priorities:PersonEconomics["priorities"]|null;
 };
 type ContractRow={contract_id:string;person_id:string;promotion_id:string;family:ExistingCommitment["family"];
- status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number};
+ status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number;is_renewal:boolean};
 type PendingRow={offer_id:string;person_id:string;promotion_id:string;source_contract_id:string|null;
  submitted_week_index:number;terms:OfferTerms;tier:string;media_reach:number|null;
  has_history:boolean;backstage_trust:number;};
 function profile(row:ProfileRow):PersonEconomics{
  const p={recognition:row.recognition,popularity:row.popularity,inRingQuality:row.in_ring_quality,
  matchCraft:row.match_craft,presentation:row.presentation,stamina:row.stamina,
- fatigue:row.fatigue,careerStage:row.career_stage,morale:row.morale,priorities:row.contract_priorities};
+ fatigue:row.fatigue,weeklyServiceCapacity:row.weekly_service_capacity,careerStage:row.career_stage,morale:row.morale,priorities:row.contract_priorities};
  requireEconomics(p as PersonEconomics);
  return p as PersonEconomics;
 }
@@ -33,10 +33,10 @@ const controllerSql=`SELECT c.promotion_id FROM ppw_promotion_controls c
  WHERE c.world_id=$1 AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
  AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'`;
 const peopleSql=`SELECT person_id,status,recognition,popularity,in_ring_quality,match_craft,
- presentation,stamina,fatigue,career_stage,morale,contract_priorities
+ presentation,stamina,fatigue,weekly_service_capacity,career_stage,morale,contract_priorities
  FROM ppw_people WHERE world_id=$1 AND person_id=$2`;
 const contractsSql=`SELECT contract_id,person_id,promotion_id,family,status,remaining_dates,
- start_week_index,expires_week_index FROM ppw_contracts
+ start_week_index,expires_week_index,is_renewal FROM ppw_signed_service_windows
  WHERE world_id=$1 AND person_id=$2 AND status='SIGNED' ORDER BY expires_week_index,contract_id LIMIT 100`;
 export interface ManualContractOfferInput {
  worldId:string;playerId:string;promotionId:string;personId:string;sourceContractId?:string|null;
@@ -62,7 +62,7 @@ export async function submitManualContractOffer(pool:TransactionPool,input:Manua
   const signed=await tx.query<ContractRow>(contractsSql,[input.worldId,input.personId]);
   const source=input.sourceContractId??null;
   if(source){
-   const sourceRow=signed.find(c=>c.contract_id===source);
+   const sourceRow=signed.find(c=>c.contract_id===source&&!c.is_renewal);
    if(!sourceRow||sourceRow.promotion_id!==input.promotionId||sourceRow.family==="ONE_OFF"
     ||sourceRow.expires_week_index<current)throw new Error("Invalid renewal source contract");
    if(input.terms.startWeekIndex!==sourceRow.expires_week_index+1)
@@ -76,7 +76,7 @@ export async function submitManualContractOffer(pool:TransactionPool,input:Manua
    if(accepted.length)throw new Error("Renewal already arranged");
   } else if(input.terms.startWeekIndex!==current)
    throw new Error("Recruitment offer must start in the current week");
-  const reason=canAcceptTerms(p,input.terms,signed.map(commitment),current);
+  const reason=canAcceptTerms(p,{...input.terms,startWeekIndex:Math.max(input.terms.startWeekIndex,current+1)},signed.map(commitment),current);
   if(reason)throw new Error(reason);
   const pending=await tx.query<{offer_id:string}>(`SELECT offer_id FROM ppw_contract_offers
    WHERE world_id=$1 AND person_id=$2 AND promotion_id=$3 AND status='PENDING' LIMIT 1`,
@@ -178,21 +178,18 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
    if(b.score<threshold)reason="offer utility below acceptance threshold";
    if(people[0]!.status==="RETIRED")reason="wrestler retired";
    if(t.startWeekIndex<current)reason="offer start has passed";
-   const source=b.source_contract_id?existing.find(c=>c.contract_id===b.source_contract_id):null;
+   const source=b.source_contract_id?existing.find(c=>c.contract_id===b.source_contract_id&&!c.is_renewal):null;
    if(b.source_contract_id&&(!source||source.status!=="SIGNED"||source.expires_week_index<current
     ||t.startWeekIndex!==source.expires_week_index+1||t.family==="ONE_OFF"))
     reason="renewal source is no longer available";
-   if(!reason)reason=canAcceptTerms(p,t,signed,current);
-   if(!reason&&t.family==="EXCLUSIVE"&&signed.some(c=>c.status==="SIGNED"&&
-     c.startWeekIndex<=t.startWeekIndex+t.termWeeks-1&&c.expiresWeekIndex>=t.startWeekIndex))
-    reason="overlapping signed contract";
+   if(!reason)reason=canAcceptTerms(p,{...t,startWeekIndex:Math.max(t.startWeekIndex,current+1)},signed,current);
    if(!reason){
     if(source)renewals.push({source:source.contract_id,promotion:b.promotion_id,person:b.person_id,offerId:b.offer_id,terms:t});
     else contractsToSign.push({id:"offer:"+b.offer_id,promotion:b.promotion_id,person:b.person_id,terms:t});
     charges.set(b.promotion_id,(charges.get(b.promotion_id)??0)+t.signingBonus);
     signed.push({contractId:"offer:"+b.offer_id,family:t.family,status:"SIGNED",
      remainingDates:t.family==="EXCLUSIVE"?null:t.dateEntitlement,
-     startWeekIndex:t.startWeekIndex,expiresWeekIndex:t.startWeekIndex+t.termWeeks-1});
+     startWeekIndex:Math.max(t.startWeekIndex,current+1),expiresWeekIndex:Math.max(t.startWeekIndex,current+1)+t.termWeeks-1});
    }
    decisions.push({id:b.offer_id,status:reason?"REJECTED":"ACCEPTED",score:b.score,reason});
   };

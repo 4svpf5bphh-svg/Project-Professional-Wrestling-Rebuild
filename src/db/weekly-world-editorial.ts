@@ -3,7 +3,7 @@ import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
 import {estimatedGroqTokens,groqResponseUsage} from "../domain/ai-director.js";
-import {weeklyEditorialAnchors,weeklyEditorialMessages,validateWeeklyEditorialDetailed,weeklyRatingsStory,type WeeklyStory,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
+import {weeklyEditorialAnchors,weeklyEditorialMessages,weeklyEditorialResponseFormat,validateWeeklyEditorialDetailed,weeklyRatingsStory,type WeeklyStory,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
 import type {VerifiedHotTagAward} from "../domain/hot-tag-wrestler-voice.js";
 type Scope={worldId:string;year:number;week:number};
 type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;human_managed:boolean};
@@ -62,14 +62,11 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
   if(!anchors.length){state="EMPTY";diagnostic="NO_PUBLIC_STORIES";}
   else{
    const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",
-    max_completion_tokens:1800,response_format:{type:"json_object"},messages:weeklyEditorialMessages(anchors)};
+    max_completion_tokens:2400,response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
    // Hard request envelope below the observed 8k TPM, including reasoning/completion reserve.
    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
-   while(estimate>4200&&anchors.length>1){
-    anchors.pop();body.messages=weeklyEditorialMessages(anchors);
-    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
-   }
-   if(estimate>4200){diagnostic="TOKEN_ENVELOPE";throw Error("Weekly editorial envelope too large");}
+   // Never silently drop public stories. The shared dispatcher has a 7600-token ceiling.
+   if(estimate>7000){diagnostic="TOKEN_ENVELOPE";throw Error("Weekly editorial envelope too large");}
    const response=await requestGroqEditorial({task:"SHORT_NEWS",key,pool,body,signal:AbortSignal.timeout(16000),
     pace:true,transport:async(url,init)=>{calls++;return transport(url,init);}});
    diagnostic=response.headers.get("x-ppw-paced")==="true"?"PACING":

@@ -108,7 +108,7 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
   "d.lock_ready_fingerprint,d.show_name,d.booking_class,d.ticket_strategy,",
   "p.name AS promotion_name,v.name AS venue_name,mkt.name AS market_name,",
   "(SELECT style FROM ppw_kp_broadcast_packages WHERE player_id=$2) AS broadcast_package,",
-  "(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,",
+  "(w.phase IN ('OPEN','UPDATING') AND w.next_lock_at>clock_timestamp()) AS booking_open,",
    "((d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1",
    "AND (w.year-1)*52+w.week+5) AS within_window"+(includeTournament?",":""),
    ...(includeTournament?[

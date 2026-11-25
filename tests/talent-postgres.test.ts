@@ -7,7 +7,7 @@ import { createWorld,addPromotion } from "../src/db/world-operations.js";
 import { listTalentAvailability } from "../src/db/talent-availability.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
-test("shared talent can have overlapping nonexclusive contracts but one exclusive contract",{skip:!url?"No disposable PostgreSQL":false},async()=>{
+test("shared talent can have overlapping nonexclusive contracts but no overlapping exclusive terms",{skip:!url?"No disposable PostgreSQL":false},async()=>{
   const db=postgresPool(url!,3),id=randomUUID(),worldId="talent-"+id;
   const person="wrestler-"+id,first="a-"+id,second="b-"+id;
   try {
@@ -29,7 +29,7 @@ test("shared talent can have overlapping nonexclusive contracts but one exclusiv
     assert.equal(talent[0]!.exclusiveToPromotionId,first);
     await assert.rejects(withWorldTransaction(db.pool,async tx=>{
       await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,remaining_dates,expires_week_index) VALUES ($1,$2,$3,$4,'EXCLUSIVE','SIGNED',NULL,20)",[worldId,"exclusive-other-"+id,person,second]);
-    }),/duplicate key/);
+    }),{code:"23P01",constraint:"ppw_exclusive_contract_windows_do_not_overlap"});
     assert.equal((await listTalentAvailability(db.pool,worldId,"Test Wrestler",person)).length,0);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{

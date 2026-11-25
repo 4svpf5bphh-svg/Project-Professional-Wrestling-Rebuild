@@ -159,7 +159,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const bookingOpen=world.phase==="OPEN"&&!deadlineDue;
   const masthead=el("header","ppw-home-head");
   const phaseText=deadlineDue?"LOCK DUE":world.phase==="OPEN"?"WORLD OPEN":
-   world.phase==="LOCKED"?"CARDS LOCKED":"WORLD PROCESSING";
+   world.phase==="LOCKED"?"CARDS LOCKED":world.phase==="UPDATING"?"WORLD UPDATING":"WORLD PROCESSING";
   const phase=el("strong","ppw-home-phase-tag",phaseText);
   phase.dataset.phase=deadlineDue?"due":world.phase.toLowerCase();
   masthead.append(phase,el("span","ppw-home-period",
@@ -207,21 +207,23 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const copy=el("span","ppw-home-booking-copy");
   copy.append(el("strong","",bookingOpen?"BOOKING OPEN":
    deadlineDue?"BOOKING DEADLINE REACHED":
-   world.phase==="LOCKED"?"BOOKING CLOSED":"WORLD PROCESSING"));
+   world.phase==="LOCKED"?"BOOKING CLOSED":world.phase==="UPDATING"?"WORLD UPDATING":"WORLD PROCESSING"));
   const longTestWindow=bookingOpen&&Number.isFinite(world.nextLockEpoch)&&
    Number.isFinite(world.serverEpoch)&&world.nextLockEpoch-world.serverEpoch>30*86400;
   const detail=el("small","ppw-home-countdown",deadlineDue?"Booking deadline reached · check World status":
    bookingOpen&&longTestWindow?"Booking is open · finish your next card when ready":
    bookingOpen?"Booking closes soon · prepare your next show":
+   world.phase==="UPDATING"?"Preparing results and news · plan your upcoming shows":
    "Your World will update after processing.");
   copy.append(detail);
   booking.append(el("span","ppw-home-booking-icon","▣"),copy,
    el("span","ppw-home-booking-arrow","→"));
   // The banner is an independent action. Its accessible name must not
   // duplicate the dedicated Check World status button at the lock boundary.
-  if(!bookingOpen)booking.setAttribute("aria-label",
+  if(world.phase==="UPDATING")booking.setAttribute("aria-label","Plan upcoming shows while World updates");
+  else if(!bookingOpen)booking.setAttribute("aria-label",
    deadlineDue?"Review booking deadline":"Review World lock");
-  booking.onclick=bookingOpen?port.planner:()=>void load();
+  booking.onclick=bookingOpen||world.phase==="UPDATING"?port.planner:()=>void load();
   root.append(booking);
   if(bookingOpen&&!longTestWindow)
    startClock(detail,world,()=>{expiredOnScreen=key;draw();});

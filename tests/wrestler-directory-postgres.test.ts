@@ -101,6 +101,7 @@ test("Roster and talent market validate paging, offer rights and two-query direc
    {worldId:world,playerId:player,promotionId},
    {view:"MARKET",limit:25,sort:"INTEREST"});
   assert.equal(interestOrder.people.length,25);
+  assert.ok(interestOrder.people.every(p=>p.contractId===null&&p.family===null&&p.roleExpectation===null&&p.startWeekIndex===null&&p.expiresWeekIndex===null&&p.remainingDates===null&&p.weeklyGuarantee===null&&p.appearanceFee===null),"market omits unused owned-contract SQL fields but preserves the public null contract shape");
   assert.ok(interestOrder.people.every(x=>
    ["KEEN","INTERESTED","OPEN_TO_TALKS","RELUCTANT",
     "NOT_INTERESTED","UNAVAILABLE","UNKNOWN"].includes(x.interest)));

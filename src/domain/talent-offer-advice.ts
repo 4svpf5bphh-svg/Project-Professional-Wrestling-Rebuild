@@ -11,6 +11,7 @@ export interface TalentOfferProfile{
  interest:"KEEN"|"INTERESTED"|"OPEN_TO_TALKS"|"RELUCTANT"|"NOT_INTERESTED"|"UNKNOWN"|"UNAVAILABLE";
  /** Person-scoped, non-financial availability after other signed contracts. */
  remainingServiceDensityPerWeek?:number|null;
+ purchasedDateLimits?:readonly number[]|null;
 }
 export interface TalentManagerProfile{staffId:string;name:string;insight:number}
 export interface TalentOfferAdvice{
@@ -45,8 +46,8 @@ export function recommendTalentOffer(person:TalentOfferProfile,
  // Use the same signed-service-density bound as original offer validation.
  // Never recommend 40 appearances when another employer already owns most
  // of the wrestler's calendar; no other employer's terms leave the server.
- const safeDates=available===null?null:
-  Math.max(0,Math.floor(Math.max(0,available-.001)*weeks));
+ const safeDates=person.purchasedDateLimits?.[weeks-1]??(available===null?null:
+  Math.max(0,Math.floor(Math.max(0,available-.001)*weeks)));
  const feasible=safeDates===null||safeDates>=1;
  const dates=safeDates===null?idealDates:Math.max(1,Math.min(idealDates,safeDates));
  const family:Family="LIMITED_NON_EXCLUSIVE";

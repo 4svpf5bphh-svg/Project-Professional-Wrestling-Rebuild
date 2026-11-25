@@ -1,7 +1,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import {weeklyEditorialAnchors,weeklyEditorialMessages,validateWeeklyEditorial,validateWeeklyEditorialDetailed,weeklyShowMomentSlot,weeklyHotTagThread,weeklyRatingsStory,readWeeklyRatingsStory,type WeeklyStory} from "../src/domain/weekly-world-editorial.js";
+import {estimatedGroqTokens} from "../src/domain/ai-director.js";
+import {weeklyEditorialAnchors,weeklyEditorialMessages,weeklyEditorialResponseFormat,validateWeeklyEditorial,validateWeeklyEditorialDetailed,weeklyShowMomentSlot,weeklyHotTagThread,weeklyRatingsStory,readWeeklyRatingsStory,type WeeklyStory} from "../src/domain/weekly-world-editorial.js";
 const official:WeeklyStory={id:"broadcast:ratings",year:1,week:30,title:"Crown Wrestling ratings decline",summary:"Crown Wrestling recorded a lower audience.",promotionName:"Crown Wrestling",promotionId:"a",desk:"OFFICIAL",certainty:"CONFIRMED"};
 const dirt:WeeklyStory={...official,id:"rumour:1",desk:"DIRT",certainty:"SPECULATION",title:"Rival Wrestling future uncertain",promotionId:"b",promotionName:"Rival Wrestling"};
 const copy={headline:"Why Crown Wrestling should rethink its approach",commentary:"I think Crown Wrestling should give the audience a better reason to care.",fans:["I hope Crown Wrestling makes the next broadcast worth watching.","Crown Wrestling should worry less about hype and more about good wrestling.","Nah mate, I think you are being far too harsh."]};
@@ -76,4 +77,39 @@ test("both human promotions get their own actual moment before optional award co
  const rating={...official,id:"broadcast:ratings:weekly"};
  const anchors=weeklyEditorialAnchors([rating,dirt,a,b]);
  assert.deepEqual(anchors.map(x=>x.story.id),[rating.id,a.id,b.id,dirt.id]);
+});
+
+test("strict weekly response requires every anchor, with distinct fan fields and no unknown keys",()=>{
+ const a={...official,id:"angle:a:slot",sourceKind:"ANGLE",humanManaged:true};
+ const b={...a,id:"match:b:slot",promotionId:"b",promotionName:"Rival Wrestling"};
+ const rating={...official,id:"broadcast:ratings:weekly"};
+ const anchors=weeklyEditorialAnchors([rating,dirt,a,b]);
+ const response=weeklyEditorialResponseFormat(anchors);
+ assert.equal(response.json_schema.strict,true);
+ const schema=response.json_schema.schema;
+ assert.deepEqual(schema.required,["s0","s1","s2","s3"]);
+ assert.equal(schema.additionalProperties,false);
+ for(const field of Object.values(schema.properties)){
+  assert.equal(field.additionalProperties,false);
+  assert.deepEqual(field.required,["headline","commentary","fan1","fan2","reply","wrestler"]);
+ }
+ const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([official]),{s0:{
+  headline:copy.headline,commentary:copy.commentary,fan1:copy.fans[0],fan2:copy.fans[1],reply:copy.fans[2],wrestler:null
+ }});
+ assert.deepEqual(result.copy[official.id],copy);
+});
+test("weekly ratings snapshot cannot establish promotion growth",()=>{
+ const story=weeklyRatingsStory(1,32,[{promotionId:"a",promotionName:"Crown Wrestling",rating:0.8,humanManaged:true}])!;
+ const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([story]),{s0:{fan1:"Crown Wrestling is growing fast.",fan2:"Crown Wrestling has a respectable audience.",reply:"Nah, not for me.",headline:"Crown Wrestling on television",commentary:"Crown Wrestling has a respectable audience this week.",wrestler:null}});
+ assert.equal(result.issues.UNVERIFIED_RATINGS_TREND,1);
+ assert.equal(result.copy[story.id]?.fans?.[0],null);
+ assert.equal(result.copy[story.id]?.fans?.[1],"Crown Wrestling has a respectable audience.");
+});
+
+test("four full-sized weekly editorial sources fit the shared dispatch reservation",()=>{
+ const anchors=weeklyEditorialAnchors(Array.from({length:4},(_,i)=>({...official,id:"story:"+i,title:"x".repeat(200),summary:"x".repeat(500),promotionName:"p".repeat(110)})));
+ const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",max_completion_tokens:2400,
+  response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
+ assert.equal(anchors.length,4);
+ assert.ok(estimatedGroqTokens(JSON.stringify(body),2400)<=7000);
 });

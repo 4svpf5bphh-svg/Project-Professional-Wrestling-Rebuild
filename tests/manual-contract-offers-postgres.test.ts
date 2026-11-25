@@ -125,7 +125,7 @@ test("PostgreSQL: two human promoters compete for one wrestler; addenda, renewal
   await assert.rejects(requestAdditionalDates(db.pool,{
    worldId:world,playerId:playerA,promotionId:pA,contractId:source,
    requestId:"overcapacity-"+id,expectedRevision:9,
-   additionalDates:12,additionalPayment:0}),/extra appearances fit/);
+   additionalDates:25,additionalPayment:0}),/extra appearances fit/);
 
   // Convert the signed limited contract to EXCLUSIVE on its NEXT paid term.
   // It must remain limited while this World is still in Week 1.
@@ -277,6 +277,62 @@ test("PostgreSQL: a signed one-night guest is bookable only in the next World we
     "ppw_people","ppw_promotions"]){
     await tx.query(`DELETE FROM ${table} WHERE world_id=$1`,[world]);
    }
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
+   await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
+
+test("PostgreSQL: adjacent exclusive agreements coexist while overlaps and accepted next terms are protected",{
+ skip:!url?"No disposable PostgreSQL":false,
+},async()=>{
+ const id=randomUUID(),world="exclusive-window-"+id,pA="a",pB="b",person="worker",player="owner-"+id;
+ const db=postgresPool(url!,3),system={source:"WORLD_RESOLUTION" as const,worldId:world};
+ const terms:OfferTerms={family:"EXCLUSIVE",roleExpectation:"MAIN_EVENT",creativeControl:"FULL_APPROVAL",
+  startWeekIndex:0,termWeeks:13,dateEntitlement:13,weeklyGuarantee:50000,appearanceFee:0,signingBonus:0};
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Exclusive windows",seed:7,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:pA,name:"First",tier:"GLOBAL"});
+   await addPromotion(tx,world,{id:pB,name:"Second",tier:"GLOBAL"});
+   await tx.query("UPDATE ppw_promotions SET cash=1000000,media_reach=95 WHERE world_id=$1",[world]);
+   await tx.query(`INSERT INTO ppw_people(world_id,person_id,name,status,recognition,popularity,in_ring_quality,
+    match_craft,presentation,stamina,fatigue,career_stage,morale,contract_priorities)
+    VALUES($1,$2,'Worker','ACTIVE',85,80,85,85,90,80,0,'PRIME',80,$3::jsonb)`,
+    [world,person,JSON.stringify({money:60,role:10,prestige:10,schedule:10,loyalty:5,exposure:5})]);
+   await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,
+    start_week_index,expires_week_index,remaining_dates,date_entitlement,weekly_guarantee,appearance_fee,
+    role_expectation,creative_control) VALUES($1,'old',$2,$3,'EXCLUSIVE','SIGNED',0,0,NULL,1,10000,0,'MAIN_EVENT','NONE')`,
+    [world,person,pA]);
+  });
+  await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join",expectedRevision:0});
+  await submitPromotionClaim(db.pool,{worldId:world,playerId:player,promotionId:pB,requestId:"claim",expectedRevision:1});
+  await withWorldTransaction(db.pool,tx=>tx.query(`INSERT INTO ppw_contract_renewal_proposals
+   (world_id,proposal_id,contract_id,promotion_id,person_id,status,created_week_index,proposed_terms)
+   VALUES($1,'reserved','old',$2,$3,'ACCEPTED',0,$4::jsonb)`,[world,pA,person,JSON.stringify(terms)]));
+  await assert.rejects(submitManualContractOffer(db.pool,{worldId:world,playerId:player,promotionId:pB,
+   personId:person,requestId:"blocked",expectedRevision:2,terms}),/overlap/);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_contract_renewal_proposals SET status='REJECTED' WHERE world_id=$1",[world]);
+   await tx.query("UPDATE ppw_worlds SET phase='UPDATING' WHERE world_id=$1",[world]);
+  });
+  assert.equal((await submitManualContractOffer(db.pool,{worldId:world,playerId:player,promotionId:pB,
+   personId:person,requestId:"new",expectedRevision:2,terms})).status,"APPLIED");
+  // Pending offers are writable during editorial preparation; no signature
+  // or charge happens until the next authorised contract settlement.
+  await withWorldTransaction(db.pool,tx=>tx.query("UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[world]));
+  const answer=await resolvePersonContractOffers(db.pool,{worldId:world,personId:person,requestId:"settle",expectedRevision:3},system);
+  assert.equal(answer.status,"APPLIED");
+  if(answer.status==="APPLIED")assert.equal(answer.result.accepted,1);
+  const windows=await withWorldTransaction(db.pool,tx=>tx.query(`SELECT promotion_id,start_week_index,expires_week_index
+    FROM ppw_contracts WHERE world_id=$1 AND status='SIGNED' ORDER BY start_week_index`,[world]));
+  assert.deepEqual(windows,[{promotion_id:pA,start_week_index:0,expires_week_index:0},{promotion_id:pB,start_week_index:1,expires_week_index:13}]);
+  await assert.rejects(withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_contracts SET expires_week_index=1 WHERE world_id=$1 AND contract_id='old'",[world])),
+   /exclusion constraint|conflicting key/);
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_contract_offers","ppw_contract_renewal_proposals","ppw_ledger_events","ppw_command_receipts","ppw_promotion_controls","ppw_memberships","ppw_contracts","ppw_people","ppw_promotions"])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[player]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
   }).finally(()=>db.close());

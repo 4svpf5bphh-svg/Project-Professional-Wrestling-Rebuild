@@ -10,7 +10,7 @@ import {sameShowComparisons,type SameShowProviderResult}
 type ActionPlan={
  year:number;week:number;action:string;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
-  cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number};
+  cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number;editorialProgress?:{total:number;completed:number}};
 };
 type LegendPilot={status:"ARMED"|"CONSUMED"|"CANCELLED";promotionId:string;
  armedYear:number;armedWeek:number;consumedYear:number|null;consumedWeek:number|null};
@@ -849,12 +849,13 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     "Advance when ready. With one human player and no show booked, your promotion takes an off-week. The AI World continues.":
     "Processing the shared World. A stopped run can resume without replaying completed results."),
    el("p","",ready.phase==="OPEN"?"No automatic deadline during the solo playtest.":
+    ready.phase==="UPDATING"?`Show reports prepared: ${ready.editorialProgress?.completed??0}/${ready.editorialProgress?.total??0}. Public news follows.`:
     `Completed shows: ${ready.detailedResolved}/${ready.submitted}`));
   if(p.blockers.length)status.append(el("p","ppw-admin-warning",`Needs attention: ${p.blockers.join(", ").replaceAll("_"," ")}`));
   const actions=el("div","ppw-admin-actions");
   const info=el("p","ppw-admin-message","");
   if(lastNotice)message(info,lastNotice,lastError);
-  const advance=el("button","ppw-admin-primary","Advance Week") as HTMLButtonElement;
+  const advance=el("button","ppw-admin-primary",p.ready.phase==="UPDATING"?"Resume World Updating":"Advance Week") as HTMLButtonElement;
   advance.type="button";
   advance.onclick=async()=>{
    if(busy)return;
@@ -874,7 +875,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       message(info,"Week advanced. The next playable week is ready.");finished=true;break;
      }
      if(result.status==="BLOCKED"){
-      const reason=result.blockers.join(", ").replaceAll("_"," ")||"A show needs attention";
+      const reason=result.blockers.includes("WORLD_UPDATE_IN_PROGRESS")?"An article is still being prepared. If the connection was interrupted, use Resume World Updating once the current attempt has finished.":result.blockers.join(", ").replaceAll("_"," ")||"A show needs attention";
       message(info,`Could not finish Week ${p.week}: ${reason}. Completed stages were saved; correct the issue and press Advance Week again.`,true);
       break;
      }
@@ -882,7 +883,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       message(info,"No progress recorded; review diagnostics and retry.",true);
       break;
      }
-     message(info,`Advancing Week ${p.week}… processing World shows (batch ${batch+1}).`);
+     message(info,result.steps.some(step=>["PUBLISH_WEEK","PREPARE_SHOW_ARTICLE"].includes(step.action))?"World Updating… preparing show results and public news.":`Advancing Week ${p.week}… processing World shows (batch ${batch+1}).`);
      if(batch===23)message(info,"The safe batch limit was reached; press Advance Week again to resume.",true);
     }
     lastNotice=info.textContent??"";lastError=!finished;

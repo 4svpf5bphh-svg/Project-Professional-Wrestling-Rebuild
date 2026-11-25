@@ -25,7 +25,7 @@ export function remainingRosterExposure(contracts:readonly ContractExposure[]):R
    Number.isFinite(c.startsInWeeks)?Math.max(0,Math.trunc(c.startsInWeeks)):0;
   const weeks=Math.max(0,Math.trunc(c.weeksRemaining)-deferred);
   if(weeks===0)continue;
-  const dates=c.remainingDates===null?0:Math.min(weeks,Math.max(0,
+  const dates=c.remainingDates===null?0:Math.min(2*weeks,Math.max(0,
    Number.isFinite(c.remainingDates)?Math.trunc(c.remainingDates):0));
   guaranteedWages+=weeks*c.weeklyGuarantee;
   optionalAppearanceFees+=dates*c.appearanceFee;

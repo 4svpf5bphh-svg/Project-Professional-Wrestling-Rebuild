@@ -27,7 +27,7 @@ export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;regularSubmitted:number;
  showEconomicsEnabled:boolean;
  cleared:number|null;certified:number|null;legacyResolved:number;
- detailedResolved:number;blockers:string[];
+ detailedResolved:number;blockers:string[];editorialProgress?:{total:number;completed:number};
 };
 export async function inspectWorldResolutionReadiness(
  pool:TransactionPool,worldId:string,
@@ -38,6 +38,15 @@ export async function inspectWorldResolutionReadiness(
    "SELECT year,week,phase,show_economics_enabled FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId]);
   if(w.length!==1)throw new Error("World not found");
   const {year,week,phase}=w[0]!;
+  if(phase==="UPDATING"){
+   const rows=await tx.query<{total:number;completed:number}>(`SELECT count(j.show_id)::integer AS total,
+    count(j.show_id) FILTER(WHERE j.state IN ('READY','FALLBACK'))::integer AS completed
+    FROM ppw_world_update_runs r LEFT JOIN ppw_world_update_jobs j USING(world_id,year,week)
+    WHERE r.world_id=$1 AND r.state='ACTIVE'`,[worldId]);
+   return {year,week,phase,showEconomicsEnabled:w[0]!.show_economics_enabled===true,
+    active:0,submitted:0,regularSubmitted:0,cleared:null,certified:null,legacyResolved:0,detailedResolved:0,
+    blockers:[],editorialProgress:rows[0]??{total:0,completed:0}};
+  }
   const rows=await tx.query<{
    active:number;submitted:number;regular_submitted:number;cleared:number|null;
    certified:number|null;legacy_resolved:number;detailed_resolved:number;
@@ -105,6 +114,10 @@ export async function planNextWorldResolutionAction(
  pool:TransactionPool,worldId:string,
 ):Promise<WorldResolutionPlan>{
  const ready=await inspectWorldResolutionReadiness(pool,worldId);
+ if(ready.phase==="UPDATING"){
+  const outgoing=(ready.year-1)*52+ready.week-2;
+  return {year:Math.floor(outgoing/52)+1,week:outgoing%52+1,action:"WAIT_FOR_WORLD_LOCK",blockers:[],ready};
+ }
  let action:WorldResolutionAction;
  const blockers:string[]=[];
  let arbitration:WorldResolutionPlan["arbitration"];
@@ -266,7 +279,7 @@ export async function planNextWorldResolutionAction(
   }
  }else{
   action="WAIT_FOR_WORLD_LOCK";
-  blockers.push("UNKNOWN_WORLD_PHASE");
+  if(ready.phase!=="UPDATING")blockers.push("UNKNOWN_WORLD_PHASE");
  }
  return {year:ready.year,week:ready.week,action,
   blockers,ready,...(arbitration?{arbitration}:{})};
@@ -306,7 +319,7 @@ export async function runWorldShowResolutionPhase(
  */
 export async function publishResolvedWorldWeek(
  pool:TransactionPool,input:{worldId:string;year:number;week:number;
- requestId:string;expectedRevision:number;manualRecovery?:boolean},
+ requestId:string;expectedRevision:number;manualRecovery?:boolean;deferEditorial?:boolean},
 ){
  const ready=await inspectWorldResolutionReadiness(pool,input.worldId);
  if(ready.year!==input.year||ready.week!==input.week)
@@ -319,7 +332,7 @@ export async function publishResolvedWorldWeek(
   throw new Error("World publication blocked: incomplete results or certification");
  return advanceResolvedWorldWeek(pool,{
   worldId:input.worldId,requestId:input.requestId,
-  expectedRevision:input.expectedRevision,manualRecovery:input.manualRecovery===true,
+  expectedRevision:input.expectedRevision,manualRecovery:input.manualRecovery===true,deferEditorial:input.deferEditorial===true,
  });
 }
 
@@ -330,7 +343,7 @@ export async function publishResolvedWorldWeek(
  */
 export async function executeNextWorldResolutionStage(
  pool:TransactionPool,input:{worldId:string;requestId:string;
- expectedRevision:number;resolutionId:string;manualRecovery?:boolean},
+ expectedRevision:number;resolutionId:string;manualRecovery?:boolean;deferEditorial?:boolean},
 ){
  const plan=await planNextWorldResolutionAction(pool,input.worldId);
  const {worldId,requestId,expectedRevision,resolutionId}=input;
@@ -403,7 +416,7 @@ export async function executeNextWorldResolutionStage(
  if(plan.action==="PUBLISH_WEEK"){
   const result=await publishResolvedWorldWeek(pool,{
    worldId,year:plan.year,week:plan.week,requestId,expectedRevision,
-   manualRecovery:input.manualRecovery===true});
+   manualRecovery:input.manualRecovery===true,deferEditorial:input.deferEditorial===true});
   return commandStage(plan.action,result);
  }
  return {action:plan.action,status:"BLOCKED" as const,
@@ -418,7 +431,7 @@ export async function executeNextWorldResolutionStage(
  */
 export async function driveWorldResolution(
  pool:TransactionPool,input:{worldId:string;resolutionId:string;maxStages?:number;
-  manualRecovery?:boolean},
+  manualRecovery?:boolean;deferEditorial?:boolean},
 ){
  const maxStages=input.maxStages??8;
  if(!input.worldId||!input.resolutionId||!Number.isSafeInteger(maxStages)||
@@ -452,7 +465,7 @@ export async function driveWorldResolution(
   const result=await executeNextWorldResolutionStage(pool,{
    worldId:input.worldId,resolutionId:input.resolutionId,
    requestId,expectedRevision:revision,
-   manualRecovery:input.manualRecovery===true,
+   manualRecovery:input.manualRecovery===true,deferEditorial:input.deferEditorial===true,
   });
   steps.push({action:result.action,status:result.status});
   if(result.status==="BLOCKED")

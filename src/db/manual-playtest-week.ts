@@ -8,7 +8,7 @@ import {driveWorldResolution} from "./world-resolution-pipeline.js";
  * ordinary World reads, a timer, a cron, or an unauthenticated client.
  */
 export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
- expectedYear:number,expectedWeek:number){
+ expectedYear:number,expectedWeek:number,deferEditorial=false){
  if(!worldId||!Number.isSafeInteger(expectedYear)||expectedYear<1||
   !Number.isSafeInteger(expectedWeek)||expectedWeek<1||expectedWeek>52)
   throw new Error("Invalid preview week request");
@@ -68,7 +68,7 @@ export async function advancePlaytestWeek(pool:TransactionPool,worldId:string,
    requestId:resolutionId+":lock",expectedRevision:gate.revision,manualPreview:true});
   if(lock.status==="STALE")throw new Error("Another manager changed the World. Refresh and review.");
  }
- const result=await driveWorldResolution(pool,{worldId,resolutionId,maxStages:6,manualRecovery:true});
+ const result=await driveWorldResolution(pool,{worldId,resolutionId,maxStages:6,manualRecovery:true,deferEditorial});
  return {status:result.status,steps:result.steps,blockers:result.blockers,
   year:expectedYear,week:expectedWeek};
 }

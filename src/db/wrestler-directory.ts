@@ -7,6 +7,7 @@ import {currentWrestlerTitlesJoin,normaliseCurrentTitles} from "./current-wrestl
 import type {TransactionPool} from "./transaction.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
+import {purchasedDateLimits,maxExclusiveTermWeeks,unpackSignedCommitments,type CompactSignedCommitment,type Stage} from "../domain/contract-economics.js";
 import {worldTalentManagers} from "../domain/world-staff.js";
 export type DirectoryView="ROSTER"|"MARKET";
 export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"OVERNESS"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"FEE_LOW"|"FEE_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
@@ -40,6 +41,7 @@ type PersonRow={
  pending_offer:boolean;estimated_value:number|null;
  ct?:string[]|null;
  med:number|null;
+ stamina:number|null;fatigue:number|null;weekly_service_capacity:number|null;commitments?:CompactSignedCommitment[]|null;
 };
 export function validateDirectoryFilter(f:DirectoryFilter){
  if(!f||!["ROSTER","MARKET"].includes(f.view)||
@@ -118,7 +120,7 @@ export async function readWrestlerDirectory(
      AND adviser.start_week_index<=(w.year-1)*52+w.week-1
      AND adviser.expires_week_index>=(w.year-1)*52+w.week-1)
      AS has_talent_manager,
-    (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
+    (w.phase IN ('OPEN','UPDATING') AND w.next_lock_at>clock_timestamp()) AS can_edit
    FROM ppw_worlds w JOIN ppw_promotion_controls c
     ON c.world_id=w.world_id AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
    JOIN ppw_memberships m ON m.world_id=w.world_id AND m.player_id=$2
@@ -140,7 +142,7 @@ export async function readWrestlerDirectory(
         *agreement.weekly_guarantee+
       CASE WHEN agreement.remaining_dates IS NULL THEN 0 ELSE
        least(greatest(0,agreement.remaining_dates),
-        greatest(0,agreement.expires_week_index-
+        2*greatest(0,agreement.expires_week_index-
          greatest(agreement.start_week_index,(w.year-1)*52+w.week-1)+1))
         *agreement.appearance_fee END
      ),0)::text AS signed_roster_exposure
@@ -160,6 +162,7 @@ export async function readWrestlerDirectory(
     p.momentum,COALESCE(p.overness,COALESCE(p.popularity,50)*0.55+
      COALESCE(p.momentum,50)*0.45) AS overness,
     p.match_craft,p.presentation,p.morale,p.career_stage,
+    ${f.view==="MARKET"?"p.stamina,p.fatigue,p.weekly_service_capacity,contracts.commitments,":""}
     p.in_ring_quality,p.portable_gimmick_id AS gid,p.default_alignment,
     aligned.alignment AS active_alignment,
     interest.score AS it,
@@ -168,11 +171,11 @@ export async function readWrestlerDirectory(
      "AND a.status='ACTIVE' AND a.injured_week_index<$3 "+
      "AND a.cleared_week_index>$3) AS med,":""}
     ${f.view==="ROSTER"?"current_titles.championship_titles AS ct,":""}
-    mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
+    ${f.view==="ROSTER"?`mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
      ELSE NULL END AS aff,mine.family,mine.role_expectation,
-    mine.remaining_dates,mine.expires_week_index,
-    mine.start_week_index,
-    mine.weekly_guarantee::text,mine.appearance_fee::text,
+     mine.remaining_dates,mine.expires_week_index,mine.start_week_index,
+     mine.weekly_guarantee::text,mine.appearance_fee::text,`:""}
+
     contracts.exclusive_to,contracts.other_contracts,contracts.active_contracts,
     contracts.future_contracts,contracts.next_future_start,contracts.future_exclusive_to,
     ${f.view==="MARKET"?"mv.estimated_value,":""}
@@ -184,8 +187,7 @@ export async function readWrestlerDirectory(
     AND aligned.person_id=p.person_id AND aligned.promotion_id=$2
    JOIN ppw_promotions owner ON owner.world_id=p.world_id AND owner.promotion_id=$2
    ${f.view==="ROSTER"?currentWrestlerTitlesJoin:""}
-   LEFT JOIN ppw_promotions parent ON parent.world_id=owner.world_id
-    AND parent.promotion_id=owner.parent_promotion_id
+   ${f.view==="ROSTER"?"LEFT JOIN ppw_promotions parent ON parent.world_id=owner.world_id AND parent.promotion_id=owner.parent_promotion_id":""}
    LEFT JOIN LATERAL (
     SELECT c.contract_id,c.promotion_id,c.family,c.role_expectation,c.remaining_dates,c.expires_week_index,
      c.start_week_index,
@@ -223,7 +225,8 @@ export async function readWrestlerDirectory(
      (array_agg(c.promotion_id ORDER BY c.start_week_index,c.promotion_id)
       FILTER(WHERE c.family='EXCLUSIVE' AND c.start_week_index>$3))[1]
       AS future_exclusive_to
-    FROM ppw_contracts c WHERE c.world_id=p.world_id
+     ${f.view==="MARKET"?`,jsonb_agg(jsonb_build_array(c.family='EXCLUSIVE',c.remaining_dates,c.start_week_index,c.expires_week_index)) AS commitments`:""}
+    FROM ${f.view==="MARKET"?"ppw_signed_service_windows":"ppw_contracts"} c WHERE c.world_id=p.world_id
      AND c.person_id=p.person_id AND c.status='SIGNED'
      AND c.expires_week_index >= $3
    ) contracts
@@ -287,6 +290,7 @@ export async function readWrestlerDirectory(
    }:null,
    hasMore,people:rows.slice(0,f.limit).map(p=>{
     const fallback=originalPersonaBaseline(p.name,p.gid);
+    const commitments=unpackSignedCommitments(p.commitments);
     return {
     personId:p.person_id,name:p.name,division:p.booking_division,
      medicalWeeksRemaining:p.med==null?null:
@@ -301,20 +305,20 @@ export async function readWrestlerDirectory(
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
     overness:p.overness,
     matchCraft:p.match_craft,presentation:p.presentation,morale:p.morale,
-    careerStage:p.career_stage,contractId:p.contract_id,family:p.family,
+    careerStage:p.career_stage,contractId:p.contract_id??null,family:p.family??null,
     ...(p.aff?{affiliatedViaParent:true,contractOwnerName:p.aff}:{}),
-    roleExpectation:p.role_expectation,
-    interest:p.contract_id===null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
+    roleExpectation:p.role_expectation??null,
+    interest:p.contract_id==null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
      p.it===null?"UNKNOWN":p.it>=78?"KEEN":
      p.it>=63?"INTERESTED":p.it>=40?"OPEN_TO_TALKS":
      p.it>=22?"RELUCTANT":"NOT_INTERESTED",
-    startWeekIndex:p.start_week_index,
-    startsInWeeks:p.start_week_index===null?null:Math.max(0,p.start_week_index-now),
-    remainingDates:p.remaining_dates,expiresWeekIndex:p.expires_week_index,
-    weeksRemaining:p.expires_week_index===null?null:
+    startWeekIndex:p.start_week_index??null,
+    startsInWeeks:p.start_week_index==null?null:Math.max(0,p.start_week_index-now),
+    remainingDates:p.remaining_dates??null,expiresWeekIndex:p.expires_week_index??null,
+    weeksRemaining:p.expires_week_index==null?null:
      Math.max(0,p.expires_week_index-now+1),
-    weeklyGuarantee:p.weekly_guarantee===null?null:Number(p.weekly_guarantee),
-    appearanceFee:p.appearance_fee===null?null:Number(p.appearance_fee),
+    weeklyGuarantee:p.weekly_guarantee==null?null:Number(p.weekly_guarantee),
+    appearanceFee:p.appearance_fee==null?null:Number(p.appearance_fee),
     exclusiveToPromotionId:p.exclusive_to,otherContracts:p.other_contracts,
     activeContracts:p.active_contracts,pendingOffer:p.pending_offer,
     futureContracts:p.future_contracts,nextFutureStart:p.next_future_start,
@@ -324,6 +328,8 @@ export async function readWrestlerDirectory(
     // contract is authoritative. Saves ~500–600 PostgreSQL result bytes for
     // a full 25-person iPhone roster without weakening any Neon limits.
     estimatedWeeklyValue:f.view==="MARKET"?p.estimated_value:null,
+    ...(f.view==="MARKET"?{exclusiveTermLimit:maxExclusiveTermWeeks(now+1,commitments),offerDateLimits:p.stamina!=null&&p.fatigue!=null&&p.career_stage?
+     purchasedDateLimits({careerStage:p.career_stage as Stage,stamina:p.stamina,fatigue:p.fatigue,weeklyServiceCapacity:p.weekly_service_capacity},now+1,commitments,now):null}:{}),
     // Availability only describes contract eligibility. It is NOT a promise
     // that a particular wrestler will accept terms at World resolution.
     availability:p.contract_id?

@@ -15,6 +15,15 @@ export type CommandResult<T> =
   | { status: "REPLAYED"; revision: number; result: T }
   | { status: "STALE"; revision: number };
 
+// Only upcoming-draft and pending-negotiation commands can write after
+// certified settlement while the outgoing week's articles are being prepared.
+// Each command still verifies controller, current/future scope and revision.
+const updatingDraftCommands=new Set([
+ "PLAN_SHOW_WEEK","SAVE_CREATIVE_OUTLINE","SAVE_SHOW_CARD_MATCHES",
+ "MARK_PREPARED_SHOW_READY","CHOOSE_SHOW_MARKET_AND_TICKETS",
+ "SUBMIT_CONTRACT_OFFER","WITHDRAW_CONTRACT_OFFER","REQUEST_ADDITIONAL_DATES",
+ "CANCEL_DATE_REQUEST","PROPOSE_RENEWAL","WITHDRAW_RENEWAL"
+]);
 function assertCommand<T>(command: WorldCommand<T>): void {
   if (![command.worldId, command.playerId, command.requestId, command.commandType].every(s => s && s.length <= 200)) {
     throw new Error("Invalid command identity");
@@ -43,7 +52,7 @@ export async function applyWorldCommand<T>(pool: TransactionPool, command: World
       booking_open:boolean; player_id:string|null; command_type:string|null;
       committed_revision:string|number|null; result:T|null;
     }>(
-      `SELECT (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
+      `SELECT (w.phase${updatingDraftCommands.has(command.commandType)?" IN ('OPEN','UPDATING')":"='OPEN'"} AND w.next_lock_at>clock_timestamp()) AS booking_open,
               r.player_id,r.command_type,r.committed_revision,r.result
          FROM ppw_worlds w LEFT JOIN ppw_command_receipts r
            ON r.world_id=w.world_id AND r.request_id=$2
