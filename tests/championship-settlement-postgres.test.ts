@@ -30,7 +30,7 @@ test("Canonical singles titles defend, transfer once on clean results and remain
        AND r.championship_id=c.championship_id AND r.reign_id=c.current_reign_id
     WHERE c.world_id=$1`,[world]));
  const setupBout=async(show:string,winner:"A"|"B",finish:string,participants:[string,string])=>{
-  const eventWeek=show==="defense"?1:show==="change"?2:3;
+  const eventWeek=show==="defense"?1:show==="change"?2:show==="cheat"?4:show==="dq"?5:3;
   await withWorldTransaction(pool.pool,async tx=>{
    await tx.query(`INSERT INTO ppw_booking_drafts
     (world_id,draft_id,promotion_id,year,week,status)
@@ -142,6 +142,16 @@ test("Canonical singles titles defend, transfer once on clean results and remain
   }),{dismissed:true,firstDismissal:false});
   assert.deepEqual((await readPlayerWorldOverview(pool.pool,world,actor))
    ?.promotion?.attention.titleNews,[]);
+  // A successful concealed foreign-object win transfers the belt;
+  // an actual DQ does not transfer it.
+  const cheat=await setupBout("cheat","B","FOREIGN_OBJECT",["challenger","champ"]);
+  assert.deepEqual(await withWorldTransaction(pool.pool,tx=>
+   settleCanonicalSinglesTitleContests(tx,cheat.receipt,cheat.booking)),{contests:1,transfers:1});
+  assert.equal((await details())[0]!.person_id,"champ");
+  const dq=await setupBout("dq","B","DISQUALIFICATION",["champ","challenger"]);
+  assert.deepEqual(await withWorldTransaction(pool.pool,tx=>
+   settleCanonicalSinglesTitleContests(tx,dq.receipt,dq.booking)),{contests:1,transfers:0});
+  assert.equal((await details())[0]!.person_id,"champ");
   await withWorldTransaction(pool.pool,async tx=>{
    await tx.query("DELETE FROM ppw_player_attention_dismissals WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[world]);

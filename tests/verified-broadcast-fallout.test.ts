@@ -95,7 +95,7 @@ test("identity, not duplicate display names, establishes the actual offender",()
  assert.throws(()=>projectVerifiedBroadcastFallout(row,show,show.matches[0]!,
   impostor,sides,null,["a","b"]),/not in the completed match/);
 });
-test("only an eligible clean match result can be called a title change",()=>{
+test("only a decisive certified match result can be called a title change",()=>{
  const show=receipt("CLEAN_PIN","A"),m=show.matches[0]!;
  const title:RecordedMatchFalloutRow={...bare(),championship_name:"World Title",
   title_changed:true,title_winner_name:"Alice",title_prior_holder_name:"Bob",
@@ -124,4 +124,14 @@ test("match programme facts are validated and never assumed from the booking",()
  assert.throws(()=>projectVerifiedBroadcastFallout({...row,
   report_programme_signal:"MADE_UP_PLOT"},show,m,name,sides,null,["a","b"]),
   /Invalid certified programme signal/);
+});
+
+test("uncaught foreign-object victories can crown a champion, unlike disqualification",()=>{
+ const show=receipt("FOREIGN_OBJECT","A");
+ const row:RecordedMatchFalloutRow={...bare(),championship_name:"Women's Championship",title_changed:true,title_winner_name:"Alice",title_prior_holder_name:null,report_finish_cheater_person_id:"a"};
+ const fact=projectVerifiedBroadcastFallout(row,show,show.matches[0]!,name,sides,null,["a","b"]);
+ assert.equal(fact.title?.changed,true);
+ assert.equal(fact.finishCheaterName,"Alice");
+ const dq=receipt("DISQUALIFICATION","B");
+ assert.throws(()=>projectVerifiedBroadcastFallout(row,dq,dq.matches[0]!,name,sides,null,["a","b"]),/Title change contradicts/);
 });

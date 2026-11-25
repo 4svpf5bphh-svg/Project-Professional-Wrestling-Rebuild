@@ -869,6 +869,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     section.append(el("p","ppw-industry-empty",official?
      "No major certified headlines yet. The next completed World week will publish its highlights.":
      "No new rumours from the locker room this week. The next World Lock may give the wrestling press something to argue about."));
+   const usedFanText=new Set<string>();
    for(const [index,story] of published.entries()){
     const item=el("article","ppw-news-story");
     item.dataset.newsYear=String(story.year);
@@ -884,15 +885,18 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     }
     item.append(el("span","ppw-news-desk",official?"CONFIRMED / OFFICIAL":
      wild?"UNVERIFIED / DISPUTED REPORT 👀":"RUMOUR / NOT CONFIRMED"),
-     el("strong","ppw-news-story-title",story.title),
-     el("p","",story.summary),
+     el("strong","ppw-news-story-title",story.editorial?.headline??story.title),
+     el("p","",story.editorial?.commentary??story.summary),
      el("small","ppw-industry-muted",story.promotionName+
       " · Year "+story.year+" · Week "+story.week));
     if(story.editorial?.headline&&story.editorial.commentary){
-     const analysis=el("aside","ppw-news-editorial");
-     analysis.append(el("small","ppw-industry-muted",official?"EDITORIAL OPINION":"RUMOUR DISCUSSION / UNVERIFIED"),
-      el("strong","ppw-news-story-title",story.editorial.headline),el("p","",story.editorial.commentary));
-     item.append(analysis);
+     // Groq writes the reader-facing lead. Keep the actual public record
+     // readily accessible and separate from opinion, not a duplicated article.
+     const facts=document.createElement("details");
+     facts.className="ppw-news-editorial";
+     facts.append(el("summary","ppw-industry-muted",official?"Editorial opinion · View confirmed facts":"Rumour discussion · View source report"),
+      el("strong","ppw-news-story-title",story.title),el("p","",story.summary));
+     item.append(facts);
     }
     // The same HOT TAG identities used for show-result reactions now have
     // persistent-looking, locally projected threads under published stories.
@@ -908,8 +912,14 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const verified=wrestler&&story.editorial?.wrestler?.personId===wrestler.personId?
      {...wrestler,text:story.editorial.wrestler.text}:wrestler;
     const broadcaster=projectHotTagBroadcasterPost(story);
+    const shown=new Set<string>();
+    const fans=weeklyHotTagThread(story,story.editorial).filter(p=>{
+     const key=p.text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
+     if(usedFanText.has(key)||(p.replyTo&&!shown.has(p.replyTo)))return false;
+     usedFanText.add(key);shown.add(p.handle);return true;
+    });
     const posts=[...(broadcaster?[broadcaster]:[]),
-     ...(verified?[verified]:[]),...weeklyHotTagThread(story,story.editorial)];
+     ...(verified?[verified]:[]),...fans];
     for(const post of posts){
      const personId="personId" in post && typeof post.personId==="string"?post.personId:null;
      const wrestler=personId!==null;

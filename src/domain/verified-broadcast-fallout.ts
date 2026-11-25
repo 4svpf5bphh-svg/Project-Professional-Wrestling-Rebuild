@@ -2,6 +2,7 @@
  * Never infer a title transfer, injury, run-in or elimination from crowd score.
  * This projector is pure: the World resolver already verified each evidence row.
  */
+import {isDecisiveChampionshipFinish} from "./championship-finish.js";
 import type {CompletedMatchEvidence} from "./completed-match-evidence.js";
 import type {CompletedMatchReceipt,CompletedShowReceipt}
  from "./completed-show-receipt.js";
@@ -108,7 +109,7 @@ export function projectVerifiedBroadcastFallout(
   if(typeof row.title_changed!=="boolean"||!row.title_winner_name)
    throw new Error("Invalid historic championship contest");
   if(row.title_changed&&
-   !["CLEAN_PIN","SUBMISSION","FLASH_PIN"].includes(match.actualFinish))
+   !isDecisiveChampionshipFinish(match.actualFinish))
    throw new Error("Title change contradicts verified match finish");
   result.title={name:row.championship_name,changed:row.title_changed,
    winnerName:row.title_winner_name,priorHolderName:row.title_prior_holder_name};

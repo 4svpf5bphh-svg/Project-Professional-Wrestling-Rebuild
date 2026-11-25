@@ -2,6 +2,7 @@
  * Smark tone, no fabricated title change, match quality or secret promises.
  * Player chooses one of three authored statements; there is no AI expense.
  */
+import {finishPropLabel} from "./bookable-match.js";
 import type {CompletedShowView} from "../db/show-results-view.js";
 export type ScrumQuestionId="MAIN_EVENT"|"BIG_PICTURE"|"NEXT_CHAPTER";
 export interface ScrumQuestion{
@@ -13,6 +14,10 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
  const matches=show.entries.filter(e=>e.type==="MATCH");
  const main=matches.at(-1);
  const opener=matches[0];
+ const mainWinner=main?.matchContext?.winnerNames.join(" and ");
+ const mainOpponents=main?.matchContext?.sides.filter(side=>!side.some(n=>main.matchContext!.winnerNames.includes(n))).flat().join(" and ");
+ const mainContest=mainWinner&&mainOpponents?
+  `${mainWinner} defeated ${mainOpponents}`:main?.headline;
  const titleChange=main?.fallout?.title?.changed?main.fallout.title:null;
  const other=matches.find(m=>m!==main&&m.fallout?.title&&!m.fallout.title.changed&&!m.fallout.title.priorHolderName)
   ??matches.find(m=>m!==main&&m.fallout?.title?.changed);
@@ -21,9 +26,9 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
  return [{
   id:"MAIN_EVENT",journalist:"Mara Finch · The Final Bell",
   question:titleChange?
-   `At ${event}, ${titleChange.winnerName} became ${titleChange.name} champion. What does that change mean for the promotion?`:
+   `At ${event}, ${titleChange.winnerName} ${titleChange.priorHolderName?"took the "+titleChange.name+" from "+titleChange.priorHolderName:"claimed the "+titleChange.name}. What does that result mean for the promotion?`:
    main?
-   `The cameras are still rolling after ${event}. Your main event was "${main.headline}". ${main.fallout?.title?.changed?
+   `The cameras are still rolling after ${event}. ${mainContest??"The main event has concluded"}. ${main.fallout?.title?.changed?
     "A championship changed hands — what's your reaction?":
     main.outcome==="FOREIGN_OBJECT"||main.outcome==="DISQUALIFICATION"?
      "That finish will divide opinion. Do you stand behind it?":
@@ -38,10 +43,14 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
   id:"BIG_PICTURE",journalist:"Lewis Reed · Crowd Control",
   question:other?.fallout?.title?
    other.fallout.title.changed?
-    `${other.fallout.title.winnerName} captured the ${other.fallout.title.name} at ${event}. How important was that moment?`:
+    other.outcome==="FOREIGN_OBJECT"?
+     `${other.fallout.title.winnerName} captured the ${other.fallout.title.name} at ${event} after ${other.matchContext?.finishProp?"using the "+finishPropLabel(other.matchContext.finishProp).toLowerCase():"a controversial finish"}. How do you respond to fans who question the way that match ended?`:
+     `${other.fallout.title.winnerName} captured the ${other.fallout.title.name} at ${event}. How important was that moment?`:
     `The ${other.fallout.title.name} remains vacant after ${other.fallout.title.winnerName}'s match at ${event}. What do you say to fans about that outcome?`:
    opener?
-   `From "${opener.headline}" onwards, ${event} gave fans plenty to discuss. What do you want people to remember?`:
+   opener.matchContext?.sides.length?
+    `${event} opened with ${opener.matchContext.sides.map(side=>side.join(" and ")).join(" against ")}. What do you want people to remember about the night?`:
+    `From "${opener.headline}" onwards, ${event} gave fans plenty to discuss. What do you want people to remember?`:
    `What do you want wrestling fans to remember about ${event}?`,
   answers:[
    "The wrestlers did the talking. I couldn't be prouder of the team.",

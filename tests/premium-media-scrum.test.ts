@@ -105,3 +105,14 @@ test("PPV questions distinguish a new champion, a vacant title and a successful 
  assert.match(q[2]!.question,/Mr. Perfect retained.*Extreme Warfare/);
  assert.deepEqual(q.map(x=>x.answers),premiumScrumQuestions(premium).map(x=>x.answers));
 });
+
+test("an officially won championship after concealed cheating prompts a real question, not a headline fragment",()=>{
+ const entries:CompletedShowView["entries"]=[
+ {...premium.entries[0]!,slotId:"women",headline:"Maki Itoh victorious",outcome:"FOREIGN_OBJECT",fallout:{title:{name:"Women's Championship",winnerName:"Maki Itoh",priorHolderName:null,changed:true},injuries:[],eliminations:[]}},
+ {...premium.entries[1]!,slotId:"main",headline:"The Undertaker victorious",outcome:"CLEAN_PIN",fallout:{title:{name:"World Championship",winnerName:"The Undertaker",priorHolderName:"Místico",changed:true},injuries:[],eliminations:[]}}
+ ];
+ const qs=premiumScrumQuestions({...premium,showName:"Extreme Warfare",entries});
+ assert.match(qs[0]!.question,/The Undertaker took the World Championship from Místico/);
+ assert.match(qs[1]!.question,/Maki Itoh captured.*after a controversial finish/);
+ assert.doesNotMatch(qs.map(q=>q.question).join(" "),/victorious|championship champion/i);
+});

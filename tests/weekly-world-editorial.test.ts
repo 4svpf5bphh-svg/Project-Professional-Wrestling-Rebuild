@@ -123,3 +123,17 @@ test("persona labels and false TV rivalry framing do not leak into the weekly ed
  assert.equal(result.copy[story.id]?.fans?.[0],"CWA deserves more viewers.");
  assert.equal(result.issues.UNVERIFIED_RATINGS_TREND,1);
 });
+
+test("weekly coverage expands to a bounded twelve stories and prioritises both human promotions",()=>{
+ const stories=Array.from({length:18},(_,i)=>({...official,id:"signing:"+i,title:"Talent "+i+" signs with Crown Wrestling",humanManaged:i>=14}));
+ const anchors=weeklyEditorialAnchors(stories);
+ assert.equal(anchors.length,12);
+ assert.ok(stories.slice(14).every(s=>anchors.some(a=>a.story.id===s.id)));
+});
+test("accepted Groq comments do not get padded with unrelated template replies",()=>{
+ const s={...official,id:"match:show:slot"};
+ const posts=weeklyHotTagThread(s,{fans:[null,"Crown Wrestling needs better stories.",null]});
+ assert.equal(posts.length,2);
+ assert.equal(posts[0]?.text,"Crown Wrestling needs better stories.");
+ assert.equal(posts[1]?.replyTo,undefined);
+});

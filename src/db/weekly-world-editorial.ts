@@ -57,17 +57,23 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
   const publicAwards:VerifiedHotTagAward[]=awards.map(a=>({year,week,kind:a.kind,promotionId:a.promotion_id,
    showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names}));
   ratingStory=weeklyRatingsStory(year,week,ratings.map(r=>({promotionId:r.promotion_id,promotionName:r.promotion_name,rating:r.rating,humanManaged:r.human_managed})));
-  const anchors=weeklyEditorialAnchors(ratingStory?[ratingStory,...stories]:stories,publicAwards,
+  let anchors=weeklyEditorialAnchors(ratingStory?[ratingStory,...stories]:stories,publicAwards,
    history.map(h=>({year:previous.year,week:previous.week,promotionId:h.promotion_id,title:h.title})));
   if(!anchors.length){state="EMPTY";diagnostic="NO_PUBLIC_STORIES";}
   else{
-   const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",
-    max_completion_tokens:2400,response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
-   // Hard request envelope below the observed 8k TPM, including reasoning/completion reserve.
+   const build=()=>({model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",
+    max_completion_tokens:Math.max(2400,anchors.length*260),
+    response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)});
+   let body=build();
    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
-   // Never silently drop public stories. The shared dispatcher has a 7600-token ceiling.
+   // Pack the largest safe edition into ONE free call. Never split into a
+   // second immediately rate-limited request or extend the World lock.
+   while(anchors.length>1&&estimate>7000){
+    anchors=anchors.slice(0,-1);body=build();
+    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
+   }
    if(estimate>7000){diagnostic="TOKEN_ENVELOPE";throw Error("Weekly editorial envelope too large");}
-   const response=await requestGroqEditorial({task:"SHORT_NEWS",key,pool,body,signal:AbortSignal.timeout(16000),
+   const response=await requestGroqEditorial({task:"SHORT_NEWS",key,pool,body,signal:AbortSignal.timeout(25000),
     pace:true,transport:async(url,init)=>{calls++;return transport(url,init);}});
    diagnostic=response.headers.get("x-ppw-paced")==="true"?"PACING":
     response.headers.get("x-ppw-budget-exhausted")==="true"?"BUDGET":
@@ -75,13 +81,13 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
    if(response.ok){
     let rejectionSummary="";
     const raw=await response.text();
-    if(raw.length<=16000){
+    if(raw.length<=32000){
      const envelope=JSON.parse(raw);
      const usage=groqResponseUsage(envelope);
      inputTokens=usage?.inputTokens??0;outputTokens=usage?.outputTokens??0;
      const reply=envelope?.choices?.[0];
      if(reply?.finish_reason==="length")diagnostic="TRUNCATED";
-     else if(typeof reply?.message?.content==="string"&&reply.message.content.length<=6500){
+     else if(typeof reply?.message?.content==="string"&&reply.message.content.length<=16000){
       try{
        const decoded=JSON.parse(reply.message.content.trim().replace(/^\s*```(?:json)?\s*|\s*```\s*$/gi,""));
        const validated=validateWeeklyEditorialDetailed(anchors,decoded);
