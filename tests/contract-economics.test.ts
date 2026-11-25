@@ -77,3 +77,11 @@ test("explicit wrestler weekly ceiling still prevents two bookings in one week",
  assert.equal(maxPurchasedDates({...person,weeklyServiceCapacity:1},33,1,[],32),1);
  assert.equal(maxPurchasedDates({...person,weeklyServiceCapacity:1},33,13,[],32),13);
 });
+
+test("exclusive availability stops at the next signed agreement, not any contract in the next year",async()=>{
+ const {maxExclusiveTermWeeks}=await import("../src/domain/contract-economics.js");
+ const other={contractId:"future",status:"SIGNED",family:"LIMITED_NON_EXCLUSIVE" as const,startWeekIndex:40,expiresWeekIndex:51,remainingDates:5};
+ assert.equal(maxExclusiveTermWeeks(33,[other]),7);
+ assert.equal(maxExclusiveTermWeeks(40,[other]),0);
+ assert.equal(maxExclusiveTermWeeks(52,[other]),52);
+});

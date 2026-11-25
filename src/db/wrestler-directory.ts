@@ -7,7 +7,7 @@ import {currentWrestlerTitlesJoin,normaliseCurrentTitles} from "./current-wrestl
 import type {TransactionPool} from "./transaction.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
-import {purchasedDateLimits,type ExistingCommitment,type Stage} from "../domain/contract-economics.js";
+import {purchasedDateLimits,maxExclusiveTermWeeks,type ExistingCommitment,type Stage} from "../domain/contract-economics.js";
 import {worldTalentManagers} from "../domain/world-staff.js";
 export type DirectoryView="ROSTER"|"MARKET";
 export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"OVERNESS"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"FEE_LOW"|"FEE_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
@@ -142,7 +142,7 @@ export async function readWrestlerDirectory(
         *agreement.weekly_guarantee+
       CASE WHEN agreement.remaining_dates IS NULL THEN 0 ELSE
        least(greatest(0,agreement.remaining_dates),
-        greatest(0,agreement.expires_week_index-
+        2*greatest(0,agreement.expires_week_index-
          greatest(agreement.start_week_index,(w.year-1)*52+w.week-1)+1))
         *agreement.appearance_fee END
      ),0)::text AS signed_roster_exposure
@@ -328,7 +328,7 @@ export async function readWrestlerDirectory(
     // contract is authoritative. Saves ~500–600 PostgreSQL result bytes for
     // a full 25-person iPhone roster without weakening any Neon limits.
     estimatedWeeklyValue:f.view==="MARKET"?p.estimated_value:null,
-    ...(f.view==="MARKET"?{offerDateLimits:p.stamina!=null&&p.fatigue!=null&&p.career_stage?
+    ...(f.view==="MARKET"?{exclusiveTermLimit:maxExclusiveTermWeeks(now+1,p.commitments??[]),offerDateLimits:p.stamina!=null&&p.fatigue!=null&&p.career_stage?
      purchasedDateLimits({careerStage:p.career_stage as Stage,stamina:p.stamina,fatigue:p.fatigue,weeklyServiceCapacity:p.weekly_service_capacity},now+1,p.commitments??[],now):null}:{}),
     // Availability only describes contract eligibility. It is NOT a promise
     // that a particular wrestler will accept terms at World resolution.

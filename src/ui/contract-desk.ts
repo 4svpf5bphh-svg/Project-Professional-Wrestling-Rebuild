@@ -523,9 +523,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       capacityNotice.replaceChildren();
       const fit=c.renewalDateLimits?.[draft.termWeeks-1]??(c.nextTermServiceDensity==null?null:Math.max(0,
        Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks)));
-      if(family==="EXCLUSIVE"&&c.nextTermHasOverlap){
+      if(family==="EXCLUSIVE"&&(c.renewalExclusiveTermLimit!=null?draft.termWeeks>c.renewalExclusiveTermLimit:c.nextTermHasOverlap)){
        capacityNotice.append(el("strong","","Exclusive terms blocked"),
-        el("p","","This wrestler has another signed agreement that overlaps the next term. You cannot offer exclusivity until those commitments have ended."));
+        el("p","","This proposed term overlaps another signed agreement. Shorten the term if possible or consider a non-exclusive renewal."));
       }
       if(family!=="EXCLUSIVE"&&fit!==null&&fit<draft.dateEntitlement){
        capacityNotice.append(el("strong","","Not enough available dates"),
@@ -706,7 +706,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        error="Review the proposed duration, dates and payment values.";
        render();return;
       }
-      if(family==="EXCLUSIVE"&&c.nextTermHasOverlap){
+      if(family==="EXCLUSIVE"&&(c.renewalExclusiveTermLimit!=null?draft.termWeeks>c.renewalExclusiveTermLimit:c.nextTermHasOverlap)){
        error=c.name+" has another signed agreement covering the proposed term. Wait for that commitment to finish before offering exclusivity.";
        render();return;
       }

@@ -1,7 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
-import {serviceCapacityDatesPerWeek,purchasedDateLimits,maxPurchasedDates,type ExistingCommitment,type Stage} from "../domain/contract-economics.js";
+import {serviceCapacityDatesPerWeek,purchasedDateLimits,maxPurchasedDates,maxExclusiveTermWeeks,type ExistingCommitment,type Stage} from "../domain/contract-economics.js";
 import {forecastTalentBudget} from "../domain/talent-budget.js";
 import {worldTalentManagers} from "../domain/world-staff.js";
 import type {ContractAvailabilityInput} from "../domain/contract-availability.js";
@@ -237,6 +237,7 @@ export async function readContractDesk(
      purchasedDateLimits({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},cost.expires_week_index+1,cost.other_commitments??[],currentWeekIndex):null,
     maxAdditionalDates:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
      Math.max(0,maxPurchasedDates({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},currentWeekIndex,c.weeksRemaining,cost.other_commitments??[],currentWeekIndex)-(c.remainingDates??0)):null,
+    renewalExclusiveTermLimit:maxExclusiveTermWeeks(cost.expires_week_index+1,cost.other_commitments??[]),
     nextTermHasOverlap:cost.other_term_overlap,
     pendingNegotiation:pendingIds.has(c.contractId),
     pendingRenewal:renewalIds.has(c.contractId),

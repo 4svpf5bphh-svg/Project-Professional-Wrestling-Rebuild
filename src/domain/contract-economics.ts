@@ -98,6 +98,12 @@ export function maxPurchasedDates(p:ServiceProfile,start:number,weeks:number,
  }
  return Math.max(0,maximum);
 }
+/** Exclusive rights can only extend up to the first competing signed term. */
+export function maxExclusiveTermWeeks(start:number,contracts:readonly ExistingCommitment[]):number{
+ if(!Number.isSafeInteger(start)||start<0)return 0;
+ return Math.max(0,Math.min(52,...contracts.filter(c=>c.status==="SIGNED"&&c.expiresWeekIndex>=start)
+  .map(c=>c.startWeekIndex-start)));
+}
 export function purchasedDateLimits(p:ServiceProfile,start:number,contracts:readonly ExistingCommitment[],currentWeek:number,ignoreContractId:string|null=null){
  return Array.from({length:52},(_,i)=>maxPurchasedDates(p,start,i+1,contracts,currentWeek,ignoreContractId));
 }

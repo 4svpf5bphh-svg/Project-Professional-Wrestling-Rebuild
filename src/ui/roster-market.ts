@@ -137,7 +137,9 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    terms.weeklyGuarantee>1e9||terms.appearanceFee>1e9||terms.signingBonus>1e9){
    error="Review the term length, dates and non-negative payment amounts.";render();return;
   }
-  const fit=view.people.find(p=>p.personId===personId)?.offerDateLimits?.[terms.termWeeks-1];
+  const prospect=view.people.find(p=>p.personId===personId);
+  const fit=prospect?.offerDateLimits?.[terms.termWeeks-1];
+  if(terms.family==="EXCLUSIVE"&&prospect?.exclusiveTermLimit!=null&&terms.termWeeks>prospect.exclusiveTermLimit){error=prospect.exclusiveTermLimit===0?"Another signed agreement prevents an exclusive offer. Try available non-exclusive terms.":"Exclusive terms can last up to "+prospect.exclusiveTermLimit+" weeks before another signed agreement starts.";render();return;}
   if(terms.family!=="EXCLUSIVE"&&fit!=null&&terms.dateEntitlement>fit){error="Available dates for this term: "+fit+". Reduce the dates or choose another duration.";render();return;}
   if(pendingPersonId!==personId){pendingKey="";pendingPersonId=personId;}
   const requestId=pendingKey||crypto.randomUUID();pendingKey=requestId;
@@ -206,7 +208,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const signingWindowNote=el("p","ppw-directory-offer-timing");
   const capacityNote=el("p","ppw-directory-offer-timing");
   const updateCapacity=()=>{const fit=prospect?.offerDateLimits?.[(draft.family==="ONE_OFF"?1:draft.weeks)-1];
-   capacityNote.textContent=draft.family==="EXCLUSIVE"||fit==null?"":"Available purchased dates for this term: "+fit+"."+(draft.dates>fit?" Reduce the dates or choose another term.":"");};
+   capacityNote.textContent=draft.family==="EXCLUSIVE"?(prospect?.exclusiveTermLimit==null?"":prospect.exclusiveTermLimit===0?"Exclusive terms unavailable while another agreement is signed.":"Available exclusive term: up to "+prospect.exclusiveTermLimit+" weeks."):(fit==null?"":"Available purchased dates for this term: "+fit+"."+(draft.dates>fit?" Reduce the dates or choose another term.":""));};
   const updateTiming=()=>{signingWindowNote.textContent=draft.family==="ONE_OFF"?
    "One-night booking available in "+eligibleWeek+" if accepted.":
    "Starts "+eligibleWeek+" if accepted.";};
