@@ -1,7 +1,7 @@
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
-import {serviceCapacityDatesPerWeek,type Stage} from "../domain/contract-economics.js";
+import {serviceCapacityDatesPerWeek,purchasedDateLimits,maxPurchasedDates,type ExistingCommitment,type Stage} from "../domain/contract-economics.js";
 import {forecastTalentBudget} from "../domain/talent-budget.js";
 import {worldTalentManagers} from "../domain/world-staff.js";
 import type {ContractAvailabilityInput} from "../domain/contract-availability.js";
@@ -68,7 +68,7 @@ export async function readContractDesk(
    popularity:number|null;recognition:number|null;morale:number|null;
    career_stage:string|null;in_ring_quality:number|null;match_craft:number|null;
    presentation:number|null;stamina:number|null;fatigue:number|null;
-   other_density:number;other_term_overlap:boolean;
+   other_density:number;other_term_overlap:boolean;other_commitments:ExistingCommitment[]|null;
    backstage_contract_request_id:string|null;renewal_secured:boolean;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
@@ -84,6 +84,8 @@ export async function readContractDesk(
        AND other.contract_id<>c.contract_id AND other.status='SIGNED'
        AND other.start_week_index<=c.expires_week_index+52
        AND other.expires_week_index>=c.expires_week_index+1),0)::double precision AS other_density,
+     (SELECT jsonb_agg(jsonb_build_object('contractId',other.contract_id,'family',other.family,'status',other.status,'remainingDates',other.remaining_dates,'startWeekIndex',other.start_week_index,'expiresWeekIndex',other.expires_week_index))
+      FROM ppw_contracts other WHERE other.world_id=c.world_id AND other.person_id=c.person_id AND other.contract_id<>c.contract_id AND other.status='SIGNED' AND other.expires_week_index>=$3) AS other_commitments,
      EXISTS(SELECT 1 FROM ppw_contracts other
       WHERE other.world_id=c.world_id AND other.person_id=c.person_id
        AND other.contract_id<>c.contract_id AND other.status='SIGNED'
@@ -231,6 +233,10 @@ export async function readContractDesk(
      ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(cost.career_stage??"")?
       Math.max(0,serviceCapacityDatesPerWeek({careerStage:cost.career_stage as Stage,
        stamina:cost.stamina,fatigue:cost.fatigue})-cost.other_density):null,
+    renewalDateLimits:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
+     purchasedDateLimits({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue},cost.expires_week_index+1,cost.other_commitments??[],currentWeekIndex):null,
+    maxAdditionalDates:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
+     Math.max(0,maxPurchasedDates({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue},currentWeekIndex,c.weeksRemaining,cost.other_commitments??[],currentWeekIndex)-(c.remainingDates??0)):null,
     nextTermHasOverlap:cost.other_term_overlap,
     pendingNegotiation:pendingIds.has(c.contractId),
     pendingRenewal:renewalIds.has(c.contractId),

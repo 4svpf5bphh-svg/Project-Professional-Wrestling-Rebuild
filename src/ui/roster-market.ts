@@ -133,10 +133,12 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   if(![terms.termWeeks,terms.dateEntitlement,terms.weeklyGuarantee,
    terms.appearanceFee,terms.signingBonus].every(n=>Number.isSafeInteger(n)&&n>=0)||
    terms.termWeeks<1||terms.termWeeks>52||terms.dateEntitlement<1||
-   terms.dateEntitlement>104||terms.dateEntitlement>terms.termWeeks||
+   terms.dateEntitlement>104||terms.dateEntitlement>2*terms.termWeeks||
    terms.weeklyGuarantee>1e9||terms.appearanceFee>1e9||terms.signingBonus>1e9){
    error="Review the term length, dates and non-negative payment amounts.";render();return;
   }
+  const fit=view.people.find(p=>p.personId===personId)?.offerDateLimits?.[terms.termWeeks-1];
+  if(terms.family!=="EXCLUSIVE"&&fit!=null&&terms.dateEntitlement>fit){error="Available dates for this term: "+fit+". Reduce the dates or choose another duration.";render();return;}
   if(pendingPersonId!==personId){pendingKey="";pendingPersonId=personId;}
   const requestId=pendingKey||crypto.randomUUID();pendingKey=requestId;
   if(terms.family==="EXCLUSIVE"&&floor!==null&&terms.weeklyGuarantee<floor){
@@ -168,7 +170,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    marketWeeklyValue:prospect.estimatedWeeklyValue??9000,
    popularity:prospect.popularity,recognition:prospect.recognition,
    morale:prospect.morale,careerStage:prospect.careerStage,
-   interest:prospect.interest as TalentOfferProfile["interest"]
+   interest:prospect.interest as TalentOfferProfile["interest"],purchasedDateLimits:prospect.offerDateLimits
   },manager):null;
   const fromProposal=proposed?{
    family:proposed.terms.family,role:proposed.terms.roleExpectation,
@@ -194,7 +196,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    const apply=btn("Use my recommendation",()=>{
     Object.assign(draft,fromProposal);
     pendingKey="";render();
-   });
+   },!proposed.feasible);
    apply.className+=" ppw-directory-manager-apply";
    pitch.append(apply);editor.append(pitch);
   }
@@ -202,10 +204,13 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const eligibleWeek="Year "+(Math.floor(signableWeek/52)+1)+
    " Week "+(signableWeek%52+1);
   const signingWindowNote=el("p","ppw-directory-offer-timing");
+  const capacityNote=el("p","ppw-directory-offer-timing");
+  const updateCapacity=()=>{const fit=prospect?.offerDateLimits?.[(draft.family==="ONE_OFF"?1:draft.weeks)-1];
+   capacityNote.textContent=draft.family==="EXCLUSIVE"||fit==null?"":"Available purchased dates for this term: "+fit+"."+(draft.dates>fit?" Reduce the dates or choose another term.":"");};
   const updateTiming=()=>{signingWindowNote.textContent=draft.family==="ONE_OFF"?
    "One-night booking available in "+eligibleWeek+" if accepted.":
    "Starts "+eligibleWeek+" if accepted.";};
-  updateTiming();editor.append(signingWindowNote);
+  updateTiming();updateCapacity();editor.append(signingWindowNote,capacityNote);
   const termsMenu=el("section","ppw-directory-term-menu");
   termsMenu.append(el("strong","","Choose a deal length"));
   const presetChoices=el("div","ppw-directory-presets");
@@ -251,7 +256,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
     const plan=applyContractTermPreset(next,"SHORT");
     draft.weeks=plan.weeks;draft.dates=plan.dates;
    }else if(next==="EXCLUSIVE")draft.dates=draft.weeks;
-   else draft.dates=Math.min(draft.dates,draft.weeks);
+   else draft.dates=Math.min(draft.dates,2*draft.weeks);
    pendingKey="";openAdvancedTerms.add(personId);render();
   }));
   advanced.append(selection("Card role",[
@@ -293,7 +298,7 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    const adviserContents=el("div","ppw-directory-adviser-content");
    adviser.append(adviserContents);
    const updateQuote=()=>{
-    updateTiming();
+    updateTiming();updateCapacity();
     const weeks=draft.family==="ONE_OFF"?1:draft.weeks;
     const guarantee=draft.family==="ONE_OFF"?0:draft.weekly;
     const appearance=draft.family==="EXCLUSIVE"?0:draft.appearance;
@@ -408,14 +413,14 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   const timing=el("div","ppw-directory-advanced-fields");
   if(draft.family!=="ONE_OFF")numbers(timing,"Weeks (1–52)",
    draft.weeks,1,52,n=>{
-    draft.weeks=n;draft.dates=Math.min(draft.dates,n);
+    draft.weeks=n;draft.dates=Math.min(draft.dates,2*n);
     const dates=timing.querySelector<HTMLInputElement>('[aria-label="Purchased dates"]');
     if(dates)dates.value=String(draft.dates);
     pendingKey="";updateQuote();
    });
   if(draft.family==="LIMITED_NON_EXCLUSIVE")
-   numbers(timing,"Purchased dates",draft.dates,1,52,
-    n=>{draft.dates=Math.min(n,draft.weeks);pendingKey="";updateQuote();});
+   numbers(timing,"Purchased dates",draft.dates,1,104,
+    n=>{draft.dates=Math.min(n,2*draft.weeks);pendingKey="";updateQuote();});
   advanced.append(timing);
   if(custom)editor.append(advanced);
   if(draft.family!=="ONE_OFF")numbers(fields,"Weekly guarantee ($)",

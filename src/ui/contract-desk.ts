@@ -402,7 +402,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      " · Creative control: "+title(c.creativeControl)));
     if(port.openWrestler)body.append(btn("Wrestler profile ↗",
      ()=>port.openWrestler?.(c.personId)));
-    const freeWeeks=Math.max(0,c.weeksRemaining-(c.remainingDates??0));
+    const freeWeeks=c.maxAdditionalDates??Math.max(0,2*c.weeksRemaining-(c.remainingDates??0));
     const maxExtra=Math.max(0,Math.min(freeWeeks,
      104-(c.dateEntitlement??c.remainingDates??0)));
     if(c.additionalDatesEligible&&!c.pendingNegotiation&&view!.canEdit&&maxExtra===0)
@@ -474,14 +474,14 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        popularity:c.popularity??null,recognition:c.recognition??null,
        morale:c.morale??null,careerStage:c.careerStage,
        interest:"INTERESTED",
-       remainingServiceDensityPerWeek:c.nextTermServiceDensity},view.talentManager):null;
+       remainingServiceDensityPerWeek:c.nextTermServiceDensity,purchasedDateLimits:c.renewalDateLimits},view.talentManager):null;
      const initialDraft:OfferTerms={
       family:originalFamily,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
       creativeControl:originalFamily==="ONE_OFF"?"NONE":c.creativeControl as OfferTerms["creativeControl"],
       startWeekIndex:nextWeek,termWeeks:originalFamily==="ONE_OFF"?1:currentWeeks,
       dateEntitlement:originalFamily==="ONE_OFF"?1:
        originalFamily==="EXCLUSIVE"?currentWeeks:
-       Math.min(currentWeeks,Math.max(1,c.dateEntitlement??4)),
+       Math.min(2*currentWeeks,Math.max(1,c.dateEntitlement??4)),
       weeklyGuarantee:originalFamily==="ONE_OFF"?0:c.weeklyGuarantee,
       appearanceFee:originalFamily==="EXCLUSIVE"?0:c.appearanceFee,
       // Previous signing bonuses have been paid. Do not quote them again.
@@ -521,8 +521,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       packageQuote(quote,draft);
       minimumNotice.replaceChildren();
       capacityNotice.replaceChildren();
-      const fit=c.nextTermServiceDensity==null?null:Math.max(0,
-       Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks));
+      const fit=c.renewalDateLimits?.[draft.termWeeks-1]??(c.nextTermServiceDensity==null?null:Math.max(0,
+       Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks)));
       if(family==="EXCLUSIVE"&&c.nextTermHasOverlap){
        capacityNotice.append(el("strong","","Exclusive terms blocked"),
         el("p","","This wrestler has another signed agreement that overlaps the next term. You cannot offer exclusivity until those commitments have ended."));
@@ -562,7 +562,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       if(![draft.termWeeks,draft.dateEntitlement,draft.weeklyGuarantee,
        draft.appearanceFee,draft.signingBonus].every(n=>Number.isSafeInteger(n)&&n>=0)||
        draft.termWeeks<1||draft.termWeeks>52||
-       draft.dateEntitlement<1||draft.dateEntitlement>draft.termWeeks)return;
+       draft.dateEntitlement<1||draft.dateEntitlement>2*draft.termWeeks)return;
       const replacementPayroll=Math.max(0,view.summary.weeklyGuarantees-c.weeklyGuarantee);
       const pendingExposure=view.offers.reduce((sum,offer)=>{
        if(!offer.terms)return sum;
@@ -610,7 +610,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        draft.dateEntitlement=draft.termWeeks;
        draft.appearanceFee=0;
       }else{
-       draft.dateEntitlement=Math.min(draft.termWeeks,Math.max(1,
+       draft.dateEntitlement=Math.min(2*draft.termWeeks,Math.max(1,
         c.family==="LIMITED_NON_EXCLUSIVE"?c.dateEntitlement??4:4));
        draft.appearanceFee=c.family==="LIMITED_NON_EXCLUSIVE"?c.appearanceFee:0;
       }
@@ -658,7 +658,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        draft[key]=Number(input.value);
        if(key==="termWeeks"){
         if(family==="EXCLUSIVE")draft.dateEntitlement=Number(input.value);
-        else draft.dateEntitlement=Math.min(draft.dateEntitlement,Number(input.value));
+        else draft.dateEntitlement=Math.min(draft.dateEntitlement,2*Number(input.value));
         const dates=timing.querySelector<HTMLInputElement>('[data-renew-dates="yes"]');
         if(dates)dates.value=String(draft.dateEntitlement);
        }
@@ -669,7 +669,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       label.append(input);destination.append(label);
      };
      numeric("New term (weeks)","termWeeks",1,52,family==="ONE_OFF",timing);
-     numeric("Purchased dates","dateEntitlement",1,52,fixed,timing);
+     numeric("Purchased dates","dateEntitlement",1,104,fixed,timing);
      advanced.append(timing);refreshPreset();
      negotiate.append(presetRow,advanced);
      numeric("Weekly guarantee ($)","weeklyGuarantee",0,1000000000,family==="ONE_OFF");
@@ -702,7 +702,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        draft.termWeeks<1||draft.termWeeks>52||
        draft.dateEntitlement<1||draft.dateEntitlement>104||
        (family==="EXCLUSIVE"&&draft.dateEntitlement!==draft.termWeeks)||
-       (family!=="EXCLUSIVE"&&draft.dateEntitlement>draft.termWeeks)){
+       (family!=="EXCLUSIVE"&&draft.dateEntitlement>2*draft.termWeeks)){
        error="Review the proposed duration, dates and payment values.";
        render();return;
       }
@@ -710,8 +710,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        error=c.name+" has another signed agreement covering the proposed term. Wait for that commitment to finish before offering exclusivity.";
        render();return;
       }
-      const scheduleCap=c.nextTermServiceDensity==null?null:Math.max(0,
-       Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks));
+      const scheduleCap=c.renewalDateLimits?.[draft.termWeeks-1]??(c.nextTermServiceDensity==null?null:Math.max(0,
+       Math.floor(Math.max(0,c.nextTermServiceDensity-.001)*draft.termWeeks)));
       if(family==="LIMITED_NON_EXCLUSIVE"&&scheduleCap!==null&&
        draft.dateEntitlement>scheduleCap){
        error=c.name+" can commit to at most "+scheduleCap+
