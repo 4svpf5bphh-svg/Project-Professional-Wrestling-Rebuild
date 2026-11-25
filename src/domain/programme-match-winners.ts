@@ -28,3 +28,28 @@ export function programmeResultSide(
  if(direct===reverse)throw new Error("Ambiguous completed programme match sides");
  return winnerSide===(direct?"A":"B")?"A":"B";
 }
+
+/** Match sides and programme sides are separate identities. Explicit solo,
+ * relationship and faction links accept any supported canonical match field.
+ * Keep the original rival-v-rival inference strict; only a non-rival cast
+ * occupying a single competing side can earn a clear story win/loss.
+ */
+export function programmeResultSideForLayout(
+ match:{slotId:string;sides:readonly {sideId:string;participants:readonly {personId:string}[]}[]},
+ participants:readonly ProgrammePersonSide[],programmeId:string,winnerSide:string|null,
+):"A"|"B"|null{
+ const sides=match.sides;
+ if(sides.length<2)throw new Error("Linked match must have competing sides");
+ if(winnerSide!==null&&!sides.some(s=>s.sideId===winnerSide))
+  throw new Error("Linked match winner is not a booked side");
+ if(sides.length===2)return programmeResultSide({slotId:match.slotId,
+  sideA:sides[0]!.participants.map(p=>p.personId),
+  sideB:sides[1]!.participants.map(p=>p.personId)},participants,programmeId,winnerSide);
+ const members=participants.filter(p=>p.programmeId===programmeId);
+ if(members.some(p=>p.side==="B"))
+  throw new Error("Rivalry links require two opposing match sides");
+ const cast=new Set(members.map(p=>p.personId));
+ const linked=sides.filter(s=>s.participants.some(p=>cast.has(p.personId)));
+ if(winnerSide===null||linked.length!==1)return null;
+ return linked[0]!.sideId===winnerSide?"A":"B";
+}
