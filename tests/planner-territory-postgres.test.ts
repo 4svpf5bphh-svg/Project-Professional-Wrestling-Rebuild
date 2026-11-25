@@ -207,7 +207,7 @@ test("two human managers retain separate current + six future weeks, protected c
   // future cards persist on the new planning horizon; certified progression
   // and result publication have separate two-human end-to-end tests.
   await withWorldTransaction(db.pool,tx=>tx.query(
-   "UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[world]));
+   "UPDATE ppw_worlds SET week=2,phase='UPDATING' WHERE world_id=$1",[world]));
   for(let i=0;i<2;i++){
    const after=await readSixWeekPlanner(db.pool,scopes[i]!);
    assert.equal(after.weeks[0]!.week,2);
@@ -217,6 +217,30 @@ test("two human managers retain separate current + six future weeks, protected c
    assert.equal(after.weeks[5]!.shows[0]!.slots,1);
    assert.equal(after.weeks[5]!.shows[0]!.ready,i===1);
   }
+  // The editorial phase starts only after certified settlement. Upcoming
+  // drafts and private creative notes may be prepared without touching the
+  // outgoing week, even if an old draft remains in this synthetic fixture.
+  const during=await readSixWeekPlanner(db.pool,scopes[0]!);
+  assert.ok(during.canEdit&&during.weeks.every(w=>w.canEdit));
+  await assert.rejects(planShowWeek(db.pool,{...scopes[0]!,requestId:"old-week-locked",
+   expectedRevision:revision,year:1,week:1,draftId:showIds[0]!.get(1)!,
+   eventType:"REGULAR",day:5,marketId:home[0]!.marketId,venueId:home[0]!.venueId,ticketStrategy:"STANDARD"}),/current week or next six weeks/);
+  checked((await saveCreativeOutline(db.pool,{...scopes[0]!,
+   requestId:"during-update-outline",expectedRevision:revision,notes:[{year:1,week:7,note:"Plan the next payoff"}]})).status);
+  checked((await planShowWeek(db.pool,{...scopes[0]!,requestId:"during-update-reschedule",
+   expectedRevision:revision,year:1,week:7,draftId:showIds[0]!.get(7)!,
+   eventType:"REGULAR",day:5,marketId:home[0]!.marketId,venueId:home[0]!.venueId,ticketStrategy:"STANDARD"})).status);
+  const ctx={pool:db.pool,actor:{playerId:players[0]!}};
+  const payload={matchType:"SINGLES",family:"INDIVIDUAL",
+   sides:[{sideId:"A",participants:[cast[0]![0]!]},{sideId:"B",participants:[cast[0]![1]!]}],
+   participants:cast[0]!,scriptedWinnerSide:"A",plannedFinish:"CLEAN_PIN",intent:"COMPETITIVE",plannedLengthMinutes:18};
+  await assert.rejects(saveCardEditorAsActor(ctx,{worldId:world,promotionId:promotions[0]!,showId:showIds[0]!.get(1)!,
+   requestId:"old-card-during-update",expectedRevision:revision,matches:[{slotId:"match",payload}],runningOrder:["match"]}),/not an editable draft/);
+  checked((await saveCardEditorAsActor(ctx,{worldId:world,promotionId:promotions[0]!,showId:showIds[0]!.get(7)!,
+   requestId:"future-card-during-update",expectedRevision:revision,matches:[{slotId:"match",payload}],runningOrder:["match"]})).status);
+  checked((await markPreparedShowReadyAsActor(ctx,{worldId:world,promotionId:promotions[0]!,showId:showIds[0]!.get(7)!,
+   confirmReadyToRun:true,requestId:"future-ready-during-update",expectedRevision:revision})).status);
+  assert.equal((await showCardEditorAsActor(ctx,world,promotions[0]!,showIds[0]!.get(7)!)).ready,true);
   // A future week beyond the new six-week window is rejected without writes.
   await assert.rejects(planShowWeek(db.pool,{...scopes[0]!,
    requestId:"too-far",expectedRevision:revision,year:1,week:9,

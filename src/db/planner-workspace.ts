@@ -80,7 +80,7 @@ async function owner(tx:SqlRows,s:PlannerScope):Promise<Owner>{
  checkScope(s);
  const rows=await tx.query<Owner>(`
  SELECT w.name AS world_name,p.name AS promotion_name,w.year,w.week,
-  w.revision,(w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS booking_open,
+  w.revision,(w.phase IN ('OPEN','UPDATING') AND w.next_lock_at>clock_timestamp()) AS booking_open,
   p.event_cadence_weeks AS cadence,w.major_event_interval_weeks AS major_interval,
   w.premium_plan_start_year,p.creative_outline,
   p.home_market_id,

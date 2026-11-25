@@ -42,7 +42,7 @@ export async function readContractDesk(
       WHERE e.world_id=p.world_id AND e.promotion_id=p.promotion_id AND e.status='ACTIVE'
       AND e.start_week_index<=(w.year-1)*52+w.week-1
       AND e.expires_week_index>=(w.year-1)*52+w.week-1),0)::text AS staff_payroll,
-    (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
+    (w.phase IN ('OPEN','UPDATING') AND w.next_lock_at>clock_timestamp()) AS can_edit
    FROM ppw_worlds w
    JOIN ppw_promotion_controls c ON c.world_id=w.world_id
    JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id

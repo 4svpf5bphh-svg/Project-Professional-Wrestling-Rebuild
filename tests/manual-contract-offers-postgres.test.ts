@@ -312,9 +312,15 @@ test("PostgreSQL: adjacent exclusive agreements coexist while overlaps and accep
    VALUES($1,'reserved','old',$2,$3,'ACCEPTED',0,$4::jsonb)`,[world,pA,person,JSON.stringify(terms)]));
   await assert.rejects(submitManualContractOffer(db.pool,{worldId:world,playerId:player,promotionId:pB,
    personId:person,requestId:"blocked",expectedRevision:2,terms}),/overlap/);
-  await withWorldTransaction(db.pool,tx=>tx.query("UPDATE ppw_contract_renewal_proposals SET status='REJECTED' WHERE world_id=$1",[world]));
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_contract_renewal_proposals SET status='REJECTED' WHERE world_id=$1",[world]);
+   await tx.query("UPDATE ppw_worlds SET phase='UPDATING' WHERE world_id=$1",[world]);
+  });
   assert.equal((await submitManualContractOffer(db.pool,{worldId:world,playerId:player,promotionId:pB,
    personId:person,requestId:"new",expectedRevision:2,terms})).status,"APPLIED");
+  // Pending offers are writable during editorial preparation; no signature
+  // or charge happens until the next authorised contract settlement.
+  await withWorldTransaction(db.pool,tx=>tx.query("UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[world]));
   const answer=await resolvePersonContractOffers(db.pool,{worldId:world,personId:person,requestId:"settle",expectedRevision:3},system);
   assert.equal(answer.status,"APPLIED");
   if(answer.status==="APPLIED")assert.equal(answer.result.accepted,1);

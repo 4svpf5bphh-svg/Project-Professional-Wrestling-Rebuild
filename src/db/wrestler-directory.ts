@@ -120,7 +120,7 @@ export async function readWrestlerDirectory(
      AND adviser.start_week_index<=(w.year-1)*52+w.week-1
      AND adviser.expires_week_index>=(w.year-1)*52+w.week-1)
      AS has_talent_manager,
-    (w.phase='OPEN' AND w.next_lock_at>clock_timestamp()) AS can_edit
+    (w.phase IN ('OPEN','UPDATING') AND w.next_lock_at>clock_timestamp()) AS can_edit
    FROM ppw_worlds w JOIN ppw_promotion_controls c
     ON c.world_id=w.world_id AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
    JOIN ppw_memberships m ON m.world_id=w.world_id AND m.player_id=$2
