@@ -67,7 +67,7 @@ export async function readContractDesk(
    creative_control:string;role_expectation:string;
    popularity:number|null;recognition:number|null;morale:number|null;
    career_stage:string|null;in_ring_quality:number|null;match_craft:number|null;
-   presentation:number|null;stamina:number|null;fatigue:number|null;
+   presentation:number|null;stamina:number|null;fatigue:number|null;weekly_service_capacity:number|null;
    other_density:number;other_term_overlap:boolean;other_commitments:ExistingCommitment[]|null;
    backstage_contract_request_id:string|null;renewal_secured:boolean;
   }>(`
@@ -75,7 +75,7 @@ export async function readContractDesk(
      c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
      c.appearance_fee,c.signing_bonus,c.creative_control,c.role_expectation,
      p.popularity,p.recognition,p.morale,p.career_stage,p.in_ring_quality,
-     p.match_craft,p.presentation,p.stamina,p.fatigue,
+     p.match_craft,p.presentation,p.stamina,p.fatigue,p.weekly_service_capacity,
      coalesce((SELECT sum(CASE WHEN other.family='EXCLUSIVE' THEN 1.0
        ELSE greatest(0,coalesce(other.remaining_dates,0))::double precision /
         greatest(1,other.expires_week_index-greatest($3::integer,other.start_week_index)+1)
@@ -232,11 +232,11 @@ export async function readContractDesk(
     nextTermServiceDensity:cost.stamina!==null&&cost.fatigue!==null&&
      ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(cost.career_stage??"")?
       Math.max(0,serviceCapacityDatesPerWeek({careerStage:cost.career_stage as Stage,
-       stamina:cost.stamina,fatigue:cost.fatigue})-cost.other_density):null,
+       stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity})-cost.other_density):null,
     renewalDateLimits:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
-     purchasedDateLimits({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue},cost.expires_week_index+1,cost.other_commitments??[],currentWeekIndex):null,
+     purchasedDateLimits({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},cost.expires_week_index+1,cost.other_commitments??[],currentWeekIndex):null,
     maxAdditionalDates:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
-     Math.max(0,maxPurchasedDates({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue},currentWeekIndex,c.weeksRemaining,cost.other_commitments??[],currentWeekIndex)-(c.remainingDates??0)):null,
+     Math.max(0,maxPurchasedDates({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},currentWeekIndex,c.weeksRemaining,cost.other_commitments??[],currentWeekIndex)-(c.remainingDates??0)):null,
     nextTermHasOverlap:cost.other_term_overlap,
     pendingNegotiation:pendingIds.has(c.contractId),
     pendingRenewal:renewalIds.has(c.contractId),

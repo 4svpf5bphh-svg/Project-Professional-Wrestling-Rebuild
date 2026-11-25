@@ -5,7 +5,7 @@ import type {SqlRows} from "./world-operations.js";
 import {maxPurchasedDates,type ExistingCommitment,type Stage} from "../domain/contract-economics.js";
 type Candidate={contract_id:string;person_id:string;family:ExistingCommitment["family"];
  date_entitlement:number|null;remaining_dates:number|null;career_stage:Stage|null;
- stamina:number|null;fatigue:number|null;commitments:ExistingCommitment[]|null};
+ stamina:number|null;fatigue:number|null;weekly_service_capacity:number|null;commitments:ExistingCommitment[]|null};
 export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:number,week:number){
  const index=(year-1)*52+week-1;
  if(!worldId||!Number.isSafeInteger(index)||index<0||week<1||week>52)
@@ -13,7 +13,7 @@ export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:
  const candidates=await tx.query<Candidate>(`
  WITH candidates AS (
   SELECT c.contract_id,c.person_id,c.promotion_id,c.family,c.date_entitlement,c.remaining_dates,
-   t.career_stage,t.stamina,t.fatigue,
+   t.career_stage,t.stamina,t.fatigue,t.weekly_service_capacity,
    p.management_mode,p.lifecycle,p.financial_distress,
    t.booking_division,t.status AS talent_status,
    EXISTS(SELECT 1 FROM ppw_promotion_controls pc
@@ -43,7 +43,7 @@ export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:
   FROM candidates e
 
  )
- SELECT d.contract_id,d.person_id,d.family,d.date_entitlement,d.remaining_dates,d.career_stage,d.stamina,d.fatigue,
+ SELECT d.contract_id,d.person_id,d.family,d.date_entitlement,d.remaining_dates,d.career_stage,d.stamina,d.fatigue,d.weekly_service_capacity,
   (SELECT jsonb_agg(jsonb_build_object('contractId',c.contract_id,'family',c.family,'status',c.status,
    'remainingDates',c.remaining_dates,'startWeekIndex',c.start_week_index,'expiresWeekIndex',c.expires_week_index))
    FROM ppw_contracts c WHERE c.world_id=$1 AND c.person_id=d.person_id AND c.status='SIGNED'
@@ -57,7 +57,7 @@ export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:
  for(const candidate of candidates){
   const commitments=allocations.get(candidate.person_id)??[...(candidate.commitments??[])];
   allocations.set(candidate.person_id,commitments);
-  const profile={careerStage:candidate.career_stage??"PRIME",stamina:candidate.stamina??50,fatigue:candidate.fatigue??0};
+  const profile={careerStage:candidate.career_stage??"PRIME",stamina:candidate.stamina??50,fatigue:candidate.fatigue??0,weeklyServiceCapacity:candidate.weekly_service_capacity};
   const overlaps=commitments.filter(c=>c.startWeekIndex<=index+26&&c.expiresWeekIndex>=index+1);
   if(candidate.family==="EXCLUSIVE"&&overlaps.length)continue;
   const dates=candidate.family==="EXCLUSIVE"?null:Math.min(

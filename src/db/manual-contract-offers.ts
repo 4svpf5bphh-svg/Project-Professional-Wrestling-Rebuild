@@ -8,7 +8,7 @@ import {canAcceptTerms,offerUtility,requireEconomics,validateOfferTerms,
 type ProfileRow={
  person_id:string;status:string;recognition:number|null;popularity:number|null;
  in_ring_quality:number|null;match_craft:number|null;presentation:number|null;
- stamina:number|null;fatigue:number|null;career_stage:PersonEconomics["careerStage"]|null;
+ stamina:number|null;fatigue:number|null;weekly_service_capacity:number|null;career_stage:PersonEconomics["careerStage"]|null;
  morale:number|null;contract_priorities:PersonEconomics["priorities"]|null;
 };
 type ContractRow={contract_id:string;person_id:string;promotion_id:string;family:ExistingCommitment["family"];
@@ -19,7 +19,7 @@ type PendingRow={offer_id:string;person_id:string;promotion_id:string;source_con
 function profile(row:ProfileRow):PersonEconomics{
  const p={recognition:row.recognition,popularity:row.popularity,inRingQuality:row.in_ring_quality,
  matchCraft:row.match_craft,presentation:row.presentation,stamina:row.stamina,
- fatigue:row.fatigue,careerStage:row.career_stage,morale:row.morale,priorities:row.contract_priorities};
+ fatigue:row.fatigue,weeklyServiceCapacity:row.weekly_service_capacity,careerStage:row.career_stage,morale:row.morale,priorities:row.contract_priorities};
  requireEconomics(p as PersonEconomics);
  return p as PersonEconomics;
 }
@@ -33,7 +33,7 @@ const controllerSql=`SELECT c.promotion_id FROM ppw_promotion_controls c
  WHERE c.world_id=$1 AND c.player_id=$2 AND c.promotion_id=$3 AND c.active
  AND m.status='ACTIVE' AND p.lifecycle='ACTIVE'`;
 const peopleSql=`SELECT person_id,status,recognition,popularity,in_ring_quality,match_craft,
- presentation,stamina,fatigue,career_stage,morale,contract_priorities
+ presentation,stamina,fatigue,weekly_service_capacity,career_stage,morale,contract_priorities
  FROM ppw_people WHERE world_id=$1 AND person_id=$2`;
 const contractsSql=`SELECT contract_id,person_id,promotion_id,family,status,remaining_dates,
  start_week_index,expires_week_index FROM ppw_contracts

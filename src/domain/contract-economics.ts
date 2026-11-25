@@ -13,7 +13,7 @@ export interface OfferTerms {
 }
 export interface PersonEconomics {
  recognition:number;popularity:number;inRingQuality:number;matchCraft:number;
- presentation:number;stamina:number;fatigue:number;careerStage:Stage;
+ presentation:number;stamina:number;fatigue:number;careerStage:Stage;weeklyServiceCapacity?:number|null;
  morale:number; priorities:Record<"money"|"role"|"prestige"|"schedule"|"loyalty"|"exposure",number>;
 }
 export interface ExistingCommitment {
@@ -66,7 +66,7 @@ export function serviceCapacityDatesPerWeek(p:Pick<PersonEconomics,"careerStage"
  const base=p.careerStage==="PRIME"?1.9:p.careerStage==="PROSPECT"?1.55:p.careerStage==="VETERAN"?1.4:1;
  return base*(.8+p.stamina/250)*Math.max(.65,1-p.fatigue/200);
 }
-type ServiceProfile=Pick<PersonEconomics,"careerStage"|"stamina"|"fatigue">;
+type ServiceProfile=Pick<PersonEconomics,"careerStage"|"stamina"|"fatigue"|"weeklyServiceCapacity">;
 /** Purchased dates are flexible obligations, not fixed weekly reservations.
  * Existing show-day and weekly booking clearance remains authoritative.
  */
@@ -76,8 +76,9 @@ export function maxPurchasedDates(p:ServiceProfile,start:number,weeks:number,
  const end=start+weeks-1;
  const signed=contracts.filter(c=>c.status==="SIGNED"&&c.contractId!==ignoreContractId&&c.expiresWeekIndex>=currentWeek);
  if(signed.some(c=>c.family==="EXCLUSIVE"&&c.startWeekIndex<=end&&c.expiresWeekIndex>=start))return 0;
- const rate=Math.min(2,Math.max(0,serviceCapacityDatesPerWeek(p)));
- const capacity=(length:number)=>Math.min(2*length,Math.ceil(rate*length-.000001));
+ const weeklyLimit=Math.min(2,Math.max(0,p.weeklyServiceCapacity??2));
+ const rate=Math.min(weeklyLimit,Math.max(0,serviceCapacityDatesPerWeek(p)));
+ const capacity=(length:number)=>Math.min(weeklyLimit*length,Math.ceil(rate*length-.000001));
  const commitments=signed.filter(c=>c.family!=="EXCLUSIVE"&&(c.remainingDates??0)>0).map(c=>({
   start:Math.max(currentWeek,c.startWeekIndex),end:c.expiresWeekIndex,dates:c.remainingDates??0
  }));

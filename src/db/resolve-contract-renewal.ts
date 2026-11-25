@@ -61,16 +61,16 @@ export async function resolveRenewal(pool:TransactionPool,input:RenewalDecision,
     if(decision==="ACCEPTED"){
      const pRows=await tx.query<{career_stage:PersonEconomics["careerStage"];
       recognition:number;popularity:number;in_ring_quality:number;match_craft:number;
-      presentation:number;stamina:number;fatigue:number;morale:number;
+      presentation:number;stamina:number;fatigue:number;weekly_service_capacity:number|null;morale:number;
       contract_priorities:PersonEconomics["priorities"]}>(`
       SELECT career_stage,recognition,popularity,in_ring_quality,match_craft,
-       presentation,stamina,fatigue,morale,contract_priorities FROM ppw_people
+       presentation,stamina,fatigue,weekly_service_capacity,morale,contract_priorities FROM ppw_people
        WHERE world_id=$1 AND person_id=$2`,[input.worldId,proposal.person_id]);
      if(pRows.length!==1)throw new Error("Wrestler missing");
      const r=pRows[0]!;
      const person:PersonEconomics={careerStage:r.career_stage,recognition:r.recognition,
       popularity:r.popularity,inRingQuality:r.in_ring_quality,matchCraft:r.match_craft,
-      presentation:r.presentation,stamina:r.stamina,fatigue:r.fatigue,morale:r.morale,
+      presentation:r.presentation,stamina:r.stamina,fatigue:r.fatigue,weeklyServiceCapacity:r.weekly_service_capacity,morale:r.morale,
       priorities:r.contract_priorities};
      requireEconomics(person);
      const signed=await tx.query<{contract_id:string;family:ExistingCommitment["family"];

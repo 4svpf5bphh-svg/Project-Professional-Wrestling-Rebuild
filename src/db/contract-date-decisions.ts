@@ -48,16 +48,16 @@ export async function resolveDateRequest(pool:TransactionPool,input:ResolveDateR
    if(decision==="ACCEPTED"){
     const persons=await tx.query<{career_stage:PersonEconomics["careerStage"];morale:number;
      recognition:number;popularity:number;in_ring_quality:number;match_craft:number;
-     presentation:number;stamina:number;fatigue:number;contract_priorities:PersonEconomics["priorities"]}>(`
+     presentation:number;stamina:number;fatigue:number;weekly_service_capacity:number|null;contract_priorities:PersonEconomics["priorities"]}>(`
      SELECT career_stage,morale,recognition,popularity,in_ring_quality,match_craft,presentation,
-       stamina,fatigue,contract_priorities FROM ppw_people WHERE world_id=$1 AND person_id=$2`,
+       stamina,fatigue,weekly_service_capacity,contract_priorities FROM ppw_people WHERE world_id=$1 AND person_id=$2`,
      [input.worldId,r.person_id]);
     if(persons.length!==1)throw new Error("Wrestler not found");
     const person=persons[0]!;
     const p:PersonEconomics={careerStage:person.career_stage,morale:person.morale,
      recognition:person.recognition,popularity:person.popularity,inRingQuality:person.in_ring_quality,
      matchCraft:person.match_craft,presentation:person.presentation,stamina:person.stamina,
-     fatigue:person.fatigue,priorities:person.contract_priorities};
+     fatigue:person.fatigue,weeklyServiceCapacity:person.weekly_service_capacity,priorities:person.contract_priorities};
     requireEconomics(p);
     const others=await tx.query<{contract_id:string;family:ExistingCommitment["family"];
      status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number}>(`
