@@ -105,6 +105,10 @@ export async function planNextWorldResolutionAction(
  pool:TransactionPool,worldId:string,
 ):Promise<WorldResolutionPlan>{
  const ready=await inspectWorldResolutionReadiness(pool,worldId);
+ if(ready.phase==="UPDATING"){
+  const outgoing=(ready.year-1)*52+ready.week-2;
+  return {year:Math.floor(outgoing/52)+1,week:outgoing%52+1,action:"WAIT_FOR_WORLD_LOCK",blockers:[],ready};
+ }
  let action:WorldResolutionAction;
  const blockers:string[]=[];
  let arbitration:WorldResolutionPlan["arbitration"];

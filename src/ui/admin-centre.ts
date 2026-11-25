@@ -874,7 +874,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       message(info,"Week advanced. The next playable week is ready.");finished=true;break;
      }
      if(result.status==="BLOCKED"){
-      const reason=result.blockers.join(", ").replaceAll("_"," ")||"A show needs attention";
+      const reason=result.blockers.includes("WORLD_UPDATE_IN_PROGRESS")?"An article is still being prepared. If the connection was interrupted, use Resume World Updating once the current attempt has finished.":result.blockers.join(", ").replaceAll("_"," ")||"A show needs attention";
       message(info,`Could not finish Week ${p.week}: ${reason}. Completed stages were saved; correct the issue and press Advance Week again.`,true);
       break;
      }

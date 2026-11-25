@@ -48,11 +48,12 @@ export async function processWorldUpdate(pool:TransactionPool,requested:Scope,de
    }
    return {kind:"NONE"};
   }
-  if(current!==next&&(w.year!==requested.year||w.week!==requested.week))return {kind:"WAIT"};
+  if(current!==next)return {kind:"WAIT"};
   const runs=await tx.query<{year:number;week:number;public_state:string;busy:boolean}>(`
    SELECT year,week,public_state,coalesce(public_claim_until>clock_timestamp(),false) AS busy
    FROM ppw_world_update_runs WHERE world_id=$1 AND state='ACTIVE'`,[requested.worldId]);
   const run=runs[0];if(!run)throw Error("Active World update is missing");
+  if(run.year!==requested.year||run.week!==requested.week)return {kind:"WAIT"};
   const scope={worldId:requested.worldId,year:run.year,week:run.week},p=[scope.worldId,scope.year,scope.week];
   const jobs=await tx.query<Job>(`SELECT show_id,promotion_id,player_id,state,
    coalesce(claim_until>clock_timestamp(),false) AS busy
