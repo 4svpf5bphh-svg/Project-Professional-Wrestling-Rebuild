@@ -171,11 +171,11 @@ export async function readWrestlerDirectory(
      "AND a.status='ACTIVE' AND a.injured_week_index<$3 "+
      "AND a.cleared_week_index>$3) AS med,":""}
     ${f.view==="ROSTER"?"current_titles.championship_titles AS ct,":""}
-    mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
+    ${f.view==="ROSTER"?`mine.contract_id,CASE WHEN mine.promotion_id<>$2 THEN parent.name
      ELSE NULL END AS aff,mine.family,mine.role_expectation,
-    mine.remaining_dates,mine.expires_week_index,
-    mine.start_week_index,
-    mine.weekly_guarantee::text,mine.appearance_fee::text,
+     mine.remaining_dates,mine.expires_week_index,mine.start_week_index,
+     mine.weekly_guarantee::text,mine.appearance_fee::text,`:""}
+
     contracts.exclusive_to,contracts.other_contracts,contracts.active_contracts,
     contracts.future_contracts,contracts.next_future_start,contracts.future_exclusive_to,
     ${f.view==="MARKET"?"mv.estimated_value,":""}
@@ -187,8 +187,7 @@ export async function readWrestlerDirectory(
     AND aligned.person_id=p.person_id AND aligned.promotion_id=$2
    JOIN ppw_promotions owner ON owner.world_id=p.world_id AND owner.promotion_id=$2
    ${f.view==="ROSTER"?currentWrestlerTitlesJoin:""}
-   LEFT JOIN ppw_promotions parent ON parent.world_id=owner.world_id
-    AND parent.promotion_id=owner.parent_promotion_id
+   ${f.view==="ROSTER"?"LEFT JOIN ppw_promotions parent ON parent.world_id=owner.world_id AND parent.promotion_id=owner.parent_promotion_id":""}
    LEFT JOIN LATERAL (
     SELECT c.contract_id,c.promotion_id,c.family,c.role_expectation,c.remaining_dates,c.expires_week_index,
      c.start_week_index,
@@ -306,20 +305,20 @@ export async function readWrestlerDirectory(
     popularity:p.popularity,recognition:p.recognition,momentum:p.momentum,
     overness:p.overness,
     matchCraft:p.match_craft,presentation:p.presentation,morale:p.morale,
-    careerStage:p.career_stage,contractId:p.contract_id,family:p.family,
+    careerStage:p.career_stage,contractId:p.contract_id??null,family:p.family??null,
     ...(p.aff?{affiliatedViaParent:true,contractOwnerName:p.aff}:{}),
-    roleExpectation:p.role_expectation,
-    interest:p.contract_id===null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
+    roleExpectation:p.role_expectation??null,
+    interest:p.contract_id==null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
      p.it===null?"UNKNOWN":p.it>=78?"KEEN":
      p.it>=63?"INTERESTED":p.it>=40?"OPEN_TO_TALKS":
      p.it>=22?"RELUCTANT":"NOT_INTERESTED",
-    startWeekIndex:p.start_week_index,
-    startsInWeeks:p.start_week_index===null?null:Math.max(0,p.start_week_index-now),
-    remainingDates:p.remaining_dates,expiresWeekIndex:p.expires_week_index,
-    weeksRemaining:p.expires_week_index===null?null:
+    startWeekIndex:p.start_week_index??null,
+    startsInWeeks:p.start_week_index==null?null:Math.max(0,p.start_week_index-now),
+    remainingDates:p.remaining_dates??null,expiresWeekIndex:p.expires_week_index??null,
+    weeksRemaining:p.expires_week_index==null?null:
      Math.max(0,p.expires_week_index-now+1),
-    weeklyGuarantee:p.weekly_guarantee===null?null:Number(p.weekly_guarantee),
-    appearanceFee:p.appearance_fee===null?null:Number(p.appearance_fee),
+    weeklyGuarantee:p.weekly_guarantee==null?null:Number(p.weekly_guarantee),
+    appearanceFee:p.appearance_fee==null?null:Number(p.appearance_fee),
     exclusiveToPromotionId:p.exclusive_to,otherContracts:p.other_contracts,
     activeContracts:p.active_contracts,pendingOffer:p.pending_offer,
     futureContracts:p.future_contracts,nextFutureStart:p.next_future_start,
