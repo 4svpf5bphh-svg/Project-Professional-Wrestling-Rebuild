@@ -70,6 +70,7 @@ test("two human local managers get each other as their circuit rival, and tier g
        total_cost,net_result,incremental_cash)
      VALUES($1,$2,$3,1,1,$4,1600,200000,20000,30000,15000,
       25000,90000,110000,110000)`,[world,show,promotion,attendance]);
+    await tx.query("UPDATE ppw_show_economics SET audience_format='TV',tv_household_rating=.1,estimated_viewers=1000 WHERE world_id=$1 AND show_id=$2",[world,show]);
    }
   });
   // Before World Lock has ever selected an official circuit rival, both
@@ -92,6 +93,20 @@ test("two human local managers get each other as their circuit rival, and tier g
   assert.equal(earlyA?.promotion?.competition?.rivalAvgAttendance,940);
   assert.equal(earlyA?.promotion?.competition?.ownLatestShow?.showName,"Weekly");
   assert.equal(earlyA?.promotion?.competition?.rivalLatestShow?.crowdResponse,75);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,booking_class,event_type,show_name) VALUES($1,'premium','promotion-0',1,1,'SUBMITTED',7,'PREMIUM','MAJOR','Extreme Warfare')",[world]);
+   await tx.query("INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest) VALUES($1,'promotion-0','premium',1,1,'premium-receipt',80,'{}'::jsonb,repeat('b',64))",[world]);
+   await tx.query("INSERT INTO ppw_show_economics(world_id,show_id,promotion_id,year,week,attendance,expected_demand,gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,total_cost,net_result,incremental_cash,audience_format,ppv_buys) VALUES($1,'premium','promotion-0',1,1,820,1600,200000,20000,30000,15000,25000,90000,110000,110000,'PPV',1960)",[world]);
+  });
+  const paired=await readPlayerWorldOverview(db.pool,world,a);
+  assert.deepEqual(paired?.promotion?.latestShows?.map(s=>[s.showName,s.bookingClass]),[["Weekly","REGULAR"],["Extreme Warfare","PREMIUM"]]);
+  assert.equal(paired?.promotion?.competition?.ownLatestShow?.showName,"Weekly");
+  assert.equal(paired?.promotion?.competition?.ownLatestShow?.tvRating,.1);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_show_economics WHERE world_id=$1 AND show_id='premium'",[world]);
+   await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1 AND show_id='premium'",[world]);
+   await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id='premium'",[world]);
+  });
   const first=await withWorldTransaction(db.pool,tx=>
    reviewWorldPromotionCompetition(tx,world,1,1));
   assert.equal(first.evaluated,8);

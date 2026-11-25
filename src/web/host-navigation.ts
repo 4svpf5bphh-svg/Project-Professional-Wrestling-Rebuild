@@ -185,3 +185,12 @@ export function readBookingProgrammeFocus(state:unknown,worldId:string,
   ...(validBlueprintBeat(p.blueprintBeat)?{blueprintBeat:{
    blueprintId:p.blueprintBeat.blueprintId,beatId:p.blueprintBeat.beatId}}:{})};
 }
+
+/** Results keep the exact show identity in private, scope-checked history. */
+export function resultsHistoryState(worldId:string,promotionId:string,showId:string){
+ return {ppwResults:bookingHistoryState(worldId,promotionId,showId).ppwBooking};
+}
+export function readResultsHistory(state:unknown,worldId:string,promotionId:string):string|null{
+ if(!state||typeof state!=="object"||Array.isArray(state))return null;
+ return readBookingHistory({ppwBooking:(state as {ppwResults?:unknown}).ppwResults},worldId,promotionId);
+}

@@ -7,6 +7,10 @@ import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
 import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
  from "./promotion-competition.js";
 
+export interface HomeCompletedShow{
+ showId:string;year:number;week:number;showName:string;crowdResponse:number;
+ bookingClass:"REGULAR"|"PREMIUM";showDay:number|null;
+}
 export interface PlayerWorldOverview {
  world:{id:string;name:string;year:number;week:number;day:number;
   phase:string;revision:number;nextLockEpoch:number;serverEpoch:number};
@@ -20,6 +24,8 @@ export interface PlayerWorldOverview {
    competition?:PromotionCompetitionCard|null;
    nextShow?:{year:number;week:number;showName:string;ready:boolean;status:string}|null;
    latestShow?:{year:number;week:number;showName:string;crowdResponse:number}|null;
+   latestShows?:HomeCompletedShow[];
+   flagshipName?:string|null;
   lastWeeklyNet:number|null;runwayWeeks:number|null;financialDistress:string|null;
   attention:{
    unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
@@ -81,7 +87,7 @@ export async function readPlayerWorldOverview(
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
    medical_clearances:unknown;world_stories:unknown;
    kp_claim_available:boolean|null;unseen_legends:number|null;
-   standing:unknown;next_show:unknown;latest_show:unknown;
+   standing:unknown;next_show:unknown;latest_shows:unknown;flagship_name:string|null;
    cp:PromotionCompetitionCard|null;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
@@ -103,7 +109,7 @@ export async function readPlayerWorldOverview(
     notices.business_updates,notices.contract_alerts,notices.title_news,
     notices.injury_news,notices.medical_clearances,
     public_news.world_stories,kp.kp_claim_available,legends.unseen_legends,
-    dashboard.standing,dashboard.next_show,dashboard.latest_show,
+    dashboard.standing,dashboard.next_show,dashboard.latest_shows,dashboard.flagship_name,
     ${promotionCompetitionProjectionSql("w.world_id","owned.promotion_id")}
      AS cp
    FROM ppw_worlds w
@@ -946,14 +952,23 @@ export async function readPlayerWorldOverview(
       WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
        AND (d.year,d.week)>=(w.year,w.week)
       ORDER BY d.year,d.week,d.show_day NULLS LAST,d.draft_id LIMIT 1) AS next_show,
-     (SELECT jsonb_build_object('year',c.year,'week',c.week,
-      'showName',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
-       THEN 'Premium event' ELSE 'Weekly show' END),
-      'crowdResponse',c.crowd_response::float8)
-      FROM ppw_completed_shows c
-      JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
-      WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
-      ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,c.show_id DESC LIMIT 1) AS latest_show
+     (SELECT series.name FROM ppw_show_series series
+      WHERE series.world_id=w.world_id AND series.promotion_id=owned.promotion_id
+       AND series.active AND series.role='FLAGSHIP' ORDER BY series.series_id LIMIT 1) AS flagship_name,
+     (SELECT coalesce(jsonb_agg(recent.card ORDER BY recent.year DESC,recent.week DESC,
+       recent.show_day DESC NULLS LAST,recent.show_id DESC),'[]'::jsonb)
+      FROM (SELECT c.year,c.week,d.show_day,c.show_id,jsonb_build_object(
+       'showId',c.show_id,'year',c.year,'week',c.week,
+       'showName',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
+        THEN 'Premium event' ELSE 'Weekly show' END),
+       'bookingClass',d.booking_class,'showDay',d.show_day,
+       'crowdResponse',c.crowd_response::float8) AS card
+       FROM ppw_completed_shows c JOIN ppw_booking_drafts d
+        ON d.world_id=c.world_id AND d.draft_id=c.show_id
+       WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
+        AND ((c.year,c.week)<(w.year,w.week) OR w.phase='OPEN')
+       ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,c.show_id DESC LIMIT 2
+      ) recent) AS latest_shows
    ) dashboard ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
@@ -966,6 +981,17 @@ export async function readPlayerWorldOverview(
    metrics[key]=Number.isFinite(value)&&value>=0?value:0;
   }
   const achievementSummary=derivePromoterAchievements(metrics);
+  const recent=(Array.isArray(x.latest_shows)?x.latest_shows:[]).slice(0,2).filter(
+   (s:unknown):s is HomeCompletedShow=>!!s&&typeof s==="object"&&
+   typeof (s as HomeCompletedShow).showId==="string"&&
+   typeof (s as HomeCompletedShow).year==="number"&&
+   typeof (s as HomeCompletedShow).week==="number"&&
+   typeof (s as HomeCompletedShow).showName==="string"&&
+   typeof (s as HomeCompletedShow).crowdResponse==="number"&&
+   ["REGULAR","PREMIUM"].includes((s as HomeCompletedShow).bookingClass));
+  const last=recent[0]??null;
+  const latestShows=last?recent.filter(s=>s.year===last.year&&s.week===last.week)
+   .sort((a,b)=>(a.showDay??7)-(b.showDay??7)||a.showId.localeCompare(b.showId)):[];
   return {
    world:{id:x.world_id,name:x.world_name,
     year:x.year,week:x.week,day:x.day,phase:x.phase,
@@ -991,13 +1017,9 @@ export async function readPlayerWorldOverview(
      typeof x.next_show.ready==="boolean"&&typeof x.next_show.status==="string"?
      {year:x.next_show.year,week:x.next_show.week,showName:x.next_show.showName,
       ready:x.next_show.ready,status:x.next_show.status}:null,
-    latestShow:x.latest_show&&typeof x.latest_show==="object"&&"year" in x.latest_show&&
-     "week" in x.latest_show&&"showName" in x.latest_show&&
-     "crowdResponse" in x.latest_show&&typeof x.latest_show.year==="number"&&
-     typeof x.latest_show.week==="number"&&typeof x.latest_show.showName==="string"&&
-     typeof x.latest_show.crowdResponse==="number"?
-     {year:x.latest_show.year,week:x.latest_show.week,
-      showName:x.latest_show.showName,crowdResponse:x.latest_show.crowdResponse}:null,
+    latestShow:last?{year:last.year,week:last.week,showName:last.showName,
+     crowdResponse:last.crowdResponse}:null,
+    latestShows,flagshipName:x.flagship_name??null,
     homeMarketName:x.home_market_name,
     cash:Number(x.cash),debt:Number(x.debt),
     lastWeeklyNet:x.last_weekly_net===null?null:Number(x.last_weekly_net),

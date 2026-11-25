@@ -18,7 +18,7 @@ export interface WorldHomePort{
  openUnfinishedCard?():void;openUnreadBackstage?():void;
  openBackstageThread?(personId:string,unread:boolean):void;
  contractsExpiring?():void;contractsPending?():void;
- backstage():void;results():void;business():void;staff():void;
+ backstage():void;results():void;openCompletedShow?(showId:string):void;business():void;staff():void;
  ratingsWar?():void;
  industry():void;calendar():void;championships():void;news?():void;
  dismissAttention?(attentionId:string):Promise<unknown>;
@@ -233,7 +233,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    const next=promotion.nextShow,last=promotion.latestShow;
    const spotlight=el("section","ppw-home-show-spotlight");
    spotlight.setAttribute("aria-label","Your current television broadcast package");
-   const name=next?.showName??last?.showName??"Weekly show";
+   const completed=promotion.latestShows??[];
+   const name=promotion.flagshipName??completed.find(s=>s.bookingClass==="REGULAR")?.showName??
+    (completed.length?null:next?.showName??last?.showName)??"Weekly show";
    const frame=createBroadcastPackageFrame({
     style:promotion.broadcastPackageStyle??null,
     promotion:promotion.name,show:name,kind:"OPEN"
@@ -260,6 +262,23 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
     next&&!next.ready?(port.openUnfinishedCard??port.planner):port.planner,"▶");
    nextShow.classList.add("ppw-home-show-next");
    if(next?.ready)nextShow.dataset.ready="true";
+   if(completed.length>1&&port.openCompletedShow){
+    const recent=el("div","ppw-home-recent-shows");
+    recent.setAttribute("aria-label","Completed shows");
+    for(const show of completed){
+     const tile=control(show.showName,
+      (show.bookingClass==="PREMIUM"?"PPV":"TV")+" · Y"+show.year+" W"+show.week,
+      ()=>port.openCompletedShow!(show.showId),"◀");
+     tile.classList.add("ppw-home-recent-show");
+     tile.dataset.bookingClass=show.bookingClass.toLowerCase();
+     tile.setAttribute("aria-label","Read "+show.showName+" · "+(show.bookingClass==="PREMIUM"?"PPV":"TV"));
+     recent.append(tile);
+    }
+    spotlight.append(recent);
+    lastShow.textContent="";lastShow.append(el("span","ppw-home-tile-copy","Results archive"),
+     el("span","ppw-home-arrow","→"));
+    lastShow.setAttribute("aria-label","Results archive");
+   }
    showControls.append(lastShow,nextShow);spotlight.append(showControls);
    dashboard.append(spotlight);
    // The genuine player-private unread count is already in this one overview

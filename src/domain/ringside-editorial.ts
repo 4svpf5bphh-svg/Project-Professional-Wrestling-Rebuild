@@ -706,6 +706,13 @@ export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCo
     CASKET_CLOSE:"won by shutting the casket lid on the opponent"};
    const result=names.length?winner+" "+(finish[entry.outcome]??"won the match"):
     "The contest ended without a recorded winning side";
+   const weapon=entry.outcome==="FOREIGN_OBJECT"&&entry.matchContext?.finishProp?
+    " The finish involved "+finishPropLabel(entry.matchContext.finishProp).toLowerCase()+".":"";
+   const title=entry.fallout?.title;
+   const titleNote=title?title.changed?
+    " "+title.winnerName+" is the new champion.":!title.priorHolderName?
+    " The "+title.name+" remains vacant.":
+    " "+title.priorHolderName+" remains champion.":"";
    const reaction=entry.crowdResponse>=75?
     "The crowd responded strongly to the decision.":
     entry.crowdResponse<45?"The response was noticeably quiet.":
@@ -720,7 +727,7 @@ export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCo
    return {slotId:entry.slotId,
     headline:(entry.headline||winner+(opponents?" defeats "+opponents:" wins")).slice(0,140),
     recap:("In the "+ordinal+" bout, "+matchup+" met in a "+format+"."+
-     when+result+". "+reaction).slice(0,1750)};
+     when+result+"."+weapon+titleNote+" "+reaction).slice(0,1750)};
   })
  };
 }

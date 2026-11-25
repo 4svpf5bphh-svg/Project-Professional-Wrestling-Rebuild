@@ -682,8 +682,8 @@
 .ppw-results[data-premium-poster="steelworks"],
 .ppw-results[data-premium-poster="aftershock"],
 .ppw-results[data-premium-poster="retro-broadcast"]{
- --ppw-ppv-accent:#e9dfb1;--ppw-ppv-deep:#17212a;
- --ppw-ppv-surface:#37464c;--ppw-ppv-border:#a49d7e}
+ --ppw-ppv-accent:#e9dfb1;--ppw-ppv-deep:#202326;
+ --ppw-ppv-surface:#363b3e;--ppw-ppv-border:#a49d7e}
 #game .ppw-results[data-premium-poster] .ppw-result-hero,
 #game .ppw-results[data-premium-poster] .ppw-final-bell,
 #game .ppw-results[data-premium-poster] .ppw-result-entry,
@@ -774,3 +774,15 @@
  background:linear-gradient(115deg,#7c302e,#b14433);border-color:#ffc26a;color:#fff5d5}
 @media(max-width:390px){.ppw-results .ppw-segment-temperature{
  font-size:10px;min-height:30px;padding:5px 8px}}
+
+/* Carry the equipped event palette across the entire results viewport, not only the cards. */
+html:has(.ppw-results[data-premium-poster]){--ppw-active-event-bg:#071c32}
+html:has(.ppw-results:is([data-premium-poster="thunder-strike"],[data-premium-poster="tidal-force"],[data-premium-poster="frozen-crown"])){--ppw-active-event-bg:#06172e}
+html:has(.ppw-results:is([data-premium-poster="inferno"],[data-premium-poster="blood-moon"],[data-premium-poster="riot-signal"])){--ppw-active-event-bg:#2b0d10}
+html:has(.ppw-results:is([data-premium-poster="high-noon"],[data-premium-poster="vegas-lights"],[data-premium-poster="crown-theatre"])){--ppw-active-event-bg:#261b1a}
+html:has(.ppw-results:is([data-premium-poster="neon-nights"],[data-premium-poster="laser-grid"],[data-premium-poster="circuit-breaker"])){--ppw-active-event-bg:#111429}
+html:has(.ppw-results:is([data-premium-poster="empire"],[data-premium-poster="eclipse"],[data-premium-poster="spotlight-showdown"])){--ppw-active-event-bg:#161225}
+html:has(.ppw-results:is([data-premium-poster="steelworks"],[data-premium-poster="aftershock"],[data-premium-poster="retro-broadcast"])){--ppw-active-event-bg:#202326}
+html:has(.ppw-results[data-premium-poster]),html:has(.ppw-results[data-premium-poster]) body,html:has(.ppw-results[data-premium-poster]) #game{background:var(--ppw-active-event-bg)!important;background-image:none!important}
+#game .ppw-results[data-premium-poster]{background:var(--ppw-ppv-deep)!important;background-image:none!important}
+#game .ppw-results[data-premium-poster] :is(.ppw-result-lineup,.ppw-result-script-sequence,.ppw-breakdown-card,.ppw-result-story,.ppw-results-analysis,.ppw-post-show-road-agent,.ppw-crowd-noise-card,.ppw-media-scrum,.ppw-press-question,.ppw-press-head,.ppw-show-breakdown-toggle){background:var(--ppw-ppv-surface)!important;border-color:var(--ppw-ppv-border);color:#f6faff}

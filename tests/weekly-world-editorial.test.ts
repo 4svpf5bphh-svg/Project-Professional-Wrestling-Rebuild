@@ -113,3 +113,13 @@ test("four full-sized weekly editorial sources fit the shared dispatch reservati
  assert.equal(anchors.length,4);
  assert.ok(estimatedGroqTokens(JSON.stringify(body),2400)<=7000);
 });
+
+test("persona labels and false TV rivalry framing do not leak into the weekly edition",()=>{
+ const story=weeklyRatingsStory(1,33,[{promotionId:"cwa",promotionName:"Chaotic Wrestling Alliance",rating:.1,humanManaged:true},{promotionId:"wwe",promotionName:"WWE",rating:3.5,humanManaged:false}])!;
+ const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([story]),{s0:{
+  headline:"WWE outpaces CHA",commentary:"CWA has a smaller television audience this week.",
+  fan1:"Passionate promotion loyalist: CWA deserves more viewers.",fan2:"CWA needs time to build a following.",reply:"Fair enough, give it time.",wrestler:null}});
+ assert.equal(result.copy[story.id]?.headline,undefined);
+ assert.equal(result.copy[story.id]?.fans?.[0],"CWA deserves more viewers.");
+ assert.equal(result.issues.UNVERIFIED_RATINGS_TREND,1);
+});

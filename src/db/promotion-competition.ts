@@ -138,21 +138,22 @@ export interface PromotionCompetitionCard {
 export function promotionCompetitionProjectionSql(world:string,owner:string):string{
  const latest=(promotion:string)=>`(
   SELECT jsonb_build_object(
-   'year',s.year,'week',s.week,'showName',draft.show_name,
+   'year',s.year,'week',s.week,'showName',coalesce(draft.show_name,'Weekly show'),
    'crowdResponse',s.crowd_response,
    'tvRating',CASE WHEN econ.audience_format='TV' THEN
     econ.tv_household_rating ELSE NULL END)
   FROM ppw_completed_shows s
   JOIN ppw_booking_drafts draft ON draft.world_id=s.world_id
-   AND draft.draft_id=s.show_id AND draft.status='SUBMITTED'
-  LEFT JOIN ppw_show_economics econ ON econ.world_id=s.world_id
+   AND draft.draft_id=s.show_id AND draft.status='SUBMITTED' AND draft.booking_class='REGULAR'
+  JOIN ppw_show_economics econ ON econ.world_id=s.world_id
    AND econ.show_id=s.show_id AND econ.promotion_id=s.promotion_id
+   AND econ.audience_format='TV' AND econ.tv_household_rating IS NOT NULL
   JOIN ppw_worlds clock ON clock.world_id=s.world_id
   WHERE s.world_id=${world} AND s.promotion_id=${promotion}
    AND (s.year-1)*52+s.week-1 BETWEEN
     greatest(0,(clock.year-1)*52+clock.week-7)
     AND (clock.year-1)*52+clock.week-1
-  ORDER BY s.year DESC,s.week DESC,s.show_id DESC LIMIT 1
+  ORDER BY s.year DESC,s.week DESC,draft.show_day DESC NULLS LAST,s.show_id DESC LIMIT 1
  )`;
  const cached=`(
   SELECT jsonb_build_object(

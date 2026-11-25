@@ -13,9 +13,16 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
  const matches=show.entries.filter(e=>e.type==="MATCH");
  const main=matches.at(-1);
  const opener=matches[0];
+ const titleChange=main?.fallout?.title?.changed?main.fallout.title:null;
+ const other=matches.find(m=>m!==main&&m.fallout?.title&&!m.fallout.title.changed&&!m.fallout.title.priorHolderName)
+  ??matches.find(m=>m!==main&&m.fallout?.title?.changed);
+ const retained=matches.find(m=>m!==main&&m!==other&&m.fallout?.title&&!m.fallout.title.changed&&
+  m.fallout.title.priorHolderName&&m.fallout.title.winnerName===m.fallout.title.priorHolderName);
  return [{
   id:"MAIN_EVENT",journalist:"Mara Finch · The Final Bell",
-  question:main?
+  question:titleChange?
+   `At ${event}, ${titleChange.winnerName} became ${titleChange.name} champion. What does that change mean for the promotion?`:
+   main?
    `The cameras are still rolling after ${event}. Your main event was "${main.headline}". ${main.fallout?.title?.changed?
     "A championship changed hands — what's your reaction?":
     main.outcome==="FOREIGN_OBJECT"||main.outcome==="DISQUALIFICATION"?
@@ -29,7 +36,11 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
   ]
  },{
   id:"BIG_PICTURE",journalist:"Lewis Reed · Crowd Control",
-  question:opener?
+  question:other?.fallout?.title?
+   other.fallout.title.changed?
+    `${other.fallout.title.winnerName} captured the ${other.fallout.title.name} at ${event}. How important was that moment?`:
+    `The ${other.fallout.title.name} remains vacant after ${other.fallout.title.winnerName}'s match at ${event}. What do you say to fans about that outcome?`:
+   opener?
    `From "${opener.headline}" onwards, ${event} gave fans plenty to discuss. What do you want people to remember?`:
    `What do you want wrestling fans to remember about ${event}?`,
   answers:[
@@ -39,7 +50,9 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
   ]
  },{
   id:"NEXT_CHAPTER",journalist:"Dana Cross · Behind the Curtain",
-  question:`Now that ${event} is in the books, what should the fans expect next?`,
+  question:retained?.fallout?.title?
+   `${retained.fallout.title.winnerName} retained the ${retained.fallout.title.name} at ${event}. What should fans expect from the title picture next?`:
+   `Now that ${event} is in the books, what should the fans expect next?`,
   answers:[
    "The next chapter starts as soon as we walk through the curtain.",
    "Nothing is being announced tonight. We're keeping our plans close.",
