@@ -9,7 +9,7 @@ import type {SqlRows} from "./world-operations.js";
 import type {CompletedShowReceipt} from "../domain/completed-show-receipt.js";
 import {readCardParticipants} from "../domain/card-participants.js";
 import {readCanonicalMatchLayout} from "../domain/match-sides.js";
-import {programmeResultSide} from "../domain/programme-match-winners.js";
+import {programmeResultSideForLayout} from "../domain/programme-match-winners.js";
 import {evaluateProgrammeSignals} from "../domain/programme-signals.js";
 export interface ProgrammeResolutionInput {
  worldId:string;promotionId:string;showId:string;year:number;week:number;
@@ -91,13 +91,10 @@ export async function settleCompletedProgrammeHistory(
    Math.max(0,Math.min(100,result.crowd*.9+input.eventImportance*.1));
   const winner_side=link.kind==="MATCH"?(()=>{
    const layout=readCanonicalMatchLayout(payload);
-   if(layout.sides.length!==2)throw new Error("Linked match must have two sides");
    const match=resolvedMatches.get(link.slot_id);
    if(!match)throw new Error("Missing completed linked match");
-   return programmeResultSide({
-    slotId:link.slot_id,
-    sideA:layout.sides[0]!.participants.map(p=>p.personId),
-    sideB:layout.sides[1]!.participants.map(p=>p.personId),
+   return programmeResultSideForLayout({
+    slotId:link.slot_id,sides:layout.sides,
    },programmePeople.map(p=>({programmeId:p.programme_id,
     personId:p.person_id,side:p.side})),link.programme_id,match.actualWinnerSide);
   })():null;
