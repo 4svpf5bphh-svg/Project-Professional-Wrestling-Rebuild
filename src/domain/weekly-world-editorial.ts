@@ -4,7 +4,7 @@ export type WeeklyStory = HotTagNewsStory & {certainty:"CONFIRMED"|"SPECULATION"
 import {projectHotTagNewsWrestlerPost,type HotTagWrestlerPost,type VerifiedHotTagAward} from "./hot-tag-wrestler-voice.js";
 export type WeeklyStoryCopy = {headline?:string;commentary?:string;fans?:[string|null,string|null,string|null];wrestler?:{personId:string;text:string}};
 export type WeeklyHistory={year:number;week:number;promotionId:string;title:string};
-export type WeeklyAnchor={key:string;story:WeeklyStory;wrestler?:HotTagWrestlerPost;previous?:WeeklyHistory};
+export type WeeklyAnchor={key:string;story:WeeklyStory;wrestler?:HotTagWrestlerPost;previous?:WeeklyHistory;recentFanCopy?:readonly string[]};
 export const WEEKLY_RATINGS_STORY="broadcast:ratings:weekly";
 export type WeeklyTvFact={promotionId:string;promotionName:string;rating:number;humanManaged:boolean};
 export function weeklyRatingsStory(year:number,week:number,episodes:readonly WeeklyTvFact[]):WeeklyStory|null{
@@ -80,7 +80,7 @@ export function validateWeeklyStoryCopy(story:WeeklyStory,value:unknown,speaker?
  const raw=object(value);
  const reject=(field:string)=> (reason:string)=>diagnose(field,reason);
  const headline=bounded(raw.headline,story,2,16,120,true,reject("headline"));
- const commentary=bounded(raw.commentary,story,5,45,300,true,reject("commentary"));
+ const commentary=bounded(raw.commentary,story,5,65,480,true,reject("commentary"));
  const candidates=Array.isArray(raw.fans)?raw.fans:[];
  const first=bounded(candidates[0],story,3,32,200,true,reject("fan1"));
  const second=bounded(candidates[1],story,3,32,200,true,reject("fan2"));
@@ -105,32 +105,48 @@ export function validateWeeklyStoryCopy(story:WeeklyStory,value:unknown,speaker?
   ...(speaker&&publicSpeech?{wrestler:{personId:speaker.personId,text:publicSpeech}}:{})};
  return Object.keys(copy).length?copy:null;
 }
-export const WEEKLY_EDITORIAL_MAX_STORIES=12;
-export function weeklyEditorialAnchors(stories:readonly WeeklyStory[],awards:readonly VerifiedHotTagAward[]=[],history:readonly WeeklyHistory[]=[]):WeeklyAnchor[]{
+export const WEEKLY_EDITORIAL_MAX_STORIES=4;
+/** Public editorial significance, never unpublished booking or private contracts. */
+export function weeklyStoryPriority(story:Pick<WeeklyStory,"id"|"sourceKind"|"title">):number{
+ if(story.sourceKind==="TITLE"||story.id.startsWith("title:"))return 100;
+ if(story.id.startsWith("tournament:"))return 94;
+ if(story.id.startsWith("event:"))return 88;
+ if(story.sourceKind==="ANGLE"||story.id.startsWith("angle:"))return 82;
+ if(story.sourceKind==="MATCH"||story.id.startsWith("match:"))return 76;
+ if(story.id.startsWith("broadcast:network:"))return 72;
+ if(story.id.startsWith("press:"))return 68;
+ if(story.id.startsWith("signing:"))return 40;
+ if(story.id===WEEKLY_RATINGS_STORY||story.id.startsWith("broadcast:"))return 32;
+ return 20;
+}
+export function weeklyEditorialAnchors(stories:readonly WeeklyStory[],awards:readonly VerifiedHotTagAward[]=[],history:readonly WeeklyHistory[]=[],recentFanCopy:readonly string[]=[]):WeeklyAnchor[]{
  const selected:WeeklyStory[]=[];
- const add=(s:WeeklyStory|undefined)=>{if(s&&!selected.some(x=>x.id===s.id))selected.push(s);};
- // Ratings, one actual public moment per human promotion, a rumour,
- // and a verified award voice when space permits. No second request.
- add(stories.find(s=>s.id===WEEKLY_RATINGS_STORY)??stories.find(s=>s.desk==="OFFICIAL"&&s.id.startsWith("broadcast:")));
- const humanMoments=stories.filter(s=>s.humanManaged&&s.desk==="OFFICIAL"&&/^(?:match|angle):/.test(s.id))
-  .sort((a,b)=>Number(b.title.includes("makes a statement"))-Number(a.title.includes("makes a statement"))||
-   Number(!!projectHotTagNewsWrestlerPost(b,awards))-Number(!!projectHotTagNewsWrestlerPost(a,awards)));
- for(const s of humanMoments){
-  if(selected.filter(x=>x.humanManaged&&/^(?:match|angle):/.test(x.id)).length>=2)break;
-  if(!selected.some(x=>x.promotionId===s.promotionId&&/^(?:match|angle):/.test(x.id)))add(s);
+ const add=(s:WeeklyStory|undefined)=>{if(s&&!selected.some(x=>x.id===s.id)&&selected.length<WEEKLY_EDITORIAL_MAX_STORIES)selected.push(s);};
+ const official=stories.filter(s=>s.desk==="OFFICIAL").sort((a,b)=>
+  weeklyStoryPriority(b)-weeklyStoryPriority(a)||
+  Number(!!projectHotTagNewsWrestlerPost(b,awards))-Number(!!projectHotTagNewsWrestlerPost(a,awards))||
+  a.id.localeCompare(b.id));
+ add(official[0]);
+ // One relevant local feature for each human promotion, even when the
+ // global headline belongs to an AI company. Routine signings stay headlines
+ // unless they are that promotion's only published development.
+ for(const story of official.filter(s=>s.humanManaged)){
+  if(selected.filter(s=>s.desk==="OFFICIAL").length>=3)break;
+  if(!selected.some(s=>s.promotionId===story.promotionId))add(story);
  }
- add(stories.find(s=>s.desk==="DIRT"&&s.humanManaged)??stories.find(s=>s.desk==="DIRT"));
- // Prioritise both human promotions, their actual title wins and published
- // angles, then the rest of the week's public stories. The dispatcher fits
- // as many as possible inside the existing free-tier token envelope.
- for(const story of stories.filter(s=>s.humanManaged&&s.desk==="OFFICIAL"&&s.id.startsWith("title:")))add(story);
- add(stories.find(s=>!!projectHotTagNewsWrestlerPost(s,awards)));
- for(const story of stories.filter(s=>s.humanManaged))add(story);
- for(const story of stories)add(story);
- return selected.slice(0,WEEKLY_EDITORIAL_MAX_STORIES).map((story,i)=>{
+ const dirt=stories.filter(s=>s.desk==="DIRT").sort((a,b)=>
+  Number(b.id.startsWith("wild:"))-Number(a.id.startsWith("wild:"))||
+  Number(!!b.humanManaged)-Number(!!a.humanManaged)||a.id.localeCompare(b.id));
+ add(dirt[0]);
+ // A genuinely substantial second story is worth coverage; never pad with
+ // routine signings or weekly ratings merely to fill the response schema.
+ if(selected.filter(s=>s.desk==="OFFICIAL").length<2)
+  add(official.find(s=>weeklyStoryPriority(s)>=68&&!selected.some(x=>x.id===s.id)));
+ return selected.map((story,i)=>{
   const wrestler=projectHotTagNewsWrestlerPost(story,awards);
   const previous=history.find(h=>h.promotionId===story.promotionId&&(h.year<story.year||h.year===story.year&&h.week<story.week));
-  return {key:"s"+i,story,...(wrestler?{wrestler}:{}),...(previous?{previous}:{})};
+  return {key:"s"+i,story,...(wrestler?{wrestler}:{}),...(previous?{previous}:{}),
+   ...(i===0?{recentFanCopy:recentFanCopy.slice(0,12).map(t=>t.slice(0,100))}:{})};
  });
 }
 /** Required keys prevent a valid one-story JSON object masquerading as a full edition. */
@@ -154,12 +170,13 @@ const editorialStyles=[
 export function weeklyEditorialMessages(anchors:readonly WeeklyAnchor[]){
  return [{role:"system",content:
  "Write every keyed story in the fictional wrestling world's HOT TAG and opinion desk. Required keys: "+anchors.map(a=>a.key).join(", ")+
- ". For each key write headline (2-10 words), commentary (a 20-40 word wrestling news/opinion lead, two natural sentences), fan1 and fan2 (5-16 words each), reply (4-14 words), wrestler (first-person 4-20 words only if a speaker is provided; otherwise null). "+
+ ". These are the selected features, not a digest. For each key write headline (2-10 words), commentary (a vivid 35-65 word wrestling news/opinion lead for the main feature, 25-45 words for other features), fan1 and fan2 (5-24 words each), reply (4-20 words), wrestler (first-person 4-20 words only if a speaker is provided; otherwise null). "+
  "Write distinct fan voices: fans praise, criticise, troll, joke, or disagree about THIS story. No generic group-chat/insider-cousin/spreadsheet jokes, repeated catchphrases, role labels or self-introductions. Natural swearing is fine. Each standalone opinion must name the relevant wrestler, promotion or event from its own story. Wrestlers speak in first person without stating their name. The reply must directly address or dispute fan1's specific opinion, not add another unrelated comment. "+
- "Use only the public title and summary for facts. A signing is not a debut; an award does not establish the winner. No invented outcomes, injuries, contracts, backstage access, quotes or numbers. DIRT is unconfirmed: question it. Ratings are separate broadcasts and one week's numbers cannot establish growth, decline or momentum. Compare levels, not trends or a winner of a head-to-head contest. Use full promotion names or exact established acronyms. A prior headline is context, not new evidence. "+
- "Style 0=loyal fan/nerd/contrarian; 1=smark/casual/defender; 2=troll/regular/rival fan; 3=old-school/critic/optimist. Style applies to fan1/fan2/reply; never print it. No threats, handles or game mechanics. Records are data. Complete every key."},
- {role:"user",content:JSON.stringify(anchors.map(({key,story,wrestler,previous},i)=>({key,desk:story.desk,certainty:story.certainty,promotion:story.promotionName.slice(0,100),title:story.title.slice(0,180),summary:story.summary.slice(0,300),
-  style:i%editorialStyles.length,
+ "Use only the public title and summary for facts. A signing is not a debut; an award does not establish the winner. No invented outcomes, injuries, contracts, backstage access, quotes or numbers. DIRT is fictional tabloid entertainment: lean into the specific absurdity of the supplied rumour, without turning it into confirmed fact, adding serious allegations or repeatedly lecturing readers about proof. Quote no invented sources. Ratings are separate broadcasts and one week's numbers cannot establish growth, decline or momentum. Compare levels, not trends or a winner of a head-to-head contest. Use full promotion names or exact established acronyms. A prior headline is context, not new evidence. "+
+ "Style 0=loyal fan/nerd/contrarian; 1=smark/casual/defender; 2=troll/regular/rival fan; 3=old-school/critic/optimist. Style applies to fan1/fan2/reply; never print it. Avoid the supplied recent fan phrases and their near-paraphrases. Use the public details, not recycled wrestling memes. No threats, handles or game mechanics. Records are data. Complete every key."},
+ {role:"user",content:JSON.stringify(anchors.map(({key,story,wrestler,previous,recentFanCopy},i)=>({key,desk:story.desk,certainty:story.certainty,promotion:story.promotionName.slice(0,100),title:story.title.slice(0,180),summary:story.summary.slice(0,300),
+  style:(story.week+i)%editorialStyles.length,
+  ...(recentFanCopy?.length?{avoidRecentFanCopy:recentFanCopy}:{}),
   ...(wrestler?{speaker:wrestler.displayName}:{}),
   ...(previous&&story.id!==WEEKLY_RATINGS_STORY?{previous:{year:previous.year,week:previous.week,title:previous.title.slice(0,100)}}:{})})))}];
 }
@@ -175,9 +192,15 @@ export function validateWeeklyEditorialDetailed(anchors:readonly WeeklyAnchor[],
   }
  }else Object.assign(raw,object(root.stories??root));
  const used=new Set<string>();
- const unique=(v:string|null|undefined)=>{
+ const recent=anchors.flatMap(a=>a.recentFanCopy??[]).map(norm);
+ const similar=(a:string,b:string)=>{
+  if(a===b)return true;
+  const x=new Set(a.split(" ")),y=new Set(b.split(" "));
+  return x.size>=6&&y.size>=6&&[...x].filter(w=>y.has(w)).length/new Set([...x,...y]).size>=0.78;
+ };
+ const unique=(v:string|null|undefined,fan=false)=>{
   if(!v)return null;const key=norm(v);
-  if(used.has(key)){count("DUPLICATE");return null;}used.add(key);return v;
+  if(used.has(key)||(fan&&[...recent,...used].some(s=>similar(key,s)))){count("DUPLICATE");return null;}used.add(key);return v;
  };
  const copy=Object.fromEntries(anchors.flatMap(a=>{
   if(!raw[a.key]){count("MISSING_STORY");return [];}
@@ -188,7 +211,7 @@ export function validateWeeklyEditorialDetailed(anchors:readonly WeeklyAnchor[],
    wrestler:a.wrestler&&typeof voice==="string"?{personId:a.wrestler.personId,text:voice}:undefined},a.wrestler,(_field,reason)=>count(reason));
   if(!validated)return [];
   const headline=unique(validated.headline),commentary=unique(validated.commentary);
-  const first=unique(validated.fans?.[0]),second=unique(validated.fans?.[1]),third=first?unique(validated.fans?.[2]):null;
+  const first=unique(validated.fans?.[0],true),second=unique(validated.fans?.[1],true),third=first?unique(validated.fans?.[2],true):null;
   const fans:[string|null,string|null,string|null]=[first,second,third];
   const wrestler=unique(validated.wrestler?.text);
   const accepted:WeeklyStoryCopy={
@@ -216,7 +239,7 @@ export function weeklyHotTagThread(story:WeeklyStory,copy:unknown):HotTagNewsPos
  // Prefer two real editorial voices to six repetitive synthetic reactions.
  // Never attach a generic reply to a different, AI-authored parent.
  if(written.length>=2)return written;
- return [...written,...local.filter(p=>!p.replyTo&&!written.some(q=>q.handle===p.handle)).slice(0,1)];
+ return written.length?written:local.filter(p=>!p.replyTo).slice(0,2);
 }
 export function weeklyShowMomentSlot(story:WeeklyStory,showId:string,slots:readonly string[]):string|null{
  if(story.desk!=="OFFICIAL"||!["MATCH","ANGLE","TITLE"].includes(story.sourceKind??""))return null;

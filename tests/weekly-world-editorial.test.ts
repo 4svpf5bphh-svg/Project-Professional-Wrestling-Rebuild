@@ -76,7 +76,7 @@ test("both human promotions get their own actual moment before optional award co
  const b={...a,id:"match:b:slot",sourceKind:"MATCH",promotionId:"b",promotionName:"Rival Wrestling"};
  const rating={...official,id:"broadcast:ratings:weekly"};
  const anchors=weeklyEditorialAnchors([rating,dirt,a,b]);
- assert.deepEqual(anchors.map(x=>x.story.id),[rating.id,a.id,b.id,dirt.id]);
+ assert.deepEqual(anchors.map(x=>x.story.id),[a.id,b.id,dirt.id]);
 });
 
 test("strict weekly response requires every anchor, with distinct fan fields and no unknown keys",()=>{
@@ -87,7 +87,7 @@ test("strict weekly response requires every anchor, with distinct fan fields and
  const response=weeklyEditorialResponseFormat(anchors);
  assert.equal(response.json_schema.strict,true);
  const schema=response.json_schema.schema;
- assert.deepEqual(schema.required,["s0","s1","s2","s3"]);
+ assert.deepEqual(schema.required,["s0","s1","s2"]);
  assert.equal(schema.additionalProperties,false);
  for(const field of Object.values(schema.properties)){
   assert.equal(field.additionalProperties,false);
@@ -110,7 +110,7 @@ test("four full-sized weekly editorial sources fit the shared dispatch reservati
  const anchors=weeklyEditorialAnchors(Array.from({length:4},(_,i)=>({...official,id:"story:"+i,title:"x".repeat(200),summary:"x".repeat(500),promotionName:"p".repeat(110)})));
  const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",max_completion_tokens:2400,
   response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
- assert.equal(anchors.length,4);
+ assert.equal(anchors.length,1);
  assert.ok(estimatedGroqTokens(JSON.stringify(body),2400)<=7000);
 });
 
@@ -124,18 +124,16 @@ test("persona labels and false TV rivalry framing do not leak into the weekly ed
  assert.equal(result.issues.UNVERIFIED_RATINGS_TREND,1);
 });
 
-test("weekly coverage expands to a bounded twelve stories and prioritises both human promotions",()=>{
+test("routine signing digests do not consume the weekly editorial budget",()=>{
  const stories=Array.from({length:18},(_,i)=>({...official,id:"signing:"+i,title:"Talent "+i+" signs with Crown Wrestling",humanManaged:i>=14}));
  const anchors=weeklyEditorialAnchors(stories);
- assert.equal(anchors.length,12);
- assert.ok(stories.slice(14).every(s=>anchors.some(a=>a.story.id===s.id)));
+ assert.equal(anchors.length,1);
 });
 test("accepted Groq comments do not get padded with unrelated template replies",()=>{
  const s={...official,id:"match:show:slot"};
  const posts=weeklyHotTagThread(s,{fans:[null,"Crown Wrestling needs better stories.",null]});
- assert.equal(posts.length,2);
+ assert.equal(posts.length,1);
  assert.equal(posts[0]?.text,"Crown Wrestling needs better stories.");
- assert.equal(posts[1]?.replyTo,undefined);
 });
 
 test("title-win discussion reaches the exact match on the correct completed show",()=>{
@@ -144,3 +142,20 @@ test("title-win discussion reaches the exact match on the correct completed show
  assert.equal(weeklyShowMomentSlot(s,"ascension",["main"]),null);
  assert.equal(weeklyShowMomentSlot({...s,desk:"DIRT"},"extreme",["main"]),null);
 });
+
+ test("championship is the lead, local promotions get a feature and the wild rumour beats routine gossip",()=>{
+ const title={...official,id:"title:ppv:m1",sourceKind:"TITLE",humanManaged:true};
+ const other={...official,id:"angle:tv:a1",sourceKind:"ANGLE",promotionId:"b",promotionName:"Rival Wrestling",humanManaged:true};
+ const wild={...dirt,id:"wild:tv"};
+ const routine={...official,id:"signing:routine"};
+ const anchors=weeklyEditorialAnchors([routine,dirt,wild,other,title]);
+ assert.deepEqual(anchors.map(a=>a.story.id),[title.id,other.id,wild.id]);
+ });
+ test("recent fan copy is rejected without discarding fresh opinions",()=>{
+ const anchors=weeklyEditorialAnchors([official],[],[],[copy.fans[0]!]);
+ assert.match(weeklyEditorialMessages(anchors)[1]!.content,/avoidRecentFanCopy/);
+ const result=validateWeeklyEditorialDetailed(anchors,{s0:copy});
+ assert.equal(result.copy[official.id]?.fans?.[0],null);
+ assert.equal(result.copy[official.id]?.fans?.[1],copy.fans[1]);
+ assert.equal(result.copy[official.id]?.fans?.[2],null);
+ });

@@ -449,3 +449,10 @@
 .ppw-news-editorial{border-left:3px solid currentColor;padding:8px 10px;margin:5px 0;display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
 .ppw-news-editorial .ppw-news-story-title{font-size:15px!important;line-height:1.3!important;text-transform:none!important}
 .ppw-news-editorial p{margin:2px 0!important}
+
+/* Compact weekly digest; the certified source remains expandable. */
+.ppw-news-digest{display:grid;gap:0;min-width:0;padding:12px;border:1px solid #ffffff20;border-radius:12px;background:#ffffff06}
+.ppw-news-digest h3{margin:0 0 6px;font-size:.74rem;letter-spacing:.08em}
+.ppw-news-brief{padding:9px 0;border-top:1px solid #ffffff16;min-width:0;overflow-wrap:anywhere}
+.ppw-news-brief summary{font-size:.93rem;cursor:pointer;line-height:1.3}
+.ppw-news-brief p{font-size:.84rem;margin:8px 0;line-height:1.4}

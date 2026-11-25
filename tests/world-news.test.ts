@@ -205,3 +205,14 @@ test("accepted World contract signings are official news, with no private offer 
  assert.doesNotMatch(signed[0]!.summary,/debuted|appeared at|will headline/i);
  assert.deepEqual(composeConfirmedSigningNews([]),[]);
 });
+
+ test("wild gossip spans playful wrestling culture and stays speculative",()=>{
+ const titles=new Set<string>();let absurd=0;
+ for(let i=0;i<64;i++){
+  const story=composeWorldNews([],[],[pub("variety:"+i,"human",80)],[],names).find(s=>s.key.startsWith("wild:"))!;
+  assert.equal(story.certainty,"SPECULATION");assert.equal(story.desk,"DIRT");
+  titles.add(story.title);
+  if(/concert|Court|rib|quiz|throne|mascot|catering|comedy/i.test(story.title))absurd++;
+ }
+ assert.ok(titles.size>=10);assert.ok(absurd>0&&absurd<64);
+ });
