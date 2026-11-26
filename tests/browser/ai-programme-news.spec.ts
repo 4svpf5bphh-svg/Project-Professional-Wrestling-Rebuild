@@ -47,6 +47,8 @@ for (const width of [320, 390]) {
    await page.goto("/#/news");
    await page.getByRole("button", { name: "Official News" }).click();
    await expect(page.getByText(story.title, { exact: true })).toBeVisible();
+   await page.locator(".ppw-hot-tag-thread summary").click();
+   await expect(page.locator(".ppw-hot-tag-news-copy p").first()).toBeVisible();
    expect(resultRequests).toBe(0);
    await page.getByRole("button", { name: "Read Results", exact: true }).click();
    await expect(page.getByRole("heading", { name: "Final Clash" })).toBeVisible();

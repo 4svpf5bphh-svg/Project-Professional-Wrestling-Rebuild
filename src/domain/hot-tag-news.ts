@@ -279,6 +279,7 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
  // Previously published fan threads stay unchanged. New episodes get
  // additional fictional voices without new requests, timers or Neon writes.
  const expanded:Record<typeof kind,string[]>={
+  PROGRAMME:reactions.PROGRAMME,
   PRESS:["A promoter said something and my timeline is on fire. 🎤",
    "Just wait until the journalists ask about the next show. 👀",
    "I trust the transcript more than the anonymous 'sources'. 🧐"],
@@ -323,6 +324,7 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
  // Chaotic fans are not verified witnesses. Punchlines and occasional mild
  // swearing add texture without asserting anything the certified show didn't do.
  const rowdy:Record<typeof kind,string[]>={
+  PROGRAMME:reactions.PROGRAMME,
   PRESS:[
    "A press conference with this much ducking should come with a referee. 😂",
    "Booker answered like I answer the boss when I haven't done the spreadsheet. 💀",
@@ -432,6 +434,7 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
   ]
  };
  const lead:Record<typeof kind,string[]>={
+  PROGRAMME:reactions.PROGRAMME,
   PRESS:[],
   RATINGS:reactions.RATINGS,
   BROADCAST:[
