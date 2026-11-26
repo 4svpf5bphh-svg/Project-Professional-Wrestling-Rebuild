@@ -116,11 +116,17 @@ export function dirtSheetByline(id:string){
  * score or template. Dirt-sheet theories remain explicitly unverified.
  * Feed is deterministic from the article; zero write amplification on Neon.
  */
+// Keep this a unary callback: Array.map passes its index as a second argument.
 export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
+ return projectUniqueHotTagNewsThread(story,new Set());
+}
+export const hotTagReactionKey=(text:string)=>text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
+export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:ReadonlySet<string>,minimum=3):HotTagNewsPost[]{
  const seed=stableHotTagHash([story.id,story.year,story.week,story.desk].join(":"));
  const text=(story.title+" "+story.summary).toLowerCase();
  const rumour=story.desk==="DIRT";
  const kind=rumour?"RUMOUR":
+  story.id==="broadcast:ratings:weekly"?"RATINGS":
   story.id.startsWith("broadcast:")?"BROADCAST":
   story.id.startsWith("press:")?"PRESS":
   /challeng|call(?:s|ed)? out|contract sign/.test(text)?"CHALLENGE":
@@ -136,8 +142,19 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "One actual answer and seventeen completely different theories. 😂",
    "A wrestling press scrum has become its own main event. 🍿"
   ],
+  RATINGS:[
+   "I like seeing the actual television figures rather than guessing which company has the bigger audience.",
+   "Different slots, different audiences. I'm not handing out a ratings trophy for this.",
+   "The numbers are interesting, but give me a good wrestling show over a decimal point.",
+   "I'd love to know what makes people tune into each promotion.",
+   "The viewing figures give fans something else to argue about. As if we needed it.",
+   "A smaller audience doesn't automatically mean a worse wrestling show.",
+   "Can we appreciate the wrestling without turning every television figure into a tribal war?",
+   "I'll keep an eye on these numbers when the next broadcasts are in.",
+   "The TV audience matters to the business, not just the people arguing on the internet."
+  ],
   BROADCAST:[
-   "This is the ratings war I wanted. Same hour, actual viewers on the line. 📺",
+   "The television side of wrestling is every bit as interesting as the card. 📺",
    "A strong card matters, but now you've got to keep that audience next week. 👀",
    "Three rough TV nights? That network is absolutely watching the numbers. 💀",
    "You cannot just move a weekly show and expect the audience to find it. 😂",
@@ -257,6 +274,7 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
   PRESS:["A promoter said something and my timeline is on fire. 🎤",
    "Just wait until the journalists ask about the next show. 👀",
    "I trust the transcript more than the anonymous 'sources'. 🧐"],
+  RATINGS:reactions.RATINGS,
   BROADCAST:["Networks are about to become the main characters. 📺",
    "A fixed broadcast night means the fans know where to find you. 🔥",
    "The partner's reaction is public, and the ratings will be too. 👀",
@@ -307,8 +325,9 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "Twelve-page conspiracy thread based on a six-word answer. Peak wrestling internet.",
    "The post-show scrum has more plot twists than my entire love life. 🤡"
   ],
+  RATINGS:reactions.RATINGS,
   BROADCAST:[
-   "Three weeks of shit ratings and now the network's discovered a backbone. 📺",
+   "TV executives and wrestling fans arguing about decimal points again. Bloody hell. 📺",
    "My nan has more viewers watching pigeons in the garden. Sorry, that's brutal. 🐦",
    "Imagine a TV executive powerbombing the ratings spreadsheet through a table. 😂",
    "The ratings-war goblins have crawled out of the walls. Hide your calculators. 📉",
@@ -406,6 +425,7 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  };
  const lead:Record<typeof kind,string[]>={
   PRESS:[],
+  RATINGS:reactions.RATINGS,
   BROADCAST:[
    "The network has spoken and the ratings goblins are losing their minds. 📺",
    "A TV warning is not a match result, but it certainly has consequences. 📉",
@@ -484,9 +504,29 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "On-record words beat six anonymous locker-room theories. I respect that. 🧐",
    "The manager has spoken; now we'll see whether the next show backs it up. 👀"
   ]:[];
- const pool=[...specific,...pressSpecific,...reactions[kind],...expanded[kind],...rowdy[kind]];
- const used=new Set<string>(),handles=new Set<string>(),posts:HotTagNewsPost[]=[];
- const count=3+seed%4; // Three to six actual comments, not an identical trio every time.
+ const wildSpecific=rumour&&story.id.startsWith("wild:")?
+  /concert|encore|microphone/.test(text)?[
+   "If there was an encore in the locker room, I hope somebody got a setlist. 🎸",
+   "Imagine trying to rehearse your entrance while the dressing room is doing a soundcheck."
+  ]:/court|dessert|pudding/.test(text)?[
+   "Wrestlers' Court over a pudding is exactly the sort of wrestling nonsense I live for.",
+   "If dessert really went missing, the catering table needs its own referee. 😂"
+  ]:/mascot|inflatable/.test(text)?[
+   "An inflatable mascot with its own title belt? Give it a ridiculous entrance too.",
+   "If the mascot gets a push before my favourite wrestler I'm done. 😂"
+  ]:/music|entrance theme/.test(text)?[
+   "An entrance music prank would be hilarious right up until the wrestler hears it.",
+   "Imagine hitting the stage with absolutely the wrong theme. I'd pay to see the reaction."
+  ]:/merch|shirt/.test(text)?[
+   "If that merchandise ever appears at the arena, someone is absolutely buying it.",
+   "The merchandise table has potential to be the funniest part of the whole rumour."
+  ]:/quiz|trivia/.test(text)?[
+   "A locker-room quiz would expose every self-proclaimed wrestling historian in seconds.",
+   "If there's a quiz trophy, I want a ridiculously dramatic presentation ceremony."
+  ]:[]:[];
+ const pool=[...wildSpecific,...specific,...pressSpecific,...reactions[kind],...expanded[kind],...rowdy[kind]];
+ const used=new Set(excluded),handles=new Set<string>(),posts:HotTagNewsPost[]=[];
+ const count=Math.max(Math.min(6,minimum),3+seed%4); // Three to six actual comments, not an identical trio every time.
  for(let i=0;i<count;i++){
   const key=story.id+":"+story.year+":"+story.week+":"+i;
   let person=stableHotTagHash(key+":persona")%HOT_TAG_FAN_ACCOUNTS.length;
@@ -494,16 +534,19 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
   const voice=HOT_TAG_FAN_ACCOUNTS[person]!;handles.add(voice.handle);
   // The first reaction anchors itself to real story context. The other fans
   // can be sarcastic, insightful or utterly unhelpful without inventing facts.
-  const candidates=i===0&&pressSpecific.length?pressSpecific:
+  const candidates=i===0&&wildSpecific.length?wildSpecific:i===0&&pressSpecific.length?pressSpecific:
    i===0&&specific.length?specific:
    i===0?lead[kind]:i===1?rowdy[kind]:pool;
-  let choice=stableHotTagHash(key+":dialogue")%candidates.length;
-  let message=candidates[choice]!;
-  while(used.has(message)){
-   choice=(choice+1)%candidates.length;
-   message=candidates[choice]!;
-  }
-  const replies=count>=5&&i===count-1&&seed%3===0;
+  const fresh=(options:readonly string[],salt:string)=>{
+   const start=stableHotTagHash(key+salt)%options.length;
+   for(let offset=0;offset<options.length;offset++){
+    const candidate=options[(start+offset)%options.length]!;
+    if(!used.has(hotTagReactionKey(candidate)))return candidate;
+   }
+   return undefined;
+  };
+  let message=fresh(candidates,":dialogue")??fresh(pool,":alternate");
+  let replies=count>=5&&i===count-1&&seed%3===0&&posts.length>0;
   const response=[
    "You read all that and THAT'S your take? Mate. 😂",
    "I disagree with every word but I respect the chaos. 🤝",
@@ -512,12 +555,24 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
    "This is absolute bollocks and yet I've liked it. Help.",
    "There are three genuine facts here and you've dodged all of them. 🤡",
    "Stop shouting and watch next week's bloody show."];
-  if(replies){message=response[stableHotTagHash(key+":reply")%response.length]!;}
-  used.add(message);
+  if(replies){const reply=fresh(response,":reply");if(reply)message=reply;else replies=false;}
+  if(!message)continue;
+  used.add(hotTagReactionKey(message));
   const h=stableHotTagHash(key+":"+voice.handle);
   posts.push({...voice,text:message,
    ...(replies?{replyTo:posts[0]!.handle}:{}),
    likes:13+h%1300,replies:2+(h>>>7)%130,reposts:1+(h>>>12)%170});
  }
  return posts;
+}
+
+/** Stable fictional identities carry an editorial temperament, not a random
+ * personality that changes from one edition to the next. */
+export function hotTagFanTemperament(handle:string):string{
+ if(/Workrate|TapeTrader|BellToBell|Star|VHS|Armchair|Botch|Meltzer|Maths|Accountant/i.test(handle))return "technical wrestling nerd; specific, demanding and occasionally pedantic";
+ if(/Heel|CheapHeat|Twat|Goblin|Hooligan|NobodyAsked|Basement|Pigeon|TheFinishWasWrong/i.test(handle))return "provocative wind-up merchant; sarcastic, occasionally sweary, argues in good humour";
+ if(/Ratings|Contract|Territory/i.test(handle))return "business-obsessed fan; cares about genuine wrestling industry stakes";
+ if(/Nan|Tea|Row|Fran|Karen|Darren|Janet|Entrance/i.test(handle))return "casual regular; emotional, funny and speaks plainly";
+ if(/Belt|BigFight|Feud|Stipulation|Respect|Popcorn/i.test(handle))return "invested storyline fan; wants stakes, rivalries and satisfying payoffs";
+ return ["cheeky optimist","sceptical smark","passionate loyalist","dry contrarian"][stableHotTagHash(handle)%4]!;
 }

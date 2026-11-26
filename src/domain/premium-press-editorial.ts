@@ -61,7 +61,9 @@ export function publishablePressEditorial(
  ];
  const lead=spoken.find(s=>s.questionId==="MAIN_EVENT")??spoken[0]!;
  const main=show.entries.filter(e=>e.type==="MATCH").at(-1);
- const result=main?.headline?shorten(main.headline,96):event;
+ const title=main?.fallout?.title;
+ const result=title?.changed?shorten(title.winnerName+" taking the "+title.name+(title.priorHolderName?" from "+title.priorHolderName:""),160):
+  main?.headline?shorten(main.headline,96):event;
  const isMain=lead.questionId==="MAIN_EVENT";
  const subject=isMain?"the main event — "+result:
   lead.questionId==="BIG_PICTURE"?"the show":"the next chapter";

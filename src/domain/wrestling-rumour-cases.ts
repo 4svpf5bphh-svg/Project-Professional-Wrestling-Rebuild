@@ -23,10 +23,10 @@ export function rumourFollowup(c:RumourCase,year:number,week:number):WorldNewsSt
  // still gossip. Keep backstage allegations in the voice of an actual outlet.
  const summaries=final?
   {SUBSTANTIATED:"A second account has echoed the earlier allegation, but the descriptions still clash and nobody involved has gone on the record. The publication has not established what, if anything, happened backstage.",
-   DISTORTED:"The first headline was emphatic. The follow-ups have been much less so. The supposed walkout and physical confrontation remain unsupported, and the publication is now questioning how the story was framed.",
+   DISTORTED:"The first headline was emphatic. The follow-ups have been much less so. The more colourful details remain unsupported, and the publication is now questioning how the story was framed.",
    FABRICATED:"The outlet has withdrawn its original locker-room report after its tip could not be corroborated. Its editor has apologised for running the claim. The story now is how the paper got it so wrong."}:
   {SUBSTANTIATED:"Another unnamed tipster has repeated part of the locker-room story, while disagreeing with key details. More whispers are not the same as evidence, and no participant has confirmed the account.",
-   DISTORTED:"One tip described an explosive argument. A competing account says the headline exaggerated a mundane exchange. Neither version has been established, but the rumour is drawing plenty of attention.",
+   DISTORTED:"One tip painted a spectacular picture. A competing account says the headline exaggerated a much more ordinary moment. Neither version has been established, but the rumour is drawing plenty of attention.",
    FABRICATED:"Other wrestling reporters have challenged the alleged source behind the original scoop. The journalist has yet to offer anything that backs up the claim, and rival outlets are asking uncomfortable questions."};
  return {key:"followup:"+c.case_key+":"+year+":"+week,desk:"DIRT",
   certainty:"SPECULATION",promotionId:c.promotion_id,promotionName:c.promotion_name,

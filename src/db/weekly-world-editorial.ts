@@ -2,14 +2,15 @@
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
+import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
 import {estimatedGroqTokens,groqResponseUsage} from "../domain/ai-director.js";
 import {weeklyEditorialAnchors,weeklyEditorialMessages,weeklyEditorialResponseFormat,validateWeeklyEditorialDetailed,weeklyRatingsStory,type WeeklyStory,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
 import type {VerifiedHotTagAward} from "../domain/hot-tag-wrestler-voice.js";
 type Scope={worldId:string;year:number;week:number};
 type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;human_managed:boolean};
-export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Scope,key:string,transport:typeof fetch=fetch){
+export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Scope,key:string,transport:typeof fetch=fetch,terraKey?:string){
  const {worldId,year,week}=scope,params=[worldId,year,week];
- if(!worldId||worldId.length>200||!Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||!key)
+ if(!worldId||worldId.length>200||!Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||(!key&&!terraKey))
   throw Error("Invalid weekly public editorial scope");
  // One durable claim per completed edition, including dark weeks and AI-only shows.
  const claims=await withSqlClient(pool,db=>db.query<{world_id:string}>(`
@@ -19,7 +20,7 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
   WHERE n.world_id=$1 AND n.year=$2 AND n.week=$3
   ON CONFLICT DO NOTHING RETURNING world_id`,params));
  if(claims.length!==1)return {state:"SKIPPED",providerCalls:0,accepted:0};
- let calls=0,state="FAILED",diagnostic="ERROR",estimate=0,inputTokens=0,outputTokens=0,copy:Record<string,WeeklyStoryCopy>={};
+ let provider="GROQ",calls=0,state="FAILED",diagnostic="ERROR",estimate=0,inputTokens=0,outputTokens=0,copy:Record<string,WeeklyStoryCopy>={};
  let ratingStory:WeeklyStory|null=null;
  try{
   const previous=week===1?{year:year-1,week:52}:{year,week:week-1};
@@ -47,41 +48,65 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
      WHERE e.world_id=$1 AND e.year=$2 AND e.week=$3 AND e.audience_format='TV' AND e.tv_household_rating IS NOT NULL
      ORDER BY e.promotion_id,e.tv_household_rating DESC,e.show_id LIMIT 40) latest
     ORDER BY human_managed DESC,rating DESC,promotion_id LIMIT 3`,params),
-   previous.year<1?Promise.resolve([]):db.query<{promotion_id:string;title:string}>(`
-    SELECT promotion_id,title FROM ppw_world_news_items WHERE world_id=$1 AND year=$2 AND week=$3
-     AND desk='OFFICIAL' AND certainty='CONFIRMED'
-    ORDER BY story_key LIMIT 12`,[worldId,previous.year,previous.week])
+   previous.year<1?Promise.resolve([]):db.query<{promotion_id:string;title:string;fans:unknown;desk:string}>(`
+    SELECT n.promotion_id,n.title,n.desk,b.copy_json->n.story_key->'fans' AS fans
+    FROM ppw_world_news_items n LEFT JOIN ppw_weekly_world_editorial b
+     ON b.world_id=n.world_id AND b.year=n.year AND b.week=n.week AND b.state='READY'
+    WHERE n.world_id=$1 AND n.year=$2 AND n.week=$3
+    ORDER BY (b.copy_json->n.story_key->'fans' IS NOT NULL) DESC,n.desk,n.story_key LIMIT 18`,[worldId,previous.year,previous.week])
   ]));
   const stories:WeeklyStory[]=rows.map(s=>({id:s.story_key,year,week,desk:s.desk,certainty:s.certainty,
    promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,humanManaged:s.human_managed}));
   const publicAwards:VerifiedHotTagAward[]=awards.map(a=>({year,week,kind:a.kind,promotionId:a.promotion_id,
    showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names}));
   ratingStory=weeklyRatingsStory(year,week,ratings.map(r=>({promotionId:r.promotion_id,promotionName:r.promotion_name,rating:r.rating,humanManaged:r.human_managed})));
-  const anchors=weeklyEditorialAnchors(ratingStory?[ratingStory,...stories]:stories,publicAwards,
-   history.map(h=>({year:previous.year,week:previous.week,promotionId:h.promotion_id,title:h.title})));
+  let anchors=weeklyEditorialAnchors(ratingStory?[ratingStory,...stories]:stories,publicAwards,
+   history.filter(h=>h.desk==="OFFICIAL").map(h=>({year:previous.year,week:previous.week,promotionId:h.promotion_id,title:h.title})),
+   history.flatMap(h=>Array.isArray(h.fans)?h.fans.filter((v):v is string=>typeof v==="string"):[]));
   if(!anchors.length){state="EMPTY";diagnostic="NO_PUBLIC_STORIES";}
   else{
-   const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",
-    max_completion_tokens:2400,response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
-   // Hard request envelope below the observed 8k TPM, including reasoning/completion reserve.
+   const build=()=>({model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",
+    max_completion_tokens:Math.max(2400,anchors.length*650),
+    response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)});
+   let body=build();
    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
-   // Never silently drop public stories. The shared dispatcher has a 7600-token ceiling.
+   // Pack the largest safe edition into ONE free call. Never split into a
+   // second immediately rate-limited request or extend the World lock.
+   if(estimate>7000&&anchors[0]?.recentFanCopy?.length){
+    anchors=anchors.map(a=>({...a,recentFanCopy:a.recentFanCopy?.slice(0,4)}));
+    body=build();estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
+   }
+   while(anchors.length>1&&estimate>7000){
+    const drop=anchors.map((a,i)=>({a,i})).filter(x=>x.i>0&&x.a.story.desk==="OFFICIAL").at(-1)?.i??anchors.length-1;
+    anchors=anchors.filter((_,i)=>i!==drop);body=build();
+    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
+   }
    if(estimate>7000){diagnostic="TOKEN_ENVELOPE";throw Error("Weekly editorial envelope too large");}
-   const response=await requestGroqEditorial({task:"SHORT_NEWS",key,pool,body,signal:AbortSignal.timeout(16000),
-    pace:true,transport:async(url,init)=>{calls++;return transport(url,init);}});
+   const measured:typeof fetch=async(url,init)=>{calls++;return transport(url,init);};
+   let response:Response|null=null;
+   if(key)try{response=await requestGroqEditorial({task:"SHORT_NEWS",key,pool,body,signal:AbortSignal.timeout(25000),
+    pace:true,transport:measured});}catch(error){if(calls||!terraKey)throw error;}
+   // Keep the existing one-dispatch guarantee: Terra can support the public
+   // desk only if Groq was not actually called. Both use existing budgets.
+   if(!calls&&terraKey&&(!response||!response.ok)){
+    provider="TERRA";
+    response=await requestOpenAiEditorialPreview({key:terraKey,enabled:true,pool,body,
+     signal:AbortSignal.timeout(25000),transport:measured,feature:"WEEKLY_MEDIA"});
+   }
+   if(!response)throw Error("No public editorial provider available");
    diagnostic=response.headers.get("x-ppw-paced")==="true"?"PACING":
     response.headers.get("x-ppw-budget-exhausted")==="true"?"BUDGET":
     response.status===429?"RATE_LIMITED":response.ok?"INVALID_RESPONSE":"HTTP_REJECTED";
    if(response.ok){
     let rejectionSummary="";
     const raw=await response.text();
-    if(raw.length<=16000){
+    if(raw.length<=32000){
      const envelope=JSON.parse(raw);
      const usage=groqResponseUsage(envelope);
      inputTokens=usage?.inputTokens??0;outputTokens=usage?.outputTokens??0;
      const reply=envelope?.choices?.[0];
      if(reply?.finish_reason==="length")diagnostic="TRUNCATED";
-     else if(typeof reply?.message?.content==="string"&&reply.message.content.length<=6500){
+     else if(typeof reply?.message?.content==="string"&&reply.message.content.length<=16000){
       try{
        const decoded=JSON.parse(reply.message.content.trim().replace(/^\s*```(?:json)?\s*|\s*```\s*$/gi,""));
        const validated=validateWeeklyEditorialDetailed(anchors,decoded);
@@ -108,7 +133,7 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
   UPDATE ppw_weekly_world_editorial SET state=$4,copy_json=$5::jsonb,provider_calls=$6,
    diagnostic=$7,estimated_tokens=$8,input_tokens=$9,output_tokens=$10,rating_story=$11::jsonb,completed_at=clock_timestamp()
   WHERE world_id=$1 AND year=$2 AND week=$3 AND state='PENDING'`,
-  [...params,state,state==="READY"?JSON.stringify(copy):null,calls,diagnostic,estimate,inputTokens,outputTokens,ratingStory?JSON.stringify(ratingStory):null]));
+  [...params,state,state==="READY"?JSON.stringify(copy):null,calls,provider==="TERRA"?"TERRA / "+diagnostic:diagnostic,estimate,inputTokens,outputTokens,ratingStory?JSON.stringify(ratingStory):null]));
  return {state,providerCalls:calls,accepted:Object.keys(copy).length};
 }
 

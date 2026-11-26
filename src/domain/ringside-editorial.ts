@@ -1,4 +1,5 @@
 import {finishPropLabel} from "./bookable-match.js";
+import {readTerraPressQuestionTails,type TerraPressQuestionTails} from "./premium-media-scrum.js";
 /** A full-card editorial projection. It never writes simulation facts. */
 import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
 import type {RingsideMemory} from "../db/ringside-continuity.js";
@@ -78,6 +79,7 @@ function verifiedStipulationNote(format:string,finish:string){
 export interface RingsideCopy{
  showHeadline:string;opening:string;closing:string;
  slots:{slotId:string;headline:string;recap:string}[];
+ pressQuestions?:TerraPressQuestionTails;
 }
 export function ringsideFacts(show:CompletedShowView){
  return {
@@ -105,7 +107,7 @@ const shape=(x:unknown)=>x&&typeof x==="object"&&!Array.isArray(x)?
 /** A cache hit must be type-safe without expanding the show or reading more rows. */
 export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
  const v=shape(candidate);
- if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots"].includes(k))||
+ if(!v||Object.keys(v).some(k=>!["showHeadline","opening","closing","slots","pressQuestions"].includes(k))||
   !printable(v.showHeadline,140)||!printable(v.opening,900)||
   !printable(v.closing,650)||!Array.isArray(v.slots)||
   v.slots.length===0||v.slots.length>30)throw new Error("Invalid Ringside cache");
@@ -118,8 +120,9 @@ export function validateCachedRingsideCopy(candidate:unknown):RingsideCopy{
   seen.add(s.slotId as string);
   return {slotId:s.slotId as string,headline:s.headline as string,recap:s.recap as string};
  });
+ const pressQuestions=readTerraPressQuestionTails(v.pressQuestions);
  return {showHeadline:v.showHeadline as string,opening:v.opening as string,
-  closing:v.closing as string,slots};
+  closing:v.closing as string,slots,...(Object.keys(pressQuestions).length?{pressQuestions}:{})};
 }
 /** Treat spaces, hyphens (including non-breaking broadcast hyphens), and
  * punctuation consistently; keep word boundaries so short move names cannot
@@ -706,6 +709,13 @@ export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCo
     CASKET_CLOSE:"won by shutting the casket lid on the opponent"};
    const result=names.length?winner+" "+(finish[entry.outcome]??"won the match"):
     "The contest ended without a recorded winning side";
+   const weapon=entry.outcome==="FOREIGN_OBJECT"&&entry.matchContext?.finishProp?
+    " The finish involved "+finishPropLabel(entry.matchContext.finishProp).toLowerCase()+".":"";
+   const title=entry.fallout?.title;
+   const titleNote=title?title.changed?
+    " "+title.winnerName+" is the new champion.":!title.priorHolderName?
+    " The "+title.name+" remains vacant.":
+    " "+title.priorHolderName+" remains champion.":"";
    const reaction=entry.crowdResponse>=75?
     "The crowd responded strongly to the decision.":
     entry.crowdResponse<45?"The response was noticeably quiet.":
@@ -720,7 +730,7 @@ export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCo
    return {slotId:entry.slotId,
     headline:(entry.headline||winner+(opponents?" defeats "+opponents:" wins")).slice(0,140),
     recap:("In the "+ordinal+" bout, "+matchup+" met in a "+format+"."+
-     when+result+". "+reaction).slice(0,1750)};
+     when+result+"."+weapon+titleNote+" "+reaction).slice(0,1750)};
   })
  };
 }

@@ -17,7 +17,7 @@ export async function continueWorldRumours(tx:SqlRows,worldId:string,year:number
   UPDATE ppw_world_rumour_cases SET chapter=chapter+1,last_followup_week_index=$3
   WHERE world_id=$1 AND case_key=$2 AND chapter=$4`,
   [worldId,old[0]!.case_key,index,old[0]!.chapter]);
- const next=stories.find(s=>s.desk==="DIRT");
+ const next=(index%2===0?stories.find(s=>s.desk==="DIRT"&&s.key.startsWith("wild:")):undefined)??stories.find(s=>s.desk==="DIRT");
  if(next)await tx.query(`
   INSERT INTO ppw_world_rumour_cases(
    world_id,case_key,origin_week_index,chapter,veracity,promotion_id,

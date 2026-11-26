@@ -328,47 +328,40 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   for(const ch of talk.show_id+":"+talk.promotion_id){
    seed^=ch.charCodeAt(0);seed=Math.imul(seed,16777619);
   }
-  const appeared=[...angles.filter(a=>a.show_id===talk.show_id)
+  const appeared=[...new Set([...angles.filter(a=>a.show_id===talk.show_id)
    .flatMap(a=>storyPeople(a.story_json)),
    ...bouts.filter(b=>b.show_id===talk.show_id)
    .flatMap(b=>participants(b.payload))]
-   .map(id=>names.get(id)).filter((x):x is string=>!!x);
-  const lead=appeared[0]??"one of the wrestlers";
+   .map(id=>names.get(id)).filter((x):x is string=>!!x))].sort();
+  const lead=appeared[(seed>>>8)%Math.max(1,appeared.length)]??"one of the wrestlers";
   const second=appeared.find(p=>p!==lead)??"another performer";
-  const rumours=[
-   ["Did "+lead+" walk out after "+talk.show_name+"? Two stories, zero answers",
-    "An anonymous tip claims "+lead+" left "+talk.show_name+
-    " after a disagreement over the running order. "+
-    "Someone else familiar with the evening insists there was no walkout at all. "+
-    "There is no independently verified backstage incident. For now it's an allegation, not an established departure."],
-   ["Locker-room blow-up involving "+lead+" and "+second+"? Accounts at odds",
-    "One anonymous account claims "+lead+" and "+second+
-    " had to be separated during a heated exchange behind the curtain at "+talk.show_name+
-    ". Another says the story is a complete invention built around an ordinary conversation. "+
-    "Nobody has independently established a physical confrontation. The timeline has already picked sides."],
-   ["Creative-control dispute at "+talk.promotion_name+"? Sources disagree",
-    "A supposed insider says the office disagreed over the finish to a match on "+talk.show_name+
-    ". A second account says no argument ever took place and someone's trying to stir trouble. "+
-    "No booking refusal or real disagreement is verified. It could be bad information, "+
-    "a deliberate leak, or a publicity stunt."],
-   ["Is someone trying to leave "+talk.promotion_name+"? The rumour mill erupts",
-    "The Grapevine has heard an uncorroborated claim that a member of the roster "+
-    "has privately discussed leaving "+talk.promotion_name+
-    ". Another source denies it outright. No release request, contract dispute "+
-    "or negotiation has been verified, and no future signing should be inferred."],
-   ["Was the finish changed just before "+talk.show_name+" went live?",
-    "Online wrestling circles are circulating a claim that the final moments of "+
-    talk.show_name+" were changed shortly before airtime. One alleged source "+
-    "blames a disagreement; another says the programme ran exactly as intended. "+
-    "There is no evidence that the public result differed from the intended one."],
-   ["The backstage atmosphere at "+talk.show_name+": crisis or complete fiction?",
-    "Whispers of a divided locker room have followed "+talk.show_name+
-    ". The people claiming to know what happened disagree on almost every detail. "+
-    "There is no verified backstage dispute. It may be an ugly rumour, "+
-    "somebody working a journalist, or a misunderstanding that got out of hand."]
-  ] as const;
-  const selected=rumours[(seed>>>0)%rumours.length]!;
-  add("DIRT",talk,"wild:"+talk.show_id,selected[0],selected[1],"EVENT");
+  const event=talk.show_name,company=talk.promotion_name;
+  // The fictional tabloid is allowed to be funny. Only use publicly
+  // appearing characters; never convert invented antics into World truth.
+  const ordinary=[
+   ["Did "+lead+" pitch a completely different entrance for "+event+"?","A tipster claims the original entrance proposal involved enough props to fill a lorry. The production crew supposedly vetoed the idea before rehearsal."],
+   ["An unlikely tag team in the works at "+company+"?","One anonymous account claims "+lead+" and "+second+" have been swapping ideas for a double act. The suggested team name is apparently the main obstacle."],
+   ["Merchandise madness after "+event,"The gossip desk hears "+lead+" may have pitched a shirt featuring nothing but their own face and an enormous arrow. Apparently the mock-up drew more discussion than the card."],
+   ["A lost stipulation from "+event+"?","An unnamed tipster claims a bizarre match concept involving a trophy on a pole made it as far as the whiteboard before somebody erased it."],
+   ["Who gets the big entrance at "+company+"?","Whispers suggest "+lead+" and "+second+" have been lobbying for the same spectacular entrance setup. Apparently there is only room for one giant prop."],
+   ["Did "+lead+" demand a new dressing room?","A source claims the request involved a velvet rope, a throne and a personalised welcome sign. The rumour mill is already trying to work out whether this is a rib."],
+   ["Is "+company+" planning a surprise signing?","An anonymous tipster insists a mysterious visitor was seen near the promoter's office. The gossip desk has no reliable name and refuses to pretend it does."],
+   ["Creative pitch apparently divides the room at "+event,"One supposed insider says a proposed opening promo would have taken up most of the broadcast. Another insists it was just a joke about wrestler egos."]
+  ];
+  const rowdy=[
+   ["A locker-room concert at "+event+"?","The Grapevine hears "+lead+" may have commandeered the rehearsal microphone for an impromptu rock concert. A supposed witness claims the encore was more elaborate than the entrance."],
+   ["Wrestlers' Court over a missing catering dessert?","An anonymous account claims "+lead+" tried to convene Wrestlers' Court after a pudding vanished from the catering table. "+second+" was allegedly nominated as the defence."],
+   ["The great entrance music rib at "+event,"A tipster claims "+lead+" arrived at rehearsals to find their entrance track replaced with a jaunty ballroom tune. The culprit has supposedly not owned up."],
+   ["Is "+lead+" starting a backstage quiz league?","An unnamed source claims a discussion about wrestling history turned into an absurdly competitive quiz, complete with improvised championship belt and disputed scoring."],
+   ["A throne, a robe and a very confused production crew","The rumour mill says "+lead+" suggested being carried to the ring on a makeshift throne. Apparently the crew could not agree who would do the carrying."],
+   ["The great locker-room mascot mystery at "+company,"Whispers claim somebody left a giant inflatable mascot in "+lead+"'s dressing area, complete with its own tiny title belt. The alleged prankster remains a mystery."],
+   ["Did "+lead+" issue a challenge to the catering team?","A tipster claims a debate over the best sandwich ended with a mock contract signing and a trophy made from a paper plate."],
+   ["An unofficial comedy championship at "+event+"?","An anonymous account says "+lead+" and "+second+" have been trading terrible impressions and awarding each other mock championship belts for the worst one."]
+  ];
+  const pool=(seed>>>0)%5<2?rowdy:ordinary;
+  const selected=pool[(seed>>>16)%pool.length]!;
+  const report=[selected[0],selected[1]+" The story has not been independently verified."] as const;
+  add("DIRT",talk,"wild:"+talk.show_id,report[0],report[1],"EVENT");
  }
  // A maximum of two fictional dirt stories, persisted with official facts
  // in the same replay-safe World Lock transaction. This is narrative colour,

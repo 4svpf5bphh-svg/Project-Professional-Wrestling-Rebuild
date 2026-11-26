@@ -7,6 +7,7 @@ import {readStaffWorkspace} from "./staff-workspace.js";
 import {readWorldMail,type WorldMail} from "./backstage-world-mail.js";
 import {postShowVoiceEnabled} from "./postshow-voice-batches.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
+import {paidPreviewEnabled,requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
 import {consultationMessages,validateConsultation,consultationCacheCopy,
  type ConsultationAnchor,type StaffConsultation} from "../domain/staff-consultation.js";
 type Scope={worldId:string;promotionId:string;playerId:string};
@@ -38,16 +39,17 @@ export function consultationAnchors(office:Office,mails:readonly WorldMail[]):Co
  return anchors;
 }
 export async function readStaffConsultation(pool:TransactionPool,scope:Scope,
- config:{enabled?:boolean;key?:string;transport?:typeof fetch}={}):Promise<StaffConsultation>{
+ config:{enabled?:boolean;key?:string;transport?:typeof fetch;provider?:"GROQ"|"OPENAI"}={}):Promise<StaffConsultation>{
  const office=await readStaffWorkspace(pool,scope);
  const result=(status:StaffConsultation["status"],items:StaffConsultation["items"]=[])=>({
   status,year:office.year,week:office.week,revision:office.worldRevision,items});
- if(!office.canEdit||!(config.enabled??postShowVoiceEnabled(process.env,scope.worldId)))
-  return result("UNAVAILABLE");
- // During single-batch playtesting, private consultations remain deterministic.
- // The injected enabled override preserves the existing isolated integration lab.
- if(config.enabled===undefined)return result("FALLBACK");
- const key=config.key??process.env.GROQ_API_KEY;
+ const provider=config.provider??(config.enabled===undefined?"OPENAI":"GROQ");
+ const enabled=config.enabled??(provider==="OPENAI"?paidPreviewEnabled(process.env)&&process.env.PPW_AI_BENCHMARK_PREVIEW!=="YES":postShowVoiceEnabled(process.env,scope.worldId));
+ if(!office.canEdit||!enabled)return result("UNAVAILABLE");
+ // Only the explicit consultation action calls this function. The existing
+ // per-promotion/week claim is shared by Staff and Backstage. Routine page
+ // reads and deterministic reports remain free.
+ const key=config.key??(provider==="OPENAI"?process.env.OPENAI_API_KEY:process.env.GROQ_API_KEY);
  if(!key)return result("UNAVAILABLE");
  const mail=await withSqlClient(pool,tx=>readWorldMail(tx,scope));
  const anchors=consultationAnchors(office,mail);
@@ -91,11 +93,12 @@ export async function readStaffConsultation(pool:TransactionPool,scope:Scope,
  if(claims.length!==1)return result("PENDING");
  let items:StaffConsultation["items"]=[];
  try{
-  const response=await requestGroqEditorial({task:"STAFF_ADVICE",key,pool,
-   transport:config.transport??fetch,signal:AbortSignal.timeout(12000),
-   body:{temperature:0.55,reasoning_effort:"low",reasoning_format:"hidden",
-    max_completion_tokens:650,response_format:{type:"json_object"},
-    messages:consultationMessages(anchors)}});
+  const body={temperature:0.55,reasoning_effort:"low",max_completion_tokens:900,
+   response_format:{type:"json_object"},messages:consultationMessages(anchors)};
+  const response=provider==="OPENAI"?await requestOpenAiEditorialPreview({key,enabled:true,pool,
+   transport:config.transport??fetch,signal:AbortSignal.timeout(20000),body,feature:"STAFF_CONSULTATION"}):
+   await requestGroqEditorial({task:"STAFF_ADVICE",key,pool,transport:config.transport??fetch,
+    signal:AbortSignal.timeout(12000),body:{...body,reasoning_format:"hidden",max_completion_tokens:650}});
   if(response.ok){
    const raw=await response.text();
    if(raw.length<=12000){

@@ -92,3 +92,34 @@ test("Named PPV press stories distinguish saved answers, refusals and skipped qu
   assert.deepEqual(noStatement,[],
    "Out-of-range or unanswered questions cannot produce invented transcripts");
  });
+
+test("PPV questions distinguish a new champion, a vacant title and a successful defence",()=>{
+ const entries:CompletedShowView["entries"]=[
+  {...premium.entries[0]!,slotId:"women",headline:"Maki Itoh victorious",fallout:{title:{name:"Women's Championship",winnerName:"Maki Itoh",priorHolderName:null,changed:false}} as NonNullable<CompletedShowView["entries"][number]["fallout"]>},
+  {...premium.entries[0]!,slotId:"defence",headline:"Mr. Perfect victorious",fallout:{title:{name:"Intercontinental Championship",winnerName:"Mr. Perfect",priorHolderName:"Mr. Perfect",changed:false}} as NonNullable<CompletedShowView["entries"][number]["fallout"]>},
+  {...premium.entries[1]!,slotId:"main",headline:"The Undertaker victorious",fallout:{title:{name:"World Championship",winnerName:"The Undertaker",priorHolderName:"Místico",changed:true}} as NonNullable<CompletedShowView["entries"][number]["fallout"]>}
+ ];
+ const q=premiumScrumQuestions({...premium,showName:"Extreme Warfare",entries});
+ assert.match(q[0]!.question,/Extreme Warfare.*The Undertaker.*World Championship/);
+ assert.match(q[1]!.question,/remains vacant.*Maki Itoh.*Extreme Warfare/);
+ assert.match(q[2]!.question,/Mr. Perfect retained.*Extreme Warfare/);
+ assert.deepEqual(q.map(x=>x.answers),premiumScrumQuestions(premium).map(x=>x.answers));
+});
+
+test("an officially won championship after concealed cheating prompts a real question, not a headline fragment",()=>{
+ const entries:CompletedShowView["entries"]=[
+ {...premium.entries[0]!,slotId:"women",headline:"Maki Itoh victorious",outcome:"FOREIGN_OBJECT",fallout:{title:{name:"Women's Championship",winnerName:"Maki Itoh",priorHolderName:null,changed:true},injuries:[],eliminations:[]}},
+ {...premium.entries[1]!,slotId:"main",headline:"The Undertaker victorious",outcome:"CLEAN_PIN",fallout:{title:{name:"World Championship",winnerName:"The Undertaker",priorHolderName:"Místico",changed:true},injuries:[],eliminations:[]}}
+ ];
+ const qs=premiumScrumQuestions({...premium,showName:"Extreme Warfare",entries});
+ assert.match(qs[0]!.question,/The Undertaker took the World Championship from Místico/);
+ assert.match(qs[1]!.question,/Maki Itoh captured.*after a controversial finish/);
+ assert.doesNotMatch(qs.map(q=>q.question).join(" "),/victorious|championship champion/i);
+});
+
+ test("Terra press endings remain questions rather than fabricated facts",async()=>{
+ const {readTerraPressQuestionTails}=await import("../src/domain/premium-media-scrum.js");
+ const result=readTerraPressQuestionTails({MAIN_EVENT:"How do you justify that championship finish?",BIG_PICTURE:"How do you respond to the fans who expected more?",NEXT_CHAPTER:"Will Undertaker face a new challenger next week?"});
+ assert.deepEqual(result,{MAIN_EVENT:"How do you justify that championship finish?",BIG_PICTURE:"How do you respond to the fans who expected more?"});
+ assert.deepEqual(readTerraPressQuestionTails({MAIN_EVENT:"What do you think about the injury after the main event?",BIG_PICTURE:"How did the game decide that show?",NEXT_CHAPTER:"What did you promise the fans next?"}),{});
+ });

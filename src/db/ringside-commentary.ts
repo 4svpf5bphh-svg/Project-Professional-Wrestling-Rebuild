@@ -7,6 +7,7 @@ import {requestGroqEditorial} from "./groq-ai-director.js";
 import {requestOpenAiEditorialPreview,OPENAI_PREVIEW_MODEL} from "./openai-editorial-preview.js";
 import {readOpenAiRetryAfter} from "../domain/openai-error-diagnostics.js";
 import {finalizeTerraEditorial} from "../domain/terra-editorial-recovery.js";
+import {premiumScrumQuestions,readTerraPressQuestionTails} from "../domain/premium-media-scrum.js";
 import type {TerraEditorialDiagnostics} from "../domain/terra-editorial-diagnostics.js";
 import {TERRA_PREVIEW_TIMEOUT_MS,TERRA_DAILY_PREVIEW_ATTEMPTS}
  from "../domain/paid-editorial-policy.js";
@@ -50,7 +51,7 @@ export class RingsideGenerationError extends Error{
  * Groq strict schema previously permitted arrays with too few entries, making
  * the larger player shows systematically fail despite valid JSON.
  */
-export function ringsideResponseSchema(show:CompletedShowView){
+export function ringsideResponseSchema(show:CompletedShowView,includePress=false){
  const properties:Record<string,unknown>={};
  const required:string[]=[];
  for(let i=0;i<show.entries.length;i++){
@@ -61,8 +62,11 @@ export function ringsideResponseSchema(show:CompletedShowView){
  }
  return {type:"object",additionalProperties:false,properties:{
   showHeadline:{type:"string"},opening:{type:"string"},closing:{type:"string"},
-  slots:{type:"object",additionalProperties:false,properties,required}
- },required:["showHeadline","opening","closing","slots"]};
+  slots:{type:"object",additionalProperties:false,properties,required},
+  ...(includePress?{pressQuestions:{type:"object",additionalProperties:false,
+   properties:{MAIN_EVENT:{type:"string"},BIG_PICTURE:{type:"string"},NEXT_CHAPTER:{type:"string"}},
+   required:["MAIN_EVENT","BIG_PICTURE","NEXT_CHAPTER"]}}:{})
+ },required:["showHeadline","opening","closing","slots",...(includePress?["pressQuestions"]:[])]};
 }
 function decodeEditorialResponse(input:unknown,show:CompletedShowView):unknown{
  if(!input||typeof input!=="object"||Array.isArray(input))
@@ -258,7 +262,8 @@ function preferGroqJsonObject(show:CompletedShowView,settings:RingsideSettings,
 function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings,
  facts:string,correction:string,benchmarkFixture:boolean,
  previewProvider:"GROQ"|"OPENAI"="GROQ",forceJsonObject=false){
- const schema=ringsideResponseSchema(show);
+ const includePress=previewProvider==="OPENAI"&&show.bookingClass==="PREMIUM";
+ const schema=ringsideResponseSchema(show,includePress);
  const full120b=previewProvider==="GROQ"&&
   settings.model==="openai/gpt-oss-120b"&&show.entries.length>=4;
  const plainArticle=full120b;
@@ -287,7 +292,7 @@ function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings
   "\nWRESTLING JOURNALISM ENERGY: GROUNDED. Deliver lucid, sharp match criticism with specific stakes and restrained humour; avoid hype not earned by the certified show.":
   "";
  return {...(previewProvider==="OPENAI"?{}:{temperature:settings.creativity}),
-     max_completion_tokens:Math.min(5800,outputCeiling+(previewProvider==="OPENAI"?900:0)),
+     max_completion_tokens:Math.min(5800,outputCeiling+(previewProvider==="OPENAI"?900:0)+(includePress?180:0)),
      reasoning_effort:settings.reasoning,
      // GPT-OSS does not support reasoning_format. JSON Object Mode does not need it.
      response_format:plainArticle?{type:"text"}:
@@ -298,7 +303,7 @@ function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings
      messages:[{role:"system",content:writingGuide+ringsideVoiceInstruction(settings)+terraEnergy+
       (previewProvider==="OPENAI"?
        "\nTERRA EDITORIAL DESK: Write indirect speech in filmed segments by default. "+
-       "Do not invent dialogue, chant transcripts, interview questions, or quoted catchphrases. "+
+       "Do not invent dialogue, chant transcripts, interview questions inside recaps, or quoted catchphrases. "+
        "If quoting a wrestler, copy a complete line verbatim from THAT speaker's angle.scriptedActions; "+
        "do not improve its wording, punctuation or attribution. No quotations in bookends. "+
        "Preserve the booked scene, actual participants and outcome. Before sending, check each "+
@@ -327,6 +332,7 @@ function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings
        "VERIFIED HISTORY is scoped to each card's optional storyThread; it is the ONLY historical callback. "+
        "Use at most one relevant callback per bout; an empty thread means no confirmed connection.\n"+
        (correction?"Quality-control correction required: "+correction+"\n":"")+
+       (includePress?"SEPARATE PRESS CONFERENCE: For each supplied question id return only a fresh 5-18 word question ending in pressQuestions. Preserve the subject, ask for an opinion, do not restate a fact, add names, numbers or a future booking. PPW will attach the exact certified event context and existing answers. Original questions: "+JSON.stringify(premiumScrumQuestions(show).map(q=>({id:q.id,question:q.question})))+"\n":"")+
        "Records:\n"+facts}]
     };
 }
@@ -526,7 +532,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    const response=previewProvider==="OPENAI"?
     await requestOpenAiEditorialPreview({
      key,enabled:true,transport,signal:controller.signal,
-     pool:budgetPool!,body:payload
+     pool:budgetPool!,body:payload,feature:inspection?"PREVIEW":"RINGSIDE"
     }):await requestGroqEditorial({
      task:"RINGSIDE",preferredModel:settings.model,key,transport,
      signal:controller.signal,pool:budgetPool,body:payload
@@ -649,9 +655,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    if(typeof answer?.message?.content!=="string")
     throw new RingsideGenerationError("INVALID_OUTPUT",
      providerLabel+" did not return a readable match review.");
-   const candidate=decodeEditorialResponse(compactFullCard?
-    decodeRingsidePlainOrJson(answer.message.content,show):
-    JSON.parse(answer.message.content),show) as
+   const decoded=compactFullCard?decodeRingsidePlainOrJson(answer.message.content,show):JSON.parse(answer.message.content);
+   const candidate=decodeEditorialResponse(decoded,show) as
     {showHeadline:string;opening:string;closing:string;
      slots:{slotId:string;headline:string;recap:string}[]};
    const original={showHeadline:candidate.showHeadline,opening:candidate.opening,
@@ -674,7 +679,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
       cleaned:result.diagnostics.slots.filter(s=>s.source==="CLEANED").length,
       fallback:result.diagnostics.slots.filter(s=>s.source==="PPW_FALLBACK").length,
       bookends:result.diagnostics.bookendsRepaired,warnings:result.diagnostics.warnings});
-     return result.review;
+     const pressQuestions=show.bookingClass==="PREMIUM"?readTerraPressQuestionTails(decoded?.pressQuestions):{};
+     return {...result.review,...(Object.keys(pressQuestions).length?{pressQuestions}:{})};
     }catch(error){
      const reason=error instanceof Error?error.message:"Editorial facts did not validate";
      if(trace){trace.status="REJECTED";trace.reason=reason;}

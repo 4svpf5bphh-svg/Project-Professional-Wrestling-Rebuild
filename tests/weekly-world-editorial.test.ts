@@ -76,7 +76,7 @@ test("both human promotions get their own actual moment before optional award co
  const b={...a,id:"match:b:slot",sourceKind:"MATCH",promotionId:"b",promotionName:"Rival Wrestling"};
  const rating={...official,id:"broadcast:ratings:weekly"};
  const anchors=weeklyEditorialAnchors([rating,dirt,a,b]);
- assert.deepEqual(anchors.map(x=>x.story.id),[rating.id,a.id,b.id,dirt.id]);
+ assert.deepEqual(anchors.map(x=>x.story.id),[a.id,b.id,dirt.id]);
 });
 
 test("strict weekly response requires every anchor, with distinct fan fields and no unknown keys",()=>{
@@ -87,11 +87,11 @@ test("strict weekly response requires every anchor, with distinct fan fields and
  const response=weeklyEditorialResponseFormat(anchors);
  assert.equal(response.json_schema.strict,true);
  const schema=response.json_schema.schema;
- assert.deepEqual(schema.required,["s0","s1","s2","s3"]);
+ assert.deepEqual(schema.required,["s0","s1","s2"]);
  assert.equal(schema.additionalProperties,false);
- for(const field of Object.values(schema.properties)){
+ for(const [key,field] of Object.entries(schema.properties)){
   assert.equal(field.additionalProperties,false);
-  assert.deepEqual(field.required,["headline","commentary","fan1","fan2","reply","wrestler"]);
+  assert.deepEqual(field.required,["headline","commentary","fan1","fan2","reply","wrestler",...(key==="s0"?["fan3","fan4"]:[])]);
  }
  const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([official]),{s0:{
   headline:copy.headline,commentary:copy.commentary,fan1:copy.fans[0],fan2:copy.fans[1],reply:copy.fans[2],wrestler:null
@@ -107,9 +107,76 @@ test("weekly ratings snapshot cannot establish promotion growth",()=>{
 });
 
 test("four full-sized weekly editorial sources fit the shared dispatch reservation",()=>{
- const anchors=weeklyEditorialAnchors(Array.from({length:4},(_,i)=>({...official,id:"story:"+i,title:"x".repeat(200),summary:"x".repeat(500),promotionName:"p".repeat(110)})));
- const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",max_completion_tokens:2400,
+ const sources=Array.from({length:3},(_,i)=>({...official,id:"title:"+i,sourceKind:"TITLE",humanManaged:true,promotionId:"p"+i,title:"x".repeat(200),summary:"x".repeat(500),promotionName:"p".repeat(110)}));
+ const anchors=weeklyEditorialAnchors([...sources,{...dirt,id:"wild:show",title:"y".repeat(200),summary:"y".repeat(500)}]);
+ const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",max_completion_tokens:2600,
   response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
  assert.equal(anchors.length,4);
- assert.ok(estimatedGroqTokens(JSON.stringify(body),2400)<=7000);
+ assert.ok(estimatedGroqTokens(JSON.stringify(body),2600)<=7000);
+});
+
+test("persona labels and false TV rivalry framing do not leak into the weekly edition",()=>{
+ const story=weeklyRatingsStory(1,33,[{promotionId:"cwa",promotionName:"Chaotic Wrestling Alliance",rating:.1,humanManaged:true},{promotionId:"wwe",promotionName:"WWE",rating:3.5,humanManaged:false}])!;
+ const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([story]),{s0:{
+  headline:"WWE outpaces CHA",commentary:"CWA has a smaller television audience this week.",
+  fan1:"Passionate promotion loyalist: CWA deserves more viewers.",fan2:"CWA needs time to build a following.",reply:"Fair enough, give it time.",wrestler:null}});
+ assert.equal(result.copy[story.id]?.headline,undefined);
+ assert.equal(result.copy[story.id]?.commentary,"CWA has a smaller television audience this week.");
+ assert.equal(result.copy[story.id]?.fans?.[0],"CWA deserves more viewers.");
+ assert.equal(result.issues.UNVERIFIED_RATINGS_TREND,1);
+});
+
+test("routine signing digests do not consume the weekly editorial budget",()=>{
+ const stories=Array.from({length:18},(_,i)=>({...official,id:"signing:"+i,title:"Talent "+i+" signs with Crown Wrestling",humanManaged:i>=14}));
+ const anchors=weeklyEditorialAnchors(stories);
+ assert.equal(anchors.length,1);
+});
+test("accepted Groq comments do not get padded with unrelated template replies",()=>{
+ const s={...official,id:"match:show:slot"};
+ const posts=weeklyHotTagThread(s,{fans:[null,"Crown Wrestling needs better stories.",null]});
+ assert.equal(posts.length,1);
+ assert.equal(posts[0]?.text,"Crown Wrestling needs better stories.");
+});
+
+test("title-win discussion reaches the exact match on the correct completed show",()=>{
+ const s={...official,id:"title:extreme:main",sourceKind:"TITLE"};
+ assert.equal(weeklyShowMomentSlot(s,"extreme",["main"]),"main");
+ assert.equal(weeklyShowMomentSlot(s,"ascension",["main"]),null);
+ assert.equal(weeklyShowMomentSlot({...s,desk:"DIRT"},"extreme",["main"]),null);
+});
+
+ test("championship is the lead, local promotions get a feature and the wild rumour beats routine gossip",()=>{
+ const title={...official,id:"title:ppv:m1",sourceKind:"TITLE",humanManaged:true};
+ const other={...official,id:"angle:tv:a1",sourceKind:"ANGLE",promotionId:"b",promotionName:"Rival Wrestling",humanManaged:true};
+ const wild={...dirt,id:"wild:tv"};
+ const routine={...official,id:"signing:routine"};
+ const anchors=weeklyEditorialAnchors([routine,dirt,wild,other,title]);
+ assert.deepEqual(anchors.map(a=>a.story.id),[title.id,other.id,wild.id]);
+ });
+ test("recent fan copy is rejected without discarding fresh opinions",()=>{
+ const anchors=weeklyEditorialAnchors([official],[],[],[copy.fans[0]!]);
+ assert.match(weeklyEditorialMessages(anchors)[1]!.content,/avoidRecentFanCopy/);
+ const result=validateWeeklyEditorialDetailed(anchors,{s0:copy});
+ assert.equal(result.copy[official.id]?.fans?.[0],null);
+ assert.equal(result.copy[official.id]?.fans?.[1],copy.fans[1]);
+ assert.equal(result.copy[official.id]?.fans?.[2],null);
+ });
+
+ test("five lead reactions use stable identities and a real reply, without extra provider requests",()=>{
+ const anchors=weeklyEditorialAnchors([official]);
+ const saved=validateWeeklyEditorial(anchors,{s0:{...copy,fans:[...copy.fans,"Crown Wrestling has to give the fans a reason to tune in.","I reckon Crown Wrestling should put wrestling before the hype."]}});
+ const posts=weeklyHotTagThread(official,saved[official.id]);
+ assert.equal(posts.length,5);assert.equal(new Set(posts.map(p=>p.handle)).size,5);
+ assert.equal(posts[2]?.replyTo,posts[0]?.handle);
+ assert.deepEqual(posts,weeklyHotTagThread(official,saved[official.id]));
+ });
+
+test("fallback threads keep distinct reactions across an edition without discarding real AI copy",()=>{
+ const seen=new Set<string>();
+ for(let i=0;i<3;i++){
+  const posts=weeklyHotTagThread({...official,id:"angle:"+i,title:"A wrestling angle",sourceKind:"ANGLE"},undefined,seen);
+  assert.ok(posts.length>=3&&posts.length<=6);
+  for(const post of posts){const key=post.text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();assert.ok(!seen.has(key));seen.add(key);}
+ }
+ assert.equal(weeklyHotTagThread(official,{fans:[null,"Crown Wrestling needs better stories.",null]},seen).length,1);
 });

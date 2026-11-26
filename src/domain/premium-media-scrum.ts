@@ -2,6 +2,7 @@
  * Smark tone, no fabricated title change, match quality or secret promises.
  * Player chooses one of three authored statements; there is no AI expense.
  */
+import {finishPropLabel} from "./bookable-match.js";
 import type {CompletedShowView} from "../db/show-results-view.js";
 export type ScrumQuestionId="MAIN_EVENT"|"BIG_PICTURE"|"NEXT_CHAPTER";
 export interface ScrumQuestion{
@@ -13,10 +14,21 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
  const matches=show.entries.filter(e=>e.type==="MATCH");
  const main=matches.at(-1);
  const opener=matches[0];
+ const mainWinner=main?.matchContext?.winnerNames.join(" and ");
+ const mainOpponents=main?.matchContext?.sides.filter(side=>!side.some(n=>main.matchContext!.winnerNames.includes(n))).flat().join(" and ");
+ const mainContest=mainWinner&&mainOpponents?
+  `${mainWinner} defeated ${mainOpponents}`:main?.headline;
+ const titleChange=main?.fallout?.title?.changed?main.fallout.title:null;
+ const other=matches.find(m=>m!==main&&m.fallout?.title&&!m.fallout.title.changed&&!m.fallout.title.priorHolderName)
+  ??matches.find(m=>m!==main&&m.fallout?.title?.changed);
+ const retained=matches.find(m=>m!==main&&m!==other&&m.fallout?.title&&!m.fallout.title.changed&&
+  m.fallout.title.priorHolderName&&m.fallout.title.winnerName===m.fallout.title.priorHolderName);
  return [{
   id:"MAIN_EVENT",journalist:"Mara Finch · The Final Bell",
-  question:main?
-   `The cameras are still rolling after ${event}. Your main event was "${main.headline}". ${main.fallout?.title?.changed?
+  question:titleChange?
+   `At ${event}, ${titleChange.winnerName} ${titleChange.priorHolderName?"took the "+titleChange.name+" from "+titleChange.priorHolderName:"claimed the "+titleChange.name}. What does that result mean for the promotion?`:
+   main?
+   `The cameras are still rolling after ${event}. ${mainContest??"The main event has concluded"}. ${main.fallout?.title?.changed?
     "A championship changed hands — what's your reaction?":
     main.outcome==="FOREIGN_OBJECT"||main.outcome==="DISQUALIFICATION"?
      "That finish will divide opinion. Do you stand behind it?":
@@ -29,8 +41,16 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
   ]
  },{
   id:"BIG_PICTURE",journalist:"Lewis Reed · Crowd Control",
-  question:opener?
-   `From "${opener.headline}" onwards, ${event} gave fans plenty to discuss. What do you want people to remember?`:
+  question:other?.fallout?.title?
+   other.fallout.title.changed?
+    other.outcome==="FOREIGN_OBJECT"?
+     `${other.fallout.title.winnerName} captured the ${other.fallout.title.name} at ${event} after ${other.matchContext?.finishProp?"using the "+finishPropLabel(other.matchContext.finishProp).toLowerCase():"a controversial finish"}. How do you respond to fans who question the way that match ended?`:
+     `${other.fallout.title.winnerName} captured the ${other.fallout.title.name} at ${event}. How important was that moment?`:
+    `The ${other.fallout.title.name} remains vacant after ${other.fallout.title.winnerName}'s match at ${event}. What do you say to fans about that outcome?`:
+   opener?
+   opener.matchContext?.sides.length?
+    `${event} opened with ${opener.matchContext.sides.map(side=>side.join(" and ")).join(" against ")}. What do you want people to remember about the night?`:
+    `From "${opener.headline}" onwards, ${event} gave fans plenty to discuss. What do you want people to remember?`:
    `What do you want wrestling fans to remember about ${event}?`,
   answers:[
    "The wrestlers did the talking. I couldn't be prouder of the team.",
@@ -39,11 +59,49 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
   ]
  },{
   id:"NEXT_CHAPTER",journalist:"Dana Cross · Behind the Curtain",
-  question:`Now that ${event} is in the books, what should the fans expect next?`,
+  question:retained?.fallout?.title?
+   `${retained.fallout.title.winnerName} retained the ${retained.fallout.title.name} at ${event}. What should fans expect from the title picture next?`:
+   `Now that ${event} is in the books, what should the fans expect next?`,
   answers:[
    "The next chapter starts as soon as we walk through the curtain.",
    "Nothing is being announced tonight. We're keeping our plans close.",
    "Expect the unexpected. That's what a wrestling promotion should deliver."
   ]
  }];
+}
+
+export type TerraPressQuestionTails=Partial<Record<ScrumQuestionId,string>>;
+/** Terra writes only the question ending; PPW owns the factual lead and
+ * the existing three answers. A rejected ending leaves the canonical
+ * question intact. No new result, promise or participant can be asserted. */
+export function readTerraPressQuestionTails(input:unknown):TerraPressQuestionTails{
+ const value=input&&typeof input==="object"&&!Array.isArray(input)?input as Record<string,unknown>:{};
+ const themes:Record<ScrumQuestionId,RegExp>={
+  MAIN_EVENT:/\b(?:finish|result|main event|championship|match|title|ending)\b/i,
+  BIG_PICTURE:/\b(?:event|night|audience|show|performance|card|fans)\b/i,
+  NEXT_CHAPTER:/\b(?:next|future|follow|direction|title picture|moving forward)\b/i
+ };
+ const safe:TerraPressQuestionTails={};
+ for(const id of ["MAIN_EVENT","BIG_PICTURE","NEXT_CHAPTER"] as const){
+  const raw=value[id];if(typeof raw!=="string")continue;
+  const t=raw.trim();
+  if(t.length<18||t.length>155||! /^(?:How|What|Why|Do|Does|Where|Would|Is|Can|Should|Will)\b/.test(t)||
+   !/^[^.!?]+\?$/.test(t)||/[\u0000-\u001f<>0-9“”"@]/.test(t)||
+   /\b(?:won|lost|defeated|retained|signed|released|injured|injury|medical|arrested|backstage|sources?|rumou?r|confirmed|announced|booked|guarantee|promise|simulation|game|player|contract|fired|leak|already|yesterday|told|said)\b/i.test(t)||
+   /\b[A-Z][a-z]+\b/.test(t.slice(1))||!themes[id].test(t))continue;
+  safe[id]=t;
+ }
+ return safe;
+}
+export function applyTerraPressQuestions(show:CompletedShowView,candidate:unknown):ScrumQuestion[]{
+ const safe=readTerraPressQuestionTails(candidate);
+ return premiumScrumQuestions(show).map(q=>{
+  const tail=safe[q.id];if(!tail)return q;
+  // Keep every certified contextual sentence, including who took a title
+  // and the exact event. Where the fallback is a single question, anchor
+  // the AI ending explicitly to this completed show.
+  const stem=q.question.match(/^(.*[.!])\s+[^.!?]+\?$/)?.[1];
+  const event=show.showName||"the premium event";
+  return {...q,question:stem?stem+" "+tail:"After "+event+", "+tail[0]!.toLowerCase()+tail.slice(1)};
+ });
 }

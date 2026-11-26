@@ -56,6 +56,13 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
    ["MAIN_EVENT","BIG_PICTURE","NEXT_CHAPTER"]);
   assert.ok(initial.questions.every(q=>q.answerIndex===null));
   assert.match(initial.questions[0]!.question,/Starlight PPV/);
+  await withWorldTransaction(db.pool,tx=>tx.query("INSERT INTO ppw_ringside_reports(world_id,promotion_id,show_id,prompt_version,receipt_digest,model,state,claim_token,claim_until,report_json) VALUES($1,'crown','ppv-one','test-press',repeat('a',64),'gpt-6.1-terra','READY','fixture',now(),$2::jsonb)",
+   [worldId,JSON.stringify({pressQuestions:{MAIN_EVENT:"How will you build on that main event finish?",BIG_PICTURE:"Did a wrestler win the championship?",NEXT_CHAPTER:"What direction should fans expect next?"}})]));
+  const rewritten=await readPremiumScrum(db.pool,scope);
+  assert.match(rewritten.questions[0]!.question,/Starlight PPV/);
+  assert.ok(rewritten.questions[0]!.question.includes("How will you build on that main event finish?"));
+  assert.deepEqual(rewritten.questions.map(q=>q.answers),initial.questions.map(q=>q.answers));
+  assert.equal(rewritten.questions[1]!.question,initial.questions[1]!.question);
   assert.equal((await answerPremiumScrum(db.pool,scope,"MAIN_EVENT",1)).saved,true);
   assert.equal((await answerPremiumScrum(db.pool,scope,"MAIN_EVENT",1)).saved,false,
    "repeated submission cannot duplicate an answer");

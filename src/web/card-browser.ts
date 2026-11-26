@@ -199,7 +199,8 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
  onOverview?:(overview:PlayerWorldOverview|null)=>void,
  manualAdvance?:WorldHomePort["manualAdvance"],
  extendBooking?:WorldHomePort["extendBooking"],
- onWeekPublished?:WorldHomePort["onWeekPublished"]){
+ onWeekPublished?:WorldHomePort["onWeekPublished"],
+ openCompletedShow?:(showId:string)=>void){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -242,7 +243,9 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
     ()=>mountWorldHomePage(root,scope),()=>mountProgrammePage(root,scope),
     unread?"UNREAD":"ALL",personId),
   results:go("results",()=>{void mountResultsArchivePage(root,scope,
-   ()=>mountWorldHomePage(root,scope));}),
+    ()=>mountWorldHomePage(root,scope));}),
+   openCompletedShow:openCompletedShow??(showId=>{void mountResultsPage(root,{...scope,showId},
+    ()=>mountWorldHomePage(root,scope),"home");}),
   business:go("business",()=>mountBusinessDesk(root,businessPort(root,scope,call))),
   ratingsWar:()=>{
    if(typeof window!=="undefined")window.location.hash="#/business/ratings";

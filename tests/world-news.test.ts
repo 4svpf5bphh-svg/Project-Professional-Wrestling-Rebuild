@@ -155,7 +155,7 @@ test("one completely invented and explicitly unverified rumour complements a rea
  assert.equal(wild?.desk,"DIRT");
  assert.ok(wild?.title);
  assert.match(wild?.summary??"",
-  /no independently verified|no verified backstage|no release request|no evidence|no booking refusal|no evidence|no confrontation|no backstage incident|no one has established|no booking|no one independently/i);
+  /not been independently verified|no independently verified|no verified backstage|no release request|no evidence|no booking refusal|no confrontation|no backstage incident|no one has established|no booking|no one independently/i);
  assert.equal(stories.filter(x=>x.desk==="DIRT").length,2,
   "At most one result-anchored report and one explicitly disputed tabloid claim per World week");
  assert.ok(!JSON.stringify(stories).includes("NEVER LEAK"));
@@ -205,3 +205,14 @@ test("accepted World contract signings are official news, with no private offer 
  assert.doesNotMatch(signed[0]!.summary,/debuted|appeared at|will headline/i);
  assert.deepEqual(composeConfirmedSigningNews([]),[]);
 });
+
+ test("wild gossip spans playful wrestling culture and stays speculative",()=>{
+ const titles=new Set<string>();let absurd=0;
+ for(let i=0;i<64;i++){
+  const story=composeWorldNews([],[],[pub("variety:"+i,"human",80)],[],names).find(s=>s.key.startsWith("wild:"))!;
+  assert.equal(story.certainty,"SPECULATION");assert.equal(story.desk,"DIRT");
+  titles.add(story.title);
+  if(/concert|Court|rib|quiz|throne|mascot|catering|comedy/i.test(story.title))absurd++;
+ }
+ assert.ok(titles.size>=10);assert.ok(absurd>0&&absurd<64);
+ });

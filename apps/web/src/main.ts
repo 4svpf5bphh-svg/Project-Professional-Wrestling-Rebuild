@@ -1,6 +1,6 @@
 import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  mountTalentMarketPage,mountContractsPage,mountPersonaPage,
- mountResultsArchivePage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountCollectionPage,mountKayfabePage,mountAchievementsPage,
+ mountResultsArchivePage,mountResultsPage,mountBusinessPage,mountStaffPage,mountIndustryPage,mountCollectionPage,mountKayfabePage,mountAchievementsPage,
  mountCalendarPage,mountProgrammePage,mountChampionshipsPage,mountTournamentsPage,
  mountTagTeamsPage,mountStablesPage,mountWorkingConnectionsPage,
  mountBookingPage as mountBookingPageForHost,consumeProgrammeFocus,
@@ -12,7 +12,7 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
 import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
- type HomeAttentionFocus,legendsVaultHash,readBookingProgrammeFocus}
+ type HomeAttentionFocus,legendsVaultHash,readBookingProgrammeFocus,resultsHistoryState,readResultsHistory}
  from "../../../src/web/host-navigation.js";
 import {createCardClient,type CardSessionScope} from "../../../src/web/card-client.js";
 import {clearLegendRevealPortal,type LegendsVaultView} from "../../../src/ui/legends-vault.js";
@@ -340,7 +340,11 @@ function renderSection(){
    session.canManualAdvance?async(year,week)=>command("/api/playtest-booking",{
     confirm:"EXTEND_SHARED_BOOKING",year,week
    },session?.csrfToken):undefined,
-   async()=>{await offerUnseenLegendReveals(scope,view);});break;
+   async()=>{await offerUnseenLegendReveals(scope,view);},showId=>{
+   if(!confirmLeavingBooking("results"))return;
+   history.pushState(resultsHistoryState(scope.worldId,scope.promotionId,showId),"",hostSectionHash("results"));
+   renderSection();
+  });break;
   case "planner":{
    const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
    mountPlannerPage(view,scope,back,
@@ -403,7 +407,12 @@ function renderSection(){
    case "news":mountIndustryPage(view,scope);break;
   case "kayfabe":mountKayfabePage(view,scope,()=>openSection("home"),()=>openSection("achievements"));break;
   case "calendar":mountCalendarPage(view,scope,back,openBooking);break;
-  case "results":void mountResultsArchivePage(view,scope,back);break;
+  case "results":{
+    const showId=readResultsHistory(history.state,scope.worldId,scope.promotionId);
+    if(showId)void mountResultsPage(view,{...scope,showId},back,"home");
+    else void mountResultsArchivePage(view,scope,back);
+    break;
+   }
   case "programmes":{
    const dossierFocus=consumeProgrammeFocus();
    const pitchFocus=consumeBackstageRivalryFocus(scope.worldId,scope.promotionId);

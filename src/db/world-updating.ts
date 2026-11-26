@@ -95,9 +95,9 @@ export async function processWorldUpdate(pool:TransactionPool,requested:Scope,de
  if(claim.kind!=="PUBLIC")throw Error("Unknown World update stage");
  const {scope,token}=claim,p=[scope.worldId,scope.year,scope.week];
  let state="FALLBACK";
- if(deps.groqKey){
+ if(deps.groqKey||deps.terraKey){
   try{
-   const result=await (deps.publish??publishWeeklyWorldEditorial)(pool,scope,deps.groqKey,deps.transport??fetch);
+   const result=await (deps.publish??publishWeeklyWorldEditorial)(pool,scope,deps.groqKey??"",deps.transport??fetch,deps.terraKey);
    if(result.state==="READY"||result.state==="EMPTY")state="READY";
    else if(result.state==="SKIPPED"){
     const existing=await withSqlClient(pool,db=>db.query<{state:string}>(

@@ -8,7 +8,7 @@ import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {certifiedCareerMoment} from "../domain/certified-career-moments.js";
 import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagBroadcasterPost,dirtSheetByline} from "../domain/hot-tag-news.js";
-import {weeklyHotTagThread} from "../domain/weekly-world-editorial.js";
+import {weeklyHotTagThread,weeklyEditorialAnchors,weeklyStoryPriority} from "../domain/weekly-world-editorial.js";
 import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js";
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
@@ -869,12 +869,33 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     section.append(el("p","ppw-industry-empty",official?
      "No major certified headlines yet. The next completed World week will publish its highlights.":
      "No new rumours from the locker room this week. The next World Lock may give the wrestling press something to argue about."));
-   for(const [index,story] of published.entries()){
+   const editions=new Map<string,typeof published>();
+   for(const story of published){const key=story.year+":"+story.week;const items=editions.get(key)??[];items.push(story);editions.set(key,items);}
+   for(const stories of editions.values()){
+    const usedFanText=new Set<string>();
+    const features=weeklyEditorialAnchors(stories.map(s=>({...s,humanManaged:s.promotionId===view?.ownPromotionId})),news?.awards??[]);
+    const featureIds=new Set(features.map(a=>a.story.id));
+    const isFeatured=(s:typeof stories[number])=>!official||featureIds.has(s.id)||!!s.editorial||!!projectHotTagNewsWrestlerPost(s,news?.awards??[])||!!projectHotTagBroadcasterPost(s);
+    const first=features[0]?.story.id;
+    const ordered=[...stories].sort((a,b)=>Number(b.id===first)-Number(a.id===first)||Number(isFeatured(b))-Number(isFeatured(a))||weeklyStoryPriority(b)-weeklyStoryPriority(a)||a.id.localeCompare(b.id));
+    // AI coverage can include the other human promotion, not visible as an
+    // owned promotion on this client. Preserve those saved features too.
+    const lead=ordered[0]?.id;let digest:HTMLElement|null=null;
+    for(const story of ordered){
+     const isFeature=isFeatured(story);
+     if(!isFeature){
+      if(!digest){digest=el("section","ppw-news-digest");digest.dataset.newsYear=String(story.year);digest.dataset.newsWeek=String(story.week);digest.append(el("h3","ppw-news-eyebrow","ELSEWHERE THIS WEEK"));section.append(digest);}
+      const brief=document.createElement("details");brief.className="ppw-news-brief";
+      brief.append(el("summary","ppw-news-story-title",story.title),el("p","",story.summary),el("small","ppw-industry-muted",story.promotionName));
+      if(story.id.startsWith("press:")&&story.promotionId===view.ownPromotionId&&port.openOwnResults)brief.append(btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId)));
+      digest.append(brief);continue;
+     }
     const item=el("article","ppw-news-story");
     item.dataset.newsYear=String(story.year);
     item.dataset.newsWeek=String(story.week);
     if(story.id.startsWith("press:"))item.classList.add("ppw-news-press");
-    if(index===0)item.classList.add("ppw-news-lead");
+    if(story.id===lead){item.classList.add("ppw-news-lead");item.append(el("span","ppw-news-eyebrow",official?"THE BIG STORY":"TOP GOSSIP"));}
+    else if(official&&story.promotionId===view.ownPromotionId)item.append(el("span","ppw-news-eyebrow","YOUR PROMOTION"));
     const wild=!official&&story.id.startsWith("wild:");
     const byline=dirtSheetByline(story.id);
     if(wild)item.classList.add("ppw-news-wild-theory");
@@ -882,17 +903,20 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      item.append(el("div","ppw-dirt-outlet",byline.name),
       el("span","ppw-dirt-byline",byline.byline+" · INSIDE REPORT"));
     }
-    item.append(el("span","ppw-news-desk",official?"CONFIRMED / OFFICIAL":
+    item.append(el("span","ppw-news-desk",official?(story.editorial?.commentary?"EDITORIAL / CONFIRMED SOURCE":"CONFIRMED / OFFICIAL"):
      wild?"UNVERIFIED / DISPUTED REPORT 👀":"RUMOUR / NOT CONFIRMED"),
-     el("strong","ppw-news-story-title",story.title),
-     el("p","",story.summary),
+     el("strong","ppw-news-story-title",story.editorial?.headline??story.title),
+     el("p","",story.editorial?.commentary??story.summary),
      el("small","ppw-industry-muted",story.promotionName+
       " · Year "+story.year+" · Week "+story.week));
-    if(story.editorial?.headline&&story.editorial.commentary){
-     const analysis=el("aside","ppw-news-editorial");
-     analysis.append(el("small","ppw-industry-muted",official?"EDITORIAL OPINION":"RUMOUR DISCUSSION / UNVERIFIED"),
-      el("strong","ppw-news-story-title",story.editorial.headline),el("p","",story.editorial.commentary));
-     item.append(analysis);
+    if(story.editorial?.commentary){
+     // Groq writes the reader-facing lead. Keep the actual public record
+     // readily accessible and separate from opinion, not a duplicated article.
+     const facts=document.createElement("details");
+     facts.className="ppw-news-editorial";
+     facts.append(el("summary","ppw-industry-muted",official?"Editorial opinion · View confirmed facts":"Rumour discussion · View source report"),
+      el("strong","ppw-news-story-title",story.title),el("p","",story.summary));
+     item.append(facts);
     }
     // The same HOT TAG identities used for show-result reactions now have
     // persistent-looking, locally projected threads under published stories.
@@ -908,8 +932,14 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const verified=wrestler&&story.editorial?.wrestler?.personId===wrestler.personId?
      {...wrestler,text:story.editorial.wrestler.text}:wrestler;
     const broadcaster=projectHotTagBroadcasterPost(story);
+    const shown=new Set<string>();
+    const fans=weeklyHotTagThread(story,story.editorial,usedFanText).filter(p=>{
+     const key=p.text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
+     if(usedFanText.has(key)||(p.replyTo&&!shown.has(p.replyTo)))return false;
+     usedFanText.add(key);shown.add(p.handle);return true;
+    });
     const posts=[...(broadcaster?[broadcaster]:[]),
-     ...(verified?[verified]:[]),...weeklyHotTagThread(story,story.editorial)];
+     ...(verified?[verified]:[]),...fans];
     for(const post of posts){
      const personId="personId" in post && typeof post.personId==="string"?post.personId:null;
      const wrestler=personId!==null;
@@ -954,6 +984,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      open.classList.add("ppw-news-press-open");item.append(open);
     }
     section.append(item);
+    }
    }
    if(official){
     // The pre-existing ledger headlines stay on the official desk; they

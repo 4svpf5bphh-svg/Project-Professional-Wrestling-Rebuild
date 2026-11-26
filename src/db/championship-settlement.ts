@@ -51,8 +51,8 @@ export async function settleCanonicalSinglesTitleContests(
    throw new Error("A singles title bout needs its champion or a vacant belt");
   const winner=booking.participants[winnerIndex]!;
   // A legitimate special match ending (ladder retrieval, I Quit, etc.)
-  // is as decisive as a clean pin. Protected and dirty endings still cannot
-  // transfer a title or crown a holder of a vacant championship.
+  // is as decisive as a clean pin. Successful concealed cheating is a
+  // recorded win; only the non-decisive outcomes block a title transfer.
   const transfer=(!hasChampion||winner!==state.person_id)&&
    isDecisiveChampionshipFinish(bout.actualFinish);
   if(transfer){

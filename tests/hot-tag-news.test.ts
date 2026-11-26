@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {HOT_TAG_NAME,HOT_TAG_TAGLINE,dirtSheetByline,
- projectHotTagNewsThread,projectHotTagBroadcasterPost} from "../src/domain/hot-tag-news.js";
+ projectHotTagNewsThread,projectHotTagBroadcasterPost,projectUniqueHotTagNewsThread} from "../src/domain/hot-tag-news.js";
 const rumour={
  id:"wild:s1",year:1,week:12,desk:"DIRT" as const,promotionName:"CWA",
  title:"Joe walked out?",summary:"Anonymous report with a competing denial."
@@ -183,4 +183,24 @@ test("HOT TAG rotates a large fictional population with rowdy takes and occasion
  assert.ok(hasReply,"Some comments respond to an earlier visible fan");
  assert.ok(hasRudeness&&hasHumour,
   "Wrestling-social comments should include both colourful language and absurdity");
+});
+
+test("wild entertainment receives story-specific fallback jokes without treating gossip as fact",()=>{
+ const concert={...rumour,title:"A locker-room concert?",summary:"A tipster claims an impromptu encore might have happened."};
+ const court={...rumour,id:"wild:s2",title:"Wrestlers' Court over a missing dessert?",summary:"A pudding allegedly vanished."};
+ assert.match(projectHotTagNewsThread(concert)[0]!.text,/encore|soundcheck/i);
+ assert.match(projectHotTagNewsThread(court)[0]!.text,/pudding|dessert/i);
+});
+
+test("a weekly TV snapshot never implies a common timeslot, network warning or winning a ratings battle",()=>{
+ for(let week=1;week<=52;week++){
+  const posts=projectHotTagNewsThread({...rumour,id:"broadcast:ratings:weekly",desk:"OFFICIAL",week,title:"Weekly TV watch: CWA / Rivals",summary:"CWA: 0.40 household rating; Rivals: 0.60 household rating. Separate broadcasts."});
+  assert.ok(posts.length>=3);assert.doesNotMatch(posts.map(p=>p.text).join(" "),/same hour|won the time slot|three weeks of|network has spoken|network paid|ratings are dropping/i);
+ }
+});
+
+test("default fan projection is unary while the editorial lead can explicitly request five identities",()=>{
+ const stories=Array.from({length:12},(_,i)=>({...rumour,id:"wild:callback:"+i}));
+ assert.deepEqual(stories.map(projectHotTagNewsThread),stories.map(s=>projectHotTagNewsThread(s)));
+ for(const story of stories){const posts=projectUniqueHotTagNewsThread(story,new Set(),5);assert.ok(posts.length>=5);}
 });
