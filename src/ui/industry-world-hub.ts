@@ -167,6 +167,12 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   catch(e){watchError=e instanceof Error?e.message:"Completed results unavailable";}
   finally{watching=false;render();}
  }
+ function programmeResultButton(story: {promotionId:string;showId:string}) {
+  if(!story.showId)return null;
+  if(story.promotionId===view?.ownPromotionId)
+   return port.openOwnResults?btn("Read Results",()=>port.openOwnResults?.(story.showId)):null;
+  return port.publicResults?btn("Read Results",()=>void readRivalResult(story.promotionId,story.showId)):null;
+ }
  function renderPublicShow(){
   activateWorkspaceRoot(root,"ppw-industry");
   root.replaceChildren();
@@ -889,8 +895,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       const brief=document.createElement("details");brief.className="ppw-news-brief";
       brief.append(el("summary","ppw-news-story-title",story.title),el("p","",story.summary),el("small","ppw-industry-muted",story.promotionName));
       if(story.id.startsWith("press:")&&story.promotionId===view.ownPromotionId&&port.openOwnResults)brief.append(btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId)));
-      if(story.id.startsWith("programme:official:")&&story.showId&&port.publicResults)
-       brief.append(btn("Read Results",()=>void readRivalResult(story.promotionId,story.showId)));
+      if(story.id.startsWith("programme:official:")){
+       const open=programmeResultButton(story);
+       if(open)brief.append(open);
+      }
       digest.append(brief);continue;
      }
     const item=el("article","ppw-news-story");
@@ -986,8 +994,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      const open=btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId));
      open.classList.add("ppw-news-press-open");item.append(open);
     }
-    if(official&&story.id.startsWith("programme:official:")&&story.showId&&port.publicResults)
-     item.append(btn("Read Results",()=>void readRivalResult(story.promotionId,story.showId)));
+    if(official&&story.id.startsWith("programme:official:")){
+     const open=programmeResultButton(story);
+     if(open)item.append(open);
+    }
     section.append(item);
     }
    }
