@@ -449,6 +449,10 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   return key(x.aId,x.bId);
  }));
  const cards:Array<[AiRosterCandidate,AiRosterCandidate]>=[];
+ const protectedPair=input.protectedProgrammePair;
+ const canMeet=(a:AiRosterCandidate,b:AiRosterCandidate)=>a.bookingDivision===b.bookingDivision&&
+  !(protectedPair?.includes(a.personId)&&protectedPair.includes(b.personId));
+ const singlesLimit=Math.floor((maxCast-tagIds.size)/2);
  if(tagChoice)for(const id of tagIds){
   const idx=pool.findIndex(p=>p.personId===id);
   if(idx<0)throw new Error("AI tag team was not reserved");
@@ -460,11 +464,10 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   pool.splice(pool.indexOf(a),1);pool.splice(pool.indexOf(b),1);
   cards.push([a,b]);
  }
- while(pool.length>=2&&cards.length<(tagChoice?4:5)){
+ while(pool.length>=2&&cards.length<singlesLimit){
   const head=pool.shift()!;
-  const protectedPair=input.protectedProgrammePair;
   const sameDivision=pool.filter(p=>p.bookingDivision===head.bookingDivision);
-  const candidates=sameDivision.filter(p=>!(protectedPair?.includes(head.personId)&&protectedPair.includes(p.personId)));
+  const candidates=sameDivision.filter(p=>canMeet(head,p));
   if(!candidates.length&&!cards.length&&!tagChoice&&sameDivision.length&&pool.length===1)
    candidates.push(...sameDivision);
   if(!candidates.length)continue;
@@ -479,6 +482,18 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   const opponent=candidates[0]!;
   pool.splice(pool.findIndex(p=>p.personId===opponent.personId),1);
   cards.push([head,opponent]);
+ }
+ // Holding rivals apart can strand a pair in the selected undercard.
+ // Fill any opening with eligible alternatives within the original cast
+ // limit, preserving the rest of the card and the premium attraction.
+ if(protectedPair&&cards.length<singlesLimit){
+  const committed=new Set([...tagIds,...cards.flatMap(pair=>pair.map(p=>p.personId))]);
+  const alternatives=rotationOrder.filter(p=>!committed.has(p.personId));
+  while(alternatives.length>=2&&cards.length<singlesLimit){
+   const head=alternatives.shift()!;
+   const opponent=alternatives.findIndex(p=>canMeet(head,p));
+   if(opponent>=0)cards.push([head,alternatives.splice(opponent,1)[0]!]);
+  }
  }
  if(!cards.length&&!tagChoice)return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};
  // Strongest star power closes, by the exact archived booking push score.

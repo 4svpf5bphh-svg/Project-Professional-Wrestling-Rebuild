@@ -126,3 +126,21 @@ test("aired tensions keep partners apart on ordinary, makeshift title and Progra
  assert.equal(paired(chooseAiWorldCard({...tv,separatedTagPairs,
   creative:{kind:"MATCH",programme,leadId:"w8",winnerId:"w8",tagPartnerId:"w9"}})),false);
 });
+
+test("protecting a rivalry replaces a stranded undercard pairing with eligible alternatives", () => {
+ const rosterWithAlternates=Array.from({length:14},(_,i)=>({
+  personId:"w"+i,contractId:"c"+i,bookingDivision:(i%3===0?"WOMEN":"MEN") as "MEN"|"WOMEN",
+  weeklyCapacity:2,popularity:45+(i*31+7)%43,momentum:45+(i*11+3)%40,
+  recognition:53+i,matchCraft:52+i,presentation:58+i,
+ }));
+ const result=chooseAiWorldCard({
+  worldId:"depth",worldSeed:"1",year:2,week:2,promotionId:"p",showId:"tv",
+  roster:rosterWithAlternates,activeVenues:["arena"],bookedShows:[],eventType:"REGULAR",
+  starPreference:62,matchQualityPreference:78,riskTolerance:40,protectedProgrammePair:["w1","w2"],
+ });
+ assert.equal(result.status,"READY");
+ if(result.status!=="READY")return;
+ assert.equal(result.matches.length,5,"The protected match does not cost an otherwise bookable undercard bout");
+ assert.ok(!result.matches.some(match=>match.participants.every(p=>["w1","w2"].includes(p.personId))));
+ assert.equal(new Set(result.matches.flatMap(match=>match.participants.map(p=>p.personId))).size,10);
+});
