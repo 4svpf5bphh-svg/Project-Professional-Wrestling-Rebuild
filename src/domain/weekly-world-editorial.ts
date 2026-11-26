@@ -107,13 +107,15 @@ export function validateWeeklyStoryCopy(story:WeeklyStory,value:unknown,speaker?
  return Object.keys(copy).length?copy:null;
 }
 /** Public editorial significance, never unpublished booking or private contracts. */
-export function weeklyStoryPriority(story:Pick<WeeklyStory,"id"|"sourceKind"|"title">):number{
+export function weeklyStoryPriority(story:Pick<WeeklyStory,"id"|"sourceKind"|"title">&Partial<Pick<WeeklyStory,"summary">>):number{
  if(story.sourceKind==="TITLE"||story.id.startsWith("title:"))return 100;
  if(story.id.startsWith("tournament:"))return 94;
  if(story.id.startsWith("match:")&&story.title.startsWith("A foreign object decides "))return 89;
  if(story.id.startsWith("event:"))return 88;
- if(story.id.startsWith("match:")&&story.title.includes(" in the spotlight at "))return 84;
  if(story.id.startsWith("programme:official:"))return 86;
+ const stars=story.summary?.match(/\b(\d(?:\.\d{1,2})?)[ -]star match\b/i)?.[1];
+ if(story.id.startsWith("match:")&&Number(stars)>=4.5&&Number(stars)<=5)return 85;
+ if(story.id.startsWith("match:")&&story.title.includes(" in the spotlight at "))return 84;
  if(story.sourceKind==="ANGLE"||story.id.startsWith("angle:"))return 82;
  if(story.sourceKind==="MATCH"||story.id.startsWith("match:"))return 76;
  if(story.id.startsWith("broadcast:network:"))return 72;
