@@ -8,7 +8,8 @@ import type {TransactionPool} from "./transaction.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {purchasedDateLimits,maxExclusiveTermWeeks,unpackSignedCommitments,type CompactSignedCommitment,type Stage} from "../domain/contract-economics.js";
-import {worldTalentManagers} from "../domain/world-staff.js";
+import {worldStaff} from "../domain/world-staff.js";
+import {weekDateRangeSql} from "./week-date-sql.js";
 export type DirectoryView="ROSTER"|"MARKET";
 export type DirectorySort="ROLE"|"NAME"|"POPULARITY"|"RECOGNITION"|"MOMENTUM"|"OVERNESS"|"VALUE"|"PAY_LOW"|"PAY_HIGH"|"FEE_LOW"|"FEE_HIGH"|"DATES_LOW"|"DATES_HIGH"|"EXPIRY"|"INTEREST";
 export type DirectoryDivision="ALL"|"MEN"|"WOMEN";
@@ -30,6 +31,7 @@ type PersonRow={
  popularity:number|null;recognition:number|null;momentum:number|null;overness:number|null;
  match_craft:number|null;presentation:number|null;morale:number|null;
  career_stage:string|null;it:number|null;
+ biological_age:number|null;development_aptitude:number|null;
  contract_id:string|null;aff:string|null;
  family:string|null;role_expectation:string|null;remaining_dates:number|null;
  start_week_index:number|null;
@@ -92,7 +94,9 @@ export async function readWrestlerDirectory(
     cash:string;weekly_income:string|null;
     weekly_fixed_overhead:string|null;active_guarantees:string;
     signed_roster_exposure:string;staff_payroll:string;
-    plan_wage_limit:string|null;plan_cash_reserve:string|null;
+    plan_wage_limit:string|null;plan_cash_reserve:string|null;plan_show_limit:string|null;
+    active_roster_depth:{men:number;women:number};
+    next_tv:{name:string;weekIndex:number}|null;next_ppv:{name:string;weekIndex:number}|null;
     has_talent_manager:boolean;manager_id:string|null}>(`
    SELECT w.year,w.week,w.revision,w.seed,
     owner.cash::text,
@@ -101,6 +105,7 @@ export async function readWrestlerDirectory(
      END AS weekly_income,
     owner.weekly_fixed_overhead::text,
     costs.active_guarantees,costs.signed_roster_exposure,
+    ${f.view==="MARKET"?"costs.active_roster_depth,shows.next_tv,shows.next_ppv,":""}
     (SELECT coalesce(sum(employee.weekly_salary),0)::text
      FROM ppw_staff_employments employee WHERE employee.world_id=w.world_id
       AND employee.promotion_id=owner.promotion_id AND employee.status='ACTIVE'
@@ -108,6 +113,7 @@ export async function readWrestlerDirectory(
       AND employee.expires_week_index>=(w.year-1)*52+w.week-1) AS staff_payroll,
     plan.weekly_wage_limit::text AS plan_wage_limit,
     plan.cash_reserve::text AS plan_cash_reserve,
+    ${f.view==="MARKET"?"plan.show_talent_limit::text AS plan_show_limit,":""}
     (SELECT adviser.staff_id FROM ppw_staff_employments adviser
      WHERE adviser.world_id=w.world_id AND adviser.promotion_id=owner.promotion_id
       AND adviser.role='TALENT_MANAGER' AND adviser.status='ACTIVE'
@@ -145,16 +151,39 @@ export async function readWrestlerDirectory(
         2*greatest(0,agreement.expires_week_index-
          greatest(agreement.start_week_index,(w.year-1)*52+w.week-1)+1))
         *agreement.appearance_fee END
-     ),0)::text AS signed_roster_exposure
+     ),0)::text AS signed_roster_exposure,
+     jsonb_build_object(
+      'men',count(DISTINCT person.person_id) FILTER(WHERE person.booking_division='MEN'),
+      'women',count(DISTINCT person.person_id) FILTER(WHERE person.booking_division='WOMEN')
+     ) AS active_roster_depth
     FROM ppw_contracts agreement
+    LEFT JOIN ppw_people person ON $4::boolean AND person.world_id=agreement.world_id
+     AND person.person_id=agreement.person_id
+     AND person.status='ACTIVE' AND agreement.start_week_index<=(w.year-1)*52+w.week-1
+     AND agreement.expires_week_index>=(w.year-1)*52+w.week-1
+     AND (agreement.family='EXCLUSIVE' OR agreement.remaining_dates>0)
     WHERE agreement.world_id=w.world_id AND agreement.promotion_id=owner.promotion_id
      AND agreement.status='SIGNED'
    ) costs ON TRUE
-   WHERE w.world_id=$1`,[who.worldId,who.playerId,who.promotionId]);
+   LEFT JOIN LATERAL (
+    SELECT (array_agg(event ORDER BY year,week) FILTER(WHERE booking_class='REGULAR'))[1] AS next_tv,
+     (array_agg(event ORDER BY year,week) FILTER(WHERE booking_class='PREMIUM'))[1] AS next_ppv
+    FROM (SELECT DISTINCT ON (d.booking_class) d.booking_class,d.year,d.week,
+     jsonb_build_object('name',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
+      THEN 'the next PPV' ELSE 'the next television show' END),
+      'weekIndex',(d.year-1)*52+d.week-1) AS event
+     FROM ppw_booking_drafts d
+     WHERE d.world_id=w.world_id AND d.promotion_id=$3
+      AND d.status IN ('DRAFT','SUBMITTED')
+      AND ${weekDateRangeSql("d","(w.year-1)*52+w.week-1","(w.year-1)*52+w.week+5")}
+     ORDER BY d.booking_class,d.year,d.week,d.show_day NULLS LAST,d.draft_id
+    ) scheduled
+   ) shows ON $4::boolean
+   WHERE w.world_id=$1`,[who.worldId,who.playerId,who.promotionId,f.view==="MARKET"]);
   if(auth.length!==1)throw new Error("Wrestler directory access denied");
   const now=(auth[0]!.year-1)*52+auth[0]!.week-1;
   const manager=auth[0]!.manager_id?
-   worldTalentManagers(auth[0]!.seed).find(m=>m.staffId===auth[0]!.manager_id):null;
+   worldStaff(auth[0]!.seed).find(m=>m.staffId===auth[0]!.manager_id):null;
   // DISTINCT person identity: a second offer/contract must never create a
   // duplicate market tile. Correlated lookups are world+person indexed.
   const rows=await tx.query<PersonRow>(`
@@ -162,7 +191,7 @@ export async function readWrestlerDirectory(
     p.momentum,COALESCE(p.overness,COALESCE(p.popularity,50)*0.55+
      COALESCE(p.momentum,50)*0.45) AS overness,
     p.match_craft,p.presentation,p.morale,p.career_stage,
-    ${f.view==="MARKET"?"p.stamina,p.fatigue,p.weekly_service_capacity,contracts.commitments,":""}
+    ${f.view==="MARKET"?"p.stamina,p.fatigue,p.weekly_service_capacity,contracts.commitments,p.biological_age,p.development_aptitude,":""}
     p.in_ring_quality,p.portable_gimmick_id AS gid,p.default_alignment,
     aligned.alignment AS active_alignment,
     interest.score AS it,
@@ -216,6 +245,8 @@ export async function readWrestlerDirectory(
     SELECT (array_agg(c.promotion_id ORDER BY c.promotion_id)
       FILTER(WHERE c.family='EXCLUSIVE' AND c.start_week_index<=$3))[1]
        AS exclusive_to,
+     coalesce(bool_or(c.family='EXCLUSIVE' AND c.start_week_index<=$3+1
+      AND c.expires_week_index>=$3+1),false) AS signing_week_exclusive,
      count(*) FILTER(WHERE c.promotion_id<>$2
       AND c.start_week_index<=$3)::integer AS other_contracts,
      count(*) FILTER(WHERE c.start_week_index<=$3)::integer AS active_contracts,
@@ -254,13 +285,13 @@ export async function readWrestlerDirectory(
     AND ($14::text='ALL' OR mine.role_expectation=$14)
     AND ($15::text='ALL' OR mine.family=$15)
     AND ($16::text='ALL' OR ($16='OPEN_PLUS' AND
-      interest.score>=40 AND contracts.exclusive_to IS NULL) OR
-      ($16='INTERESTED_PLUS' AND interest.score>=63 AND contracts.exclusive_to IS NULL))
+      interest.score>=40 AND (contracts.exclusive_to IS NULL OR contracts.signing_week_exclusive IS FALSE)) OR
+      ($16='INTERESTED_PLUS' AND interest.score>=63 AND (contracts.exclusive_to IS NULL OR contracts.signing_week_exclusive IS FALSE)))
     AND (${f.view==="ROSTER"?
      "mine.contract_id IS NOT NULL AND $11::text IS NOT NULL":
      "mine.contract_id IS NULL"})
     ${f.view==="MARKET"?
-     "AND ($11::text='ALL' OR ($11='APPROACHABLE' AND contracts.exclusive_to IS NULL) OR ($11='FREE_AGENT' AND contracts.active_contracts=0 AND contracts.future_contracts=0) OR ($11='NON_EXCLUSIVE' AND contracts.exclusive_to IS NULL AND contracts.active_contracts>0))":
+     "AND ($11::text='ALL' OR ($11='APPROACHABLE' AND (contracts.exclusive_to IS NULL OR contracts.signing_week_exclusive IS FALSE)) OR ($11='FREE_AGENT' AND contracts.active_contracts=0 AND contracts.future_contracts=0) OR ($11='NON_EXCLUSIVE' AND (contracts.exclusive_to IS NULL OR contracts.signing_week_exclusive IS FALSE) AND contracts.active_contracts>0))":
      ""}
    ORDER BY ${sortSql[f.sort]}
    LIMIT $12 OFFSET $13`,
@@ -286,7 +317,9 @@ export async function readWrestlerDirectory(
     signedRosterExposure:Number(auth[0]!.signed_roster_exposure),
     weeklyStaffPayroll:Number(auth[0]!.staff_payroll),
     weeklyWageLimit:auth[0]!.plan_wage_limit===null?null:Number(auth[0]!.plan_wage_limit),
-    cashReserve:auth[0]!.plan_cash_reserve===null?null:Number(auth[0]!.plan_cash_reserve)
+    cashReserve:auth[0]!.plan_cash_reserve===null?null:Number(auth[0]!.plan_cash_reserve),
+    showTalentLimit:auth[0]!.plan_show_limit===null?null:Number(auth[0]!.plan_show_limit),
+    rosterDepth:auth[0]!.active_roster_depth,nextTV:auth[0]!.next_tv,nextPPV:auth[0]!.next_ppv
    }:null,
    hasMore,people:rows.slice(0,f.limit).map(p=>{
     const fallback=originalPersonaBaseline(p.name,p.gid);
@@ -308,7 +341,9 @@ export async function readWrestlerDirectory(
     careerStage:p.career_stage,contractId:p.contract_id??null,family:p.family??null,
     ...(p.aff?{affiliatedViaParent:true,contractOwnerName:p.aff}:{}),
     roleExpectation:p.role_expectation??null,
-    interest:p.contract_id==null&&p.exclusive_to&&p.exclusive_to!==who.promotionId?"UNAVAILABLE":
+    interest:p.contract_id==null&&p.exclusive_to&&p.exclusive_to!==who.promotionId&&
+     (f.view!=="MARKET"||commitments.some(c=>c.family==="EXCLUSIVE"&&
+      c.startWeekIndex<=now+1&&c.expiresWeekIndex>=now+1))?"UNAVAILABLE":
      p.it===null?"UNKNOWN":p.it>=78?"KEEN":
      p.it>=63?"INTERESTED":p.it>=40?"OPEN_TO_TALKS":
      p.it>=22?"RELUCTANT":"NOT_INTERESTED",
@@ -328,7 +363,8 @@ export async function readWrestlerDirectory(
     // contract is authoritative. Saves ~500–600 PostgreSQL result bytes for
     // a full 25-person iPhone roster without weakening any Neon limits.
     estimatedWeeklyValue:f.view==="MARKET"?p.estimated_value:null,
-    ...(f.view==="MARKET"?{exclusiveTermLimit:maxExclusiveTermWeeks(now+1,commitments),offerDateLimits:p.stamina!=null&&p.fatigue!=null&&p.career_stage?
+    ...(f.view==="MARKET"?{age:p.biological_age,developmentAptitude:p.development_aptitude,
+     exclusiveTermLimit:maxExclusiveTermWeeks(now+1,commitments),offerDateLimits:p.stamina!=null&&p.fatigue!=null&&p.career_stage?
      purchasedDateLimits({careerStage:p.career_stage as Stage,stamina:p.stamina,fatigue:p.fatigue,weeklyServiceCapacity:p.weekly_service_capacity},now+1,commitments,now):null}:{}),
     // Availability only describes contract eligibility. It is NOT a promise
     // that a particular wrestler will accept terms at World resolution.

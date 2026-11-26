@@ -14,6 +14,8 @@ export interface RecordedMatchReportFact{
  linkedProgrammes:number|null;programmeSignal:string|null;
  /** Resolution-time talent identities; not persisted or inferred from news. */
  personIds?:string[];participantNames?:string[];
+ /** Pre-match workload from the already calculated career effects. */
+ workload?:{personId:string;fatigue:number;wear:number;momentum:number}[];
  injuries:{personId:string;severity:string;weeksOut:number}[];
 }
 export function deriveCompletedMatchReportFacts(
@@ -68,6 +70,7 @@ export function deriveCompletedMatchReportFacts(
    p.plannedFinish;
   const recordedCheater=["DISQUALIFICATION","FOREIGN_OBJECT"].includes(actualFinish)?
    p.finishCheaterId:null;
+  const career=p.multi?.result.members??p.tag?.result.members??p.consequencesPreview?.performers??[];
   return {matchId:p.slotId,personIds:[...participantIds],ratingStars:score.criticalRatingStars,
    executionQuality:score.executionQuality,
    chemistryModifier:p.chemistryModifier,
@@ -75,7 +78,9 @@ export function deriveCompletedMatchReportFacts(
    actualMinutes:score.actualLengthMinutes,plannedMinutes:p.plannedMinutes,
    injuries:verified,
    linkedProgrammes:storyline?.linkedActiveProgrammeCount??null,
-   programmeSignal:storyline?.reason??null};
+   programmeSignal:storyline?.reason??null,
+   workload:career.map(({personId,before})=>({personId,
+    fatigue:before.fatigue,wear:before.wear,momentum:before.momentum}))};
  });
 }
 export async function recordCompletedMatchReportFactsInTransaction(

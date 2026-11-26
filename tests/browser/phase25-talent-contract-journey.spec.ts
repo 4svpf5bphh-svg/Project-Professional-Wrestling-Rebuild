@@ -17,6 +17,7 @@ const market={year:1,week:5,currentWeekIndex:4,worldRevision:4,canEdit:true,
  people:[{personId:"star",name:"Taylor Vale",division:"MEN",
   availability:"FREE_AGENT",interest:"INTERESTED",pendingOffer:false,
   estimatedWeeklyValue:10_000,recognition:60,popularity:70,momentum:50,
+  exclusiveTermLimit:52,offerDateLimits:Array.from({length:52},(_,i)=>i+1),
   inRingQuality:78,matchCraft:76,presentation:82,morale:75}]};
 
 test("320px Talent Market keeps talent visible, remembers scouting filters, and offers clear one-night and year-long costs",async({page})=>{

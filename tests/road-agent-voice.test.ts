@@ -124,3 +124,17 @@ test("multi-person opener feedback is a practical structure note, not generic pa
  assert.match(report.recommendation,/clear handovers/);
  assert.doesNotMatch(report.recommendation,/pairing/);
 });
+
+test("a veteran agent sees cumulative workload in a match that worked",()=>{
+ const healthyCard={...receipt,matches:[receipt.matches[0]!]};
+ const played=[{...facts[0]!,plannedMinutes:23,actualMinutes:23,
+  workload:[{personId:"worker",fatigue:71,wear:30,momentum:67}]}];
+ const basic={name:"Sally Sparks",staffId:"agent-1",personality:"FRANK",insight:42,craft:50} as WorldStaffMember;
+ const expert={...basic,insight:82,craft:87};
+ const junior=deriveRoadAgentReport(healthyCard,played,basic);
+ const senior=deriveRoadAgentReport(healthyCard,played,expert);
+ assert.equal(junior.strongestMatchId,senior.strongestMatchId);
+ assert.match(junior.concern,/Nobody gave me a major in-ring concern/i);
+ assert.match(senior.concern,/recorded fatigue or wear/);
+ assert.match(senior.recommendation,/shorter/);
+});

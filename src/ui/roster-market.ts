@@ -167,14 +167,19 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
    prospect?.estimatedWeeklyValue===undefined?null:
    minimumExclusiveWeeklyGuarantee(prospect.estimatedWeeklyValue);
   const manager=view?.offerBudget?.talentManager;
-  const proposed=prospect&&manager?recommendTalentOffer({
+  const proposed=prospect&&manager&&prospect.estimatedWeeklyValue!=null&&prospect.offerDateLimits?
+   recommendTalentOffer({
    personId,name:prospect.name,
-   marketWeeklyValue:prospect.estimatedWeeklyValue??9000,
+   marketWeeklyValue:prospect.estimatedWeeklyValue,
    popularity:prospect.popularity,recognition:prospect.recognition,
    morale:prospect.morale,careerStage:prospect.careerStage,
-   interest:prospect.interest as TalentOfferProfile["interest"],purchasedDateLimits:prospect.offerDateLimits
+   age:prospect.age,developmentAptitude:prospect.developmentAptitude,
+   division:prospect.division,startWeekIndex:view!.currentWeekIndex+1,
+   interest:prospect.interest as TalentOfferProfile["interest"],
+   purchasedDateLimits:prospect.offerDateLimits,exclusiveTermLimit:prospect.exclusiveTermLimit,
+   budget:view?.offerBudget
   },manager):null;
-  const fromProposal=proposed?{
+  const fromProposal=proposed?.feasible?{
    family:proposed.terms.family,role:proposed.terms.roleExpectation,
    creative:proposed.terms.creativeControl,
    weeks:proposed.terms.termWeeks,dates:proposed.terms.dateEntitlement,
@@ -186,21 +191,27 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
   choices.set(personId,draft);
   const editor=el("div","ppw-directory-offer");
   editor.append(el("h3","","Make an offer"));
-  if(proposed&&fromProposal){
+  if(proposed){
    const pitch=el("section","ppw-directory-manager-proposal");
    pitch.append(el("span","ppw-directory-manager-eyebrow",
     proposed.managerName+" · TALENT MANAGER"),
     el("h4","","My recommendation"),
     el("p","ppw-directory-manager-voice",proposed.voice),
-    el("div","ppw-directory-manager-price",
+    el("small","",proposed.availability));
+   if(fromProposal){
+    pitch.append(el("div","ppw-directory-manager-price",
      money(proposed.projectedCommitment)+" potential full-term cost"),
-    el("small","",proposed.rationale));
-   const apply=btn("Use my recommendation",()=>{
-    Object.assign(draft,fromProposal);
-    pendingKey="";render();
-   },!proposed.feasible);
-   apply.className+=" ppw-directory-manager-apply";
-   pitch.append(apply);editor.append(pitch);
+     el("small","",proposed.willingness));
+    if(proposed.affordability)pitch.append(el("p","",proposed.affordability));
+    if(proposed.bookingContext)pitch.append(el("small","",proposed.bookingContext));
+    const apply=btn("Use my recommendation",()=>{
+     Object.assign(draft,fromProposal);
+     pendingKey="";render();
+    });
+    apply.className+=" ppw-directory-manager-apply";
+    pitch.append(apply);
+   }
+   editor.append(pitch);
   }
   const signableWeek=view!.currentWeekIndex+1;
   const eligibleWeek="Year "+(Math.floor(signableWeek/52)+1)+
@@ -685,7 +696,8 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      ". Indicative only: agreed terms and acceptance are still uncertain."));
 
     detail.append(el("p","ppw-directory-muted",p.availability==="EXCLUSIVE_ELSEWHERE"?
-     "Exclusive contract held elsewhere. Recruitment is currently blocked.":
+     p.interest==="UNAVAILABLE"?"Exclusive contract held elsewhere. Recruitment is currently blocked.":
+      "The current exclusive deal ends before a new offer can start.":
      p.availability==="FUTURE_EXCLUSIVE_ELSEWHERE"?
       "Another promotion's exclusive agreement begins in "+
        Math.max(0,(p.nextFutureStart??view.currentWeekIndex)-view.currentWeekIndex)+
@@ -701,13 +713,13 @@ export function mountRosterMarket(root:HTMLElement,port:RosterMarketPort,
      ()=>port.openWrestler(p.personId,filter.view)));
     if(p.pendingOffer)detail.append(el("p","ppw-directory-muted",
      "Your offer is awaiting a response."));
-    else if(p.availability!=="EXCLUSIVE_ELSEWHERE"&&view.canEdit)
+    else if(p.interest!=="UNAVAILABLE"&&view.canEdit)
      detail.append(btn(activeOffer===p.personId?"Close proposal":"Make contract offer",
       ()=>{if(pendingPersonId&&pendingPersonId!==p.personId){
        pendingKey="";pendingPersonId=null;}
        activeOffer=activeOffer===p.personId?null:p.personId;render();}));
     if(activeOffer===p.personId&&view.canEdit&&
-      p.availability!=="EXCLUSIVE_ELSEWHERE"&&!p.pendingOffer)
+      p.interest!=="UNAVAILABLE"&&!p.pendingOffer)
      detail.append(offerEditor(p.personId));
     if(!view.canEdit)detail.append(el("p","ppw-directory-muted",
      "The weekly deadline has passed. You can review talent, but offers are closed."));

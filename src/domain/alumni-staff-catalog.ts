@@ -3,14 +3,24 @@
  * staff-owner read; no extra iPhone query or polling is necessary.
  */
 import {worldStaff,type StaffRole,type WorldStaffMember} from "./world-staff.js";
-export const STAFF_ALUMNI_JSON_SQL=[
- "COALESCE((SELECT jsonb_agg(to_jsonb(s)) FROM (",
+const STAFF_ALUMNI_SELECT=[
  "SELECT a.staff_id AS \"staffId\",p.name,a.role,a.craft,a.people,",
  "a.reliability,a.weekly_salary AS \"weeklySalary\",a.personality,",
  "a.specialism,a.person_id AS \"formerWrestlerId\",",
  "a.career_summary AS \"careerNote\"",
  "FROM ppw_staff_alumni a JOIN ppw_people p ON p.world_id=a.world_id",
- "AND p.person_id=a.person_id AND p.status='RETIRED'",
+ "AND p.person_id=a.person_id AND p.status='RETIRED'"
+].join(" ");
+/** Resolve only the employee on this card, never the whole alumni market. */
+export const staffAlumnusSql=(employee:string)=>`(
+ SELECT to_jsonb(member) FROM (
+  ${STAFF_ALUMNI_SELECT} WHERE a.world_id=${employee}.world_id
+   AND a.staff_id=${employee}.staff_id
+ ) member
+)`;
+export const STAFF_ALUMNI_JSON_SQL=[
+ "COALESCE((SELECT jsonb_agg(to_jsonb(s)) FROM (",
+ STAFF_ALUMNI_SELECT,
  "WHERE a.world_id=w.world_id",
  "ORDER BY EXISTS(SELECT 1 FROM ppw_staff_employments e",
  "WHERE e.world_id=a.world_id AND e.staff_id=a.staff_id",

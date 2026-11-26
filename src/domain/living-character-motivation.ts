@@ -70,6 +70,8 @@ function requestFocus(kind:string,title:string|null|undefined,
    "An earlier broken commitment is still being discussed.","BACKSTAGE"] as const;
   case "MOMENTUM":return ["Recover momentum",
    "They have raised concerns about their recent momentum.","BOOKING"] as const;
+  case "MOMENTUM_OPPORTUNITY":return ["Build on their run",
+   "Strong performances on completed shows prompted a request for a bigger role.","BOOKING"] as const;
   case "MEDICAL_SUPPORT":return ["Plan a safe return",
    "They have requested support while medically unavailable.","BACKSTAGE"] as const;
   case "CONTRACT":return ["Decide their future",
@@ -101,7 +103,7 @@ export function livingWrestlerMotivation(i:LivingMotivationInput):LivingMotivati
   if(live.status==="PROMISED"){
    const due=validWeek(live.dueWeekIndex??-1)?
     " by "+weekLabel(live.dueWeekIndex!):"";
-   const deliverable=live.kind==="CREATIVE"?"promo or angle":
+   const deliverable=live.decision==="PROMISE_SEGMENT"||live.kind==="CREATIVE"?"promo or angle":
     live.kind==="ROLE_USAGE"?"featured match":"appearance";
    return make("PROMISE_PENDING","Deliver the "+deliverable,
     "You accepted a booking commitment"+due+

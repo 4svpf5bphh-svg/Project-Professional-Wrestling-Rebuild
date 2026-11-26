@@ -118,7 +118,7 @@ export async function settleStaffDisagreements(tx:SqlRows,worldId:string,weekInd
      OR NOT EXISTS(
       SELECT 1 FROM ppw_contracts c
       WHERE c.world_id=r.world_id AND c.promotion_id=r.promotion_id
-       AND c.person_id=r.person_id AND c.status='SIGNED'
+       AND c.person_id=r.person_id AND c.promotion_id=r.promotion_id AND c.status='SIGNED'
        AND c.start_week_index<=$2 AND c.expires_week_index>=$2)
      THEN 'EXCUSED'
     WHEN r.decision='PRIORITISE_HEALTH' AND person.fatigue<70 THEN 'KEPT'
@@ -143,7 +143,7 @@ export async function settleStaffDisagreements(tx:SqlRows,worldId:string,weekInd
     OR NOT EXISTS(
      SELECT 1 FROM ppw_contracts c
      WHERE c.world_id=r.world_id AND c.promotion_id=r.promotion_id
-      AND c.person_id=r.person_id AND c.status='SIGNED'
+      AND c.person_id=r.person_id AND c.promotion_id=r.promotion_id AND c.status='SIGNED'
       AND c.start_week_index<=$2 AND c.expires_week_index>=$2)
     OR (r.decision='PRIORITISE_HEALTH' AND person.fatigue<70)
     OR (r.decision='REFRESH_PROGRAMME'

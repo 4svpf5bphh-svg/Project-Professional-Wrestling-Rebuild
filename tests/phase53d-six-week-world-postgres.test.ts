@@ -349,6 +349,7 @@ test("owner-authored six-week rivalry builds to a certified PPV finale without d
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
+    "ppw_backstage_requests",
     "ppw_programme_finales","ppw_programme_postshow_directions",
     "ppw_programme_resolved_activities","ppw_wrestler_relationship_changes",
     "ppw_tag_working_pair_appearances","ppw_wrestler_relationships",

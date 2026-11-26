@@ -25,7 +25,7 @@ import {contractAvailability} from "../domain/contract-availability.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {creativeReviewsInTransaction} from "./match-creative-consent.js";
-import {worldStaff} from "../domain/world-staff.js";
+import {staffAlumnusSql,worldStaffWithAlumni} from "../domain/alumni-staff-catalog.js";
 export interface CardEditorIdentity{
  worldId:string;playerId:string;promotionId:string;showId:string;
 }
@@ -78,7 +78,7 @@ type ShowRow={year:number;week:number;status:string;revision:string|number;seed:
   overhead:number|null;wages:number;staff:number;
   showTalentLimit:number|null;cashReserve:number|null;
  };
- advisers?:{role:string;staffId:string}[];
+ advisers?:{role:string;staffId:string;alumnus?:unknown;legacy?:boolean}[];
  tournament_bouts?:{tournamentId:string;tournamentName:string;boutNo:number;entrantsCount:4|8;
   championshipId:string|null;
   personA:{personId:string;name:string;contractId:string;appearanceFee:number;creativeControl:string};
@@ -112,7 +112,9 @@ async function readShowScope(tx:SqlRows,id:CardEditorIdentity,
    "((d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1",
    "AND (w.year-1)*52+w.week+5) AS within_window"+(includeTournament?",":""),
    ...(includeTournament?[
-    "COALESCE((SELECT jsonb_agg(jsonb_build_object('role',e.role,'staffId',e.staff_id)",
+    "COALESCE((SELECT jsonb_agg(jsonb_build_object('role',e.role,'staffId',e.staff_id,",
+    `'alumnus',${staffAlumnusSql("e")},'legacy',EXISTS(SELECT 1 FROM ppw_staff_legacy_identities legacy`,
+    "WHERE legacy.world_id=e.world_id AND legacy.staff_id=e.staff_id))",
     "ORDER BY e.role) FROM ppw_staff_employments e",
     "WHERE e.world_id=d.world_id AND e.promotion_id=d.promotion_id",
     "AND e.status='ACTIVE' AND e.start_week_index<=(w.year-1)*52+w.week-1",
@@ -229,7 +231,10 @@ function boundedSlots(slots:readonly SlotRow[]){
 export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdentity){
  return withSqlClient(pool,async tx=>{
   const show=await readShowScope(tx,id,true);
-  const staffNames=new Map(worldStaff(show.seed).map(member=>[member.staffId,member.name]));
+  const advisors=show.advisers??[];
+  const staffById=new Map(worldStaffWithAlumni(show.seed,
+   advisors.filter(member=>member.legacy).map(member=>member.staffId),
+   advisors.flatMap(member=>member.alumnus?[member.alumnus]:[])).map(member=>[member.staffId,member]));
   // Reuse one bounded card-slot request for the current card AND other
   // draft/submitted shows in the same promotion/week. Two independent LIMITs
   // prevent a packed neighbouring show from hiding the current card.
@@ -523,8 +528,12 @@ export async function readShowCardEditor(pool:TransactionPool,id:CardEditorIdent
    teamId:t.unit_id,name:t.name,members:t.members})),
    bookableTrios:bookableTrios.map(t=>({
     trioId:t.unit_id,name:t.name,members:t.members})),
-   advisers:(show.advisers??[]).map(member=>({...member,
-    name:staffNames.get(member.staffId)??null})),
+   advisers:advisors.map(({role,staffId})=>{
+    const staff=staffById.get(staffId);
+    return {role,staffId,name:staff?.name??null,
+     ...(staff&&role==="ROAD_AGENT"?{craft:staff.craft,insight:staff.insight,
+      personality:staff.personality,specialism:staff.specialism}:{})};
+   }),
    bookingFinancials:show.booking_financials??null,
    otherShowWorkloads,
    selectedPeople:selectedPeople.map(p=>({

@@ -37,6 +37,11 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   .find(x=>x.f.chemistryModifier<=-3);
  const reporter=agent?.name??"PPW House Road Agent";
  const voice=agent?.personality??"BALANCED";
+ const experienced=agent!==null&&(agent.insight>=72||agent.craft>=78);
+ const repetition=matches.find(x=>x.f.programmeSignal==="PROGRAMME_REPETITION");
+ const readyButCold=matches.find(x=>x.f.executionQuality>=72&&x.m.crowdResponse<49);
+ const loaded=experienced?matches.find(x=>x.f.actualMinutes>=20&&
+  x.f.workload?.some(person=>person.fatigue>=65||person.wear>=72)):undefined;
  const bestCrowd=best?.m.crowdResponse??0;
  const mood=best?.f.ratingStars!==undefined&&best.f.ratingStars>=4?
   "was worth watching again":bestCrowd>=70?"got the room on its side":"showed promise";
@@ -78,7 +83,7 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
    "Credit to the crew on "+place+". It "+mood+
     ", and the people involved deserve to hear that.":
    "I'd build on "+place+". It "+mood+
-    "; "+(finishPoint||"the audience had a reason to pay attention.")
+    ". "+(finishPoint||"The audience had a reason to pay attention.")
  ):"We didn't have a contest to judge. I'd like a proper bell-to-bell bout on the next show.";
  const ranLong=[...matches].filter(x=>x.f.plannedMinutes!==undefined)
   .sort((a,b)=>
@@ -93,9 +98,14 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
  };
  const worstLabel=poorExecution?boutName(poorExecution.m.position):"the match";
  const crowdedBout=(poorExecution?.f.participantNames?.length??0)>=3;
+ const injuredNames=[...new Set(matches.flatMap(({f})=>f.injuries.flatMap(injury=>{
+  const name=f.participantNames?.[f.personIds?.indexOf(injury.personId)??-1];
+  return name?[name]:[];
+ })))];
+ const comeback=injuredNames.length?injuredNames.join(" and ")+" need a medical review. ":
+  "We need to check on the injured talent. ";
  const concern=injuries>0?
-  (voice==="FRANK"?"First priority: we've got an injury to deal with. ":
-   "We need to check on the injured talent. ")+
+  comeback+
    "Let Medical decide who is cleared before we make next week's promises.":
   ranLong?
    "We had "+boutName(ranLong.m.position)+" run "+
@@ -109,8 +119,10 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   lowChem?
    "I wasn't convinced by the chemistry in "+boutName(lowChem.m.position)+
     ". No need to blame anyone, but I wouldn't ask them to go longer next time.":
-  linked===0&&matches.length>1?
-   "The wrestling had moments, but the card could use a stronger thread between the matches.":
+  repetition?"The Programme behind "+boutName(repetition.m.position)+" has been repeating its beats.":
+  readyButCold?"The work in "+boutName(readyButCold.m.position)+
+   " held up. The crowd stayed quiet, so I'd review the stakes and placement.":
+  loaded?"We gave "+boutName(loaded.m.position)+" a long slot despite recorded fatigue or wear before the bell.":
    "Nobody gave me a major in-ring concern tonight. Let's keep that standard.";
  const recommendation=injuries>0?
   "Ask Medical who is cleared before the next card is locked. Keep injured talent out of the promised matches until that is confirmed.":
@@ -124,10 +136,17 @@ export function deriveRoadAgentReport(receipt:CompletedShowReceipt,
   lowChem?
    "I would split up "+boutName(lowChem.m.position)+
    " for the next show. Try different opponents or change what each wrestler is asked to do before you revisit that match.":
+  repetition?"Advance the Programme with an interview or a new stake. Give "+
+   boutName(repetition.m.position)+" some breathing room.":
+  readyButCold?"Try different stakes, a different slot, or fresh opponents before asking for the same match again.":
+  loaded?"Keep the next physical appearance shorter and check what else they are working that week.":
   linked===0&&matches.length?
-   "Follow "+place+" with a clear challenge or rivalry. A strong match means more when something is at stake.":
+   bestCrowd>=70?"Build on "+place+" with a clear challenge or a character beat that gives the next appearance stakes.":
+    "Give the performers fresh opponents or a short on-screen reason for the next match.":
   highChem?
-   "Those wrestlers worked well together. Revisit the pairing, but give them a new reason to meet.":
+   boutName(highChem.m.position)+" worked well. Reuse the pairing when there's a new reason for them to share the ring.":
+  bestCrowd>=75&&best&&best.f.executionQuality>=72?
+   "Keep the finish and pacing lessons from "+place+" for the next card. This one can stand on its own.":
   receipt.segments.length===0?
    "Put a short confrontation between the matches. Let the audience know why the next fight matters.":
    "Pick the story the crowd cared about most and give them a reason to tune in next week. We don't need five hooks when one good one will do.";

@@ -66,6 +66,9 @@ test("Backstage featured-contract grievance requires four verified unfeatured ma
    await tx.query("INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,crowd_response,actual_finish,actual_winner_side) VALUES($1,$2,$3,1,60,'PIN','A'),($1,$2,$4,2,60,'PIN','A')",
     [worldId,"follow-"+id,"follow-opener-"+id,"follow-main-"+id]);
   });
+  const projected=(await readPortablePersonaWorkspace(db.pool,scope)).conversations[0]!;
+  assert.equal(projected.plannedBooking,null,
+   "An opening slot on an upcoming card does not satisfy a main-event commitment");
   assert.equal((await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,5))).settled,0);
   const missed=await withWorldTransaction(db.pool,tx=>settleBackstagePromises(tx,worldId,8));
   assert.equal(missed.broken,1);

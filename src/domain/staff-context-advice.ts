@@ -4,7 +4,7 @@
  */
 import type {EditorMatch} from "../ui/card-editor-model.js";
 import type {EditorSegment} from "../ui/card-segment-model.js";
-import type {StaffRole} from "./world-staff.js";
+import type {StaffRole,WorldStaffMember} from "./world-staff.js";
 import {stipulationInjuryRisk} from "./match-stipulations.js";
 export type OtherShowWorkload={
  personId:string;showId:string;showName:string;kind:"MATCH"|"PHYSICAL_ANGLE"
@@ -29,7 +29,8 @@ const note=(role:StaffNote["role"],level:StaffNote["level"],
  title:string,message:string):StaffNote=>({role,level,title,message});
 /** Clear risks only. "Good chemistry" cannot be inferred from two ratings. */
 export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[],
- staffed:ReadonlySet<StaffRole>):StaffNote[]{
+ staffed:ReadonlySet<StaffRole>,
+ agent?:Partial<Pick<WorldStaffMember,"craft"|"insight"|"personality"|"specialism">>):StaffNote[]{
  const notes:StaffNote[]=[];
  const ids=new Set(match.teams.flat().filter(x=>x!==null).map(x=>x!.personId));
  const cast=people.filter(p=>ids.has(p.personId));
@@ -42,6 +43,8 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
  const staminaConcern=cast.filter(p=>valid(p.stamina)&&p.stamina<55);
  const craftConcern=cast.filter(p=>valid(p.matchCraft)&&p.matchCraft<52||
   valid(p.inRingQuality)&&p.inRingQuality<47);
+ const advanced=(agent?.craft??0)>=75||(agent?.insight??0)>=75;
+ const actualCast=match.teams.flat().filter(Boolean).length;
  if(staffed.has("ROAD_AGENT")){
   if(match.plannedLengthMinutes>=25&&staminaConcern.length)
    notes.push(note("ROAD_AGENT","WATCH","This is a demanding match",
@@ -51,6 +54,16 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
    notes.push(note("ROAD_AGENT","WATCH","Protect the match structure",
     craftConcern.map(p=>p.name).join(", ")+
     " may need help carrying a long, intricate bout. A shorter or simpler structure is worth considering."));
+  else if(advanced&&actualCast>=2&&match.plannedLengthMinutes>=18&&
+   cast.some(p=>valid(p.stamina)&&p.stamina<64)&&
+   cast.some(p=>valid(p.matchCraft)&&p.matchCraft>=73)){
+   const lead=cast.find(p=>valid(p.matchCraft)&&p.matchCraft>=73)!;
+   const pacing=agent?.personality==="AMBITIOUS"?
+    "Use one decisive acceleration towards the finish.":
+    "Leave a quiet stretch between the opening and the closing sequence.";
+   notes.push(note("ROAD_AGENT","INFO","Put an experienced hand in charge of the pace",
+    lead.name+" can carry the transitions. "+pacing));
+  }
  }
  if(staffed.has("MEDICAL")&&poorCondition.length)
   notes.push(note("MEDICAL","WATCH","Watch cumulative wear",
@@ -66,6 +79,10 @@ export function matchStaffNotes(match:EditorMatch,people:readonly AdvisorPerson[
  else if(staffed.has("REFEREE")&&highRisk)
   notes.push(note("REFEREE","INFO","Additional match-risk briefing",
    "This stipulation increases the baseline injury risk. The referee cannot eliminate that risk."));
+ else if(staffed.has("REFEREE")&&(riskyFinish||actualCast>=4))
+  notes.push(note("REFEREE","INFO","Walk through the finish",
+   riskyFinish?"Agree what the referee is supposed to see and who signals the finish.":
+    "Confirm which wrestlers can legally finish the match and how the official sees the final exchange."));
  else if(!staffed.has("REFEREE")&&riskyFinish&&safetyConcern.length)
   notes.push(note("HOUSE","WATCH","Risky finish and safety concerns",
    safetyConcern.map(p=>p.name).join(", ")+
