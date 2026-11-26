@@ -46,10 +46,11 @@ The same 26-week two-human fixture ran against base and branch with SQL instrume
 | Backstage write statements within publication | 468 / 1,717 | 468 / 1,929 |
 | Staff Office, without a Scout | 2 / 874 | 2 / 1,299 |
 | Backstage inbox | 5 / 850 | 5 / 872 |
+| Separate 25-result Talent Market interest search | 2 / 15,265 | 2 / 16,662 |
 | Separate 600-person Backstage inbox budget | 5 / 17,755 | 5 / 17,755 |
 | Separate 600-person Contract Desk budget | 5 / 72,983 | 5 / 72,983 |
 
-That fixture had two request rows on base and four on the branch. The extra rows were opportunity conversations. No new job, recurring request or statement was added to publish the cases. The longer human run recorded 14,690 publication/negotiation statements and 1,495,818 returned bytes, of which 2,809 Backstage write statements returned 13,452 bytes. Repeated advice appears when the same condition remains current. Most advice is projected on read and creates no writes.
+That fixture had two request rows on base and four on the branch. The extra rows were opportunity conversations. Publication used the existing job and statement count. The longer human run recorded 14,690 publication and negotiation statements and 1,495,818 returned bytes, of which 2,809 Backstage write statements returned 13,452 bytes. In a separate weekly Staff Office sample over the controlled 13-week scenario, 30 of 43 advisory entries repeated the same department, observation and recommendation. Those entries were read on demand while the underlying condition remained current. Most advice is projected on read and creates zero writes.
 
 ## Verification and release procedure
 

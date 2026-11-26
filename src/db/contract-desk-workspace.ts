@@ -2,7 +2,9 @@ import {weekDateRangeSql} from "./week-date-sql.js";
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
-import {serviceCapacityDatesPerWeek,purchasedDateLimits,maxPurchasedDates,maxExclusiveTermWeeks,unpackSignedCommitments,type CompactSignedCommitment,type Stage} from "../domain/contract-economics.js";
+import {serviceCapacityDatesPerWeek,purchasedDateLimits,maxPurchasedDates,maxExclusiveTermWeeks,
+ minimumExclusiveWeeklyGuarantee,unpackSignedCommitments,type CompactSignedCommitment,type Stage}
+ from "../domain/contract-economics.js";
 import {forecastTalentBudget} from "../domain/talent-budget.js";
 import {worldStaff} from "../domain/world-staff.js";
 import {sameTermsRenewal} from "../domain/renewal-terms.js";
@@ -184,23 +186,33 @@ export async function readContractDesk(
     pendingTerms?{...entry,expiringSoon:false,
      needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:entry;
   });
+  const finance={
+   cash:Number(auth[0]!.cash),staffPayroll:Number(auth[0]!.staff_payroll),
+   weeklyMediaIncome:auth[0]!.weekly_media_income===null?null:Number(auth[0]!.weekly_media_income),
+   weeklySponsorIncome:auth[0]!.weekly_sponsor_income===null?null:Number(auth[0]!.weekly_sponsor_income),
+   weeklyFixedOverhead:auth[0]!.weekly_fixed_overhead===null?null:Number(auth[0]!.weekly_fixed_overhead)
+  };
   const talentBudget=forecastTalentBudget(contracts.map(c=>({
     personId:c.person_id,contractId:c.contract_id,status:c.status,family:c.family,
     startWeekIndex:c.start_week_index,expiresWeekIndex:c.expires_week_index,
     remainingDates:c.remaining_dates,weeklyGuarantee:Number(c.weekly_guarantee),
     appearanceFee:Number(c.appearance_fee)
-   })),currentWeekIndex,{
-    cash:Number(auth[0]!.cash),staffPayroll:Number(auth[0]!.staff_payroll),
-    weeklyMediaIncome:auth[0]!.weekly_media_income===null?null:Number(auth[0]!.weekly_media_income),
-    weeklySponsorIncome:auth[0]!.weekly_sponsor_income===null?null:Number(auth[0]!.weekly_sponsor_income),
-    weeklyFixedOverhead:auth[0]!.weekly_fixed_overhead===null?null:Number(auth[0]!.weekly_fixed_overhead)
-   });
+   })),currentWeekIndex,finance);
    const pendingIds=new Set(requests.map(q=>q.contract_id));
   const renewalIds=new Set(renewals.map(q=>q.contract_id));
   return {
    currentWeekIndex,year:auth[0]!.year,week:auth[0]!.week,
     talentBudget,hasTalentManager:auth[0]!.has_talent_manager,
     talentManager,
+    renewalBudget:talentManager?{
+     cash:finance.cash,weeklyStaffPayroll:finance.staffPayroll,
+     weeklyIncome:finance.weeklyMediaIncome===null||finance.weeklySponsorIncome===null?
+      null:finance.weeklyMediaIncome+finance.weeklySponsorIncome,
+     weeklyOverhead:finance.weeklyFixedOverhead,weeklyGuarantees:talentBudget.currentGuarantees,
+     weeklyWageLimit:auth[0]!.plan_weekly_wage_limit===null?null:Number(auth[0]!.plan_weekly_wage_limit),
+     cashReserve:auth[0]!.plan_cash_reserve===null?null:Number(auth[0]!.plan_cash_reserve),
+     showTalentLimit:auth[0]!.plan_show_talent_limit===null?null:Number(auth[0]!.plan_show_talent_limit)
+    }:null,
     spendingPlan:auth[0]!.plan_weekly_wage_limit===null?null:{
      weeklyWageLimit:Number(auth[0]!.plan_weekly_wage_limit),
      showTalentLimit:Number(auth[0]!.plan_show_talent_limit),
@@ -220,9 +232,21 @@ export async function readContractDesk(
      weeklyGuarantee:Number(cost.weekly_guarantee),appearanceFee:Number(cost.appearance_fee),
      roleExpectation:cost.role_expectation,creativeControl:cost.creative_control
     });
+    const estimatedWeeklyValue=Math.max(500,Math.round(
+     (500+(cost.recognition??50)*50+(cost.popularity??50)*30+
+      ((cost.in_ring_quality??50)+(cost.match_craft??50)+
+       (cost.presentation??50))*25/3)*
+      (cost.career_stage==="SPECIAL_ATTRACTION"?1.35:
+       cost.career_stage==="VETERAN"?1.1:
+       cost.career_stage==="PROSPECT"?.75:1)));
+    const knownValue=cost.career_stage!==null&&[cost.recognition,cost.popularity,cost.in_ring_quality,
+     cost.match_craft,cost.presentation].every(value=>value!==null);
     const sameTermsUnavailableReason=!sameTerms?"The current agreement needs a new negotiated package.":
      sameTerms.family==="EXCLUSIVE"&&sameTerms.termWeeks>exclusiveLimit?
       "Another signed commitment overlaps this renewal.":
+     sameTerms.family==="EXCLUSIVE"&&knownValue&&
+      sameTerms.weeklyGuarantee<minimumExclusiveWeeklyGuarantee(estimatedWeeklyValue)?
+      "The current guarantee is below the minimum for a new exclusive agreement.":
      sameTerms.family!=="EXCLUSIVE"&&
       (renewalLimits?.[sameTerms.termWeeks-1]??Infinity)<sameTerms.dateEntitlement?
       "This renewal asks for more dates than the wrestler can deliver.":
@@ -237,13 +261,7 @@ export async function readContractDesk(
     appearanceFee:Number(cost.appearance_fee),signingBonus:Number(cost.signing_bonus),
     roleExpectation:cost.role_expectation,creativeControl:cost.creative_control,
     popularity:cost.popularity,recognition:cost.recognition,morale:cost.morale,
-    careerStage:cost.career_stage,estimatedWeeklyValue:Math.max(500,Math.round(
-     (500+(cost.recognition??50)*50+(cost.popularity??50)*30+
-      ((cost.in_ring_quality??50)+(cost.match_craft??50)+
-       (cost.presentation??50))*25/3)*
-      (cost.career_stage==="SPECIAL_ATTRACTION"?1.35:
-       cost.career_stage==="VETERAN"?1.1:
-       cost.career_stage==="PROSPECT"?.75:1))),
+    careerStage:cost.career_stage,estimatedWeeklyValue,
     nextTermServiceDensity:cost.stamina!==null&&cost.fatigue!==null&&
      ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(cost.career_stage??"")?
       Math.max(0,serviceCapacityDatesPerWeek({careerStage:cost.career_stage as Stage,

@@ -476,6 +476,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        popularity:c.popularity??null,recognition:c.recognition??null,
        morale:c.morale??null,careerStage:c.careerStage,
        interest:"UNKNOWN",renewal:true,preferredFamily:originalFamily,
+       budget:view.renewalBudget?{...view.renewalBudget,releasedGuarantee:c.weeklyGuarantee}:null,
        exclusiveTermLimit:c.renewalExclusiveTermLimit,
        remainingServiceDensityPerWeek:c.nextTermServiceDensity,purchasedDateLimits:c.renewalDateLimits},view.talentManager):null;
      const initialDraft:OfferTerms={
@@ -505,6 +506,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
        el("p","",suggestion.voice),
        el("small","",suggestion.availability));
       if(recommended)opinion.append(el("small","",suggestion.willingness));
+      if(suggestion.affordability)opinion.append(el("p","",suggestion.affordability));
       if(recommended){
        const restore=btn("Use recommended terms",()=>{
         Object.assign(draft,recommended);
