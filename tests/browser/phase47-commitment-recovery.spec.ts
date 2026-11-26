@@ -154,6 +154,7 @@ for(const width of [320,390])test(`Phase 47 ${width}px private request outcomes 
  await expect(alice).toContainText("Plan a singles chapter for Alice.");
  await expect(frank).not.toContainText("Cameron");
  await expect(page.getByText("The signed dates cover Quay Return.",{exact:true})).toHaveCount(1);
+ await page.getByText(/Full staff meeting/).click();
  await expect(page.getByText("Vacant · no specialist employed")).toBeVisible();
  await frank.getByRole("button",{name:"Open conversation"}).click();
  await expect(page.getByLabel("Conversation with Frank")).toBeVisible();
