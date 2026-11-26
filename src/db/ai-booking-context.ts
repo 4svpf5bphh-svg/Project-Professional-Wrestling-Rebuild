@@ -32,7 +32,7 @@ export async function readWorldAiBookingContext(
    JOIN ppw_programme_participants r ON r.world_id=p.world_id
     AND r.promotion_id=p.promotion_id AND r.programme_id=p.programme_id
    WHERE p.world_id=$1 AND p.promotion_id=ANY($2::text[])
-    AND p.status='ACTIVE' AND p.heat IS NOT NULL
+    AND p.status='ACTIVE' AND NOT p.ai_authored AND p.heat IS NOT NULL
    GROUP BY p.promotion_id,p.programme_id,p.heat
    HAVING count(*)=2 AND count(*) FILTER(WHERE r.side='A')=1
      AND count(*) FILTER(WHERE r.side='B')=1

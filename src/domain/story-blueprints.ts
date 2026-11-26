@@ -107,3 +107,14 @@ export function storyBlueprint(id:string):StoryBlueprint|undefined{
 export function storyBlueprintFamily(family:BlueprintFamily):readonly StoryBlueprint[]{
  return STORY_BLUEPRINTS.filter(p=>p.family===family);
 }
+
+/** Public broadcast labels describe the story viewers have seen. */
+export function publicStoryBlueprintName(id:string):string|undefined{
+ const labels:Record<string,string>={
+  BETRAYAL:"Tag-team tension",FACTION_CIVIL_WAR:"Faction tensions",
+  JEALOUSY:"Battle for the spotlight",GENERATIONS:"Generational clash",
+  UNDERDOG:"The underdog",RESPECT:"A test of respect",MENTOR:"Mentor and protégé",
+  TITLE_CHASE:"Road to the Championship"
+ };
+ return labels[id];
+}

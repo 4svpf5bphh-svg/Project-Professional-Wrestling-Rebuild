@@ -73,6 +73,7 @@ test("AI WWE books Royal Rumble independently alongside Raw and preserves import
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of [
     "ppw_championship_contests","ppw_programme_match_activities",
+    "ppw_programme_talent_baselines","ppw_programme_finales","ppw_programme_side_refs",
     "ppw_programme_participants","ppw_programmes",
     "ppw_championship_reigns","ppw_championships",
     "ppw_tag_team_members","ppw_tag_teams","ppw_ledger_events",
@@ -131,6 +132,7 @@ test("AI promotions nominate real title contenders on inaugural television befor
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
     "ppw_championship_contests","ppw_programme_match_activities",
+    "ppw_programme_talent_baselines","ppw_programme_finales","ppw_programme_side_refs",
     "ppw_programme_participants","ppw_programmes",
     "ppw_championship_reigns","ppw_championships",
     "ppw_tag_team_members","ppw_tag_teams","ppw_ledger_events",

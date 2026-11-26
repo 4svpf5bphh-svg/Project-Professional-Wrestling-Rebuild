@@ -1,4 +1,5 @@
-/** Spectator read of verified results from another human-controlled promotion.
+import { publicStoryBlueprintName } from "../domain/story-blueprints.js";
+/** Spectator read of verified results from another promotion.
  * Only certified outcomes and public match information; no future booking,
  * contracts, staff notes, private backstage data or Groq commentary.
  */
@@ -10,7 +11,7 @@ import {validateCompletedShowReceipt,type CompletedShowReceipt}
  from "../domain/completed-show-receipt.js";
 export interface PublicShowEntry{
  slotId:string;position:number;type:"MATCH"|"SEGMENT";headline:string;
- outcome:string;winner:string|null;ratingStars:number|null;crowdResponse:number;
+ outcome:string;winner:string|null;ratingStars:number|null;crowdResponse:number;programme?:string;
 }
 export interface PublicCompletedShow{
  showId:string;promotionName:string;showName:string;year:number;week:number;
@@ -30,14 +31,16 @@ export async function readPublicCompletedShow(pool:TransactionPool,input:{
    "c.year,c.week,c.crowd_response FROM ppw_completed_shows c",
    "JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id",
    "JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id",
-   "JOIN ppw_promotion_controls rival ON rival.world_id=c.world_id",
+   "LEFT JOIN ppw_promotion_controls rival ON rival.world_id=c.world_id",
    "AND rival.promotion_id=c.promotion_id AND rival.active",
    "JOIN ppw_promotion_controls viewer ON viewer.world_id=c.world_id",
    "AND viewer.player_id=$2 AND viewer.promotion_id=$3 AND viewer.active",
    "JOIN ppw_memberships member ON member.world_id=c.world_id",
    "AND member.player_id=$2 AND member.status='ACTIVE'",
    "WHERE c.world_id=$1 AND c.promotion_id=$4 AND c.show_id=$5",
-   "AND rival.player_id<>viewer.player_id LIMIT 1"
+   "AND (rival.player_id<>viewer.player_id OR (d.booking_origin='AI' AND EXISTS (",
+   "SELECT 1 FROM ppw_world_news_weeks published WHERE published.world_id=c.world_id",
+   "AND published.year=c.year AND published.week=c.week))) LIMIT 1"
   ].join(" "),[input.worldId,input.playerId,input.viewerPromotionId,
    input.targetPromotionId,input.showId]);
   if(shows.length!==1)throw new Error("Rival completed results unavailable");
@@ -47,9 +50,19 @@ export async function readPublicCompletedShow(pool:TransactionPool,input:{
    result.showId!==input.showId||result.year!==show.year||result.week!==show.week)
    throw new Error("Completed World receipt does not match the selected show");
   const slots=await tx.query<{slot_id:string;kind:string;position:number;
-   payload:unknown;rating_stars:number|string|null;story_json:unknown|null}>([
+   payload:unknown;rating_stars:number|string|null;story_json:unknown|null;blueprint_id:string|null;payoff:string|null}>([
    "SELECT slot.slot_id,slot.kind,slot.position,slot.payload,",
-   "facts.rating_stars,angle.story_json FROM ppw_card_slots slot",
+   "facts.rating_stars,angle.story_json,story.blueprint_id,story.payoff FROM ppw_card_slots slot",
+   "LEFT JOIN LATERAL (SELECT p.creative_intent->>'blueprintId' AS blueprint_id,f.payoff",
+   "FROM ppw_programme_match_activities l JOIN ppw_programmes p",
+   "ON (p.world_id,p.promotion_id,p.programme_id)=(l.world_id,l.promotion_id,l.programme_id)",
+   "AND p.ai_authored JOIN ppw_programme_resolved_activities a",
+   "ON (a.world_id,a.promotion_id,a.programme_id,a.show_id,a.slot_id)=",
+   "(l.world_id,l.promotion_id,l.programme_id,l.draft_id,l.slot_id)",
+   "LEFT JOIN ppw_programme_finales f ON (f.world_id,f.promotion_id,f.programme_id,f.show_id,f.slot_id)=",
+   "(a.world_id,a.promotion_id,a.programme_id,a.show_id,a.slot_id) AND f.resolved_week_index IS NOT NULL",
+   "WHERE l.world_id=slot.world_id AND l.draft_id=slot.draft_id AND l.slot_id=slot.slot_id",
+   "ORDER BY l.programme_id LIMIT 1) story ON true",
    "LEFT JOIN ppw_completed_match_report_facts facts ON",
    "facts.world_id=slot.world_id AND facts.show_id=slot.draft_id",
    "AND facts.match_id=slot.slot_id",
@@ -71,6 +84,10 @@ export async function readPublicCompletedShow(pool:TransactionPool,input:{
   const name=(id:string)=>names.get(id)??"Unknown wrestler";
   const bySlot=new Map(slots.map(s=>[s.slot_id,s]));
   const entries:PublicShowEntry[]=[];
+  const chapter=(slot:typeof slots[number])=>{
+   const title=slot.blueprint_id&&publicStoryBlueprintName(slot.blueprint_id);
+   return title?{programme:title+(slot.payoff?" · Finale":"")}:{};
+  };
   for(const match of result.matches){
    const slot=bySlot.get(match.matchId);
    if(!slot||slot.kind!=="MATCH"||slot.position!==match.position)
@@ -84,7 +101,7 @@ export async function readPublicCompletedShow(pool:TransactionPool,input:{
     throw new Error("Invalid public match rating");
    entries.push({slotId:match.matchId,position:match.position,type:"MATCH",
     headline:sides.map(side=>side.join(" & ")).join(" vs "),outcome:match.actualFinish,
-    winner,ratingStars:rating,crowdResponse:match.crowdResponse});
+    winner,ratingStars:rating,crowdResponse:match.crowdResponse,...chapter(slot)});
   }
   for(const angle of result.segments){
    const slot=bySlot.get(angle.slotId);
@@ -95,7 +112,7 @@ export async function readPublicCompletedShow(pool:TransactionPool,input:{
    entries.push({slotId:angle.slotId,position:angle.position,type:"SEGMENT",
     headline:typeof story?.headline==="string"?story.headline:
      angle.kind.replaceAll("_"," ").toLowerCase(),
-    outcome:angle.outcome,winner:null,ratingStars:null,crowdResponse:angle.crowdResponse});
+    outcome:angle.outcome,winner:null,ratingStars:null,crowdResponse:angle.crowdResponse,...chapter(slot)});
   }
   entries.sort((a,b)=>a.position-b.position);
   return {showId:input.showId,promotionName:show.promotion_name,

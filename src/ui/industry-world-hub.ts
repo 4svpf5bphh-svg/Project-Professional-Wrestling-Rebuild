@@ -167,11 +167,17 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   catch(e){watchError=e instanceof Error?e.message:"Completed results unavailable";}
   finally{watching=false;render();}
  }
+ function programmeResultButton(story: {promotionId:string;showId:string}) {
+  if(!story.showId)return null;
+  if(story.promotionId===view?.ownPromotionId)
+   return port.openOwnResults?btn("Read Results",()=>port.openOwnResults?.(story.showId)):null;
+  return port.publicResults?btn("Read Results",()=>void readRivalResult(story.promotionId,story.showId)):null;
+ }
  function renderPublicShow(){
   activateWorkspaceRoot(root,"ppw-industry");
   root.replaceChildren();
   const section=el("section","ppw-public-results");
-  section.append(btn(active==="BROADCASTS"?"← Back to Broadcasts":"← Back to Promotions",()=>{
+  section.append(btn(active==="BROADCASTS"?"← Back to Broadcasts":(active==="OFFICIAL"||active==="DIRT")?"← Back to News":"← Back to Promotions",()=>{
    watched=null;watchError="";watching=false;render();
   }));
   if(watching)section.append(el("p","ppw-industry-muted","Opening completed results…"));
@@ -188,6 +194,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     card.append(el("span","ppw-news-desk",
      "CARD "+(entry.position+1)+" · "+(entry.type==="MATCH"?"MATCH":"ANGLE")),
      el("strong","",entry.headline));
+    if(entry.programme)card.append(el("small","ppw-industry-muted",entry.programme));
     if(entry.type==="MATCH"){
      if(entry.winner)card.append(el("p","","WINNER · "+entry.winner));
      card.append(el("small","ppw-industry-muted",
@@ -505,7 +512,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      detail.append(el("p","ppw-industry-muted","Owner: "+p.ownerName));
      if(p.publicIdentity)detail.append(el("p","ppw-industry-muted",
       "Creative approach: "+p.publicIdentity+
-      ". Based on this rival's established booking preferences, not a prediction of future cards."));
+      "."));
      const appearances=view!.broadcasts.filter(show=>show.promotionId===p.promotionId).slice(0,3);
      if(appearances.length){
       detail.append(el("h3","","Recent published events"));
@@ -516,7 +523,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
         " · Crowd "+Math.round(show.crowdResponse)+"/100"));
        if(show.isYours&&port.openOwnResults)row.append(btn("Open Results",
         ()=>port.openOwnResults?.(show.showId)));
-       else if(show.humanManaged&&port.publicResults)row.append(btn("Read Results",
+       else if((show.humanManaged||show.publicResults)&&port.publicResults)row.append(btn("Read Results",
         ()=>void readRivalResult(show.promotionId,show.showId)));
        detail.append(row);
       }
@@ -811,7 +818,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       const watch=btn("Read completed show",()=>port.openOwnResults?.(award.showId));
       watch.classList.add("ppw-news-poster-open");poster.append(watch);
      }else if(view.broadcasts.some(b=>b.promotionId===award.promotionId&&
-      b.showId===award.showId&&b.humanManaged)&&port.publicResults){
+      b.showId===award.showId&&(b.humanManaged||b.publicResults))&&port.publicResults){
       const watch=btn("Read rival results",()=>void readRivalResult(
        award.promotionId,award.showId));
       watch.classList.add("ppw-news-poster-open");poster.append(watch);
@@ -888,6 +895,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       const brief=document.createElement("details");brief.className="ppw-news-brief";
       brief.append(el("summary","ppw-news-story-title",story.title),el("p","",story.summary),el("small","ppw-industry-muted",story.promotionName));
       if(story.id.startsWith("press:")&&story.promotionId===view.ownPromotionId&&port.openOwnResults)brief.append(btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId)));
+      if(story.id.startsWith("programme:official:")){
+       const open=programmeResultButton(story);
+       if(open)brief.append(open);
+      }
       digest.append(brief);continue;
      }
     const item=el("article","ppw-news-story");
@@ -983,6 +994,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      const open=btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId));
      open.classList.add("ppw-news-press-open");item.append(open);
     }
+    if(official&&story.id.startsWith("programme:official:")){
+     const open=programmeResultButton(story);
+     if(open)item.append(open);
+    }
     section.append(item);
     }
    }
@@ -1035,7 +1050,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       "Crowd response "+Math.round(show.crowdResponse)+"/100"));
     if(show.isYours&&port.openOwnResults)card.append(btn("Open Results",
      ()=>port.openOwnResults?.(show.showId)));
-    else if(show.humanManaged&&port.publicResults)card.append(btn("Read Results",
+    else if((show.humanManaged||show.publicResults)&&port.publicResults)card.append(btn("Read Results",
      ()=>void readRivalResult(show.promotionId,show.showId)));
     section.append(card);
    }

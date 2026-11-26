@@ -72,10 +72,12 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
   const broadcasts=await tx.query<{show_id:string;promotion_id:string;
    promotion_name:string;show_name:string|null;booking_class:string;
    year:number;week:number;crowd_response:string|number;
-   show_day:number|null;human_managed:boolean}>(`
+   show_day:number|null;human_managed:boolean;public_results:boolean}>(`
    SELECT c.show_id,c.promotion_id,p.name AS promotion_name,
     d.show_name,d.booking_class,c.year,c.week,
     c.crowd_response,d.show_day,
+    (d.booking_origin='AI' AND EXISTS (SELECT 1 FROM ppw_world_news_weeks published
+     WHERE (published.world_id,published.year,published.week)=(c.world_id,c.year,c.week))) AS public_results,
     EXISTS(SELECT 1 FROM ppw_promotion_controls controller
      WHERE controller.world_id=c.world_id AND controller.promotion_id=c.promotion_id
      AND controller.active) AS human_managed
@@ -149,7 +151,7 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     bookingClass:s.booking_class,year:s.year,week:s.week,
     day:s.show_day,crowdResponse:Number(s.crowd_response),
     isYours:s.promotion_id===promotionId,
-    humanManaged:s.human_managed
+    humanManaged:s.human_managed,...(s.public_results?{publicResults:true}: {})
    }))
   };
  });

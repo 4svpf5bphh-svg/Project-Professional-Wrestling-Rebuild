@@ -630,7 +630,7 @@ export async function completedShowAsActor(context:WorldApiContext,
   playerId:context.actor.playerId});
 }
 
-/** The audience may only read finished shows of another HUMAN manager.
+/** The audience may read completed rival broadcasts and published AI results.
  * No ownership bypass of private cards or editorial/staff datasets. */
 export async function publicCompletedShowAsActor(context:WorldApiContext,
  worldId:string,promotionId:string,targetPromotionId:string,showId:string){

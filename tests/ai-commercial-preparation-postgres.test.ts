@@ -66,17 +66,18 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   assert.deepEqual(generated.result.unfilled,[]);
   assert.ok(generated.result.generated.every(x=>x.origin==="AI"));
   const cardRows=await withWorldTransaction(db.pool,tx=>tx.query<{
-    draft_id:string;slot_id:string;position:number;payload:{
+    draft_id:string;slot_id:string;position:number;kind:"MATCH"|"SEGMENT";payload:{
       participants:{personId:string;contractId:string}[];
       scriptedWinner:string;intent:string;plannedFinish:string;championshipId?:string;
       matchType?:"SINGLES"|"TAG";family?:string;scriptedWinnerSide?:string;
       sides?:{sideId:string;participants:{personId:string;contractId:string}[]}[];
       plannedLengthMinutes:number;mainEvent:boolean;scriptedBy:string;
     }}>(`
-    SELECT draft_id,slot_id,position,payload FROM ppw_card_slots
+    SELECT draft_id,slot_id,position,kind,payload FROM ppw_card_slots
     WHERE world_id=$1 ORDER BY draft_id,position`,[world]));
   const byCard=new Map<string,Array<(typeof cardRows)[number]>>();
   for(const row of cardRows){
+    if(row.kind!=="MATCH")continue;
     const group=byCard.get(row.draft_id)??[];
     group.push(row);byCard.set(row.draft_id,group);
   }
@@ -95,11 +96,12 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   const links=await withWorldTransaction(db.pool,tx=>tx.query<{
     programme_id:string;slot_id:string}>(`
     SELECT programme_id,slot_id FROM ppw_programme_match_activities
-     WHERE world_id=$1`,[world]));
+     WHERE world_id=$1 AND kind='MATCH'`,[world]));
   assert.deepEqual(links,[{programme_id:"feud-1",slot_id:mainProgramme!.slot_id}]);
   for(const slots of byCard.values()){
     assert.ok(slots.length>=2&&slots.length<=5);
-    assert.deepEqual(slots.map(x=>x.position),slots.map((_,i)=>i));
+    const wholeCard=cardRows.filter(x=>x.draft_id===slots[0]!.draft_id);
+    assert.deepEqual(wholeCard.map(x=>x.position),wholeCard.map((_,i)=>i));
     assert.equal(slots.at(-1)!.payload.mainEvent,true);
     assert.ok(slots.slice(0,-1).every(x=>!x.payload.mainEvent));
     const ids=slots.flatMap(s=>s.payload.participants.map(p=>p.personId));
@@ -189,6 +191,7 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of [
     "ppw_championship_contests","ppw_programme_match_activities",
+    "ppw_programme_talent_baselines","ppw_programme_finales","ppw_programme_side_refs",
     "ppw_programme_participants","ppw_programmes",
     "ppw_championship_reigns","ppw_championships",
     "ppw_tag_team_members","ppw_tag_teams",
