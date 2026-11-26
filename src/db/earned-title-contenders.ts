@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Owner-only contender evidence from canonical career receipts.
  * Three indexed, bounded reads on the already-open Championships page;
  * no archive hydration, no background polling, no per-belt request.
@@ -91,7 +92,7 @@ export async function readEarnedTitleContendersInTransaction(
   LEFT JOIN ppw_booking_drafts d ON d.world_id=s.world_id
    AND d.draft_id=s.show_id
   WHERE s.world_id=$1 AND s.promotion_id=$2
-    AND (s.year-1)*52+s.week-1 BETWEEN $3 AND $4
+    AND ${weekDateRangeSql("s","$3","$4")}
   ORDER BY s.year DESC,s.week DESC,s.show_id LIMIT 110
  ), career AS (
   SELECT s.world_id,s.show_id,s.week_index,s.major_event,

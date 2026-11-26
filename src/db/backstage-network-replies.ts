@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Replies to certified broadcaster warnings. Game outcomes use only the
  * existing independently certified TV audit. No AI, polling or inbox writes.
  */
@@ -43,8 +44,7 @@ export async function replyToBroadcaster(pool:TransactionPool,i:NetworkReplyInpu
     "AND (n.story_key LIKE 'broadcast:network:%:warning:%'",
     "OR n.story_key LIKE 'broadcast:network:%:final-warning:%')",
     "AND 'backstage-world:'||md5('network:'||n.story_key)=$4",
-    "AND (n.year-1)*52+n.week-1 BETWEEN",
-    "greatest(0,(w.year-1)*52+w.week-13) AND (w.year-1)*52+w.week-1",
+    `AND ${weekDateRangeSql("n","greatest(0,(w.year-1)*52+w.week-13)","(w.year-1)*52+w.week-1")}`,
     "LIMIT 2"
    ].join(" "),[i.worldId,i.promotionId,i.playerId,i.mailId]);
    // A content-standard complaint is likewise grounded in a real signed
@@ -76,9 +76,8 @@ export async function replyToBroadcaster(pool:TransactionPool,i:NetworkReplyInpu
     "AND economics.audience_format='TV'",
     "WHERE w.world_id=$1",
     "AND 'backstage-world:'||md5('network-content:'||d.deal_id||':'||done.show_id)=$4",
-    "AND (done.year-1)*52+done.week-1 BETWEEN",
-    "greatest(d.start_week_index,(w.year-1)*52+w.week-13)",
-    "AND least(d.end_week_index,(w.year-1)*52+w.week-1)",
+    `AND ${weekDateRangeSql("done","greatest(d.start_week_index,(w.year-1)*52+w.week-13)",
+     "least(d.end_week_index,(w.year-1)*52+w.week-1)")}`,
     "AND EXISTS(SELECT 1 FROM ppw_completed_show_matches finished",
     "JOIN ppw_card_slots slot ON slot.world_id=finished.world_id",
     "AND slot.draft_id=finished.show_id AND slot.slot_id=finished.match_id",

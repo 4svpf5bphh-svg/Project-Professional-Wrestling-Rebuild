@@ -27,7 +27,7 @@ export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;regularSubmitted:number;
  showEconomicsEnabled:boolean;
  cleared:number|null;certified:number|null;legacyResolved:number;
- detailedResolved:number;blockers:string[];editorialProgress?:{total:number;completed:number};
+ detailedResolved:number;blockers:string[];editorialProgress?:{total:number;completed:number;fallbacks:number;state:"WAITING"|"PROCESSING"|"RECOVERY_AVAILABLE"};
 };
 export async function inspectWorldResolutionReadiness(
  pool:TransactionPool,worldId:string,
@@ -39,13 +39,19 @@ export async function inspectWorldResolutionReadiness(
   if(w.length!==1)throw new Error("World not found");
   const {year,week,phase}=w[0]!;
   if(phase==="UPDATING"){
-   const rows=await tx.query<{total:number;completed:number}>(`SELECT count(j.show_id)::integer AS total,
-    count(j.show_id) FILTER(WHERE j.state IN ('READY','FALLBACK'))::integer AS completed
+   const rows=await tx.query<NonNullable<ResolutionReadiness["editorialProgress"]>>(`
+    SELECT count(j.show_id)::integer AS total,
+     count(j.show_id) FILTER(WHERE j.state IN ('READY','FALLBACK'))::integer AS completed,
+     count(j.show_id) FILTER(WHERE j.state='FALLBACK')::integer AS fallbacks,
+     CASE WHEN bool_or((j.state='PROCESSING' AND coalesce(j.claim_until>clock_timestamp(),false))
+       OR (r.public_state='PROCESSING' AND coalesce(r.public_claim_until>clock_timestamp(),false))) THEN 'PROCESSING'
+      WHEN bool_or(j.state='PROCESSING' OR r.public_state='PROCESSING') THEN 'RECOVERY_AVAILABLE'
+      ELSE 'WAITING' END AS state
     FROM ppw_world_update_runs r LEFT JOIN ppw_world_update_jobs j USING(world_id,year,week)
     WHERE r.world_id=$1 AND r.state='ACTIVE'`,[worldId]);
    return {year,week,phase,showEconomicsEnabled:w[0]!.show_economics_enabled===true,
     active:0,submitted:0,regularSubmitted:0,cleared:null,certified:null,legacyResolved:0,detailedResolved:0,
-    blockers:[],editorialProgress:rows[0]??{total:0,completed:0}};
+    blockers:[],editorialProgress:rows[0]!};
   }
   const rows=await tx.query<{
    active:number;submitted:number;regular_submitted:number;cleared:number|null;

@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Six-week show planning, retaining PPW's authored schedule and provisional
  * venue claims. One indexed controlled-promotion snapshot, never World hydration.
  * Calendar dates are PPW weeks, not real local dates or scheduler activations.
@@ -205,7 +206,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
  LEFT JOIN ppw_markets m ON m.world_id=d.world_id AND m.market_id=d.market_id
  LEFT JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id
  WHERE d.world_id=$1 AND d.promotion_id=$2
- AND (d.year-1)*52+d.week-1 BETWEEN $3 AND $4
+ AND ${weekDateRangeSql("d","$3","$4")}
  ORDER BY d.year,d.week,d.draft_id LIMIT 73`,
  [s.worldId,s.promotionId,start,start+6]);
  if(drafts.length>72)throw new Error("Planner show count exceeds safe limit");
@@ -247,7 +248,7 @@ export async function readSixWeekPlanner(pool:TransactionPool,s:PlannerScope):Pr
      AND competitor.promotion_id=d.promotion_id AND competitor.lifecycle='ACTIVE'
     WHERE d.world_id=$1 AND d.promotion_id<>$2
      AND d.year BETWEEN $5 AND $6
-     AND (d.year-1)*52+d.week-1 BETWEEN $3 AND $4
+     AND ${weekDateRangeSql("d","$3","$4")}
      AND d.status IN ('DRAFT','SUBMITTED')
      AND d.venue_id IS NOT NULL AND d.show_day BETWEEN 1 AND 7
     GROUP BY d.year,d.week,d.show_day,d.venue_id

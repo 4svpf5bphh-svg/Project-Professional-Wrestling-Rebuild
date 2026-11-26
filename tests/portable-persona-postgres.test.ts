@@ -48,7 +48,7 @@ test("real World: original portable wrestler identity, authored proposal, cross-
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{
    ...scope,playerId:otherPlayer}),/denied/);
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{
-   ...scope,personId:"unknown"}),/roster/);
+   ...scope,personId:"unknown"}),/Only a current or historical promotion contact may be inspected/);
   const candidates=["REBEL","MONSTER","SPORTING","HERO","OPPORTUNIST",
    "MYSTERY","VILLAIN","HIGH_FLYER","COWBOY","SHOWMAN"];
   const accepted=candidates.find(g=>evaluatePersonaConsent({

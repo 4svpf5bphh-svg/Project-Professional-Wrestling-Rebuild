@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Private promotion business desk. Original resolved finances only: current
  * canonical balances, paid commitments, settled show receipts and local market
  * strength. Four bounded SQL reads, no cloned finance snapshots or World blob.
@@ -264,7 +265,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     JOIN ppw_completed_shows certified ON certified.world_id=e.world_id
      AND certified.show_id=e.show_id AND certified.promotion_id=e.promotion_id
     WHERE e.world_id=$1 AND e.audience_format='TV' AND e.tv_household_rating IS NOT NULL
-     AND (e.year-1)*52+e.week-1 BETWEEN $2-5 AND $2
+     AND ${weekDateRangeSql("e","$2-5","$2")}
     ORDER BY e.promotion_id,e.year DESC,e.week DESC,e.show_id DESC LIMIT 36
    ) recent ORDER BY recent.household_rating::numeric DESC,recent.promotion_name LIMIT 20`,
    [worldId,(w.year-1)*52+w.week-1]);

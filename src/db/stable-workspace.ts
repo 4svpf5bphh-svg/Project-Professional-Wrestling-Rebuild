@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Original stable creation, membership, history and disbanding using bounded
  * promotion-scoped PostgreSQL. Never simulate an author's membership choice.
  */
@@ -95,7 +96,7 @@ export async function readStableWorkspace(pool:TransactionPool,s:StableScope){
    "FROM ppw_completed_show_segments s JOIN ppw_completed_shows c",
    "ON c.world_id=s.world_id AND c.show_id=s.show_id",
    "WHERE c.world_id=$1 AND c.promotion_id=$2",
-   "AND (c.year-1)*52+c.week-1 BETWEEN $3 AND $4",
+   `AND ${weekDateRangeSql("c","$3","$4")}`,
    "AND s.kind IN('STABLE_INVITATION','STABLE_EXIT','STABLE_RECONCILIATION')",
    "ORDER BY c.year DESC,c.week DESC,s.position DESC,s.slot_id DESC LIMIT 101"
   ].join(" "),[s.worldId,s.promotionId,Math.max(0,auth.weekIndex-6),

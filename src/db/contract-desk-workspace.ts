@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
@@ -138,7 +139,7 @@ export async function readContractDesk(
     AND person.person_id=e.payload->>'personId'
    WHERE e.world_id=$1 AND e.event_type='CONTRACT_EXTRA_DATES_DECIDED'
     AND e.payload->>'promotionId'=$2
-    AND (e.year-1)*52+e.week-1 BETWEEN greatest(0,$3-25) AND $3
+    AND ${weekDateRangeSql("e","greatest(0,$3-25)","$3")}
    ORDER BY e.event_id DESC LIMIT 20) d),
       '[]'::jsonb) AS date_decisions`,
     [worldId,promotionId,currentWeekIndex]);

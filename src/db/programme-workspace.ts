@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Canonical programme lifecycle from the original PPW, adapted to row-scoped
  * Neon access. A programme belongs to one promotion, not the whole roster.
  */
@@ -273,7 +274,7 @@ export async function readProgrammeWorkspace(pool:TransactionPool,scope:Scope){
    "AND s.draft_id=a.draft_id AND s.slot_id=a.slot_id AND s.kind=a.kind",
    "WHERE a.world_id=$1 AND a.promotion_id=$2",
    "AND a.programme_id=ANY($3::text[])",
-   "AND (d.year-1)*52+d.week-1 BETWEEN $4 AND $4+6",
+   `AND ${weekDateRangeSql("d","$4","$4+6")}`,
    "AND d.status IN ('DRAFT','SUBMITTED')",
    "ORDER BY d.year,d.week,a.programme_id,a.slot_id LIMIT 301) upcoming",
    "UNION ALL",

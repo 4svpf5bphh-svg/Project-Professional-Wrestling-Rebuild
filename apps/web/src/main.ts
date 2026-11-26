@@ -9,7 +9,7 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  consumeTitleChallengeFocus,clearTitleChallengeFocus,
  type ProgrammeBookingFocus}
  from "../../../src/web/card-browser.js";
-import {HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
+import {HOST_SECTIONS,HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
  type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
  type HomeAttentionFocus,legendsVaultHash,readBookingProgrammeFocus,resultsHistoryState,readResultsHistory}
@@ -112,6 +112,7 @@ function commandAccepted(result:unknown){
 /** Mobile shell is independent of the workspace root and remains accessible. */
 function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:string){
  if(!confirmLeavingBooking(section))return;
+ const wasDrawerOpen=drawerExpanded;
  drawerExpanded=false;
  if(section==="backstage"){
    const previous=readHostSection(location.hash);
@@ -124,8 +125,11 @@ function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:str
   section==="backstage"&&focus==="UNREAD"?backstageUnreadHash:
   hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
- else if(pendingBackstagePersonId)renderSection();
- else renderNavigation(section);
+ else if(pendingBackstagePersonId)renderSection(true);
+ else{
+  renderNavigation(section);
+  if(wasDrawerOpen)game.querySelector<HTMLElement>(".ppw-workspace")?.focus({preventScroll:true});
+ }
 }
 
 /** One private browser-history entry per show; reloading the same entry keeps
@@ -142,7 +146,7 @@ function openBooking(showId:string,focus?:ProgrammeBookingFocus|null){
  if(location.hash===plannerCardHash)
   history.replaceState(null,"",hostSectionHash("planner"));
  history.pushState(state,"",hostSectionHash("card"));
- renderSection();
+ renderSection(true);
 }
 
 /** Small, self-contained 24px icons; no emoji fonts, image fetches or runtime dependency. */
@@ -272,7 +276,7 @@ async function offerUnseenLegendReveals(scope:CardSessionScope,view:HTMLElement)
   // authenticated sign-in retries it without a provider call or timer.
  }
 }
-function renderSection(){
+function renderSection(moveFocus=false){
  if(!session?.overview?.promotion)return;
  document.documentElement.dataset.ppwPromotion=promotionBrand(session.overview.promotion.name).key;
  const section=readHostSection(location.hash);
@@ -298,6 +302,9 @@ function renderSection(){
  // A fresh mounted viewport prevents slow replies from an abandoned desk
  // replacing the next screen. No extra RPC or global store is involved.
  const view=el("div","ppw-workspace");
+ view.tabIndex=-1;
+ view.setAttribute("role","region");
+ view.setAttribute("aria-label",HOST_SECTIONS.find(entry=>entry.id===section)!.label);
  // Only a real department change gets a broadcast cut. No extra fetches,
  // delays, timers or effects for ordinary UI rerenders.
  const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -307,6 +314,7 @@ function renderSection(){
  if(!reduced&&section!=="card")view.classList.add("ppw-route-arrive");
  const back=()=>openSection("home");
  if(window.scrollY>0)window.scrollTo(0,0);
+ if(moveFocus)view.focus({preventScroll:true});
  switch(section){
   case "home":mountWorldHomePage(view,scope,openSection,updated=>{
    // An explicit World status check can update the shell without another read.
@@ -343,7 +351,7 @@ function renderSection(){
    async()=>{await offerUnseenLegendReveals(scope,view);},showId=>{
    if(!confirmLeavingBooking("results"))return;
    history.pushState(resultsHistoryState(scope.worldId,scope.promotionId,showId),"",hostSectionHash("results"));
-   renderSection();
+   renderSection(true);
   });break;
   case "planner":{
    const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
@@ -451,7 +459,7 @@ window.addEventListener("hashchange",()=>{
   }));
   return;
  }
- drawerExpanded=false;renderSection();
+ drawerExpanded=false;renderSection(true);
 });
 window.addEventListener("beforeunload",event=>{
  if(bookingDirty){event.preventDefault();event.returnValue="";}

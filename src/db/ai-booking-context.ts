@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 import type {SqlRows} from "./world-operations.js";
 import type {CertifiedContenderResult} from "../domain/earned-contenders.js";
 /** Targeted canonical title, programme and established-team context.
@@ -105,7 +106,7 @@ export async function readWorldAiBookingContext(
     LEFT JOIN ppw_completed_match_report_facts f ON f.world_id=s.world_id
      AND f.show_id=s.show_id AND f.match_id=e.match_id
     WHERE s.world_id=$1 AND s.promotion_id=ANY($2::text[])
-     AND (s.year-1)*52+s.week-1 BETWEEN $3 AND $4
+     AND ${weekDateRangeSql("s","$3","$4")}
     )
     SELECT promotion_id,show_id,match_id,person_id,performer_side,won,
      format,week_index,popularity_before,rating_stars,title_match,major_event

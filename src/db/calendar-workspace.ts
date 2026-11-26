@@ -1,3 +1,4 @@
+import {weekDateRangeSql,weekDateSql} from "./week-date-sql.js";
 /** Authenticated, compact calendar identity editing and 26-week projection.
  * Recurrence is calculated from a handful of series rows; no World hydration,
  * polling, materialized occurrence rows or second World Lock timer.
@@ -174,7 +175,7 @@ export async function readPromotionCalendar(pool:TransactionPool,scope:CalendarS
    "booking_class,show_series_id,show_name,status,show_day,lock_ready_fingerprint",
    "FROM ppw_booking_drafts WHERE world_id=$1 AND promotion_id=$2",
    "AND status IN ('DRAFT','SUBMITTED')",
-   "AND (year-1)*52+week-1 BETWEEN $3 AND $3+5",
+   `AND ${weekDateRangeSql("","$3","$3+5")}`,
    "ORDER BY year,week,draft_id LIMIT 13) d",
    "LEFT JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id",
    "LEFT JOIN ppw_markets market ON market.world_id=d.world_id",
@@ -369,7 +370,7 @@ export async function upsertPromotionSeries(pool:TransactionPool,input:SeriesMut
     "SELECT year,week,booking_class FROM ppw_booking_drafts",
     "WHERE world_id=$1 AND promotion_id=$2 AND show_series_id=$3",
     "AND status IN ('DRAFT','SUBMITTED')",
-    "AND ((year-1)*52+week-1)>=$4 ORDER BY year,week LIMIT 9"
+    `AND (year,week)>=${weekDateSql("$4")} ORDER BY year,week LIMIT 9`
    ].join(" "),[input.worldId,input.promotionId,seriesId,
     weekIndex(owned.year,owned.week)]):[];
    if(future.length>8)throw new Error("Too many linked future show bookings");
@@ -435,7 +436,7 @@ export async function archivePromotionSeries(pool:TransactionPool,input:ArchiveS
     "SELECT draft_id FROM ppw_booking_drafts",
     "WHERE world_id=$1 AND promotion_id=$2 AND show_series_id=$3",
     "AND status IN ('DRAFT','SUBMITTED')",
-    "AND ((year-1)*52+week-1)>=$4 LIMIT 1"
+    `AND (year,week)>=${weekDateSql("$4")} LIMIT 1`
    ].join(" "),[input.worldId,input.promotionId,input.seriesId,
     weekIndex(owned.year,owned.week)]);
    if(booked.length)throw new Error("Cannot archive a show with booked future cards");

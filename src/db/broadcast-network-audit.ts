@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Bounded certified World-wide broadcast review. Reads at most five recent
  * regular-show receipts per active network, never private drafts or imagined
  * audience. This is called once within the World rollover transaction.
@@ -64,8 +65,7 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
    AND draft.status='SUBMITTED' AND draft.booking_class='REGULAR'
   WHERE economics.world_id=deal.world_id
    AND economics.promotion_id=deal.promotion_id
-   AND (economics.year-1)*52+economics.week-1
-    BETWEEN greatest(deal.start_week_index,$2-52) AND $2
+   AND ${weekDateRangeSql("economics","greatest(deal.start_week_index,$2-52)","$2")}
   ORDER BY economics.year DESC,economics.week DESC,economics.show_id DESC LIMIT 5
  ) evidence ON true
  WHERE deal.world_id=$1 AND deal.kind='BROADCAST' AND deal.status='ACTIVE'

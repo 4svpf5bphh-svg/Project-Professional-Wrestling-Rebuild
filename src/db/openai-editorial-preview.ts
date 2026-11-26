@@ -3,6 +3,8 @@
  * All generated prose is validated by the existing Ringside rules.
  */
 import {withSqlClient} from "./postgres.js";
+import {checkEditorialDispatch,reserveEditorialAllowance,type EditorialDispatchFence}
+ from "./editorial-dispatch-fence.js";
 import type {TransactionPool} from "./transaction.js";
 import {estimatedGroqTokens,groqResponseUsage,type GroqUsage} from "../domain/ai-director.js";
 import {classifyOpenAiProviderError,refundKnownProviderRejection}
@@ -39,11 +41,11 @@ export function liveRingsideProvider(env:Record<string,string|undefined>):
  return {provider,key:provider==="GROQ"?env.GROQ_API_KEY:
   paidPreviewEnabled(env)?env.OPENAI_API_KEY:undefined};
 }
-export async function claimOpenAiPreview(pool:TransactionPool,estimate:number):
+export async function claimOpenAiPreview(pool:TransactionPool,estimate:number,fence?:EditorialDispatchFence):
  Promise<BudgetClaim|null>{
  if(!Number.isSafeInteger(estimate)||estimate<1||estimate>MAX_REQUEST_ESTIMATE)
   throw new Error("Paid AI preview request exceeds the per-call limit");
- const rows=await withSqlClient(pool,db=>db.query<{day:string}>(`
+ const rows=await reserveEditorialAllowance(pool,fence,db=>db.query<{day:string}>(`
   INSERT INTO ppw_openai_preview_daily_usage(usage_day,call_count,reserved_tokens)
   VALUES(timezone('UTC',now())::date,1,$1)
   ON CONFLICT(usage_day) DO UPDATE SET
@@ -70,11 +72,11 @@ export async function settleOpenAiPreview(pool:TransactionPool,claim:BudgetClaim
    result.ok?1:0,result.ok?0:1]));
 }
 type MonthlyClaim={month:string;reserved:number};
-export async function claimOpenAiMonthlyPreview(pool:TransactionPool,reserved:number):
+export async function claimOpenAiMonthlyPreview(pool:TransactionPool,reserved:number,fence?:EditorialDispatchFence):
  Promise<MonthlyClaim|null>{
  if(!Number.isSafeInteger(reserved)||reserved<1||reserved>300000)
   throw new Error("Paid AI preview exceeds the per-call money limit");
- const rows=await withSqlClient(pool,db=>db.query<{month:string}>(
+ const rows=await reserveEditorialAllowance(pool,fence,db=>db.query<{month:string}>(
   "INSERT INTO ppw_openai_preview_monthly_usage(usage_month,call_count,reserved_micropounds) "+
   "VALUES(date_trunc('month',timezone('UTC',now()))::date,1,$1) "+
   "ON CONFLICT(usage_month) DO UPDATE SET "+
@@ -114,7 +116,7 @@ async function settleMonthlyPreview(pool:TransactionPool,claim:MonthlyClaim,
  * or explicitly authorize a private comparison before invoking this transport. */
 export async function requestOpenAiEditorialPreview(input:{
  key:string;enabled:boolean;body:Record<string,unknown>;
- transport:typeof fetch;pool:TransactionPool;signal?:AbortSignal;
+ transport:typeof fetch;pool:TransactionPool;signal?:AbortSignal;fence?:EditorialDispatchFence;
  feature?:"RINGSIDE"|"PREVIEW"|"WEEKLY_MEDIA"|"STAFF_CONSULTATION";
 }):Promise<Response>{
  if(!input.enabled||!input.key.trim())
@@ -132,16 +134,28 @@ export async function requestOpenAiEditorialPreview(input:{
  if(estimate>MAX_REQUEST_ESTIMATE)
   throw new Error("Paid AI preview exceeds the protected token budget");
  const reservation=estimateTerraPreviewMicropounds(body,completion);
- const monthly=await claimOpenAiMonthlyPreview(input.pool,reservation);
+ const monthly=await claimOpenAiMonthlyPreview(input.pool,reservation,input.fence);
  if(!monthly)return new Response("PPW's £3 monthly paid AI budget is exhausted",{
   status:429,headers:{"retry-after":"3600","x-ppw-budget-exhausted":"true"}});
  let daily:BudgetClaim|null=null;
- try{daily=await claimOpenAiPreview(input.pool,estimate);}
+ try{daily=await claimOpenAiPreview(input.pool,estimate,input.fence);}
  catch(e){await releaseMonthlyPreview(input.pool,monthly);throw e;}
  if(!daily){
   await releaseMonthlyPreview(input.pool,monthly);
   return new Response("Paid AI daily preview limit reached",{
    status:429,headers:{"retry-after":"3600","x-ppw-budget-exhausted":"true"}});
+ }
+ if(input.fence)try{
+  await checkEditorialDispatch(input.pool,input.fence);
+ }catch(error){
+  // Both reservations preceded the failed fence check. No request reached
+  // the provider, so release the unused monthly and daily allowances.
+  const claim=daily;
+  await releaseMonthlyPreview(input.pool,monthly);
+  await withSqlClient(input.pool,db=>db.query(`UPDATE ppw_openai_preview_daily_usage SET
+   call_count=GREATEST(0,call_count-1),reserved_tokens=GREATEST(0,reserved_tokens-$2)
+   WHERE usage_day=$1::date`,[claim.day,claim.estimate]));
+  throw error;
  }
  if(input.signal?.aborted){
   // No HTTP call was made: release money. Keep the daily attempt counted.

@@ -50,6 +50,8 @@ for(const width of [320,390]){
   await page.goto("/#/planner");
   const board=page.locator(".ppw-planner-production-board");
   await expect(board.getByRole("heading",{name:"Production board"})).toBeVisible();
+  await expect(board).toContainText("THIS WEEK + SIX FUTURE WEEKS");
+  await expect(page.getByText("Book this week and the following six weeks.")).toBeVisible();
   await expect(board).toContainText("Spring Riot");
   await expect(board).toContainText("In 5 weeks");
   await expect(board.locator(".ppw-planner-board-tile")).toHaveCount(7);
@@ -102,7 +104,7 @@ test("manager saves a seven-week PPV outline once, and it survives reload withou
   .fill("Slow turn payoff at Spring Riot");
  // Typed thoughts are only plans: no new booking or fees.
  expect(calls).toEqual(["planner"]);
- await page.getByRole("button",{name:"Save six-week outline"}).click();
+ await page.getByRole("button",{name:"Save creative outline"}).click();
  await expect(page.locator(".ppw-planner-outline")).toContainText("Joe questions the champion");
  await expect(page.locator(".ppw-planner-outline")).toContainText("Slow turn payoff");
  expect(stored).toHaveLength(2);
@@ -112,7 +114,7 @@ test("manager saves a seven-week PPV outline once, and it survives reload withou
  await page.getByRole("button",{name:"Edit 2 week notes"}).click();
  await page.getByRole("button",{name:"Creative outline for Year 1 Week 3"}).click();
  await page.getByLabel("Creative intention for Year 1 Week 3").fill("");
- await page.getByRole("button",{name:"Save six-week outline"}).click();
+ await page.getByRole("button",{name:"Save creative outline"}).click();
  await expect(page.locator(".ppw-planner-outline")).not.toContainText("Joe questions the champion");
  expect(stored).toEqual([{year:1,week:6,note:"Slow turn payoff at Spring Riot"}]);
  expect(calls.filter(x=>x==="saveCreativeOutline")).toHaveLength(2);

@@ -3,10 +3,23 @@ import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction} from "../src/db/transaction.js";
-import {createWorld,addPromotion} from "../src/db/world-operations.js";
+import {createWorld,addPromotion,type SqlRows} from "../src/db/world-operations.js";
 import {settleCanonicalTagTitleContests} from "../src/db/tag-championship-settlement.js";
 import type {CompletedShowReceipt} from "../src/domain/completed-show-receipt.js";
 const url=process.env.PPW_NEON_TEST_URL;
+
+async function seedCompletedMatch(tx:SqlRows,receipt:CompletedShowReceipt){
+ const {worldId,promotionId,showId,year,week,resolutionId,crowdResponse}=receipt;
+ await tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,
+  resolution_id,crowd_response,receipt_json,receipt_digest)
+  VALUES($1,$2,$3,$4,$5,$6,$7,$8,repeat('a',64))`,
+ [worldId,promotionId,showId,year,week,resolutionId,crowdResponse,JSON.stringify(receipt)]);
+ const match=receipt.matches[0]!;
+ await tx.query(`INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,
+  crowd_response,actual_finish,actual_winner_side) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+ [worldId,showId,match.matchId,match.position,match.crowdResponse,match.actualFinish,match.actualWinnerSide]);
+}
+
 test("vacant tag title crowns booked winner even when neither pair existed as a team",{
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
@@ -25,6 +38,7 @@ test("vacant tag title crowns booked winner even when neither pair existed as a 
    await addPromotion(tx,worldId,{id:promotionId,name:"Crown",tier:"LOCAL"});
    await tx.query("INSERT INTO ppw_people(world_id,person_id,name) VALUES ($1,'p1','One'),($1,'p2','Two'),($1,'p3','Three'),($1,'p4','Four')",[worldId]);
    await tx.query("INSERT INTO ppw_championships(world_id,promotion_id,championship_id,name,division,status,prestige) VALUES($1,$2,$3,'Tag World','TAG','ACTIVE',60)",[worldId,promotionId,championshipId]);
+   await seedCompletedMatch(tx,receipt);
   });
   assert.deepEqual(await withWorldTransaction(db.pool,tx=>
    settleCanonicalTagTitleContests(tx,receipt,booking)),{contests:1,transfers:1});
@@ -45,7 +59,7 @@ test("vacant tag title crowns booked winner even when neither pair existed as a 
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_championship_contests","ppw_championship_reigns",
     "ppw_championships","ppw_ledger_events","ppw_tag_team_members",
-    "ppw_tag_teams","ppw_people","ppw_promotions"])
+    "ppw_tag_teams","ppw_completed_show_matches","ppw_completed_shows","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   }).finally(()=>db.close());
@@ -72,6 +86,7 @@ test("three competing 2-person teams can contest an inaugural tag championship",
     "world_id,promotion_id,championship_id,name,division,status,prestige)"+
     " VALUES($1,$2,$3,'Chaotic Tags','TAG','ACTIVE',60)",
     [worldId,promotionId,championshipId]);
+   await seedCompletedMatch(tx,receipt);
   });
   const bookings=[{slotId,championshipId,sides:[
    {sideId:"A",personIds:["p1","p2"]},
@@ -92,7 +107,7 @@ test("three competing 2-person teams can contest an inaugural tag championship",
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_championship_contests","ppw_championship_reigns",
     "ppw_championships","ppw_ledger_events","ppw_tag_team_members",
-    "ppw_tag_teams","ppw_people","ppw_promotions"])
+    "ppw_tag_teams","ppw_completed_show_matches","ppw_completed_shows","ppw_people","ppw_promotions"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[worldId]);
   }).finally(()=>db.close());

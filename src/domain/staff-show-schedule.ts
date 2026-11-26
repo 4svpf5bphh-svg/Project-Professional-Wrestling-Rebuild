@@ -20,10 +20,14 @@ export interface StaffScheduleChoice {day:number;venueId:string}
  * changes a match result. Alternatives are rechecked inside the World write.
  */
 export function chooseStaffFallbackSchedule(input:StaffScheduleInput):StaffScheduleChoice|null {
+  return staffFallbackSchedules(input).next().value??null;
+}
+
+export function* staffFallbackSchedules(input:StaffScheduleInput):Generator<StaffScheduleChoice,void> {
   const {worldId,worldSeed,year,week,promotionId,showId}=input;
   if(!worldId||!worldSeed||!promotionId||!showId ||
     !Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||
-    input.personIds.length>100||input.bookedShows.length>128||
+    input.personIds.length>100||input.bookedShows.length>256||
     input.availableVenueIds.length>256||(input.excludedDays?.length??0)>7||
     input.excludedDays?.some(day=>!Number.isInteger(day)||day<1||day>7)||
     (input.preferredDays?.length??0)>7||
@@ -41,24 +45,24 @@ export function chooseStaffFallbackSchedule(input:StaffScheduleInput):StaffSched
     .filter(day=>!input.excludedDays?.includes(day));
   const availableVenues=input.preferredVenueId===null?venues:
     venues.includes(input.preferredVenueId)?[input.preferredVenueId]:[];
-  const candidates=days.flatMap(day=>availableVenues.map(venueId=>({day,venueId})));
   const priority=(c:StaffScheduleChoice)=>createHash("sha256").update(JSON.stringify([
     "ppw-staff-schedule-v1",worldId,worldSeed,year,week,promotionId,c.day,c.venueId,
   ])).digest("hex");
   // Premium attractions prefer weekends when there is a safe, free slot.
   // Never veto an available weekday if weekend venues are all occupied.
   const preferred=new Set(input.preferredDays??[]);
+  const candidates=days.flatMap(day=>availableVenues.map(venueId=>{
+    const choice={day,venueId};
+    return {choice,priority:priority(choice),tier:preferred.has(day)?0:1};
+  }));
   candidates.sort((a,b)=>{
-    const preferredA=preferred.has(a.day)?0:1,preferredB=preferred.has(b.day)?0:1;
-    if(preferredA!==preferredB)return preferredA-preferredB;
-    const x=priority(a),y=priority(b);
-    return x<y?-1:x>y?1:a.day-b.day||a.venueId.localeCompare(b.venueId,"en");
+    return a.tier-b.tier||(a.priority<b.priority?-1:a.priority>b.priority?1:
+      a.choice.day-b.choice.day||a.choice.venueId.localeCompare(b.choice.venueId,"en"));
   });
-  for(const candidate of candidates){
+  for(const {choice:candidate} of candidates){
     const conflicts=input.bookedShows.some(other=>other.showId!==showId &&
       other.day===candidate.day &&
       (other.venueId===candidate.venueId || other.personIds.some(id=>personIds.has(id))));
-    if(!conflicts)return candidate;
+    if(!conflicts)yield candidate;
   }
-  return null;
 }

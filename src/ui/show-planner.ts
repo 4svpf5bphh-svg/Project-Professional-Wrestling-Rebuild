@@ -50,7 +50,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
     if(draft){
      navigated=true;port.openCard(draft.draftId);return;
     }
-    error="That booked story chapter is no longer in your six-week plan. Review the show calendar.";
+    error="That booked story chapter is no longer in your booking window. Review the show calendar.";
    }
    if(focusTarget){
     const target=focusTarget;focusTarget=undefined;
@@ -247,14 +247,14 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
    label.append(area);section.append(label);
   }
   if(port.saveCreativeOutline)section.append(button(busy?"Saving…":
-   "Save six-week outline",()=>void saveOutline(),busy||!data?.canEdit));
+   "Save creative outline",()=>void saveOutline(),busy||!data?.canEdit));
   return section;
  }
  function buildBoard(snapshot:SixWeekBuild){
   const source=data!;
   const section=node("section","","ppw-planner-production-board");
-  section.setAttribute("aria-label","Six-week booking and PPV build");
-  section.append(node("span","YOUR NEXT SIX WEEKS","ppw-planner-board-kicker"),
+  section.setAttribute("aria-label","Booking window and PPV build");
+  section.append(node("span","THIS WEEK + SIX FUTURE WEEKS","ppw-planner-board-kicker"),
    node("h2","Production board"));
   const summary=node("p",
    snapshot.preparedShows+" prepared for World Lock · "+
@@ -378,7 +378,7 @@ export function mountPlanner(root:HTMLElement,port:PlannerPort,onBack?:()=>void,
   if(onBack)header.append(button("← Back",onBack));
   if(port.openCalendar)header.append(button("Show Calendar",()=>port.openCalendar?.()));
   header.append(node("h1","Show Planner"),
-   node("p","Choose a venue, set your show date and build the card. Six weeks are available."));
+   node("p","Book this week and the following six weeks."));
   root.append(header);
   if(error)root.append(node("p",error,"ppw-planner-error"));
   if(!data){root.append(button(busy?"Loading…":"Retry",()=>void refresh(),busy));return;}

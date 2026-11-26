@@ -98,9 +98,9 @@ test("certified broadcaster, hired staff and real free-agent scouts and direct o
    "SELECT revision::text FROM ppw_worlds WHERE world_id=$1",[worldId])),before,
    "Reading a message may not modify game state or World revision");
   await assert.rejects(markWorldMailRead(db.pool,{worldId,promotionId:rivalId,
-   playerId:owner,mailId:letter.id}),/not available/);
+   playerId:owner,mailId:letter.id}),/That message is no longer available to this manager/);
   await assert.rejects(markWorldMailRead(db.pool,{...scope,
-   mailId:"backstage-world:"+"f".repeat(32)}),/not available/);
+   mailId:"backstage-world:"+"f".repeat(32)}),/That message is no longer available to this manager/);
   await assert.rejects(readPortablePersonaWorkspace(db.pool,{...scope,
    promotionId:rivalId,inboxOnly:true}),/access denied/);
   // An agent cannot keep claiming to be a free agent once genuinely signed.

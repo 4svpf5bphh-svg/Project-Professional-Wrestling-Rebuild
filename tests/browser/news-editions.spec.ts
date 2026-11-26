@@ -62,6 +62,24 @@ for(const width of [320,390]){
    await expect(news.locator(".ppw-news-previous-weeks")).toContainText(older);
    await expect(news.locator(".ppw-hot-tag-thread")).toHaveCount(2);
    if(desk==="Official News"){
+    const article=news.locator(".ppw-news-story.ppw-news-lead").first();
+    const contrast=await article.evaluate(root=>{
+     const rgb=(value:string)=>[...value.matchAll(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/g)]
+      .map(match=>match.slice(1,4).map(Number));
+     const luminance=(colors:number[])=>colors.map(channel=>channel/255)
+      .map(channel=>channel<=0.04045?channel/12.92:((channel+0.055)/1.055)**2.4)
+      .reduce((total,channel,i)=>total+channel*[0.2126,0.7152,0.0722][i]!,0);
+     const paper=rgb(getComputedStyle(root).backgroundImage).map(luminance);
+     const text=[...root.querySelectorAll(":scope > .ppw-news-eyebrow, :scope > .ppw-news-desk, :scope > .ppw-news-story-title, :scope > p, :scope > small")];
+     return {paper:paper.length,text:text.map(element=>{
+      const color=luminance(rgb(getComputedStyle(element).color)[0]!);
+      return {label:element.textContent,
+       ratio:Math.min(...paper.map(bg=>(Math.max(color,bg)+0.05)/(Math.min(color,bg)+0.05)))};
+     })};
+    });
+    expect(contrast.paper).toBe(2);
+    expect(contrast.text.length).toBeGreaterThanOrEqual(5);
+    for(const text of contrast.text)expect(text.ratio,text.label??"Official story text").toBeGreaterThanOrEqual(4.5);
     const digest=news.locator(".ppw-news-edition-current .ppw-news-digest");
     await expect(digest).toContainText("ELSEWHERE THIS WEEK");
     await digest.getByText("Rival Wrestling signs a prospect").click();

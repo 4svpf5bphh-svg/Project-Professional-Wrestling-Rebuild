@@ -10,7 +10,7 @@ import {sameShowComparisons,type SameShowProviderResult}
 type ActionPlan={
  year:number;week:number;action:string;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
-  cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number;editorialProgress?:{total:number;completed:number}};
+  cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number;editorialProgress?:{total:number;completed:number;fallbacks:number;state:"WAITING"|"PROCESSING"|"RECOVERY_AVAILABLE"}};
 };
 type LegendPilot={status:"ARMED"|"CONSUMED"|"CANCELLED";promotionId:string;
  armedYear:number;armedWeek:number;consumedYear:number|null;consumedWeek:number|null};
@@ -849,11 +849,16 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     "Advance when ready. With one human player and no show booked, your promotion takes an off-week. The AI World continues.":
     "Processing the shared World. A stopped run can resume without replaying completed results."),
    el("p","",ready.phase==="OPEN"?"No automatic deadline during the solo playtest.":
-    ready.phase==="UPDATING"?`Show reports prepared: ${ready.editorialProgress?.completed??0}/${ready.editorialProgress?.total??0}. Public news follows.`:
+    ready.phase==="UPDATING"?`Show reports processed: ${ready.editorialProgress?.completed??0}/${ready.editorialProgress?.total??0}. Public news follows.`:
     `Completed shows: ${ready.detailedResolved}/${ready.submitted}`));
+  const progress=ready.editorialProgress;
+  if(progress?.state==="PROCESSING")status.append(el("p","","An editorial attempt is in progress."));
+  if(progress?.state==="RECOVERY_AVAILABLE")status.append(el("p","","The previous attempt expired. Resume World Updating to recover."));
+  if(progress?.fallbacks)status.append(el("p","",`${progress.fallbacks} show reports use certified results as fallback.`));
   if(p.blockers.length)status.append(el("p","ppw-admin-warning",`Needs attention: ${p.blockers.join(", ").replaceAll("_"," ")}`));
   const actions=el("div","ppw-admin-actions");
   const info=el("p","ppw-admin-message","");
+  info.setAttribute("role","status");
   if(lastNotice)message(info,lastNotice,lastError);
   const advance=el("button","ppw-admin-primary",p.ready.phase==="UPDATING"?"Resume World Updating":"Advance Week") as HTMLButtonElement;
   advance.type="button";
@@ -863,30 +868,43 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    busy=true;advance.disabled=true;
    message(info,"Checking certified World stages…");
    try{
-    let finished=false;
+    let finished=false,waiting=false,usedFallback=false;
     // One operator press; the existing server certifies a bounded six-stage
     // batch each time. Loop over batches without adding a timer or cron.
     for(let batch=0;batch<24;batch++){
      const result=await request("/api/playtest-week","POST",ctx.csrfToken,{
       confirm:"ADVANCE_SHARED_WORLD",year:p.year,week:p.week
      }) as {status:"PUBLISHED"|"BLOCKED"|"LIMIT_REACHED";
-      steps:{action:string;status:string}[];blockers:string[]};
+      steps:{action:string;status:string}[];blockers:string[];
+      editorial?:{state:"PROCESSING"|"RECOVERED"|"FALLBACK"|"READY";retryAfterSeconds?:number}};
+     usedFallback ||= result.editorial?.state==="FALLBACK";
      if(result.status==="PUBLISHED"){
-      message(info,"Week advanced. The next playable week is ready.");finished=true;break;
+      message(info,usedFallback?"Week advanced. Certified results and news are available where editorial could not finish.":
+       "Week advanced. The next playable week is ready.");finished=true;break;
      }
      if(result.status==="BLOCKED"){
-      const reason=result.blockers.includes("WORLD_UPDATE_IN_PROGRESS")?"An article is still being prepared. If the connection was interrupted, use Resume World Updating once the current attempt has finished.":result.blockers.join(", ").replaceAll("_"," ")||"A show needs attention";
-      message(info,`Could not finish Week ${p.week}: ${reason}. Completed stages were saved; correct the issue and press Advance Week again.`,true);
+      waiting=result.blockers.includes("WORLD_UPDATE_IN_PROGRESS");
+      if(waiting){
+       const seconds=result.editorial?.retryAfterSeconds;
+       message(info,seconds?
+        `Editorial is in progress. If it was interrupted, recovery will be available within ${seconds} seconds.`:
+        "The World update has already moved to another stage. Refresh diagnostics before resuming.");
+      }else{
+       const reason=result.blockers.join(", ").replaceAll("_"," ")||"A show needs attention";
+       message(info,`Could not finish Week ${p.week}. ${reason}. Completed stages were saved. Press Advance Week to retry.`,true);
+      }
       break;
      }
      if(result.steps.length===0){
       message(info,"No progress recorded; review diagnostics and retry.",true);
       break;
      }
-     message(info,result.steps.some(step=>["PUBLISH_WEEK","PREPARE_SHOW_ARTICLE"].includes(step.action))?"World Updating… preparing show results and public news.":`Advancing Week ${p.week}… processing World shows (batch ${batch+1}).`);
+     message(info,result.editorial?.state==="FALLBACK"?"Certified results kept. Continuing with the remaining editorial.":
+      result.editorial?.state==="RECOVERED"?"Saved show editorial recovered. Continuing with the remaining editorial.":
+      result.steps.some(step=>["PUBLISH_WEEK","PREPARE_SHOW_ARTICLE"].includes(step.action))?"World Updating… preparing show results and public news.":`Advancing Week ${p.week}… processing World shows (batch ${batch+1}).`);
      if(batch===23)message(info,"The safe batch limit was reached; press Advance Week again to resume.",true);
     }
-    lastNotice=info.textContent??"";lastError=!finished;
+    lastNotice=info.textContent??"";lastError=!finished&&!waiting;
     await load();
    }catch(e){message(info,e instanceof Error?e.message:"Resolution failed",true);
     lastNotice=info.textContent??"";lastError=true;}

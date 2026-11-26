@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 import type {TransactionPool} from "./transaction.js";
 import {worldStaff} from "../domain/world-staff.js";
 import type {SqlRows} from "./world-operations.js";
@@ -487,7 +488,7 @@ export async function previewArchivedShowMatchScoresInTransaction(
              FROM ppw_promotion_alignment_changes
             WHERE world_id=$1 AND promotion_id=$2
               AND person_id=ANY($3::text[])
-              AND ((year-1)*52+week-1) BETWEEN $4 AND $5
+              AND ${weekDateRangeSql("","$4","$5")}
             ORDER BY year,week,change_id LIMIT 4097`,
           [input.worldId,input.promotionId,ids,Math.max(0,currentWeekIndex-7),currentWeekIndex],
         );

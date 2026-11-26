@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Private wrestler correspondence, generated only at World publication. */
 import type {SqlRows} from "./world-operations.js";
 import type {TransactionPool} from "./transaction.js";
@@ -128,8 +129,7 @@ export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekInde
   "LEFT JOIN ppw_completed_show_segments segment ON segment.world_id=sh.world_id",
   "AND segment.show_id=sh.show_id AND segment.slot_id=s.slot_id",
   "WHERE sh.world_id=r.world_id AND sh.promotion_id=r.promotion_id",
-  "AND (sh.year-1)*52+sh.week-1 BETWEEN r.responded_week_index",
-  "AND least($2,r.due_week_index)",
+  `AND ${weekDateRangeSql("sh","r.responded_week_index","least($2,r.due_week_index)")}`,
   "AND s.payload->'participants' @> jsonb_build_array(",
   "CASE WHEN r.decision='PROMISE_FEATURED' THEN",
   "jsonb_build_object('personId',r.person_id,'contractId',r.source_contract_id)",
@@ -147,8 +147,7 @@ export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekInde
   ") AS fulfilled,",
   "EXISTS(SELECT 1 FROM ppw_completed_shows sh",
   "WHERE sh.world_id=r.world_id AND sh.promotion_id=r.promotion_id",
-  "AND (sh.year-1)*52+sh.week-1 BETWEEN r.responded_week_index",
-  "AND least($2,r.due_week_index)) AS had_show,",
+  `AND ${weekDateRangeSql("sh","r.responded_week_index","least($2,r.due_week_index)")}) AS had_show,`,
   // Only real certified injuries excuse an in-ring promise.
   // Promo/angle promises remain eligible even during a wrestling injury.
   "EXISTS(SELECT 1 FROM ppw_medical_absences injury",

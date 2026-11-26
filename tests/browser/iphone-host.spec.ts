@@ -2096,3 +2096,40 @@ test("320/390 Home gives certified broadcast and unanswered Backstage decisions 
    .toBeLessThanOrEqual(1);
  }
 });
+
+for(const width of [320,390]){
+ test(`keyboard navigation moves focus into the selected workspace at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  await page.route("**/api/session",route=>route.fulfill({json:current}));
+  await page.route("**/api/card",route=>{
+   const method=route.request().postDataJSON().method;
+   return route.fulfill({json:method==="overview"?overview:method==="industry"?{
+    worldName:"Genesis",year:1,week:5,ownPromotionId:"aew",ownPromotionName:"AEW",
+    promotions:[],headlines:[],broadcasts:[]
+   }:method==="industryNews"?{stories:[],voices:[],awards:[],annualAwards:[]}:{}});
+  });
+  await page.goto("/#/home");
+  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
+  await page.getByRole("button",{name:"Open World menu"}).focus();
+  await page.keyboard.press("Enter");
+  await expect(nav.getByRole("button",{name:"Close promotion menu"})).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(nav.getByRole("button",{name:/World Dashboard/})).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(nav.getByRole("button",{name:/Promotions Companies/})).toBeFocused();
+  await page.keyboard.press("Enter");
+  const workspace=page.locator("#game > .ppw-workspace");
+  await expect(workspace).toHaveAttribute("aria-label","Promotions");
+  await expect(workspace).toBeFocused();
+  await page.getByRole("button",{name:"Open News",exact:true}).focus();
+  await page.keyboard.press("Enter");
+  await expect(workspace).toHaveAttribute("aria-label","News");
+  await expect(workspace).toBeFocused();
+  await expect(workspace.getByRole("button",{name:"Official News"})).toBeVisible();
+  await page.keyboard.press("Tab");
+  expect(await workspace.evaluate(el=>el.contains(document.activeElement))).toBe(true);
+  await page.goBack();
+  await expect(workspace).toHaveAttribute("aria-label","Promotions");
+  await expect(workspace).toBeFocused();
+ });
+}

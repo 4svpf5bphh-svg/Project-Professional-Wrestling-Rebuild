@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Private PPW communications from certified World events and employed staff.
  * Only real World evidence may appear; no random text per page view, Groq call, or
  * materialised weekly message row. One bounded SQL read for the full inbox.
@@ -88,7 +89,7 @@ WITH owner AS MATERIALIZED (
   AND n.desk='OFFICIAL' AND n.certainty='CONFIRMED'
   AND n.source_kind='EVENT'
   AND n.story_key LIKE 'broadcast:network:%'
-  AND (n.year-1)*52+n.week-1 BETWEEN greatest(0,o.now-12) AND o.now
+  AND ${weekDateRangeSql("n","greatest(0,o.now-12)","o.now")}
  ORDER BY n.year DESC,n.week DESC,n.story_key DESC LIMIT 8
 ), content_notice AS (
  /* A broadcaster may object to an actually certified hardcore match on
@@ -119,8 +120,7 @@ WITH owner AS MATERIALIZED (
  JOIN ppw_show_economics economics ON economics.world_id=done.world_id
   AND economics.show_id=done.show_id
   AND economics.promotion_id=done.promotion_id AND economics.audience_format='TV'
- WHERE (done.year-1)*52+done.week-1
-  BETWEEN greatest(d.start_week_index,o.now-12) AND least(d.end_week_index,o.now)
+ WHERE ${weekDateRangeSql("done","greatest(d.start_week_index,o.now-12)","least(d.end_week_index,o.now)")}
   AND EXISTS(
    SELECT 1 FROM ppw_completed_show_matches finished
    JOIN ppw_card_slots slot ON slot.world_id=finished.world_id
@@ -445,8 +445,7 @@ WITH owner AS MATERIALIZED (
    ON news.world_id=completed.world_id AND news.year=completed.year
    AND news.week=completed.week
   WHERE completed.world_id=$1 AND completed.promotion_id=$2
-   AND (completed.year-1)*52+completed.week-1
-    BETWEEN (floor(o.now/8)*8)::integer AND o.now
+   AND ${weekDateRangeSql("completed","(floor(o.now/8)*8)::integer","o.now")}
  ) published ON published.first_week IS NOT NULL
  JOIN LATERAL (
   SELECT p.person_id,p.name FROM ppw_people p

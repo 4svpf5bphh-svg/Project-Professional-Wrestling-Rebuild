@@ -70,8 +70,9 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
   p.popularity,p.in_ring_quality,p.match_craft,p.safety,p.stamina,
   p.presentation,coalesce(m.matches,0) AS matches,m.stars
  FROM ppw_people p LEFT JOIN matches m ON m.person_id=p.person_id
- WHERE p.world_id=$1 ORDER BY p.person_id LIMIT 2501`,[worldId,year,week]);
- if(people.length>2500)throw new Error("Career population exceeded original World bound");
+ WHERE p.world_id=$1 AND p.status<>'RETIRED'
+ ORDER BY p.person_id LIMIT 2501`,[worldId,year,week]);
+ if(people.length>2500)throw new Error("Active career population exceeded original World bound");
  const saved:{
   person_id:string;before_age:number;age:number;experience:number;
   career_stage:CareerStage;ring:number;craft:number;safety:number;
@@ -79,7 +80,6 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
  }[]=[];
  let missingOriginal=0;
  for(const p of people){
-  if(p.status==="RETIRED")continue;
   if(p.career_stage===null||!finite(p.biological_age)||
    !finite(p.career_experience)||!finite(p.development_aptitude)||
    !finite(p.wear)||!finite(p.popularity)||!finite(p.recognition)||
@@ -106,7 +106,8 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
    retire:retired,from_stage:p.career_stage});
  }
  if(saved.length){
-  const updated=await tx.query<{person_id:string}>(`
+  const updated=await tx.query<{count:number}>(`
+   WITH changed AS (
    UPDATE ppw_people p SET biological_age=x.age,
     career_experience=x.experience,career_stage=x.career_stage,
     in_ring_quality=x.ring,match_craft=x.craft,safety=x.safety,
@@ -117,11 +118,13 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
     person_id text,before_age double precision,age double precision,
     experience double precision,career_stage text,ring double precision,
     craft double precision,safety double precision,stamina double precision,
-    presentation double precision,retire boolean,from_stage text)
+    presentation double precision,retire boolean)
    WHERE p.world_id=$1 AND p.person_id=x.person_id
     AND p.status<>'RETIRED' AND p.biological_age=x.before_age
-   RETURNING p.person_id`,[worldId,JSON.stringify(saved)]);
-  if(updated.length!==saved.length)throw new Error("Career baseline changed during World settlement");
+   RETURNING 1)
+   SELECT count(*)::integer AS count FROM changed`,
+   [worldId,JSON.stringify(saved.map(({from_stage,...change})=>change))]);
+  if(updated[0]?.count!==saved.length)throw new Error("Career baseline changed during World settlement");
   const stage=saved.filter(x=>x.from_stage!==x.career_stage);
   if(stage.length)await tx.query(`
    INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
@@ -136,7 +139,8 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
  }
  const retired=saved.filter(x=>x.retire).map(x=>x.person_id);
  if(retired.length){
-  const retiredRows=people.filter(p=>retired.includes(p.person_id));
+  const retiredIds=new Set(retired);
+  const retiredRows=people.filter(p=>retiredIds.has(p.person_id));
   // Contract and pending negotiation consequences are authoritative; a
   // retirement may never rewrite the already certified scripted match.
   await tx.query(`UPDATE ppw_contracts SET status='TERMINATED',revision=revision+1
@@ -202,11 +206,10 @@ export async function settleLivingWrestlerCareers(tx:SqlRows,worldId:string,year
  // No invented population target for legacy fixtures: genuine Genesis
  // has the exact original target on its World row.
  if(target!==null){
-  const alive=people.length-people.filter(p=>p.status==="RETIRED").length-retired.length;
+  const alive=people.length-retired.length;
   const floor=Math.ceil(target*.96);
   if(alive<floor){
-   generated=Math.min(2,target-alive,2500-people.length);
-   if(generated<0)generated=0;
+   generated=Math.min(2,target-alive);
   }
  }
  if(generated>0){

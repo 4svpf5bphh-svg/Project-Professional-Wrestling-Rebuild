@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 import {contextualConsultationOptions} from "../domain/staff-consultation.js";
 /** Private Staff Office: two bounded reads, preserving original permissions.
  * Available World staff identities are seeded from the original World seed.
@@ -88,24 +89,18 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
      AND programme.status='ACTIVE' AND programme.repetition>=3) AS repeated_programmes,
     (SELECT count(*)::integer FROM ppw_completed_shows done
       WHERE done.world_id=w.world_id AND done.promotion_id=$3
-       AND (done.year-1)*52+done.week-1
-        BETWEEN greatest(0,(w.year-1)*52+w.week-9)
-         AND (w.year-1)*52+w.week-1) AS recent_shows,
+       AND ${weekDateRangeSql("done","greatest(0,(w.year-1)*52+w.week-9)","(w.year-1)*52+w.week-1")}) AS recent_shows,
     (SELECT count(*)::integer FROM ppw_completed_show_matches match
       JOIN ppw_completed_shows done ON done.world_id=match.world_id
        AND done.show_id=match.show_id
       WHERE done.world_id=w.world_id AND done.promotion_id=$3
-       AND (done.year-1)*52+done.week-1
-        BETWEEN greatest(0,(w.year-1)*52+w.week-9)
-         AND (w.year-1)*52+w.week-1) AS recent_matches,
+       AND ${weekDateRangeSql("done","greatest(0,(w.year-1)*52+w.week-9)","(w.year-1)*52+w.week-1")}) AS recent_matches,
     (SELECT count(*)::integer FROM ppw_completed_show_matches match
       JOIN ppw_completed_shows done ON done.world_id=match.world_id
        AND done.show_id=match.show_id
       WHERE done.world_id=w.world_id AND done.promotion_id=$3
        AND match.actual_finish IN ('DQ','DISQUALIFICATION')
-       AND (done.year-1)*52+done.week-1
-        BETWEEN greatest(0,(w.year-1)*52+w.week-9)
-         AND (w.year-1)*52+w.week-1) AS recent_disqualifications,
+       AND ${weekDateRangeSql("done","greatest(0,(w.year-1)*52+w.week-9)","(w.year-1)*52+w.week-1")}) AS recent_disqualifications,
     (SELECT count(DISTINCT c.person_id)::integer
       FROM ppw_contracts c JOIN ppw_people p
        ON p.world_id=c.world_id AND p.person_id=c.person_id

@@ -5,7 +5,7 @@
  */
 import {createHash} from "node:crypto";
 import {DeterministicRng,deterministicSeedFromText} from "../simulation/legacy/rng.js";
-import {chooseStaffFallbackSchedule,type ExistingShowBooking} from "./staff-show-schedule.js";
+import {staffFallbackSchedules,type ExistingShowBooking,type StaffScheduleChoice} from "./staff-show-schedule.js";
 import type {StaffWrestlerCandidate} from "./staff-fallback-card.js";
 import type {EventType} from "./legacy-show-economics.js";
 import type {AiPromotionStrategy} from "./ai-promotion-strategy.js";
@@ -153,7 +153,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   !["REGULAR","MAJOR"].includes(input.eventType)||
   ![input.riskTolerance,input.matchQualityPreference,input.starPreference].every(isStat)||
   input.roster.length>256||input.activeVenues.length>256||
-  input.bookedShows.length>128||(input.recentPairs?.length??0)>1024||
+  input.bookedShows.length>256||(input.recentPairs?.length??0)>1024||
   (input.featuredPairs?.length??0)>256||
   (input.recentResults?.length??0)>4096||
   (input.establishedPartners?.length??0)>512||
@@ -175,21 +175,18 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   const prior=unique.get(p.personId);
   if(!prior||p.contractId<prior.contractId)unique.set(p.personId,p);
  }
- // During a star-building quarter, worthy undercard wrestlers are given
- // opportunities. This cannot override eligibility or a title/feud feature.
- const opportunity=(p:AiRosterCandidate)=>input.strategy?.focus==="BUILD_STARS"&&
-  p.popularity<60&&p.momentum>=45&&p.matchCraft>=40?16:0;
- const eligible=[...unique.values()].sort((a,b)=>
-  rank(b)+opportunity(b)-rank(a)-opportunity(a)||
-  a.personId.localeCompare(b.personId,"en"));
+ const eligible=[...unique.values()];
  if(!["MEN","WOMEN"].some(division=>eligible.filter(p=>p.bookingDivision===division).length>=2))
   return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};
- const occupiedSameDay=(day:number,id:string)=>input.bookedShows.some(show=>
-  show.day===day&&show.personIds.includes(id));
- // Reuse the World-seeded schedule policy, but choose the actual top-card
- // wrestlers within its fixed day. A few unavailable stars cannot veto
- // an otherwise valid venue/day for the rest of the roster.
- const schedule=chooseStaffFallbackSchedule({
+ const occupiedByDay=new Map<number,Set<string>>();
+ for(const show of input.bookedShows){
+  const people=occupiedByDay.get(show.day)??new Set<string>();
+  for(const id of show.personIds)people.add(id);
+  occupiedByDay.set(show.day,people);
+ }
+ // Keep the existing seeded order and try each date once. Another venue
+ // on the same day cannot change who is available to wrestle.
+ const schedules=staffFallbackSchedules({
   worldId:input.worldId,worldSeed:input.worldSeed,year:input.year,week:input.week,
   promotionId:input.promotionId,showId:input.showId,
   preferredDay:input.contractedDay??null,
@@ -197,8 +194,24 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   excludedDays:input.excludedDays,
   preferredDays:input.eventType==="MAJOR"?[6,7]:undefined,
   availableVenueIds:input.activeVenues,bookedShows:input.bookedShows});
- if(!schedule)return {status:"UNFILLED",reason:"NO_VENUE_OR_DAY"};
- const available=eligible.filter(p=>!occupiedSameDay(schedule.day,p.personId));
+ const triedDays=new Set<number>();
+ for(const schedule of schedules){
+  if(triedDays.has(schedule.day))continue;
+  triedDays.add(schedule.day);
+  const available=eligible.filter(p=>!occupiedByDay.get(schedule.day)?.has(p.personId));
+  const card=buildAiCard(input,schedule,available);
+  if(card.status==="READY")return card;
+ }
+ return {status:"UNFILLED",reason:triedDays.size?"NO_ELIGIBLE_PAIR":"NO_VENUE_OR_DAY"};
+}
+
+function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
+ available:AiRosterCandidate[]):AiCardResult{
+ // Star-building still operates within the wrestlers eligible on this date.
+ const opportunity=(p:AiRosterCandidate)=>input.strategy?.focus==="BUILD_STARS"&&
+  p.popularity<60&&p.momentum>=45&&p.matchCraft>=40?16:0;
+ available.sort((a,b)=>rank(b)+opportunity(b)-rank(a)-opportunity(a)||
+  a.personId.localeCompare(b.personId,"en"));
  const men=available.filter(p=>p.bookingDivision==="MEN"),women=available.filter(p=>p.bookingDivision==="WOMEN");
  if(men.length<2&&women.length<2)return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};
  // Original booking ranks the appearances; give both divisions a reasonable

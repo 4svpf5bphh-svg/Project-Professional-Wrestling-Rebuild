@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** A real circuit rivalry every eight certified World weeks (and year-end).
  * One bounded indexed 13-week World result read, one batch upsert. Zero
  * extra page reads and no AI/cron. The current World transaction owns it.
@@ -150,9 +151,7 @@ export function promotionCompetitionProjectionSql(world:string,owner:string):str
    AND econ.audience_format='TV' AND econ.tv_household_rating IS NOT NULL
   JOIN ppw_worlds clock ON clock.world_id=s.world_id
   WHERE s.world_id=${world} AND s.promotion_id=${promotion}
-   AND (s.year-1)*52+s.week-1 BETWEEN
-    greatest(0,(clock.year-1)*52+clock.week-7)
-    AND (clock.year-1)*52+clock.week-1
+   AND ${weekDateRangeSql("s","greatest(0,(clock.year-1)*52+clock.week-7)","(clock.year-1)*52+clock.week-1")}
   ORDER BY s.year DESC,s.week DESC,draft.show_day DESC NULLS LAST,s.show_id DESC LIMIT 1
  )`;
  const cached=`(
@@ -221,9 +220,7 @@ export function promotionCompetitionProjectionSql(world:string,owner:string):str
    WHERE s.world_id=${world}
     AND s.promotion_id IN (SELECT promotion_id FROM own
       UNION ALL SELECT promotion_id FROM candidate)
-    AND (s.year-1)*52+s.week-1 BETWEEN
-     greatest(0,(clock.year-1)*52+clock.week-13)
-     AND (clock.year-1)*52+clock.week-1
+    AND ${weekDateRangeSql("s","greatest(0,(clock.year-1)*52+clock.week-13)","(clock.year-1)*52+clock.week-1")}
    GROUP BY s.promotion_id
   )
   SELECT jsonb_build_object(

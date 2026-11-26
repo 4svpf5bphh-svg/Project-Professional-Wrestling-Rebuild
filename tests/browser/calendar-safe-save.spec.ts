@@ -129,7 +129,7 @@ test("Calendar prioritises announced fixtures, and empty premium view explains i
  await expect(page.locator(".ppw-calendar-management")).not.toHaveAttribute("open");
  await expect(page.getByText("Indie Weekly").first()).toBeVisible();
  await page.getByRole("button",{name:"PPVs & specials"}).click();
- await expect(page.getByText(/No PPVs or specials are due in the next six weeks/)).toBeVisible();
+ await expect(page.getByText(/No PPVs or specials are due in this six-week window/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Across the World"})).toHaveAttribute("aria-pressed","false");
  await page.getByRole("button",{name:"Across the World"}).click();
  await expect(page.getByText(/No rival premium events or specials have been announced/)).toBeVisible();

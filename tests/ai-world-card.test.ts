@@ -404,3 +404,28 @@ test("AI cannot drift away from its contracted weekly broadcast night",()=>{
   "A fixed network day is never evaded by quietly choosing another night");
  assert.throws(()=>chooseAiWorldCard({...base,contractedDay:9}),/Invalid/);
 });
+
+test("flexible TV and PPVs try the next legal date when the seeded first venue has no available pair",()=>{
+ const pair=roster.filter(p=>p.bookingDivision==="MEN").slice(0,2);
+ const personIds=pair.map(p=>p.personId);
+ for(const eventType of ["REGULAR","MAJOR"] as const){
+  const event={...base,roster:pair,eventType,activeVenues:["a","b","c"]};
+  const first=chooseAiWorldCard(event);
+  assert.equal(first.status,"READY");
+  if(first.status!=="READY")throw Error("Expected first date");
+  const bookedShows=[
+   {showId:"booked-tv",day:first.schedule.day,venueId:first.schedule.venueId,personIds},
+   {showId:"rival-ppv",day:first.schedule.day,venueId:"away",personIds:[]},
+  ];
+  const alternative=chooseAiWorldCard({...event,bookedShows});
+  assert.equal(alternative.status,"READY","A free venue alone is insufficient on the first date");
+  if(alternative.status!=="READY")throw Error("Expected legal alternate date");
+  assert.notEqual(alternative.schedule.day,first.schedule.day);
+  assert.deepEqual(alternative,chooseAiWorldCard({...event,bookedShows:[...bookedShows].reverse(),
+   roster:[...pair].reverse(),activeVenues:[...event.activeVenues].reverse()}));
+  assert.deepEqual(chooseAiWorldCard({...event,bookedShows,contractedDay:first.schedule.day}),
+   {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"});
+  assert.equal(chooseAiWorldCard({...event,bookedShows,
+   excludedDays:[alternative.schedule.day]}).status,"READY");
+ }
+});

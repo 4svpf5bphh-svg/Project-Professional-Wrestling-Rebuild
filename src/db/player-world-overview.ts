@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
 import {STAFF_DISAGREEMENT_LATERAL_SQL} from "./backstage-staff-disagreements.js";
@@ -180,9 +181,7 @@ export async function readPlayerWorldOverview(
         WHERE n.world_id=w.world_id AND n.promotion_id=owned.promotion_id
          AND n.desk='OFFICIAL' AND n.certainty='CONFIRMED'
          AND n.source_kind='EVENT' AND n.story_key LIKE 'broadcast:network:%'
-         AND (n.year-1)*52+n.week-1
-          BETWEEN greatest(0,(w.year-1)*52+w.week-13)
-           AND (w.year-1)*52+w.week-1
+         AND ${weekDateRangeSql("n","greatest(0,(w.year-1)*52+w.week-13)","(w.year-1)*52+w.week-1")}
         ORDER BY n.year DESC,n.week DESC,n.story_key DESC LIMIT 8
        ) n WHERE NOT EXISTS(
         SELECT 1 FROM ppw_player_attention_dismissals r
@@ -210,9 +209,8 @@ export async function readPlayerWorldOverview(
           'BROADCAST_ARCHIVE','BROADCAST_GLOBAL')
          AND d.start_week_index<=(w.year-1)*52+w.week-1
          AND d.end_week_index>=(w.year-1)*52+w.week-1
-         AND (done.year-1)*52+done.week-1
-          BETWEEN greatest(d.start_week_index,(w.year-1)*52+w.week-13)
-           AND least(d.end_week_index,(w.year-1)*52+w.week-1)
+         AND ${weekDateRangeSql("done","greatest(d.start_week_index,(w.year-1)*52+w.week-13)",
+          "least(d.end_week_index,(w.year-1)*52+w.week-1)")}
          AND EXISTS(
           SELECT 1 FROM ppw_completed_show_matches finished
           JOIN ppw_card_slots slot ON slot.world_id=finished.world_id
@@ -319,9 +317,7 @@ export async function readPlayerWorldOverview(
           JOIN ppw_world_news_weeks news ON news.world_id=completed.world_id
            AND news.year=completed.year AND news.week=completed.week
           WHERE completed.world_id=w.world_id AND completed.promotion_id=owned.promotion_id
-           AND (completed.year-1)*52+completed.week-1
-            BETWEEN (floor(((w.year-1)*52+w.week-1)/8)*8)::integer
-            AND (w.year-1)*52+w.week-1)
+           AND ${weekDateRangeSql("completed","(floor(((w.year-1)*52+w.week-1)/8)*8)::integer","(w.year-1)*52+w.week-1")})
          AND NOT EXISTS(
           SELECT 1 FROM ppw_contracts c
           WHERE c.world_id=p.world_id AND c.person_id=p.person_id
@@ -598,8 +594,7 @@ export async function readPlayerWorldOverview(
       FROM (SELECT e.event_id,e.year,e.week,e.payload FROM ppw_ledger_events e
        WHERE e.world_id=w.world_id AND e.event_type='CONTRACT_EXTRA_DATES_DECIDED'
         AND e.payload->>'promotionId'=owned.promotion_id
-        AND (e.year-1)*52+e.week-1 BETWEEN
-         greatest(0,(w.year-1)*52+w.week-1-11) AND (w.year-1)*52+w.week-1
+        AND ${weekDateRangeSql("e","greatest(0,(w.year-1)*52+w.week-1-11)","(w.year-1)*52+w.week-1")}
         AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals d
          WHERE d.world_id=e.world_id AND d.player_id=$2
           AND d.promotion_id=owned.promotion_id
@@ -630,8 +625,7 @@ export async function readPlayerWorldOverview(
         AND request.status=CASE
          WHEN e.event_type='BACKSTAGE_PROMISE_FULFILLED'
          THEN 'FULFILLED' ELSE 'BROKEN' END
-        AND (e.year-1)*52+e.week-1 BETWEEN
-         greatest(0,(w.year-1)*52+w.week-1-3) AND (w.year-1)*52+w.week-1
+        AND ${weekDateRangeSql("e","greatest(0,(w.year-1)*52+w.week-1-3)","(w.year-1)*52+w.week-1")}
         AND NOT EXISTS (SELECT 1 FROM ppw_player_attention_dismissals dismissal
          WHERE dismissal.world_id=e.world_id AND dismissal.player_id=$2
           AND dismissal.promotion_id=owned.promotion_id
@@ -683,8 +677,7 @@ export async function readPlayerWorldOverview(
          'COMMERCIAL_DEAL_EXPIRED')
         AND e.payload->>'promotionId'=owned.promotion_id
         AND e.year BETWEEN greatest(1,w.year-1) AND w.year
-        AND (e.year-1)*52+e.week-1 BETWEEN
-          greatest(0,(w.year-1)*52+w.week-1-11) AND (w.year-1)*52+w.week-1
+        AND ${weekDateRangeSql("e","greatest(0,(w.year-1)*52+w.week-1-11)","(w.year-1)*52+w.week-1")}
         AND ((e.event_type='FINANCIAL_DISTRESS_CHANGED'
           AND e.payload->>'from' IN ('HEALTHY','WATCH','DISTRESSED','CRISIS')
           AND e.payload->>'to' IN ('HEALTHY','WATCH','DISTRESSED','CRISIS')
@@ -783,9 +776,7 @@ export async function readPlayerWorldOverview(
         AND contest.title_changed
         AND coalesce(person.name,team.name) IS NOT NULL
         AND length(reign.reign_id)<=200
-        AND (show.year-1)*52+show.week-1 BETWEEN
-         greatest(0,(w.year-1)*52+w.week-1-11)
-         AND (w.year-1)*52+w.week-1
+        AND ${weekDateRangeSql("show","greatest(0,(w.year-1)*52+w.week-1-11)","(w.year-1)*52+w.week-1")}
         AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals dismissal
           WHERE dismissal.world_id=contest.world_id
            AND dismissal.player_id=$2 AND dismissal.promotion_id=owned.promotion_id
@@ -826,8 +817,7 @@ export async function readPlayerWorldOverview(
         AND person.person_id=e.person_id AND person.status<>'RETIRED'
        WHERE done.world_id=w.world_id
         AND done.year BETWEEN greatest(1,w.year-1) AND w.year
-        AND (done.year-1)*52+done.week-1 BETWEEN
-          greatest(0,(w.year-1)*52+w.week-1-7) AND (w.year-1)*52+w.week-1
+        AND ${weekDateRangeSql("done","greatest(0,(w.year-1)*52+w.week-1-7)","(w.year-1)*52+w.week-1")}
         AND EXISTS (SELECT 1 FROM ppw_contracts contract
          WHERE contract.world_id=done.world_id
           AND contract.person_id=e.person_id
@@ -859,8 +849,7 @@ export async function readPlayerWorldOverview(
         AND person.person_id=p."personId" AND person.status='ACTIVE'
        WHERE e.world_id=w.world_id AND e.event_type='WRESTLER_CLEARED_TO_RETURN'
         AND p.severity IN ('MINOR','MODERATE','MAJOR','SEVERE')
-        AND (e.year-1)*52+e.week-1 BETWEEN
-         greatest(0,(w.year-1)*52+w.week-1-7) AND (w.year-1)*52+w.week-1
+        AND ${weekDateRangeSql("e","greatest(0,(w.year-1)*52+w.week-1-7)","(w.year-1)*52+w.week-1")}
         AND EXISTS(SELECT 1 FROM ppw_contracts contract
          WHERE contract.world_id=e.world_id AND contract.person_id=p."personId"
           AND contract.promotion_id=owned.promotion_id AND contract.status='SIGNED'
@@ -894,9 +883,7 @@ export async function readPlayerWorldOverview(
      LEFT JOIN ppw_promotions p ON p.world_id=e.world_id
       AND p.promotion_id=e.payload->>'promotionId'
      WHERE e.world_id=w.world_id
-      AND (e.year-1)*52+e.week-1 BETWEEN
-       greatest(0,(w.year-1)*52+w.week-1-12) AND
-       (w.year-1)*52+w.week-1
+      AND ${weekDateRangeSql("e","greatest(0,(w.year-1)*52+w.week-1-12)","(w.year-1)*52+w.week-1")}
       AND e.event_type IN ('WRESTLER_RETIRED','WRESTLER_DEBUTED',
        'CAREER_STAGE_CHANGED','PROMOTION_TIER_CHANGED',
        'PROMOTION_RESTRUCTURED','PROMOTION_ENTERED_DORMANCY',

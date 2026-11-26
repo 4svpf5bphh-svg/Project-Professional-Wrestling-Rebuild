@@ -24,7 +24,7 @@ test("parent-owned contracts are visibly bookable for named affiliates and consu
  const parent="promotion-0",child="promotion-3",show="child-show";
  const source=originalGenesisFixture(world,64);
  source.promotions[3]!.identity={origin:"FICTIONAL",parentPromotionId:parent};
- source.contracts=source.contracts.filter(c=>c.promotionId!==child);
+ const direct=source.contracts.filter(c=>c.promotionId===child).map(c=>c.personId);
  source.wrestlerPromotionAffiliations=[
   {worldId:world,personId:"person-0",promotionId:child,
    role:"PRIMARY",basis:"PARENT_COMPANY"},
@@ -58,8 +58,11 @@ test("parent-owned contracts are visibly bookable for named affiliates and consu
     [world,show,child]);
   });
   const picker=await cardTalentAsActor(context,world,child,show,"Wrestler");
-  assert.deepEqual(picker.talent.map(p=>p.personId).sort(),["person-0","person-24"]);
-  assert.ok(picker.talent.every(p=>p.available&&p.division==="WOMEN"));
+  const affiliates=["person-0","person-24"];
+  const expectedRoster=[...direct,...affiliates].sort();
+  assert.deepEqual(picker.talent.map(p=>p.personId).sort(),expectedRoster);
+  assert.ok(picker.talent.filter(p=>affiliates.includes(p.personId))
+   .every(p=>p.available&&p.division==="WOMEN"));
   assert.ok(picker.talent.every(p=>p.contractId.startsWith("contract-")));
   const meter=new MeasuredQuerySession("original-parent-roster");
   const measuredPool:TransactionPool={async connect(){
@@ -72,12 +75,12 @@ test("parent-owned contracts are visibly bookable for named affiliates and consu
   const roster=await readWrestlerDirectory(measuredPool,
    {worldId:world,playerId:player,promotionId:child},{view:"ROSTER",limit:40});
   meter.assertBudget({maxQueries:2,maxResultBytes:14_000});
-  assert.deepEqual(roster.people.map(p=>p.personId).sort(),["person-0","person-24"]);
+  assert.deepEqual(roster.people.map(p=>p.personId).sort(),expectedRoster);
   assert.ok(roster.people.every(p=>p.availability==="YOUR_ROSTER"));
-  assert.ok(roster.people.every(p=>p.affiliatedViaParent&&
-   p.contractOwnerName==="Promotion 0"),
+  assert.deepEqual(roster.people.filter(p=>p.affiliatedViaParent).map(p=>p.personId).sort(),affiliates);
+  assert.ok(roster.people.filter(p=>p.affiliatedViaParent).every(p=>p.contractOwnerName==="Promotion 0"),
    "The roster must show legal parent control without inventing child payroll");
-  assert.equal(source.contracts.filter(c=>c.promotionId===child).length,8,
+  assert.equal(roster.people.filter(p=>!p.affiliatedViaParent).length,8,
    "Child's directly signed contracts remain separate from explicit affiliate rights");
   const bad=()=>saveCardEditorAsActor(context,{...scope,requestId:"forged",
    expectedRevision:0,matches:[{slotId:"main",payload:match(unauthorized)}],

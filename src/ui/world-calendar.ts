@@ -741,8 +741,8 @@ export function mountWorldCalendar(root:HTMLElement,port:CalendarPort,back:()=>v
     upcoming.append(article);rendered++;
    }
    if(!rendered)upcoming.append(node("p",ppvOnly?
-    "No PPVs or specials are due in the next six weeks.":
-    "No shows are due in the next six weeks.",
+    "No PPVs or specials are due in this six-week window.":
+    "No shows are due in this six-week window.",
     "ppw-calendar-empty"));
 
   }else{

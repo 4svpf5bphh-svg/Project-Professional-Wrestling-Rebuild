@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** A player asks their exclusive broadcaster to move its recurring TV night.
  * One negotiated day change per signed term. An accepted request is a
  * server-authoritative, revision-locked World command; a second request
@@ -49,13 +50,13 @@ export async function requestBroadcastDay(pool:TransactionPool,input:BroadcastDa
    const blocked=await tx.query<{draft_id:string}>(`
     SELECT draft_id FROM ppw_booking_drafts
     WHERE world_id=$1 AND promotion_id=$2
-     AND (year-1)*52+week-1 BETWEEN $3 AND $4
+     AND ${weekDateRangeSql("","$3","$4")}
      AND status IN ('DRAFT','SUBMITTED') AND show_day=$5
      AND booking_class='PREMIUM'
     UNION ALL
     SELECT draft_id FROM ppw_booking_drafts
     WHERE world_id=$1 AND promotion_id=$2
-     AND (year-1)*52+week-1 BETWEEN $3 AND $4
+     AND ${weekDateRangeSql("","$3","$4")}
      AND status='SUBMITTED' AND booking_class='REGULAR'
      AND show_day IS NOT NULL AND show_day<>$5
     LIMIT 1`,[input.worldId,input.promotionId,now,s.end_week_index,input.requestedDay]);
@@ -77,7 +78,7 @@ export async function requestBroadcastDay(pool:TransactionPool,input:BroadcastDa
      revision=revision+1
     WHERE world_id=$1 AND promotion_id=$2 AND booking_class='REGULAR'
      AND status='DRAFT' AND show_day IS NOT NULL
-     AND (year-1)*52+week-1 BETWEEN $3 AND $5
+     AND ${weekDateRangeSql("","$3","$5")}
     RETURNING draft_id`,[input.worldId,input.promotionId,now,
      input.requestedDay,s.end_week_index]);
    await tx.query(`

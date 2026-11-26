@@ -38,7 +38,7 @@ test("original PPW stable formation, ownership, roster limits, historic joins, d
   assert.equal(view.roster.length,4);
   await assert.rejects(createStable(db.pool,{...scope,requestId:"unrostered",
    expectedRevision:0,name:"Foreign",personIds:[people[0]!,people[1]!,people[4]!]}),
-   /current roster/);
+   /Stable members must be active wrestlers on your roster/);
   assert.equal((await readStableWorkspace(db.pool,scope)).worldRevision,0);
   const create=await createStable(db.pool,{...scope,requestId:"form-1",
    expectedRevision:0,name:"The Alliance",
