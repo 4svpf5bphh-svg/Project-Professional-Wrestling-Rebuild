@@ -237,11 +237,22 @@ test("AI programmes develop and settle through the real World pipeline", {
   const args = { worldId, playerId, viewerPromotionId: viewer.promotionId,
    targetPromotionId: story.promotionId, showId: story.showId };
   const publicShow = await readPublicCompletedShow(db.pool, args);
-  assert.ok(publicShow.entries.some(e => (e as { programme?: string }).programme), "Certified programme context is visible in rival results");
+  assert.ok(publicShow.entries.some(e => e.programme), "Certified programme context is visible in rival results");
   await assert.rejects(readPublicCompletedShow(db.pool, { ...args, playerId: playerId + "-other" }), /unavailable/);
   await assert.rejects(readPublicCompletedShow(db.pool, { ...args, showId: "future-card" }), /unavailable/);
+  const reportedWins = read.stories.filter(s => s.id.startsWith("programme:official:") &&
+   s.promotionId !== viewer.promotionId && s.summary.includes("won the deciding match"));
+  assert.ok(reportedWins.length, "At least one published finale carries an actual winner");
+  for (const item of reportedWins.slice(0, 8)) {
+   const show = await readPublicCompletedShow(db.pool, {
+    ...args, targetPromotionId: item.promotionId, showId: item.showId,
+   });
+   const finale = show.entries.find(e => e.programme?.endsWith("Finale"));
+   assert.ok(finale?.winner && item.summary.includes(finale.winner + " won the deciding match"),
+    "Official News attributes the win to the actual match winner");
+  }
   const industry = await readIndustryWorldHub(db.pool, viewer);
-  assert.ok(industry.broadcasts.some(s => (s as { publicResults?: boolean }).publicResults));
+  assert.ok(industry.broadcasts.some(s => s.publicResults));
  } finally {
   await withWorldTransaction(db.pool, async tx => {
    const relations = await tx.query<{name: string; parent: string | null}>(`
