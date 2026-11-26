@@ -116,8 +116,9 @@ export function dirtSheetByline(id:string){
  * score or template. Dirt-sheet theories remain explicitly unverified.
  * Feed is deterministic from the article; zero write amplification on Neon.
  */
-export function projectHotTagNewsThread(story:HotTagNewsStory,minimum=3):HotTagNewsPost[]{
- return projectUniqueHotTagNewsThread(story,new Set(),minimum);
+// Keep this a unary callback: Array.map passes its index as a second argument.
+export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
+ return projectUniqueHotTagNewsThread(story,new Set());
 }
 export const hotTagReactionKey=(text:string)=>text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
 export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:ReadonlySet<string>,minimum=3):HotTagNewsPost[]{

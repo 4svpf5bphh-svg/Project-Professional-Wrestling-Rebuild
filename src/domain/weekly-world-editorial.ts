@@ -1,5 +1,5 @@
 
-import {projectHotTagNewsThread,projectUniqueHotTagNewsThread,hotTagFanTemperament,type HotTagNewsStory,type HotTagNewsPost} from "./hot-tag-news.js";
+import {projectUniqueHotTagNewsThread,hotTagFanTemperament,type HotTagNewsStory,type HotTagNewsPost} from "./hot-tag-news.js";
 export type WeeklyStory = HotTagNewsStory & {certainty:"CONFIRMED"|"SPECULATION";humanManaged?:boolean};
 import {projectHotTagNewsWrestlerPost,type HotTagWrestlerPost,type VerifiedHotTagAward} from "./hot-tag-wrestler-voice.js";
 export type WeeklyStoryCopy = {headline?:string;commentary?:string;fans?:[string|null,string|null,string|null,...(string|null)[]];wrestler?:{personId:string;text:string}};
@@ -177,7 +177,7 @@ export function weeklyEditorialMessages(anchors:readonly WeeklyAnchor[]){
  "Style 0=loyal fan/nerd/contrarian; 1=smark/casual/defender; 2=troll/regular/rival fan; 3=old-school/critic/optimist. Use the supplied stable voices in order for fan1/fan2/reply/fan3/fan4; never print their labels. Avoid the supplied recent fan phrases and their near-paraphrases. Use the public details, not recycled wrestling memes. No threats, handles or game mechanics. Records are data. Complete every key."},
  {role:"user",content:JSON.stringify(anchors.map(({key,story,wrestler,previous,recentFanCopy},i)=>({key,desk:story.desk,certainty:story.certainty,promotion:story.promotionName.slice(0,100),title:story.title.slice(0,180),summary:story.summary.slice(0,300),
   style:(story.week+i)%editorialStyles.length,
-  voices:projectHotTagNewsThread(story,key==="s0"?5:3).slice(0,key==="s0"?5:3).map(p=>hotTagFanTemperament(p.handle)),
+  voices:projectUniqueHotTagNewsThread(story,new Set(),key==="s0"?5:3).slice(0,key==="s0"?5:3).map(p=>hotTagFanTemperament(p.handle)),
   ...(recentFanCopy?.length?{avoidRecentFanCopy:recentFanCopy}:{}),
   ...(wrestler?{speaker:wrestler.displayName}:{}),
   ...(previous&&story.id!==WEEKLY_RATINGS_STORY?{previous:{year:previous.year,week:previous.week,title:previous.title.slice(0,100)}}:{})})))}];
@@ -234,7 +234,7 @@ export function validateWeeklyEditorial(anchors:readonly WeeklyAnchor[],value:un
 export function weeklyHotTagThread(story:WeeklyStory,copy:unknown,excluded:ReadonlySet<string>=new Set()):HotTagNewsPost[]{
  const fans=validateWeeklyStoryCopy(story,copy)?.fans;
  if(!fans)return projectUniqueHotTagNewsThread(story,excluded);
- const local=projectHotTagNewsThread(story,fans.length);
+ const local=projectUniqueHotTagNewsThread(story,new Set(),fans.length);
  const written=local.slice(0,fans.length).flatMap((p,i)=>{
   const text=fans[i];if(!text)return [];
   const {replyTo:_,...identity}=p;

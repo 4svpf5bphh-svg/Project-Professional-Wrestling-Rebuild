@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {HOT_TAG_NAME,HOT_TAG_TAGLINE,dirtSheetByline,
- projectHotTagNewsThread,projectHotTagBroadcasterPost} from "../src/domain/hot-tag-news.js";
+ projectHotTagNewsThread,projectHotTagBroadcasterPost,projectUniqueHotTagNewsThread} from "../src/domain/hot-tag-news.js";
 const rumour={
  id:"wild:s1",year:1,week:12,desk:"DIRT" as const,promotionName:"CWA",
  title:"Joe walked out?",summary:"Anonymous report with a competing denial."
@@ -197,4 +197,10 @@ test("a weekly TV snapshot never implies a common timeslot, network warning or w
   const posts=projectHotTagNewsThread({...rumour,id:"broadcast:ratings:weekly",desk:"OFFICIAL",week,title:"Weekly TV watch: CWA / Rivals",summary:"CWA: 0.40 household rating; Rivals: 0.60 household rating. Separate broadcasts."});
   assert.ok(posts.length>=3);assert.doesNotMatch(posts.map(p=>p.text).join(" "),/same hour|won the time slot|three weeks of|network has spoken|network paid|ratings are dropping/i);
  }
+});
+
+test("default fan projection is unary while the editorial lead can explicitly request five identities",()=>{
+ const stories=Array.from({length:12},(_,i)=>({...rumour,id:"wild:callback:"+i}));
+ assert.deepEqual(stories.map(projectHotTagNewsThread),stories.map(s=>projectHotTagNewsThread(s)));
+ for(const story of stories){const posts=projectUniqueHotTagNewsThread(story,new Set(),5);assert.ok(posts.length>=5);}
 });
