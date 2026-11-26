@@ -11,6 +11,10 @@ import type {StandingTier} from "../domain/annual-promotion-standing.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
 import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch,type AiCardInput} from "../domain/ai-world-card.js";
 import {aiPromotionStrategy} from "../domain/ai-promotion-strategy.js";
+import {planAiProgrammeBeat,startAiProgramme,type AiProgramme,type AiProgrammeAngle} from "../domain/ai-programmes.js";
+import type {ProgrammePayoff} from "../domain/programme-finales.js";
+import {insertAiProgrammes,planAiFinales,readAiFactionCasts,readAiProgrammes,retireAiProgrammes}
+ from "./ai-programmes.js";
 
 export interface GenerateStaffFallbackCardsInput{
   worldId:string;requestId:string;expectedRevision:number;
@@ -21,18 +25,21 @@ type Delegated={
   delegated:boolean|null;status:string;management_mode:string;
   promotion_name:string;cadence:number;tier:StandingTier;
   contracted_day:number|null;premium_only_week:boolean;
+  financial_distress:string|null;media_reach:number|null;
+  financial_caution:number|null;prestige:number|null;fan_reputation:number|null;
 };
 type SignedCandidate={
   promotion_id:string;person_id:string;contract_id:string;
   booking_division:"MEN"|"WOMEN";weekly_service_capacity:number|null;
   momentum:number|null;recognition:number|null;popularity:number|null;
   presentation:number|null;match_craft:number|null;
-  remaining_dates:number|null;
+  remaining_dates:number|null;expires_week_index:number;
+  person_status:string;career_stage:string|null;
 };
 type Generated={promotionId:string;showId:string;day:number;venueId:string;
   participants:{personId:string;contractId:string}[];
   scriptedWinner:string;bookingDivision:"MEN"|"WOMEN";origin:"STAFF_FALLBACK"|"AI";
-  matches?:AiCardMatch[];bookingClass:"REGULAR"|"PREMIUM";
+  matches?:AiCardMatch[];angle?:AiProgrammeAngle;bookingClass:"REGULAR"|"PREMIUM";
   eventType:"REGULAR"|"MAJOR";importance:number;
   seriesId:string|null;showName:string|null};
 type Unfilled={promotionId:string;reason:string};
@@ -88,6 +95,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           s.owner_player_id,s.allow_unfinished_fallback AS delegated,
           m.player_id AS current_controller,p.management_mode,a.status,
            p.name AS promotion_name,p.event_cadence_weeks AS cadence,p.tier,
+           p.financial_distress,p.media_reach,p.ai_financial_caution AS financial_caution,
+           standing.prestige,standing.fan_reputation,
            (SELECT d.airing_day FROM ppw_commercial_deals d
              WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
              AND d.kind='BROADCAST' AND d.status='ACTIVE'
@@ -97,6 +106,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
            (${premiumOnlyWeekSql("p")}) AS premium_only_week
          FROM ppw_week_continuity_assessments a
          JOIN ppw_promotions p ON p.world_id=a.world_id AND p.promotion_id=a.promotion_id
+         LEFT JOIN ppw_promotion_standings standing
+          ON standing.world_id=p.world_id AND standing.promotion_id=p.promotion_id
          LEFT JOIN ppw_promotion_controls c ON c.world_id=a.world_id
             AND c.promotion_id=a.promotion_id AND c.active
          LEFT JOIN ppw_memberships m ON m.world_id=c.world_id AND m.player_id=c.player_id
@@ -130,7 +141,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const candidates=await tx.query<SignedCandidate>(
         `SELECT booking.promotion_id,c.person_id,c.contract_id,p.booking_division,
                 p.weekly_service_capacity,p.momentum,p.recognition,p.popularity,
-                p.presentation,p.match_craft,c.remaining_dates
+                p.presentation,p.match_craft,c.remaining_dates,c.expires_week_index,
+                p.status AS person_status,p.career_stage
            FROM ppw_promotions booking
            JOIN ppw_contracts c ON c.world_id=booking.world_id
             AND (c.promotion_id=booking.promotion_id OR
@@ -145,7 +157,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             AND c.status='SIGNED' AND c.expires_week_index >= $3
             AND c.start_week_index <= $3
             AND (c.remaining_dates>0 OR (c.family='EXCLUSIVE' AND c.remaining_dates IS NULL))
-            AND p.status='ACTIVE' AND p.booking_division IS NOT NULL
+            AND p.status IN ('ACTIVE','INJURED') AND p.booking_division IS NOT NULL
             AND NOT EXISTS (SELECT 1 FROM ppw_contracts x
                  WHERE x.world_id=c.world_id AND x.person_id=c.person_id
                    AND x.promotion_id<>c.promotion_id AND x.status='SIGNED'
@@ -157,7 +169,14 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       if(candidates.length>10000)throw new Error("Staff roster eligibility batch too large");
       const byPromotion=new Map<string,StaffWrestlerCandidate[]>();
       const aiRoster=new Map<string,AiRosterCandidate[]>();
+      const injuredByPromotion=new Map<string,Set<string>>();
       for(const c of candidates){
+        if(c.person_status==="INJURED"){
+          const injured=injuredByPromotion.get(c.promotion_id)??new Set<string>();
+          injured.add(c.person_id);
+          injuredByPromotion.set(c.promotion_id,injured);
+          continue;
+        }
         const list=byPromotion.get(c.promotion_id)??[];
         if(list.length>=256)throw new Error("Staff fallback roster limit exceeded");
         list.push({personId:c.person_id,contractId:c.contract_id,
@@ -169,7 +188,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           ranked.push({personId:c.person_id,contractId:c.contract_id,
            bookingDivision:c.booking_division,weeklyCapacity:c.weekly_service_capacity??7,
            momentum:c.momentum!,recognition:c.recognition!,popularity:c.popularity!,
-           presentation:c.presentation!,matchCraft:c.match_craft!});
+           presentation:c.presentation!,matchCraft:c.match_craft!,careerStage:c.career_stage,
+           contractExpires:c.expires_week_index,remainingDates:c.remaining_dates});
           aiRoster.set(c.promotion_id,ranked);
         }
       }
@@ -207,13 +227,14 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         AND m.show_id=c.show_id
        JOIN ppw_card_slots s ON s.world_id=m.world_id
         AND s.draft_id=m.show_id AND s.slot_id=m.match_id
-       WHERE c.world_id=$1
+       WHERE c.world_id=$1 AND c.promotion_id=ANY($6::text[])
         AND (c.year,c.week)>=($2,$3)
         AND (c.year,c.week)<($4,$5)
         AND jsonb_array_length(s.payload->'participants')=2
-       ORDER BY c.year DESC,c.week DESC,c.promotion_id,m.match_id LIMIT 513`,
-       [input.worldId,Math.floor(cutoff/52)+1,cutoff%52+1,year,week]):[];
-      if(prior.length>512)throw new Error("Recent AI pairing history exceeds bound");
+       ORDER BY c.year DESC,c.week DESC,c.promotion_id,m.match_id LIMIT 2561`,
+       [input.worldId,Math.floor(cutoff/52)+1,cutoff%52+1,year,week,
+        all.filter(x=>x.status==="AI_MANAGED").map(x=>x.promotion_id)]):[];
+      if(prior.length>2560)throw new Error("Recent AI pairing history exceeds bound");
       const recent=new Map<string,string[]>();
       for(const r of prior){
         if(!r.person_a||!r.person_b)continue;
@@ -243,6 +264,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         for(const id of new Set(participants.map(p=>p.contractId)))
           reservedDates.set(id,(reservedDates.get(id)??0)+1);
       };
+      const nextPremium=new Map<string,number>();
       const duePremium=new Map<string,ReturnType<typeof defaults>[number]>();
       const aiCompanyIds=all.filter(d=>d.status==="AI_MANAGED"&&
        d.current_controller===null).map(d=>d.promotion_id);
@@ -305,9 +327,95 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         // don't rewrite the currently published year on existing saves.
         if(oldYear&&saved===undefined&&
          !["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase()))continue;
+        const upcoming=annual.filter(e=>e&&Number.isInteger(e.week)&&e.week>=week&&
+         identities.some(s=>s.active&&s.eventType==="MAJOR"&&s.seriesId===e.seriesId))
+         .map(e=>e.week as number).sort((a,b)=>a-b)[0];
+        if(upcoming!==undefined)nextPremium.set(d.promotion_id,weekIndex+upcoming-week);
         if(ppv&&!existingPremiums.has(d.promotion_id))
           duePremium.set(d.promotion_id,ppv);
       }
+      const creativeEnabled=worlds[0]!.show_economics_enabled&&aiCompanyIds.length>0;
+      const creativeContext=creativeEnabled?
+       await readAiProgrammes(tx,input.worldId,aiCompanyIds,weekIndex):null;
+      const factions=creativeEnabled?
+       await readAiFactionCasts(tx,input.worldId,aiCompanyIds):new Map<string,string[][]>();
+      const stories=new Map(creativeContext?.active);
+      const starts=new Map<string,AiProgramme>();
+      const retired:{promotionId:string;programmeId:string;reason:string}[]=[];
+      const strategyFor=(promotionId:string)=>{
+       const profile=profilesByPromotion.get(promotionId)!;
+       const company=delegations.get(promotionId)!;
+       return aiPromotionStrategy({
+        worldSeed:String(worlds[0]!.seed),promotionId,year,week,
+        riskTolerance:profile.ai_risk_tolerance!,
+        matchQualityPreference:profile.ai_match_quality_preference!,
+        starPreference:profile.ai_star_preference!,
+        circumstances:{tier:company.tier,distress:company.financial_distress,
+         mediaReach:company.media_reach,prestige:company.prestige,fanReputation:company.fan_reputation,
+         financialCaution:company.financial_caution,roster:aiRoster.get(promotionId)??[],
+         recentForm:context?.recentSingles.get(promotionId)??[],
+         premiumSoon:(nextPremium.get(promotionId)??Infinity)-weekIndex<=3,
+         broadcast:company.contracted_day!==null},
+       });
+      };
+      if(creativeContext)for(const promotionId of aiCompanyIds){
+       const existingStory=stories.get(promotionId);
+       const roster=aiRoster.get(promotionId)??[];
+       const healthy=new Set(roster.map(p=>p.personId));
+       if(existingStory){
+        const cast=[...existingStory.sideA,...existingStory.sideB];
+        const missing=cast.filter(id=>!healthy.has(id));
+        const injured=injuredByPromotion.get(promotionId);
+        const idle=weekIndex-(existingStory.lastWeek??existingStory.started);
+        const reason=missing.some(id=>!injured?.has(id))?"CAST_DEPARTURE":
+         missing.length&&idle>=6?"MEDICAL_HIATUS":
+         idle>=14||weekIndex-existingStory.started>=22?"STALLED":null;
+        if(reason){
+         retired.push({promotionId,programmeId:existingStory.programmeId,reason});
+         stories.delete(promotionId);
+        }
+        continue;
+       }
+       const history=creativeContext.history.get(promotionId)??[];
+       if(history.some(x=>weekIndex-x.ended<=1)||existingDrafts.has(promotionId)||
+        context?.programmes.get(promotionId)?.length)continue;
+       const profile=profilesByPromotion.get(promotionId);
+       if(!profile||profile.ai_risk_tolerance===null||profile.ai_match_quality_preference===null||
+        profile.ai_star_preference===null)continue;
+       const next=nextPremium.get(promotionId);
+       const programme=startAiProgramme({seed:String(worlds[0]!.seed),promotionId,week:weekIndex,
+        roster,strategy:strategyFor(promotionId),titles:context?.championships.get(promotionId)??[],
+        contenders:context?.recentSingles.get(promotionId)??[],teams:context?.teams??[],
+        factions:factions.get(promotionId)??[],history,premiumSoon:next!==undefined&&next-weekIndex<=4});
+       if(programme){
+        starts.set(promotionId,programme);
+        stories.set(promotionId,programme);
+       }
+      }
+      const staged=new Set<string>();
+      const creativeFor=(promotionId:string,roster:AiRosterCandidate[],premium:boolean)=>{
+       const programme=stories.get(promotionId);
+       if(!programme||staged.has(promotionId))return null;
+       const next=nextPremium.get(promotionId)??null;
+       // With two broadcasts this week, reserve a ready finale for the PPV.
+       // A development beat can still air on TV when the story needs it.
+       const options={programme,roster,week:weekIndex,nextPremium:next,
+        strategy:strategyFor(promotionId),results:context?.recentSingles.get(promotionId)??[],
+        title:context?.championships.get(promotionId)?.find(t=>t.championshipId===programme.championshipId)};
+       return planAiProgrammeBeat({...options,premium});
+      };
+      const protectedPair=(promotionId:string):[string,string]|undefined=>{
+       const programme=stories.get(promotionId);
+       return programme?.format==="RIVALRY"&&programme.sideA.length===1&&programme.sideB.length===1?
+        [programme.sideA[0]!,programme.sideB[0]!]:undefined;
+      };
+      const registerCreative=(promotionId:string,card:Extract<ReturnType<typeof chooseAiWorldCard>,{status:"READY"}>)=>{
+       const participants=[...card.matches.flatMap(m=>m.participants),...(card.angle?.payload.participants??[])];
+       const id=stories.get(promotionId)?.programmeId;
+       if(id&&(card.angle?.programmeId===id||card.matches.some(m=>m.programmeId===id||m.supportingProgrammeId===id)))
+        staged.add(promotionId);
+       return participants;
+      };
       for(const promotionId of priority){
         const d=delegations.get(promotionId)!;
         const ai=d.status==="AI_MANAGED"&&d.management_mode==="AI"&&
@@ -343,13 +451,25 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const eventType:"REGULAR"|"MAJOR"=oldYear&&!branded&&
            majorInterval&&((weekIndex+1)%majorInterval===0)?"MAJOR":"REGULAR";
           const importance=branded?tv?.importance??70:eventType==="MAJOR"?85:58;
-          const roster=(aiRoster.get(promotionId)??[]).filter(hasDate);
+          const eligible=(aiRoster.get(promotionId)??[]).filter(hasDate);
+          const premiumFinale=duePremium.has(promotionId)?creativeFor(promotionId,eligible,true):null;
+          const premiumCast=new Set(premiumFinale?.payoff?
+           [...premiumFinale.programme.sideA,...premiumFinale.programme.sideB]:[]);
+          const rested=eligible.filter(w=>!premiumCast.has(w.personId));
+          // Reserve the advertised attraction when an independent TV card
+          // can run without its cast. Service, venue and contract checks
+          // still decide whether either card can actually be booked.
+          const roster=premiumCast.size&&rested.length>=8&&
+           (["MEN","WOMEN"] as const).some(division=>rested.filter(w=>w.bookingDivision===division).length>=2)?
+           rested:eligible;
           const byId=new Map(roster.map(p=>[p.personId,p]));
           const rivals=context?.programmes.get(promotionId)??[];
+          const creative=d.premium_only_week||premiumFinale?.payoff?null:creativeFor(promotionId,roster,false);
           // Vacant titles can still be crowned on periodic television.
           // Defences are focused on title programmes and true PPVs rather
           // than pseudo-premium regular broadcasts.
           const titles=(context?.championships.get(promotionId)??[]).filter(t=>
+           t.championshipId!==stories.get(promotionId)?.championshipId).filter(t=>
            (eventType==="MAJOR"&&year<worlds[0]!.premium_plan_start_year)||
            (t.holderId===null&&weekIndex%4===0&&
             !rivals.some(r=>r.heat>=85)));
@@ -383,12 +503,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             eventType,riskTolerance:profile.ai_risk_tolerance,
             matchQualityPreference:profile.ai_match_quality_preference,
             starPreference:profile.ai_star_preference,
-            strategy:aiPromotionStrategy({
-            worldSeed:String(worlds[0]!.seed),promotionId,year,week,
-            riskTolerance:profile.ai_risk_tolerance,
-            matchQualityPreference:profile.ai_match_quality_preference,
-            starPreference:profile.ai_star_preference
-          }),
+            strategy:strategyFor(promotionId),creative,
+            protectedProgrammePair:protectedPair(promotionId),
             recentPairs:recent.get(promotionId)??[],
              recentResults:[...(context?.recentSingles.get(promotionId)??[]),
                 ...(context?.recentTags.get(promotionId)??[])],
@@ -404,11 +520,12 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           generated.push({promotionId,showId,day:card.schedule.day,
             venueId:card.schedule.venueId,participants:main.participants,
             scriptedWinner:main.scriptedWinner,bookingDivision:main.bookingDivision,
-            origin:"AI",matches:card.matches,bookingClass:"REGULAR",
+            origin:"AI",matches:card.matches,angle:card.angle,bookingClass:"REGULAR",
             eventType,importance,seriesId:tv?.seriesId??null,showName:tv?.name??null});
-          reserveDates(card.matches.flatMap(m=>m.participants));
+          const performers=registerCreative(promotionId,card);
+          reserveDates(performers);
           booked.push({showId,day:card.schedule.day,venueId:card.schedule.venueId,
-            personIds:card.matches.flatMap(m=>m.participants.map(p=>p.personId))});
+            personIds:performers.map(p=>p.personId)});
         }else{
           const choice=chooseEmergencyStaffCard({
              contractedDay:d.contracted_day,
@@ -456,7 +573,9 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         // preparation batch. A premium show should prioritize a defensible
         // title challenge, not merely rebrand an ordinary television card.
         const rosterById=new Map(roster.map(p=>[p.personId,p]));
+        const creative=creativeFor(promotionId,roster,true);
         const titleChallenges=(context?.championships.get(promotionId)??[])
+         .filter(t=>t.championshipId!==stories.get(promotionId)?.championshipId)
          .flatMap<AiFeaturedPair>(title=>{
           if(title.holderId===null){
             const pair=inauguralPair(roster,title.bookingDivision);
@@ -488,12 +607,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           riskTolerance:profile.ai_risk_tolerance,
           matchQualityPreference:profile.ai_match_quality_preference,
           starPreference:profile.ai_star_preference,
-          strategy:aiPromotionStrategy({
-            worldSeed:String(worlds[0]!.seed),promotionId,year,week,
-            riskTolerance:profile.ai_risk_tolerance,
-            matchQualityPreference:profile.ai_match_quality_preference,
-            starPreference:profile.ai_star_preference
-          }),
+          strategy:strategyFor(promotionId),creative,
+          protectedProgrammePair:protectedPair(promotionId),
           recentPairs:recent.get(promotionId)??[],
              recentResults:[...(context?.recentSingles.get(promotionId)??[]),
                 ...(context?.recentTags.get(promotionId)??[])],
@@ -513,13 +628,18 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         generated.push({promotionId,showId,day:card.schedule.day,
           venueId:card.schedule.venueId,participants:main.participants,
           scriptedWinner:main.scriptedWinner,bookingDivision:main.bookingDivision,
-          origin:"AI",matches:card.matches,bookingClass:"PREMIUM",
+          origin:"AI",matches:card.matches,angle:card.angle,bookingClass:"PREMIUM",
           eventType:"MAJOR",importance:ppv.importance,
           seriesId:ppv.seriesId,showName:ppv.name});
-        reserveDates(card.matches.flatMap(m=>m.participants));
+        const performers=registerCreative(promotionId,card);
+        reserveDates(performers);
         booked.push({showId,day:card.schedule.day,venueId:card.schedule.venueId,
-          personIds:card.matches.flatMap(m=>m.participants.map(p=>p.personId))});
+          personIds:performers.map(p=>p.personId)});
       }
+      const scope={worldId:input.worldId,year,week,weekIndex};
+      await retireAiProgrammes(tx,scope,retired);
+      await insertAiProgrammes(tx,scope,[...starts].flatMap(([promotionId,programme])=>
+       staged.has(promotionId)?[{promotionId,programme}]:[]));
       if(generated.length){
         const drafts=await tx.query<{draft_id:string}>(`
           INSERT INTO ppw_booking_drafts
@@ -541,12 +661,14 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
          );
         if(drafts.length!==generated.length)throw new Error("Staff draft batch insert mismatch");
         const slotRows=generated.flatMap<{
-          showId:string;slotId:string;position:number;payload:unknown
+          showId:string;slotId:string;position:number;kind:"MATCH"|"SEGMENT";
+          payload:Record<string,unknown>;programmeId?:string;payoff?:ProgrammePayoff;
         }>(show=>show.matches?
-          show.matches.map((match,index)=>({
+          [...show.matches.map((match,index)=>({
             showId:show.showId,slotId:"ai-"+(match.matchType==="TAG"?"tag":"singles")+"-"+
               String(index+1).padStart(2,"0"),
-            position:index,payload:{
+            kind:"MATCH" as const,programmeId:match.programmeId,payoff:match.creativePayoff,
+            position:index+(show.angle&&index>=show.angle.payload.position?1:0),payload:{
               participants:match.participants,scriptedWinner:match.scriptedWinner,
               scriptedBy:"AI_WORLD_BOOKER",matchType:match.matchType??"SINGLES",
               ...(match.matchType==="TAG"?{family:"TEAMS",sides:match.sides,
@@ -556,10 +678,13 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
               plannedLengthMinutes:match.plannedLengthMinutes,
               mainEvent:match.mainEvent,
               ...(match.programmeId?{programmeId:match.programmeId}:{}),
+              ...(match.supportingProgrammeId?{supportingProgrammeId:match.supportingProgrammeId}:{}),
               ...(match.championshipId?{championshipId:match.championshipId}:{}),
             },
-          })):
-          [{showId:show.showId,slotId:"emergency-singles",position:0,
+          })),...(show.angle?[{showId:show.showId,slotId:show.angle.payload.slotId,
+            position:show.angle.payload.position,kind:"SEGMENT" as const,programmeId:show.angle.programmeId,
+            payoff:show.angle.payoff,payload:{...show.angle.payload,scriptedBy:"AI_WORLD_BOOKER"}}]:[])]:
+          [{showId:show.showId,slotId:"emergency-singles",position:0,kind:"MATCH",
            payload:{participants:show.participants,
             scriptedWinner:show.scriptedWinner,
             scriptedBy:"DELEGATED_STAFF",staffFallback:true,
@@ -567,33 +692,31 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             consequencesPolicy:"EMERGENCY_LIMITED_PENDING_SIMULATION"}}]);
         const slots=await tx.query<{slot_id:string}>(`
           INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
-          SELECT $1,v.show_id,v.slot_id,v.position,'MATCH',v.payload
+          SELECT $1,v.show_id,v.slot_id,v.position,v.kind,v.payload
           FROM jsonb_to_recordset($2::jsonb) AS v(
-           show_id text,slot_id text,position integer,payload jsonb)
+           show_id text,slot_id text,position integer,kind text,payload jsonb)
           RETURNING slot_id`,
           [input.worldId,JSON.stringify(slotRows.map(x=>({
-            show_id:x.showId,slot_id:x.slotId,position:x.position,payload:x.payload})))]);
+            show_id:x.showId,slot_id:x.slotId,position:x.position,kind:x.kind,payload:x.payload})))]);
         if(slots.length!==slotRows.length)throw new Error("Generated match card insert mismatch");
-        const linked=slotRows.flatMap(row=>{
-          const payload=row.payload as Record<string,unknown>;
-          return typeof payload.programmeId==="string"?[
-           {showId:row.showId,slotId:row.slotId,
-            programmeId:payload.programmeId}]:[];
-        });
+        const byShow=new Map(generated.map(x=>[x.showId,x.promotionId]));
+        const linked=slotRows.flatMap(row=>row.programmeId?[{...row,programmeId:row.programmeId,
+         promotionId:byShow.get(row.showId)!}]:[]);
         if(linked.length){
-          const byShow=new Map(generated.map(x=>[x.showId,x.promotionId]));
           const links=await tx.query<{slot_id:string}>(`
            INSERT INTO ppw_programme_match_activities
              (world_id,promotion_id,programme_id,draft_id,slot_id,kind)
-           SELECT $1,x.promotion_id,x.programme_id,x.show_id,x.slot_id,'MATCH'
+           SELECT $1,x.promotion_id,x.programme_id,x.show_id,x.slot_id,x.kind
            FROM jsonb_to_recordset($2::jsonb) AS x(
-             promotion_id text,programme_id text,show_id text,slot_id text)
+             promotion_id text,programme_id text,show_id text,slot_id text,kind text)
            RETURNING slot_id`,
            [input.worldId,JSON.stringify(linked.map(x=>({
-            ...x,promotion_id:byShow.get(x.showId),programme_id:x.programmeId,
-            show_id:x.showId,slot_id:x.slotId})))]);
+            promotion_id:x.promotionId,programme_id:x.programmeId,
+            show_id:x.showId,slot_id:x.slotId,kind:x.kind})))]);
           if(links.length!==linked.length)throw new Error("Programme links incomplete");
         }
+        await planAiFinales(tx,input.worldId,weekIndex,linked.flatMap(row=>
+         row.payoff?[{...row,payoff:row.payoff}]:[]));
         const after=await inspectWeekConflicts(tx,input.worldId);
         const staffShowIds=new Set(generated.map(x=>x.showId));
         if(after.blockers.some(b=>b.showIds.some(id=>staffShowIds.has(id))))

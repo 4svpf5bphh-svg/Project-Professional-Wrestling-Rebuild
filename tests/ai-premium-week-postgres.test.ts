@@ -119,6 +119,7 @@ test("WWE and AEW AI book Night of Champions and Forbidden Door alongside televi
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_championship_contests","ppw_programme_match_activities",
+    "ppw_programme_talent_baselines","ppw_programme_finales","ppw_programme_side_refs",
     "ppw_programme_participants","ppw_programmes","ppw_championship_reigns",
     "ppw_championships","ppw_tag_team_members","ppw_tag_teams",
     "ppw_week_resource_clearances","ppw_ledger_events",

@@ -1,3 +1,4 @@
+import { readCertifiedAiProgrammeNews } from "./ai-programme-news.js";
 /** The certified-week World News publisher. Only completed show receipts,
  * settled public contract-signing ledger events, and immutable results are
  * admissible evidence. No drafts, pending bids or private contract terms.
@@ -537,7 +538,8 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
   eventId:e.event_id,eventType:e.event_type,personName:e.person_name,
   promotionId:e.promotion_id,promotionName:e.promotion_name
  })));
- const stories=[...publicSignings,...weeklyStories,...pressFollowups,...followups];
+ const programmes=await readCertifiedAiProgrammeNews(tx,worldId,year,week);
+ const stories=[...publicSignings,...programmes,...weeklyStories,...pressFollowups,...followups];
  if(awards.length)await tx.query(`
   INSERT INTO ppw_world_news_awards(world_id,year,week,kind,
    promotion_id,promotion_name,show_id,show_name,slot_id,title,

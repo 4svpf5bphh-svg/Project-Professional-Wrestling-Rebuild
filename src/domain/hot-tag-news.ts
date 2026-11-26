@@ -134,8 +134,16 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
   /heel turn|face turn|betray|turned on|walkout|stable split/.test(text)?"TURN":
   /debut|arriv|first appear|new signing/.test(text)?"DEBUT":
   /attack|assault|ambush|brawl/.test(text)?"ATTACK":
+  story.id.startsWith("programme:official:")?"PROGRAMME":
   /\bvs\.?\s|\bversus\b|steals the show|\d(?:\.\d{1,2})?-star match/.test(text)?"MATCH":"OTHER";
  const reactions:Record<typeof kind,string[]>={
+  PROGRAMME:[
+   "That chapter gave me a reason to tune in next time.",
+   "They let the tension build before putting the match on.",
+   "I want to see how the crowd responds when they get back in the ring.",
+   "This story has legs if they keep giving each wrestler something to prove.",
+   "The build made the match feel like it mattered."
+  ],
   PRESS:[
    "A press conference and the internet is treating every word like a conspiracy. 🎤",
    "The quote is right there. Let's not invent backstage facts from it. 🧐",

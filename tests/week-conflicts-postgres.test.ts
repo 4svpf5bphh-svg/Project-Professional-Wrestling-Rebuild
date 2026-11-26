@@ -77,6 +77,34 @@ test("one-day talent and venue collisions block provisional readiness; different
     result=await inspect();
     assert.deepEqual(result.blockers,[]);
     assert.equal(result.provisionalClear,true);
+    // Same-week injuries cannot retroactively invalidate another cleared
+    // broadcast after both authoritative results have been recorded.
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,
+       year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
+       VALUES($1,$2,$3,1,1,'medical-result',60,'{}',repeat('a',64))`,[worldId,a,sa]);
+      await tx.query(`INSERT INTO ppw_medical_absences(world_id,person_id,show_id,match_id,
+       injured_week_index,cleared_week_index,weeks_out,severity,status)
+       VALUES($1,$2,$3,'slot-a',0,3,3,'MODERATE','ACTIVE')`,[worldId,wrestler,sa]);
+      await tx.query("UPDATE ppw_people SET status='INJURED' WHERE world_id=$1 AND person_id=$2",
+       [worldId,wrestler]);
+      await tx.query(`INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,
+       resolved_week_index,command_request_id,performers_count,dates_charged)
+       VALUES($1,$3,$2,0,'medical-a',1,1),($1,$5,$4,0,'medical-b',1,1)`,[worldId,a,sa,b,sb]);
+    });
+    result=await inspect();
+    assert.deepEqual(result.blockers.map(x=>[x.code,x.showIds[0]]),[["WRESTLER_UNAVAILABLE",sb]]);
+    await withWorldTransaction(db.pool,tx=>tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,
+     year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
+     VALUES($1,$2,$3,1,1,'medical-result-b',60,'{}',repeat('b',64))`,[worldId,b,sb]));
+    assert.deepEqual((await inspect()).blockers,[]);
+    await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_medical_absences WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_show_resolutions WHERE world_id=$1",[worldId]);
+      await tx.query("UPDATE ppw_people SET status='ACTIVE' WHERE world_id=$1 AND person_id=$2",
+       [worldId,wrestler]);
+    });
     // A missing or closed venue must fail; provisional text is not a booking.
     await withWorldTransaction(db.pool,tx=>tx.query(
       "UPDATE ppw_venues SET status='INACTIVE' WHERE world_id=$1 AND venue_id='different-arena'",[worldId],
@@ -149,6 +177,8 @@ test("one-day talent and venue collisions block provisional readiness; different
     assert.deepEqual(result.blockers.map(x=>x.code),["INVALID_CARD"]);
   } finally {
     await withWorldTransaction(db.pool,async tx=>{
+      await tx.query("DELETE FROM ppw_medical_absences WHERE world_id=$1",[worldId]);
+      await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_show_resolutions WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
       await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1",[worldId]);

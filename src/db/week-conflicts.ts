@@ -49,16 +49,20 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   if(!Number.isSafeInteger(year)||year<1 || !Number.isSafeInteger(week)||week<1||week>52)
     throw new Error("Invalid World clock");
   const promotions=await tx.query<{
-    promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;premium_only_week:boolean;
+    promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;already_completed:boolean;premium_only_week:boolean;
   }>(
     `SELECT p.promotion_id,(${premiumOnlyWeekSql("p")}) AS premium_only_week,
             d.draft_id,d.booking_class,d.show_day,d.venue_id,
-            (r.show_id IS NOT NULL) AS already_resolved
+            (r.show_id IS NOT NULL) AS already_resolved,
+            (done.show_id IS NOT NULL) AS already_completed
        FROM ppw_promotions p LEFT JOIN ppw_booking_drafts d
          ON d.world_id=p.world_id AND d.promotion_id=p.promotion_id
            AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
        LEFT JOIN ppw_show_resolutions r ON r.world_id=d.world_id
          AND r.show_id=d.draft_id AND r.resolved_week_index=(($2::integer-1)*52+$3::integer-1)
+       LEFT JOIN ppw_completed_shows done ON done.world_id=d.world_id
+         AND done.show_id=d.draft_id AND done.promotion_id=p.promotion_id
+         AND done.year=$2 AND done.week=$3
       WHERE p.world_id=$1 AND p.lifecycle='ACTIVE' AND NOT EXISTS (SELECT 1 FROM ppw_playtest_dark_weeks off_week
   WHERE off_week.world_id=p.world_id
    AND off_week.promotion_id=p.promotion_id
@@ -90,7 +94,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   // A booking may be submitted early. Arrival order never resolves a conflict.
   const venues=new Map<string,{promotionId:string;showId:string;day:number;venueId:string}>();
   const wrestlers=new Map<string,{promotionId:string;showId:string;day:number;personId:string}>();
-  const requested:Array<{promotionId:string;showId:string;day:number;personId:string;contractId:string;alreadyResolved:boolean}>=[];
+  const requested:Array<{promotionId:string;showId:string;day:number;personId:string;contractId:string;alreadyResolved:boolean;alreadyCompleted:boolean}>=[];
   const venuesNeeded=new Set<string>();
   const reservedContractDates=new Map<string,number>();
   const arbitrationClaims:ResourceClaim[]=[];
@@ -142,7 +146,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     if(p.show_day===null || p.show_day<1 || p.show_day>7)continue;
     for(const a of appearances) {
       requested.push({promotionId:p.promotion_id,showId,day:p.show_day,personId:a.personId,
-        contractId:a.contractId,alreadyResolved:p.already_resolved});
+        contractId:a.contractId,alreadyResolved:p.already_resolved,alreadyCompleted:p.already_completed});
       if(!p.already_resolved)reservedContractDates.set(a.contractId,
         (reservedContractDates.get(a.contractId)??0)+1);
       const key=p.show_day+"\u0000"+a.personId;
@@ -207,21 +211,21 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     contractEvidence=[...rows].sort((a,b)=>
       [a.promotion_id,a.person_id,a.contract_id].join("\u0000")
       .localeCompare([b.promotion_id,b.person_id,b.contract_id].join("\u0000"),"en"));
-    // A certified match can itself cause an injury. After the show has
-    // completed, only matching same-show/week verified medical evidence
-    // can exempt its newly injured participant from retrospective checks.
-    // A pre-existing/unrelated injury must still block World certification.
+    // Scoring honours every card cleared before a same-week injury. During
+    // retrospective inspection, accept the verified incident only for
+    // already completed cards. New bookings and prior injuries still block.
     const injured=[...new Set(rows.filter(r=>r.person_status==="INJURED")
      .map(r=>r.person_id))];
-    const medical=injured.length?await tx.query<{person_id:string;show_id:string}>(`
-      SELECT a.person_id,a.show_id FROM ppw_medical_absences a
+    const medical=injured.length?await tx.query<{person_id:string}>(`
+      SELECT a.person_id FROM ppw_medical_absences a
       JOIN ppw_completed_shows c ON c.world_id=a.world_id
        AND c.show_id=a.show_id
       WHERE a.world_id=$1 AND a.injured_week_index=$2
        AND a.status='ACTIVE' AND a.person_id=ANY($3::text[])
-      ORDER BY a.person_id LIMIT 101`,[worldId,weekIndex,injured]):[];
-    if(medical.length>100)throw new Error("Too many verified current-week injuries");
-    const injuredByOwnShow=new Set(medical.map(x=>JSON.stringify([x.show_id,x.person_id])));
+       AND c.year=$4 AND c.week=$5
+      ORDER BY a.person_id LIMIT 20001`,[worldId,weekIndex,injured,year,week]):[];
+    if(medical.length>20000)throw new Error("Too many verified current-week injuries");
+    const injuredThisWeek=new Set(medical.map(x=>x.person_id));
     const capacity=new Map<string,number>();
     // Associating by IDs avoids relying on unspecified SQL result order.
     const byContract=new Map(rows.map(r=>[r.promotion_id+"\u0000"+r.person_id+"\u0000"+r.contract_id,r]));
@@ -229,10 +233,9 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     for(const a of requested){
       const r=byContract.get(a.promotionId+"\u0000"+a.personId+"\u0000"+a.contractId);
       if(!r) throw new Error("Missing wrestler eligibility row");
-      const causedByThisCompletedShow=a.alreadyResolved&&
-       r.person_status==="INJURED"&&
-       injuredByOwnShow.has(JSON.stringify([a.showId,a.personId]));
-      if(r.person_status!=="ACTIVE"&&!causedByThisCompletedShow)
+      const wasClearedBeforeInjury=a.alreadyResolved&&a.alreadyCompleted&&
+       r.person_status==="INJURED"&&injuredThisWeek.has(a.personId);
+      if(r.person_status!=="ACTIVE"&&!wasClearedBeforeInjury)
         blockers.push({code:"WRESTLER_UNAVAILABLE",promotionIds:[a.promotionId],
           showIds:[a.showId],resourceId:a.personId,day:a.day});
       // The durable show resolution receipt proves a charged appearance.

@@ -10,8 +10,11 @@ import type {StaffWrestlerCandidate} from "./staff-fallback-card.js";
 import type {EventType} from "./legacy-show-economics.js";
 import type {AiPromotionStrategy} from "./ai-promotion-strategy.js";
 import {rankEarnedContenders,type CertifiedContenderResult} from "./earned-contenders.js";
+import {bookAiProgrammeAngle,type AiProgrammeAngle,type AiProgrammeBeat} from "./ai-programmes.js";
+import type {ProgrammePayoff} from "./programme-finales.js";
 export interface AiRosterCandidate extends StaffWrestlerCandidate{
  momentum:number;popularity:number;recognition:number;presentation:number;matchCraft:number;
+ careerStage?:string|null;contractExpires?:number;remainingDates?:number|null;
 }
 export interface AiCardInput{
  worldId:string;worldSeed:string;year:number;week:number;promotionId:string;showId:string;
@@ -24,6 +27,8 @@ export interface AiCardInput{
  riskTolerance:number;matchQualityPreference:number;starPreference:number;
  strategy?:AiPromotionStrategy;
  recentPairs?:readonly string[];
+ protectedProgrammePair?:readonly [string,string];
+ creative?:AiProgrammeBeat|null;
  recentResults?:readonly CertifiedContenderResult[];
  establishedPartners?:readonly {aId:string;bId:string}[];
  establishedTeams?:readonly {teamId:string;aId:string;bId:string}[];
@@ -41,9 +46,10 @@ export type AiCardMatch={
  plannedFinish:"CLEAN_PIN"|"SUBMISSION"|"FLASH_PIN"|"PROTECTED_FINISH";
  plannedLengthMinutes:number;mainEvent:boolean;
  programmeId?:string;championshipId?:string;
+ creativePayoff?:ProgrammePayoff;supportingProgrammeId?:string;
 };
 export type AiCardResult=
- |{status:"READY";schedule:{day:number;venueId:string};matches:AiCardMatch[]}
+ |{status:"READY";schedule:{day:number;venueId:string};matches:AiCardMatch[];angle?:AiProgrammeAngle}
  |{status:"UNFILLED";reason:"NO_ELIGIBLE_PAIR"|"NO_VENUE_OR_DAY"};
 const push=(p:AiRosterCandidate)=>p.momentum*.4+p.popularity*.3+
  p.recognition*.2+p.presentation*.1;
@@ -96,6 +102,8 @@ export function chooseAiTitleChallenger(input:{
  roster:readonly AiRosterCandidate[];holderId:string;championshipId:string;
  worldSeed:string;promotionId:string;year:number;week:number;
  recentPairs?:readonly string[];
+ protectedProgrammePair?:readonly [string,string];
+ creative?:AiProgrammeBeat|null;
  recentResults?:readonly CertifiedContenderResult[];
 }):AiRosterCandidate|null{
  if(!input.holderId||!input.championshipId||!input.worldSeed||!input.promotionId||
@@ -230,7 +238,21 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   .sort((a,b)=>
    (a.kind!=="PROGRAMME"?0:1)-(b.kind!=="PROGRAMME"?0:1)||
    b.heat-a.heat||a.aId.localeCompare(b.aId,"en"));
- const reserve=priority[0]??null;
+ const beat=input.creative?.kind==="MATCH"?input.creative:null;
+ const lead=beat&&byId.get(beat.leadId);
+ const cast=beat?new Set([...beat.programme.sideA,...beat.programme.sideB]):null;
+ const opponent=lead&&(beat.opponentId?byId.get(beat.opponentId):
+  [...available].filter(p=>p.bookingDivision===lead.bookingDivision&&!cast!.has(p.personId))
+   .sort((a,b)=>Number((input.recentPairs??[]).includes(key(lead.personId,a.personId)))-
+    Number((input.recentPairs??[]).includes(key(lead.personId,b.personId)))||
+    Math.abs(push(lead)-push(a))-Math.abs(push(lead)-push(b))||best(a,b))[0]);
+ const creativePair=beat&&lead&&opponent&&!beat.tagPartnerId&&
+  lead.bookingDivision===opponent.bookingDivision&&
+  (beat.payoff||!priority[0])?
+  {aId:lead.personId,bId:opponent.personId,kind:"PROGRAMME" as const,
+   programmeId:beat.programme.programmeId,championshipId:beat.programme.championshipId??undefined,
+   heat:0}:null;
+ const reserve=creativePair??priority[0]??null;
  const establishedTagCandidates:(readonly {
   teamId:string;aId:string;bId:string;a:AiRosterCandidate|undefined;
   b:AiRosterCandidate|undefined;provisional:boolean}[]) =
@@ -315,11 +337,24 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   t.a!.bookingDivision===firstTeam.a!.bookingDivision &&
   ![firstTeam.aId,firstTeam.bId].includes(t.aId)&&
   ![firstTeam.aId,firstTeam.bId].includes(t.bId)):undefined;
- const tagChoice=firstTeam&&secondTeam&&
+ const ordinaryTag=firstTeam&&secondTeam&&
   (eligibleTagTitle||(!firstTeam.provisional&&!secondTeam.provisional))?
    {first:firstTeam,second:secondTeam,
     titleId:eligibleTagTitle?.championshipId??null,
     inaugural:eligibleTagTitle?.holderTeamId===null}:null;
+ const partner=beat?.tagPartnerId&&byId.get(beat.tagPartnerId);
+ const eligibleTagOpponents=beat?.opposingTag?beat.opposingTag.flatMap(id=>{
+  const wrestler=byId.get(id);
+  return wrestler?[wrestler]:[];
+ }):available;
+ const otherTeam=lead&&partner&&lead.bookingDivision===partner.bookingDivision&&
+  ![reserve?.aId,reserve?.bId].some(id=>id===lead.personId||id===partner.personId)?
+  eligibleTagOpponents.filter(p=>p.bookingDivision===lead.bookingDivision&&
+   ![lead.personId,partner.personId,reserve?.aId,reserve?.bId].includes(p.personId)).slice(0,2):[];
+ const creativeTag=lead&&partner&&otherTeam.length===2&&(!ordinaryTag?.titleId||beat?.payoff)?
+  {first:{aId:lead.personId,bId:partner.personId},
+   second:{aId:otherTeam[0]!.personId,bId:otherTeam[1]!.personId},titleId:null,inaugural:false}:null;
+ const tagChoice=creativeTag??ordinaryTag;
  const tagIds=new Set(tagChoice?[tagChoice.first.aId,tagChoice.first.bId,
   tagChoice.second.aId,tagChoice.second.bId]:[]);
  // Keep recognisable headliners, but rotate credible undercard opportunities.
@@ -401,7 +436,11 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
  }
  while(pool.length>=2&&cards.length<(tagChoice?4:5)){
   const head=pool.shift()!;
-  const candidates=pool.filter(p=>p.bookingDivision===head.bookingDivision);
+  const protectedPair=input.protectedProgrammePair;
+  const sameDivision=pool.filter(p=>p.bookingDivision===head.bookingDivision);
+  const candidates=sameDivision.filter(p=>!(protectedPair?.includes(head.personId)&&protectedPair.includes(p.personId)));
+  if(!candidates.length&&!cards.length&&!tagChoice&&sameDivision.length&&pool.length===1)
+   candidates.push(...sameDivision);
   if(!candidates.length)continue;
   candidates.sort((a,b)=>{
    const ar=recent.has(key(head.personId,a.personId))?1:0;
@@ -415,7 +454,7 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   pool.splice(pool.findIndex(p=>p.personId===opponent.personId),1);
   cards.push([head,opponent]);
  }
- if(!cards.length)return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};
+ if(!cards.length&&!tagChoice)return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};
  // Strongest star power closes, by the exact archived booking push score.
  cards.sort((a,b)=>(push(a[0])+push(a[1]))/2-
   (push(b[0])+push(b[1]))/2||
@@ -468,10 +507,10 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
    c.people.some(p=>p.personId===reserve.aId)&&
    c.people.some(p=>p.personId===reserve.bId));
   if(idx<0)throw new Error("AI singles feature displaced");
-  if(reserve.kind!=="PROGRAMME"||!tagChoice?.titleId)
+  if(reserve.kind!=="PROGRAMME"||!tagChoice?.titleId||beat?.payoff&&creativePair===reserve)
    cardEntries.push(cardEntries.splice(idx,1)[0]!);
  }
- if(tagChoice?.titleId&&(!reserve||reserve.kind==="PROGRAMME")){
+ if((creativeTag&&beat?.payoff)||(tagChoice?.titleId&&(!reserve||reserve.kind==="PROGRAMME"&&!(creativePair===reserve&&beat?.payoff)))){
   const idx=cardEntries.findIndex(c=>c.tag);
   cardEntries.push(cardEntries.splice(idx,1)[0]!);
  }
@@ -493,7 +532,7 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
    const [t1a,t1b,t2a,t2b]=entry.people;
    const scoreA=push(t1a!)+push(t1b!)+winnerRng.float(-7,7);
    const scoreB=push(t2a!)+push(t2b!)+winnerRng.float(-7,7);
-   const winnerSide=scoreA>=scoreB?"A" as const:"B" as const;
+   const winnerSide=(creativeTag&&beat?.payoff)||scoreA>=scoreB?"A" as const:"B" as const;
    const grouped=[{sideId:"A" as const,participants:[t1a!,t1b!].map(p=>({
      personId:p.personId,contractId:p.contractId}))},
     {sideId:"B" as const,participants:[t2a!,t2b!].map(p=>({
@@ -503,10 +542,26 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
     scriptedWinnerSide:winnerSide,
     scriptedWinner:winnerSide==="A"?t1a!.personId:t2a!.personId,
     bookingDivision:t1a!.bookingDivision,intent,
-    plannedFinish:tagChoice?.inaugural?"CLEAN_PIN":finish(intent,finalRng.next()),
+    plannedFinish:tagChoice?.inaugural||creativeTag&&beat?.payoff?"CLEAN_PIN":finish(intent,finalRng.next()),
     plannedLengthMinutes:plannedLength(intent,main),mainEvent:main,
-    ...(tagChoice?.titleId?{championshipId:tagChoice.titleId}:{})};
+    ...(tagChoice?.titleId?{championshipId:tagChoice.titleId}:{}),
+    ...(creativeTag&&beat?{programmeId:beat.programme.programmeId,creativePayoff:beat.payoff}:{})};
   }
+  const creative=creativePair&&beat&&[a.personId,b.personId].includes(creativePair.aId)&&
+   [a.personId,b.personId].includes(creativePair.bId)?beat:null;
+  if(creative)return {
+   participants:[a,b].map(p=>({personId:p.personId,contractId:p.contractId})),
+   scriptedWinner:creative.winnerId,bookingDivision:a.bookingDivision,
+   intent:creative.protected?"PROTECTIVE":intent,
+   plannedFinish:creative.protected?"PROTECTED_FINISH":creative.payoff?
+    (input.strategy?.identity==="WORKRATE"?"SUBMISSION":"CLEAN_PIN"):finish(intent,finalRng.next()),
+   plannedLengthMinutes:plannedLength(intent,main),mainEvent:main,
+   ...(creative.support?{supportingProgrammeId:creative.programme.programmeId}:
+    {programmeId:creative.programme.programmeId}),
+   ...(creative.payoff?{creativePayoff:creative.payoff}:{}),
+   ...(creative.payoff==="TITLE_SHOWDOWN"&&creative.programme.championshipId?
+    {championshipId:creative.programme.championshipId}:{}),
+  };
   return {
    participants:[{personId:a.personId,contractId:a.contractId},
     {personId:b.personId,contractId:b.contractId}],
@@ -524,5 +579,7 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
      {championshipId:reserve.championshipId}:{}),
   };
  });
- return {status:"READY",schedule,matches};
+ const angle=input.creative?.kind==="ANGLE"?
+  bookAiProgrammeAngle(input.creative,byId,Math.max(1,matches.length-1)):null;
+ return {status:"READY",schedule,matches,...(angle?{angle}:{})};
 }
