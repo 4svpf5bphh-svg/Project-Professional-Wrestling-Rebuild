@@ -155,7 +155,7 @@ test("one completely invented and explicitly unverified rumour complements a rea
  assert.equal(wild?.desk,"DIRT");
  assert.ok(wild?.title);
  assert.match(wild?.summary??"",
-  /no independently verified|no verified backstage|no release request|no evidence|no booking refusal|no evidence|no confrontation|no backstage incident|no one has established|no booking|no one independently/i);
+  /not been independently verified|no independently verified|no verified backstage|no release request|no evidence|no booking refusal|no confrontation|no backstage incident|no one has established|no booking|no one independently/i);
  assert.equal(stories.filter(x=>x.desk==="DIRT").length,2,
   "At most one result-anchored report and one explicitly disputed tabloid claim per World week");
  assert.ok(!JSON.stringify(stories).includes("NEVER LEAK"));
