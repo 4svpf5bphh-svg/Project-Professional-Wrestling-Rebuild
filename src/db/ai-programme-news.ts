@@ -8,7 +8,7 @@ type PublicChapter = {
  week_index: number; started_week_index: number; payoff: string | null;
  crowd_response: number; actual_finish: string | null; winner_side: "A" | "B" | null;
  blueprint_id: string; title_name: string | null; side_a: string[]; side_b: string[];
- purpose: string | null; on_air: string[];
+ purpose: string | null; on_air: string[]; winner_names: string | null;
 };
 
 export async function readCertifiedAiProgrammeNews(tx: SqlRows, worldId: string, year: number, week: number) {
@@ -35,7 +35,7 @@ export async function readCertifiedAiProgrammeNews(tx: SqlRows, worldId: string,
   )
   SELECT c.*,company.name promotion_name,t.name title_name,m.actual_finish,
    slot.payload#>>'{scene,purpose}' AS purpose,names.side_a,names.side_b,
-   coalesce(roles.on_air,ARRAY[]::text[]) AS on_air
+   coalesce(roles.on_air,ARRAY[]::text[]) AS on_air,actual.winner_names
   FROM chapters c
   JOIN ppw_promotions company ON company.world_id=$1 AND company.promotion_id=c.promotion_id
   LEFT JOIN ppw_championships t ON (t.world_id,t.promotion_id,t.championship_id)=
@@ -48,6 +48,15 @@ export async function readCertifiedAiProgrammeNews(tx: SqlRows, worldId: string,
     coalesce(slot.payload->'targetIds','[]'::jsonb)) WITH ORDINALITY role(id,ordinality)
    JOIN ppw_people person ON person.world_id=$1 AND person.person_id=role.id
   ) roles ON c.kind='SEGMENT'
+  LEFT JOIN LATERAL (
+   SELECT string_agg(person.name,' & ' ORDER BY entry.ordinality) winner_names
+   FROM jsonb_array_elements(CASE WHEN jsonb_typeof(slot.payload->'sides')='array' THEN
+    coalesce((SELECT side->'participants' FROM jsonb_array_elements(slot.payload->'sides') side
+     WHERE side->>'sideId'=m.actual_winner_side LIMIT 1),'[]'::jsonb)
+    ELSE jsonb_build_array(slot.payload->'participants'->(CASE WHEN m.actual_winner_side='A' THEN 0 ELSE 1 END))
+   END) WITH ORDINALITY entry(person,ordinality)
+   JOIN ppw_people person ON person.world_id=$1 AND person.person_id=entry.person->>'personId'
+  ) actual ON m.actual_winner_side IS NOT NULL
   JOIN LATERAL (
    SELECT array_agg(person.name ORDER BY ref.position) FILTER(WHERE ref.side='A') side_a,
     coalesce(array_agg(person.name ORDER BY ref.position) FILTER(WHERE ref.side='B'),ARRAY[]::text[]) side_b
@@ -80,17 +89,17 @@ function composeChapter(c: PublicChapter): WorldNewsStory {
  const first = c.side_a[0] ?? c.promotion_name;
  const opponent = c.side_b.join(" & ") || c.side_a.slice(1).join(" & ");
  const firstSide = c.side_a.join(" & ") || first;
- const cast = c.side_b.length ? firstSide + " against " + opponent : opponent ? first + " and " + opponent : first;
+ const cast = opponent ? (c.side_b.length ? firstSide : first) + " and " + opponent : first;
  const format = publicStoryBlueprintName(c.blueprint_id) ?? "Featured programme";
  const event = c.show_name;
- const result = c.winner_side === "A" ? firstSide : c.winner_side === "B" ? c.side_b.join(" & ") : null;
+ const result = c.winner_names;
  let headline: string, summary: string;
  if (c.payoff === "TITLE_SHOWDOWN") {
   headline = cast + " settle the " + (c.title_name ?? "championship") + " chase";
   summary = "The title pursuit reached its showdown at " + event + ". " +
    (result ? result + " won the deciding match." : "The deciding match closed the pursuit.");
  } else if (c.payoff) {
-  headline = c.payoff === "BETRAYAL" ? first + " turns on " + opponent : cast + " close " + format;
+  headline = c.payoff === "BETRAYAL" ? first + " turns on " + opponent : cast + (opponent ? " close " : " closes ") + format;
   summary = c.payoff === "BETRAYAL" ? "The partnership broke down in an on-air attack at " + event + "." :
    format + " reached its final chapter at " + event + "." + (result ? " " + result + " won the deciding match." : "");
  } else if (c.actual_finish === "INJURY_STOPPAGE") {
