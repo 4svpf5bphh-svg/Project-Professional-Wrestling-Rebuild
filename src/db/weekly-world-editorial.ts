@@ -1,5 +1,6 @@
 
 import {withSqlClient} from "./postgres.js";
+import {EditorialClaimLost,type EditorialDispatchFence} from "./editorial-dispatch-fence.js";
 import type {TransactionPool} from "./transaction.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
 import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
@@ -23,6 +24,15 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
      AND r.state='ACTIVE' AND r.public_state='PROCESSING' AND r.public_claim_token=$4 FOR UPDATE))
   ON CONFLICT DO NOTHING RETURNING world_id`,[...params,updateToken??null]));
  if(claims.length!==1)return {state:"SKIPPED",providerCalls:0,accepted:0};
+ const fence:EditorialDispatchFence|undefined=updateToken?async(db,lock)=>{
+  const active=await db.query(`
+   SELECT 1 FROM ppw_world_update_runs r JOIN ppw_weekly_world_editorial e USING(world_id,year,week)
+   WHERE r.world_id=$1 AND r.year=$2 AND r.week=$3 AND r.state='ACTIVE'
+    AND r.public_state='PROCESSING' AND r.public_claim_token=$4
+    AND r.public_claim_until>clock_timestamp() AND e.state='PENDING'
+   ${lock?"FOR UPDATE OF r":""}`,[...params,updateToken]);
+  return active.length===1;
+ }:undefined;
  let provider="GROQ",calls=0,state="FAILED",diagnostic="ERROR",estimate=0,inputTokens=0,outputTokens=0,copy:Record<string,WeeklyStoryCopy>={};
  let ratingStory:WeeklyStory|null=null;
  try{
@@ -88,13 +98,15 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
    const measured:typeof fetch=async(url,init)=>{calls++;return transport(url,init);};
    let response:Response|null=null;
    if(key)try{response=await requestGroqEditorial({task:"SHORT_NEWS",key,pool,body,signal:AbortSignal.timeout(25000),
-    pace:true,transport:measured});}catch(error){if(calls||!terraKey)throw error;}
+    pace:true,transport:measured,fence});}catch(error){
+    if(error instanceof EditorialClaimLost||calls||!terraKey)throw error;
+   }
    // Keep the existing one-dispatch guarantee: Terra can support the public
    // desk only if Groq was not actually called. Both use existing budgets.
    if(!calls&&terraKey&&(!response||!response.ok)){
     provider="TERRA";
     response=await requestOpenAiEditorialPreview({key:terraKey,enabled:true,pool,body,
-     signal:AbortSignal.timeout(25000),transport:measured,feature:"WEEKLY_MEDIA"});
+     signal:AbortSignal.timeout(25000),transport:measured,feature:"WEEKLY_MEDIA",fence});
    }
    if(!response)throw Error("No public editorial provider available");
    diagnostic=response.headers.get("x-ppw-paced")==="true"?"PACING":
@@ -129,6 +141,7 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
    }
   }
  }catch(error){
+  if(error instanceof EditorialClaimLost)return {state:"SKIPPED",providerCalls:calls,accepted:0};
   if(error instanceof Error&&["AbortError","TimeoutError"].includes(error.name))diagnostic="TIMEOUT";
   /* Certified simulation and deterministic news remain available; no automatic retry. */
  }

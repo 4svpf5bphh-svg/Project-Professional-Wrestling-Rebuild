@@ -306,19 +306,99 @@ test("a recorded regular card resumes into a linked triple-threat PPV, then queu
   assert.deepEqual(await read("SELECT phase FROM ppw_worlds WHERE world_id=$1",[worldId]),[{phase:"UPDATING"}]);
   assert.deepEqual(await read("SELECT show_id,state FROM ppw_world_update_jobs WHERE world_id=$1 ORDER BY show_day",[worldId]),
    [{show_id:showIds[0],state:"WAITING"},{show_id:showIds[1],state:"WAITING"}]);
-  const editorials:string[]=[];
-  const deps={terraKey:"mock",groqKey:"mock",
-   generate:async(_pool:TransactionPool,scope:{showId:string})=>{
-    editorials.push(scope.showId);
-    return {status:"ready" as const,review:{showHeadline:"Headline",opening:"Opening",closing:"Closing",slots:[]}};
-   },
-   publish:async()=>{editorials.push("public");throw Error("Mock public fallback");}};
   const outgoing={worldId,year:1,week:1};
-  assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"LIMIT_REACHED");
-  assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"LIMIT_REACHED");
-  assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"PUBLISHED");
-  assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"PUBLISHED");
-  assert.deepEqual(editorials,[showIds[0],showIds[1],"public"]);
+  const reservations:string[]=[],refunds:string[]=[],calls:string[]=[];
+  const transport:typeof fetch=async url=>{
+   calls.push(String(url));
+   return new Response("Abandoned request reached transport",{status:503});
+  };
+  const deps={terraKey:"mock",groqKey:"mock",transport};
+  // Pause the real editorial workers during context reads, after their
+  // nested claims have committed. Usage writes are isolated from the global
+  // allowance fixtures running in other test processes.
+  const pausedPool=(matches:(sql:string)=>boolean)=>{
+   let enter!:()=>void,resume!:()=>void;
+   const entered=new Promise<void>(resolve=>{enter=resolve;});
+   const hold=new Promise<void>(resolve=>{resume=resolve;});
+   const pool:TransactionPool={async connect(){
+    const client=await db.pool.connect();
+    return {release:()=>client.release(),async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     if(matches(sql)){enter();await hold;}
+     for(const [table,receipt] of [
+      ["ppw_groq_dispatch_gate",{id:1}],["ppw_groq_daily_usage",{day:"2026-11-26"}],
+      ["ppw_openai_preview_monthly_usage",{month:"2026-11-01"}],
+      ["ppw_openai_preview_daily_usage",{day:"2026-11-26"}]
+     ] as const){
+      if(sql.includes(table)){
+       if(sql.includes("INSERT INTO")){reservations.push(table);return [receipt] as unknown as T[];}
+       if(sql.includes("call_count=GREATEST(0,call_count-1)"))refunds.push(table);
+       return [];
+      }
+     }
+     return client.query<T>(sql,params);
+    }};
+   }};
+   return {pool,entered,resume};
+  };
+  const privateWorker=pausedPool(sql=>sql.includes("SELECT old.promotion_id,old.year,old.week"));
+  const publicWorker=pausedPool(sql=>sql.includes("FROM ppw_world_news_items n WHERE"));
+  const reservedWorker=pausedPool(sql=>sql.includes("SELECT 1 FROM ppw_world_update_jobs j")&&
+   sql.includes("r.claim_until>clock_timestamp()")&&!sql.includes("FOR UPDATE"));
+  const privateRun=processWorldUpdate(privateWorker.pool,outgoing,deps);
+  let publicRun:ReturnType<typeof processWorldUpdate>|undefined;
+  let reservedRun:ReturnType<typeof processWorldUpdate>|undefined;
+  const settlement=async()=>read(`SELECT
+   (SELECT count(*)::integer FROM ppw_week_resolution_seals WHERE world_id=$1) AS seals,
+   (SELECT count(*)::integer FROM ppw_world_news_weeks WHERE world_id=$1) AS editions,
+   (SELECT count(*)::integer FROM ppw_world_update_runs WHERE world_id=$1 AND state='COMPLETE') AS closed_runs,
+   (SELECT sum(dates_charged)::integer FROM ppw_show_resolutions WHERE world_id=$1) AS dates,
+   (SELECT jsonb_object_agg(promotion_id,cash) FROM ppw_promotions WHERE world_id=$1) AS cash,
+   (SELECT count(*)::integer FROM ppw_ledger_events WHERE world_id=$1) AS ledger_entries,
+   (SELECT revision::text FROM ppw_worlds WHERE world_id=$1) AS revision`,[worldId]);
+  try{
+   await Promise.race([privateWorker.entered,privateRun.then(()=>assert.fail("Private claim did not reach history preparation"))]);
+   assert.deepEqual(await read("SELECT state FROM ppw_ringside_reports WHERE world_id=$1",[worldId]),[{state:"PENDING"}]);
+   await read(`UPDATE ppw_world_update_jobs SET claim_until=clock_timestamp()-interval '1 second'
+    WHERE world_id=$1 AND show_id=$2`,[worldId,showIds[0]]);
+   assert.equal((await processWorldUpdate(db.pool,outgoing,{}))?.editorial?.state,"FALLBACK");
+   assert.deepEqual({reservations,calls},{reservations:[],calls:[]});
+   // Recovery can also happen after a valid reservation while the worker
+   // awaits its final check. Both unused allowances should be returned.
+   reservedRun=processWorldUpdate(reservedWorker.pool,outgoing,deps);
+   await Promise.race([reservedWorker.entered,reservedRun.then(()=>assert.fail("PPV claim did not reach final dispatch check"))]);
+   const reserved=["ppw_openai_preview_monthly_usage","ppw_openai_preview_daily_usage"];
+   assert.deepEqual(reservations,reserved);
+   assert.deepEqual(calls,[]);
+   await read(`UPDATE ppw_world_update_jobs SET claim_until=clock_timestamp()-interval '1 second'
+    WHERE world_id=$1 AND show_id=$2`,[worldId,showIds[1]]);
+   assert.equal((await processWorldUpdate(db.pool,outgoing,{}))?.editorial?.state,"FALLBACK");
+   publicRun=processWorldUpdate(publicWorker.pool,outgoing,deps);
+   await Promise.race([publicWorker.entered,publicRun.then(()=>assert.fail("Public claim did not reach story preparation"))]);
+   assert.deepEqual(await read("SELECT state FROM ppw_weekly_world_editorial WHERE world_id=$1",[worldId]),[{state:"PENDING"}]);
+   await read(`UPDATE ppw_world_update_runs SET public_claim_until=clock_timestamp()-interval '1 second'
+    WHERE world_id=$1`,[worldId]);
+   const recovered=await processWorldUpdate(db.pool,outgoing,{});
+   assert.equal(recovered?.status,"PUBLISHED");
+   assert.equal(recovered?.editorial?.state,"FALLBACK");
+   assert.deepEqual(await read("SELECT week,phase FROM ppw_worlds WHERE world_id=$1",[worldId]),[{week:2,phase:"OPEN"}]);
+   const settled=await settlement();
+   assert.deepEqual(settled.map(({seals,editions,closed_runs,dates})=>({seals,editions,closed_runs,dates})),
+    [{seals:1,editions:1,closed_runs:1,dates:7}]);
+   privateWorker.resume();publicWorker.resume();reservedWorker.resume();
+   await Promise.all([privateRun,publicRun,reservedRun]);
+   assert.deepEqual(reservations,reserved);
+   assert.deepEqual(refunds,reserved);
+   assert.deepEqual(calls,[]);
+   assert.deepEqual(await read("SELECT state,report_json FROM ppw_ringside_reports WHERE world_id=$1",[worldId]),
+    [{state:"FAILED",report_json:null},{state:"FAILED",report_json:null}]);
+   assert.deepEqual(await read("SELECT state,diagnostic,copy_json,provider_calls FROM ppw_weekly_world_editorial WHERE world_id=$1",[worldId]),
+    [{state:"FAILED",diagnostic:"INTERRUPTED",copy_json:null,provider_calls:0}]);
+   assert.equal((await processWorldUpdate(db.pool,outgoing,deps))?.status,"PUBLISHED");
+   assert.deepEqual(await settlement(),settled);
+  }finally{
+   privateWorker.resume();publicWorker.resume();reservedWorker.resume();
+   await Promise.allSettled([privateRun,publicRun,reservedRun]);
+  }
   const dates=await read<{show_id:string;dates_charged:number}>(
    "SELECT show_id,dates_charged FROM ppw_show_resolutions WHERE world_id=$1 ORDER BY show_id",[worldId]);
   assert.equal(dates.length,3);
@@ -371,7 +451,7 @@ test("a recorded regular card resumes into a linked triple-threat PPV, then queu
    [worldId]))[0]!.n,2,"Replay never adds a second incident log");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_world_update_jobs","ppw_world_update_runs","ppw_programme_resolved_activities",
+   for(const table of ["ppw_ringside_reports","ppw_weekly_world_editorial","ppw_world_update_jobs","ppw_world_update_runs","ppw_programme_resolved_activities",
     "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances",
     "ppw_wrestler_relationships","ppw_completed_match_evidence",
     "ppw_completed_show_segments",

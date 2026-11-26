@@ -3,12 +3,15 @@
  */
 import {randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
+import {checkEditorialDispatch,EditorialClaimLost,reserveEditorialAllowance,type EditorialDispatchFence}
+ from "./editorial-dispatch-fence.js";
 import type {TransactionPool} from "./transaction.js";
 import {chooseGroqModel,estimatedGroqTokens,groqResponseUsage,groqResponseLimits,
  type AiTask,type GroqModel,type GroqUsage,type GroqLimitSnapshot} from "../domain/ai-director.js";
 const DAILY_CALLS=40,DAILY_TOKENS=160000;
 export type AiAllowanceClaim={day:string;estimate:number};
-export async function claimAiAllowance(pool:TransactionPool,estimate:number,task?:AiTask):
+export async function claimAiAllowance(pool:TransactionPool,estimate:number,task?:AiTask,
+ fence?:EditorialDispatchFence):
  Promise<AiAllowanceClaim|null>{
  // Keep 8 requests / 32k tokens available for short-form publication,
  // even when experimental Groq Ringside previews consume their allowance.
@@ -18,7 +21,7 @@ export async function claimAiAllowance(pool:TransactionPool,estimate:number,task
  const tokens=reserved?DAILY_TOKENS-32000:DAILY_TOKENS;
  if(!Number.isSafeInteger(estimate)||estimate<1||estimate>35000)
   throw new Error("AI request exceeds the per-call safety limit");
- const rows=await withSqlClient(pool,db=>db.query<{day:string}>(`
+ const rows=await reserveEditorialAllowance(pool,fence,db=>db.query<{day:string}>(`
   INSERT INTO ppw_groq_daily_usage(usage_day,call_count,reserved_tokens)
   VALUES(timezone('UTC',now())::date,1,$1)
   ON CONFLICT (usage_day) DO UPDATE
@@ -64,7 +67,7 @@ export async function recordAiAllowance(pool:TransactionPool,claim:AiAllowanceCl
 export async function requestGroqEditorial(input:{
  task:AiTask;preferredModel?:GroqModel;key:string;
  body:Record<string,unknown>;transport:typeof fetch;
- signal?:AbortSignal;pool?:TransactionPool;pace?:boolean;
+ signal?:AbortSignal;pool?:TransactionPool;pace?:boolean;fence?:EditorialDispatchFence;
 }):Promise<Response>{
  const paced=input.pace??(process.env.VERCEL_ENV==="production"||process.env.VERCEL_ENV==="preview");
  if(!paced)return requestGroqUnpaced(input);
@@ -74,7 +77,7 @@ export async function requestGroqEditorial(input:{
  if(estimated>7600)return new Response("PPW minute token envelope exceeded",{status:429,headers:{"retry-after":"65","x-ppw-paced":"true"}});
  if(input.signal?.aborted)throw input.signal.reason;
  const lease=randomUUID();
- const claimed=await withSqlClient(pool,db=>db.query<{id:number}>(`
+ const claimed=await reserveEditorialAllowance(pool,input.fence,db=>db.query<{id:number}>(`
   INSERT INTO ppw_groq_dispatch_gate(id,lease_id,next_allowed_at)
   VALUES(1,$1,clock_timestamp()+interval '5 minutes')
   ON CONFLICT(id) DO UPDATE SET lease_id=EXCLUDED.lease_id,next_allowed_at=EXCLUDED.next_allowed_at
@@ -90,8 +93,10 @@ export async function requestGroqEditorial(input:{
    if(Number.isFinite(seconds))cooldown=Math.max(cooldown,Math.min(86400,seconds));
   }
   return response;
- }
- finally{
+ }catch(error){
+  if(error instanceof EditorialClaimLost)cooldown=0;
+  throw error;
+ }finally{
   // Fence the claim; a dead invocation expires and cannot release a newer lease.
   try{await withSqlClient(pool,db=>db.query(`
    UPDATE ppw_groq_dispatch_gate SET next_allowed_at=clock_timestamp()+($2::integer*interval '1 second')
@@ -101,7 +106,7 @@ export async function requestGroqEditorial(input:{
 async function requestGroqUnpaced(input:{
  task:AiTask;preferredModel?:GroqModel;key:string;
  body:Record<string,unknown>;transport:typeof fetch;
- signal?:AbortSignal;pool?:TransactionPool;
+ signal?:AbortSignal;pool?:TransactionPool;fence?:EditorialDispatchFence;
 }):Promise<Response>{
  if(input.signal?.aborted)throw input.signal.reason;
  const chosenModel=chooseGroqModel(input.task,input.preferredModel);
@@ -109,9 +114,20 @@ async function requestGroqUnpaced(input:{
  const estimated=estimatedGroqTokens(body,Number(input.body.max_completion_tokens));
  let claim:AiAllowanceClaim|null=null;
  if(input.pool){
-  claim=await claimAiAllowance(input.pool,estimated,input.task);
+  claim=await claimAiAllowance(input.pool,estimated,input.task,input.fence);
   if(!claim)return new Response("PPW free editorial allowance exhausted",{
    status:429,headers:{"retry-after":"1800","x-ppw-budget-exhausted":"true"}});
+  if(input.fence)try{
+   await checkEditorialDispatch(input.pool,input.fence);
+  }catch(error){
+   // Dispatch never started, so return the unused reservation without
+   // recording a provider attempt or changing provider usage telemetry.
+   const unused=claim;
+   await withSqlClient(input.pool,db=>db.query(`UPDATE ppw_groq_daily_usage SET
+    call_count=GREATEST(0,call_count-1),reserved_tokens=GREATEST(0,reserved_tokens-$2)
+    WHERE usage_day=$1::date`,[unused.day,unused.estimate]));
+   throw error;
+  }
  }
  let response:Response;
  if(input.signal?.aborted){

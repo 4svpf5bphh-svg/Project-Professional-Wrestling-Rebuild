@@ -3,6 +3,7 @@
  */
 import {createHash,randomUUID} from "node:crypto";
 import {withSqlClient} from "./postgres.js";
+import {EditorialClaimLost,type EditorialDispatchFence} from "./editorial-dispatch-fence.js";
 import {requestGroqEditorial} from "./groq-ai-director.js";
 import {requestOpenAiEditorialPreview,OPENAI_PREVIEW_MODEL} from "./openai-editorial-preview.js";
 import {readOpenAiRetryAfter} from "../domain/openai-error-diagnostics.js";
@@ -502,7 +503,7 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
  settings:RingsideSettings=DEFAULT_RINGSIDE_SETTINGS,
  memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY,
  budgetPool?:TransactionPool,previewProvider:"GROQ"|"OPENAI"="GROQ",
- benchmarkFixture=false,inspection?:RingsideGenerationTrace):Promise<RingsideCopy>{
+ benchmarkFixture=false,inspection?:RingsideGenerationTrace,fence?:EditorialDispatchFence):Promise<RingsideCopy>{
  if(previewProvider==="OPENAI"&&!budgetPool)
   throw new RingsideGenerationError("INVALID_OUTPUT",
    "Paid previews require a server-side usage budget");
@@ -532,10 +533,10 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
    const response=previewProvider==="OPENAI"?
     await requestOpenAiEditorialPreview({
      key,enabled:true,transport,signal:controller.signal,
-     pool:budgetPool!,body:payload,feature:inspection?"PREVIEW":"RINGSIDE"
+     pool:budgetPool!,body:payload,feature:inspection?"PREVIEW":"RINGSIDE",fence
     }):await requestGroqEditorial({
      task:"RINGSIDE",preferredModel:settings.model,key,transport,
-     signal:controller.signal,pool:budgetPool,body:payload
+     signal:controller.signal,pool:budgetPool,body:payload,fence
     });
    if(response.ok)secondCallCooldown=groqFullShowCorrectionCooldown(
     response,show,settings,previewProvider);
@@ -886,12 +887,24 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
    AND ppw_ringside_reports.receipt_digest=excluded.receipt_digest
   RETURNING claim_token`,[...params,digest,model,token,lease,OPENAI_PREVIEW_MODEL,updateToken??null,show.year,show.week]));
  if(claimed[0]?.claim_token!==token)return {status:"pending"};
+ const fence:EditorialDispatchFence|undefined=updateToken?async(db,lock)=>{
+  const active=await db.query(`
+   SELECT 1 FROM ppw_world_update_jobs j
+   JOIN ppw_ringside_reports r ON r.world_id=j.world_id AND r.show_id=j.show_id
+    AND r.promotion_id=j.promotion_id
+   WHERE j.world_id=$1 AND j.promotion_id=$2 AND j.show_id=$3
+    AND j.year=$5 AND j.week=$6 AND j.claim_token=$7 AND j.state='PROCESSING'
+    AND j.claim_until>clock_timestamp() AND r.prompt_version=$4
+    AND r.claim_token=$8 AND r.state='PENDING' AND r.claim_until>clock_timestamp()
+   ${lock?"FOR UPDATE OF j":""}`,[...params,show.year,show.week,updateToken,token]);
+  return active.length===1;
+ }:undefined;
  try{
   // History is optional context; failure must not block the certified report.
   let memory:RingsideMemory=EMPTY_RINGSIDE_MEMORY;
   try{memory=await readRingsideMemory(pool,scope,show);}
   catch{console.warn("Ringside history unavailable; generating from card facts");}
-  const review=await generateGroqReview(show,key,transport,settings,memory,pool,provider);
+  const review=await generateGroqReview(show,key,transport,settings,memory,pool,provider,false,undefined,fence);
   const write=await withSqlClient(pool,async db=>db.query<{state:string}>(`
    UPDATE ppw_ringside_reports SET state='READY',report_json=$6::jsonb,
     updated_at=now() WHERE world_id=$1 AND promotion_id=$2
@@ -899,6 +912,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
     AND state='PENDING' RETURNING state`,[...params,token,JSON.stringify(review)]));
   return write.length?{status:"ready",review}:{status:"pending"};
  }catch(error){
+  if(error instanceof EditorialClaimLost)return {status:"unavailable"};
   if(provider==="GROQ"&&error instanceof RingsideGenerationError&&error.code==="PROVIDER_LIMIT"){
    // Shared database cooldown for all app instances; a 429 is not a
    // permanent editorial failure, nor should it exhaust the two attempts.
