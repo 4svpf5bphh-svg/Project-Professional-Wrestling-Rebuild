@@ -212,3 +212,59 @@ test("643-person weekly career/morale settlement stays one bounded batch without
   }).finally(()=>db.close());
  }
 });
+
+test("prospects continue at the original identity limit and through a century-old World with retired records",{
+ skip:!url?"No disposable PostgreSQL":false,
+},async()=>{
+ const world="career-archive-"+randomUUID(),db=postgresPool(url!,2);
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Century of wrestling",seed:204,rulesetVersion:"test"});
+   await tx.query("UPDATE ppw_worlds SET talent_population_target=6 WHERE world_id=$1",[world]);
+   await tx.query("INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index) VALUES($1,'territory','Territory',65,70,100)",[world]);
+   await tx.query(`INSERT INTO ppw_people(world_id,person_id,name,status)
+    SELECT $1,'former-'||i,'Retired wrestler '||i,'RETIRED'
+    FROM generate_series(1,2500) i`,[world]);
+   await addPromotion(tx,world,{id:"historic",name:"Historic Wrestling",tier:"LOCAL"});
+   await tx.query(`INSERT INTO ppw_championships(world_id,promotion_id,championship_id,name,division,status,prestige)
+    VALUES($1,'historic','historic-title','Historic Championship','SINGLES','ACTIVE',55)`,[world]);
+   await tx.query(`INSERT INTO ppw_championship_reigns(world_id,promotion_id,championship_id,reign_id,
+    holder_type,person_id,status,start_week_index,ended_week_index,defenses)
+    VALUES($1,'historic','historic-title','historic-reign','PERSON','former-1','ENDED',0,5,2)`,[world]);
+   await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status)
+    VALUES($1,'historic-card','historic',1,5,'SUBMITTED')`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,
+    resolution_id,crowd_response,receipt_json,receipt_digest)
+    VALUES($1,'historic','historic-card',1,5,'historic-receipt',75,'{}',repeat('a',64))`,[world]);
+   await tx.query(`INSERT INTO ppw_completed_show_matches(world_id,show_id,match_id,position,
+    crowd_response,actual_finish,actual_winner_side)
+    VALUES($1,'historic-card','historic-match',0,75,'CLEAN_PIN','A')`,[world]);
+   await tx.query(`INSERT INTO ppw_individual_field_career_effects(world_id,show_id,match_id,person_id,
+    actual_winner_side,performer_side,won,before_stats,after_stats)
+    VALUES($1,'historic-card','historic-match','former-1','A','A',true,'{}','{}')`,[world]);
+  });
+  const read=(sql:string)=>withWorldTransaction(db.pool,tx=>tx.query(sql,[world]));
+  const historySql=`SELECT to_jsonb(p) AS identity,to_jsonb(r) AS reign,
+   to_jsonb(c) AS result,to_jsonb(e) AS record
+   FROM ppw_people p JOIN ppw_championship_reigns r USING(world_id,person_id)
+   JOIN ppw_individual_field_career_effects e USING(world_id,person_id)
+   JOIN ppw_completed_shows c USING(world_id,show_id)
+   WHERE p.world_id=$1 AND p.person_id='former-1'`;
+  const retiredIdentity=await read(historySql);
+  assert.equal(retiredIdentity.length,1);
+  const settle=(year:number,week:number)=>withWorldTransaction(db.pool,
+   tx=>settleLivingWrestlerCareers(tx,world,year,week));
+  assert.deepEqual(await settle(100,51),{evolved:0,missingOriginal:0,retired:0,generated:2});
+  await read(`INSERT INTO ppw_people(world_id,person_id,name,status)
+   SELECT $1,'former-'||i,'Retired wrestler '||i,'RETIRED'
+   FROM generate_series(2501,5200) i`);
+  assert.deepEqual(await settle(100,52),{evolved:2,missingOriginal:0,retired:0,generated:2});
+  assert.deepEqual(await settle(101,1),{evolved:4,missingOriginal:0,retired:0,generated:2});
+  assert.deepEqual(await settle(101,2),{evolved:6,missingOriginal:0,retired:0,generated:0});
+  assert.deepEqual(await read(`SELECT count(*) FILTER(WHERE p.status='RETIRED')::int AS retired,
+   count(*) FILTER(WHERE p.generated_talent AND persona.persona IS NOT NULL)::int AS prospects
+   FROM ppw_people p LEFT JOIN ppw_portable_personas persona USING(world_id,person_id)
+   WHERE p.world_id=$1`),[{retired:5200,prospects:6}]);
+  assert.deepEqual(await read(historySql),retiredIdentity);
+ }finally{await db.close();}
+});

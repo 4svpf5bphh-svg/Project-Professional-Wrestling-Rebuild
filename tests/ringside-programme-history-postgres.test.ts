@@ -7,6 +7,7 @@ import {buildVerifiedRingsideFallback,validateRingsideCopy} from "../src/domain/
 import {withWorldTransaction} from "../src/db/transaction.js";
 import {readCompletedShowView} from "../src/db/show-results-view.js";
 import {readRingsideMemory} from "../src/db/ringside-continuity.js";
+import {processWorldUpdate,startWorldUpdating} from "../src/db/world-updating.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {MeasuredQuerySession} from "../src/db/query-meter.js";
 import type {TransactionPool} from "../src/db/transaction.js";
@@ -158,7 +159,18 @@ test("historic Ringside joins exactly its own settled rivalry chapters and prior
     })}}]
    }),{status:200});
   };
-  const first=loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI");
+  const updateScope={worldId,year:receipt.year,week:receipt.week};
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET year=2,week=4 WHERE world_id=$1",[worldId]);
+   await startWorldUpdating(tx,updateScope);
+   await tx.query(`UPDATE ppw_world_update_jobs SET state='PROCESSING',claim_token='valid',
+    claim_until=clock_timestamp()+interval '210 seconds' WHERE world_id=$1 AND show_id=$2`,
+   [worldId,scope.showId]);
+  });
+  assert.deepEqual(await loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI","UPDATE","stale"),
+   {status:"pending"});
+  assert.equal(providerCalls,0);assert.equal(monthlyClaims,0);assert.equal(dailyClaims,0);
+  const first=loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI","UPDATE","valid");
   try{
    await Promise.race([started,first.then(()=>{throw Error("Terra transport was not reached");})]);
    const claim=await withSqlClient(db.pool,tx=>tx.query<{model:string;state:string;attempts:number;lease:number}>(`
@@ -176,6 +188,11 @@ test("historic Ringside joins exactly its own settled rivalry chapters and prior
   if(published.status==="ready")assert.deepEqual(validateRingsideCopy(published.review,view,
    {styleWarningOnly:true}),published.review);
   assert.deepEqual(await loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI"),published);
+  await withSqlClient(db.pool,tx=>tx.query(`UPDATE ppw_world_update_jobs
+   SET claim_until=clock_timestamp()-interval '1 second' WHERE world_id=$1 AND show_id=$2`,
+  [worldId,scope.showId]));
+  assert.equal((await processWorldUpdate(meteredPool,updateScope,{terraKey:"fixture",transport}))?.editorial?.state,"RECOVERED");
+  assert.equal((await processWorldUpdate(meteredPool,updateScope,{}))?.status,"PUBLISHED");
   assert.equal(providerCalls,1);assert.equal(monthlyClaims,1);assert.equal(dailyClaims,1);
   const certified=await readCompletedShowView(db.pool,scope);
   assert.deepEqual(certified,view,"Editorial publication cannot change the certified results");

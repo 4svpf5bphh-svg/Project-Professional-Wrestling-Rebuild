@@ -28,7 +28,7 @@ test("completed show is atomic, retry-safe and conflict-safe in PostgreSQL",
     [worldId,showId,promotionId]);
    await tx.query(
     `INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
-     VALUES($1,$2,'match',0,'MATCH',\n            '{"matchType":"SINGLES","participants":[{"personId":"a"},{"personId":"b"}],"scriptedWinner":"a","plannedFinish":"CLEAN_PIN"}'::jsonb),\n           ($1,$2,'angle',1,'SEGMENT',\n            '{"kind":"TURN","outcome":"REFUSED"}'::jsonb)`,
+     VALUES($1,$2,'match',0,'MATCH',\n            '{"matchType":"SINGLES","participants":[{"personId":"a","contractId":"deal-a"},{"personId":"b","contractId":"deal-b"}],"scriptedWinner":"a","plannedFinish":"CLEAN_PIN"}'::jsonb),\n           ($1,$2,'angle',1,'SEGMENT',\n            '{"kind":"TURN","outcome":"REFUSED"}'::jsonb)`,
     [worldId,showId]);
    await tx.query(
     "UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[worldId]);

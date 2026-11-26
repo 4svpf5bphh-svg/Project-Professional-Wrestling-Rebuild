@@ -413,6 +413,27 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
   const monthly=await withWorldTransaction(db.pool,tx=>tx.query<{calls:number;spent:string}>(
    "SELECT call_count AS calls,spent_micropounds::text AS spent FROM ppw_openai_preview_monthly_usage WHERE usage_month=date_trunc('month',timezone('UTC',now()))::date",[]));
   assert.deepEqual(monthly,[{calls:1,spent:"5300"}]);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,5)",[world]);
+   await tx.query(`INSERT INTO ppw_world_news_items(world_id,year,week,story_key,desk,certainty,promotion_id,promotion_name,title,summary,source_kind)
+    VALUES($1,1,5,'event:timeout','OFFICIAL','CONFIRMED','ai','Titan Wrestling','Titan Wrestling draws another crowd','A completed Titan Wrestling event.','EVENT')`,[world]);
+   await tx.query("UPDATE ppw_worlds SET week=6 WHERE world_id=$1",[world]);
+   await tx.query("UPDATE ppw_groq_dispatch_gate SET next_allowed_at=clock_timestamp()-interval '1 second' WHERE id=1",[]);
+  });
+  const timedScope={...scope,week:5};
+  const timedTransport:typeof fetch=async(_url,init)=>{
+   assert.ok(init?.signal);
+   calls++;
+   throw new DOMException("Simulated elapsed provider deadline","TimeoutError");
+  };
+  assert.deepEqual(await publishWeeklyWorldEditorial(db.pool,timedScope,"dummy",timedTransport,"terra-fixture"),
+   {state:"FAILED",providerCalls:1,accepted:0});
+  assert.equal((await publishWeeklyWorldEditorial(db.pool,timedScope,"dummy",timedTransport)).state,"SKIPPED");
+  assert.equal(calls,3);
+  const timeout=await withWorldTransaction(db.pool,tx=>tx.query(
+   "SELECT diagnostic,provider_calls FROM ppw_weekly_world_editorial WHERE world_id=$1 AND week=5",[world]));
+  assert.deepEqual(timeout,[{diagnostic:"TIMEOUT",provider_calls:1}]);
+
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_world_news_items","ppw_world_news_weeks","ppw_show_economics","ppw_completed_shows","ppw_booking_drafts",

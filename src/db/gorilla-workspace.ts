@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Dedicated bounded Gorilla desk: 6 future-week cards, indexed owner-only reads.
  * No speculative polling, no rival booking reveal and no extra World deadline.
  */
@@ -53,7 +54,7 @@ export async function readGorillaWorkspace(pool:TransactionPool,input:GorillaSco
      AND g.show_id=s.draft_id AND g.slot_id=s.slot_id
      AND g.owner_player_id=$2 AND g.promotion_id=$3
     WHERE d.world_id=$1 AND d.promotion_id=$3
-     AND (d.year-1)*52+d.week-1 BETWEEN $4 AND $4+6
+     AND ${weekDateRangeSql("d","$4","$4+6")}
      AND d.status IN ('DRAFT','SUBMITTED')
     ORDER BY d.year,d.week,d.booking_class DESC,d.draft_id,s.position LIMIT 1401`,
     [input.worldId,input.playerId,input.promotionId,now]);
@@ -126,8 +127,7 @@ export async function saveGorillaShowInstructions(pool:TransactionPool,input:Sav
      AND p.promotion_id=c.promotion_id AND p.lifecycle='ACTIVE'
     WHERE d.world_id=$1 AND d.promotion_id=$3 AND d.draft_id=$4
      AND d.status IN ('DRAFT','SUBMITTED')
-     AND (d.year-1)*52+d.week-1 BETWEEN (w.year-1)*52+w.week-1
-      AND (w.year-1)*52+w.week+5`,
+     AND ${weekDateRangeSql("d","(w.year-1)*52+w.week-1","(w.year-1)*52+w.week+5")}`,
     [input.worldId,input.playerId,input.promotionId,input.showId]);
    if(shows.length!==1)throw new Error("Show unavailable for Gorilla instructions");
    const slots=await tx.query<{slot_id:string}>(`

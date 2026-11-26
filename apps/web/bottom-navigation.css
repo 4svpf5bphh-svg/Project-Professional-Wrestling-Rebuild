@@ -44,3 +44,5 @@ body.ppw-drawer-active .ppw-bottom-navigation{z-index:210;pointer-events:auto;op
  background:linear-gradient(145deg,#4c2d67,#211634);color:#ffdf87;
  font-weight:850;white-space:nowrap;padding:8px 10px}
 @media(max-width:380px){.ppw-account-banner .ppw-shell-kp{padding:7px 8px}}
+
+#game > .ppw-workspace:focus-visible{outline:2px solid #85eaff;outline-offset:-2px}

@@ -250,7 +250,7 @@
  border:1px solid #b9c9db!important;border-top:4px solid #276fa0!important;
  box-shadow:0 6px 20px #0b1f3029;
  color:#183044!important;padding:18px 16px}
-.ppw-news-official .ppw-news-story .ppw-news-desk{color:#1f638a!important}
+.ppw-news-official .ppw-news-story :is(.ppw-news-desk,.ppw-news-eyebrow){color:#1f638a!important}
 .ppw-news-official .ppw-news-story .ppw-news-story-title{
  color:#142b42!important;font:900 clamp(17px,4.8vw,23px)/1.17 Georgia,serif!important}
 .ppw-news-official .ppw-news-story p{color:#263c4d!important}

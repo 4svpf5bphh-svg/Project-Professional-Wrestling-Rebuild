@@ -805,7 +805,8 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
 }
 export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  key:string|undefined,transport:typeof fetch=fetch,
- provider:"GROQ"|"OPENAI"="GROQ",mode:"VIEWER"|"UPDATE"="VIEWER"):Promise<RingsideResponse>{
+ provider:"GROQ"|"OPENAI"="GROQ",mode:"VIEWER"|"UPDATE"="VIEWER",
+ updateToken?:string):Promise<RingsideResponse>{
  // Single indexed read enforces active human control and retrieves cached
  // editorial. Reopening an already reviewed show requires no five-query slot
  // expansion, roster fetch, model call, or polling.
@@ -867,7 +868,11 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  const claimed=await withSqlClient(pool,async db=>db.query<{claim_token:string}>(`
   INSERT INTO ppw_ringside_reports (world_id,promotion_id,show_id,prompt_version,
    receipt_digest,model,state,attempts,claim_token,claim_until)
-  VALUES ($1,$2,$3,$4,$5,$6,'PENDING',1,$7,to_timestamp($8/1000.0))
+  SELECT $1,$2,$3,$4,$5,$6,'PENDING',1,$7,to_timestamp($8/1000.0)
+  WHERE $10::text IS NULL OR EXISTS (
+   SELECT 1 FROM ppw_world_update_jobs
+   WHERE world_id=$1 AND year=$11 AND week=$12 AND show_id=$3
+    AND claim_token=$10 AND state='PROCESSING' FOR UPDATE)
   ON CONFLICT (world_id,promotion_id,show_id,prompt_version)
   DO UPDATE SET state='PENDING',model=excluded.model,
     attempts=ppw_ringside_reports.attempts+1,
@@ -879,7 +884,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
     (ppw_ringside_reports.state='PENDING' AND
       ppw_ringside_reports.claim_until<now()))
    AND ppw_ringside_reports.receipt_digest=excluded.receipt_digest
-  RETURNING claim_token`,[...params,digest,model,token,lease,OPENAI_PREVIEW_MODEL]));
+  RETURNING claim_token`,[...params,digest,model,token,lease,OPENAI_PREVIEW_MODEL,updateToken??null,show.year,show.week]));
  if(claimed[0]?.claim_token!==token)return {status:"pending"};
  try{
   // History is optional context; failure must not block the certified report.

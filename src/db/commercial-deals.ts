@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Phase 6 commercial deals: one World clock, existing finance projection.
  * Offers are generated from completed show evidence, never from a client price.
  */
@@ -109,7 +110,7 @@ export async function signCommercialDeal(pool:TransactionPool,input:CommercialSi
      SELECT draft_id FROM ppw_booking_drafts
      WHERE world_id=$1 AND promotion_id=$2 AND booking_class='REGULAR'
       AND status IN ('DRAFT','SUBMITTED') AND show_day IS NOT NULL
-      AND (year-1)*52+week-1 BETWEEN $3 AND $4 AND show_day<>$5
+      AND ${weekDateRangeSql("","$3","$4")} AND show_day<>$5
      ORDER BY year,week LIMIT 1`,
      [input.worldId,input.promotionId,start,start+valid.termWeeks-1,airingDay]);
     if(conflict.length)throw new Error(

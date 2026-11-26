@@ -1,3 +1,4 @@
+import {premiumOnlyWeekSql} from "./premium-only-week.js";
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {chooseEmergencyStaffCard,orderStaffPromotions,type StaffWrestlerCandidate}
@@ -19,7 +20,7 @@ type Delegated={
   owner_player_id:string|null;current_controller:string|null;
   delegated:boolean|null;status:string;management_mode:string;
   promotion_name:string;cadence:number;tier:StandingTier;
-  contracted_day:number|null;
+  contracted_day:number|null;premium_only_week:boolean;
 };
 type SignedCandidate={
   promotion_id:string;person_id:string;contract_id:string;
@@ -92,7 +93,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
              AND d.kind='BROADCAST' AND d.status='ACTIVE'
              AND d.start_week_index <= ($2::integer-1)*52+$3::integer-1
              AND d.end_week_index >= ($2::integer-1)*52+$3::integer-1
-             ORDER BY d.end_week_index DESC LIMIT 1) AS contracted_day
+             ORDER BY d.end_week_index DESC,d.deal_id LIMIT 1) AS contracted_day,
+           (${premiumOnlyWeekSql("p")}) AS premium_only_week
          FROM ppw_week_continuity_assessments a
          JOIN ppw_promotions p ON p.world_id=a.world_id AND p.promotion_id=a.promotion_id
          LEFT JOIN ppw_promotion_controls c ON c.world_id=a.world_id
@@ -147,7 +149,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             AND NOT EXISTS (SELECT 1 FROM ppw_contracts x
                  WHERE x.world_id=c.world_id AND x.person_id=c.person_id
                    AND x.promotion_id<>c.promotion_id AND x.status='SIGNED'
-                   AND x.family='EXCLUSIVE' AND x.expires_week_index >= $3)
+                   AND x.family='EXCLUSIVE' AND x.start_week_index <= $3
+                   AND x.expires_week_index >= $3)
           ORDER BY booking.promotion_id,c.person_id,c.contract_id LIMIT 10001`,
         [input.worldId,priority,weekIndex],
       );
@@ -205,8 +208,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
        JOIN ppw_card_slots s ON s.world_id=m.world_id
         AND s.draft_id=m.show_id AND s.slot_id=m.match_id
        WHERE c.world_id=$1
-        AND (c.year>$2 OR (c.year=$2 AND c.week>=$3))
-        AND (c.year<$4 OR (c.year=$4 AND c.week<$5))
+        AND (c.year,c.week)>=($2,$3)
+        AND (c.year,c.week)<($4,$5)
         AND jsonb_array_length(s.payload->'participants')=2
        ORDER BY c.year DESC,c.week DESC,c.promotion_id,m.match_id LIMIT 513`,
        [input.worldId,Math.floor(cutoff/52)+1,cutoff%52+1,year,week]):[];
@@ -231,6 +234,15 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
       const generated:Generated[]=[];
       const unfilled:Unfilled[]=[];
       const contractBalances=new Map(candidates.map(c=>[c.contract_id,c.remaining_dates]));
+      const reservedDates=before.reservedContractDates;
+      const hasDate=(p:StaffWrestlerCandidate)=>{
+        const balance=contractBalances.get(p.contractId);
+        return balance===null||(balance!==undefined&&balance>(reservedDates.get(p.contractId)??0));
+      };
+      const reserveDates=(participants:readonly {contractId:string}[])=>{
+        for(const id of new Set(participants.map(p=>p.contractId)))
+          reservedDates.set(id,(reservedDates.get(id)??0)+1);
+      };
       const duePremium=new Map<string,ReturnType<typeof defaults>[number]>();
       const aiCompanyIds=all.filter(d=>d.status==="AI_MANAGED"&&
        d.current_controller===null).map(d=>d.promotion_id);
@@ -309,6 +321,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         if(existingDrafts.has(promotionId)){
           unfilled.push({promotionId,reason:"EXISTING_DRAFT_PRESERVED"});continue;
         }
+        // The committed PPV can satisfy continuity on a real TV off-week.
+        if(ai&&d.premium_only_week&&duePremium.has(promotionId))continue;
         const showId=(ai?"ai-week-":"staff-fallback-")+year+"-"+week+"-"+promotionId;
         if(ai){
           const profile=profilesByPromotion.get(promotionId);
@@ -319,8 +333,9 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           if(worlds[0]!.show_economics_enabled&&!majorInterval)
             throw new Error("Original major-event schedule missing");
           const branded=["WWE","AEW"].includes(d.promotion_name.trim().toUpperCase());
-          const tv=branded?defaults(d.promotion_name,d.cadence,majorInterval??4)
-            .find(s=>regularRole(s.role)&&seriesDue(s,weekIndex)):undefined;
+          const tv=(identitiesByPromotion.get(promotionId)??
+            (branded?defaults(d.promotion_name,d.cadence,majorInterval??4):[]))
+            .find(s=>regularRole(s.role)&&seriesDue(s,weekIndex));
           // Standard weekly television no longer masquerades as a PPV on
           // each global interval. A real MAJOR card is generated separately
           // on a tier-appropriate yearly date below.
@@ -328,7 +343,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const eventType:"REGULAR"|"MAJOR"=oldYear&&!branded&&
            majorInterval&&((weekIndex+1)%majorInterval===0)?"MAJOR":"REGULAR";
           const importance=branded?tv?.importance??70:eventType==="MAJOR"?85:58;
-          const roster=aiRoster.get(promotionId)??[];
+          const roster=(aiRoster.get(promotionId)??[]).filter(hasDate);
           const byId=new Map(roster.map(p=>[p.personId,p]));
           const rivals=context?.programmes.get(promotionId)??[];
           // Vacant titles can still be crowned on periodic television.
@@ -391,13 +406,14 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             scriptedWinner:main.scriptedWinner,bookingDivision:main.bookingDivision,
             origin:"AI",matches:card.matches,bookingClass:"REGULAR",
             eventType,importance,seriesId:tv?.seriesId??null,showName:tv?.name??null});
+          reserveDates(card.matches.flatMap(m=>m.participants));
           booked.push({showId,day:card.schedule.day,venueId:card.schedule.venueId,
             personIds:card.matches.flatMap(m=>m.participants.map(p=>p.personId))});
         }else{
           const choice=chooseEmergencyStaffCard({
              contractedDay:d.contracted_day,
             worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
-            promotionId,showId,roster:byPromotion.get(promotionId)??[],
+            promotionId,showId,roster:(byPromotion.get(promotionId)??[]).filter(hasDate),
             activeVenues:venueRows.map(v=>v.venue_id),bookedShows:booked,
           });
           if(choice.status==="UNFILLED"){
@@ -419,30 +435,23 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             eventType:legacyStaffMajor?"MAJOR":"REGULAR",
             importance:legacyStaffMajor?85:58,
             seriesId:null,showName:null});
+          reserveDates([a,b]);
           booked.push({showId,day:choice.schedule.day,venueId:choice.schedule.venueId,
             personIds:[a.personId,b.personId]});
         }
       }
       // The AI books its PPV after normal shows, with no second World Lock.
       // Fallback to no PPV when there is no feasible roster or venue.
-      for(const [promotionId,ppv] of duePremium){
+      for(const promotionId of priority){
+        const ppv=duePremium.get(promotionId);
+        if(!ppv)continue;
         const profile=profilesByPromotion.get(promotionId);
-        if(!generated.some(g=>g.promotionId===promotionId&&g.bookingClass==="REGULAR")||
+        if((!delegations.get(promotionId)!.premium_only_week&&
+          !generated.some(g=>g.promotionId===promotionId&&g.bookingClass==="REGULAR"))||
           !profile||profile.ai_risk_tolerance===null||
           profile.ai_match_quality_preference===null||profile.ai_star_preference===null)
           continue;
-        const used=new Map<string,number>();
-        for(const g of generated.filter(g=>g.promotionId===promotionId))
-          for(const id of new Set(g.matches?
-            g.matches.flatMap(m=>m.participants.map(p=>p.personId)):
-            g.participants.map(p=>p.personId)))
-            used.set(id,(used.get(id)??0)+1);
-        const roster=(aiRoster.get(promotionId)??[]).filter(p=>{
-          const appearances=used.get(p.personId)??0;
-          const balance=contractBalances.get(p.contractId);
-          return balance!==undefined&&appearances<p.weeklyCapacity&&
-            (balance===null||balance>appearances);
-        });
+        const roster=(aiRoster.get(promotionId)??[]).filter(hasDate);
         // World-scoped title-holder context is already in the single AI
         // preparation batch. A premium show should prioritize a defensible
         // title challenge, not merely rebrand an ordinary television card.
@@ -472,8 +481,9 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         const card=chooseAiWorldCard({
           worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
           promotionId,showId,roster,bookedShows:booked,
-          excludedDays:booked.filter(x=>generated.some(g=>
-            g.showId===x.showId&&g.promotionId===promotionId)).map(x=>x.day),
+          excludedDays:[...new Set([
+            ...before.arbitrationClaims.filter(x=>x.kind==="VENUE"&&x.promotionId===promotionId).map(x=>x.day),
+            ...generated.filter(g=>g.promotionId===promotionId).map(g=>g.day)])],
           activeVenues:venueRows.map(x=>x.venue_id),eventType:"MAJOR",
           riskTolerance:profile.ai_risk_tolerance,
           matchQualityPreference:profile.ai_match_quality_preference,
@@ -506,6 +516,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           origin:"AI",matches:card.matches,bookingClass:"PREMIUM",
           eventType:"MAJOR",importance:ppv.importance,
           seriesId:ppv.seriesId,showName:ppv.name});
+        reserveDates(card.matches.flatMap(m=>m.participants));
         booked.push({showId,day:card.schedule.day,venueId:card.schedule.venueId,
           personIds:card.matches.flatMap(m=>m.participants.map(p=>p.personId))});
       }

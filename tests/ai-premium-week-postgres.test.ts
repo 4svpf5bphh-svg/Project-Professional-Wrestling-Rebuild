@@ -12,7 +12,7 @@ import {generateWeekStaffFallbackCards} from "../src/db/generate-staff-fallback-
 import {prepareGeneratedWorldShowCommerce} from "../src/db/prepare-generated-show-commerce.js";
 import {inspectWeekConflicts} from "../src/db/week-conflicts.js";
 import {clearWorldWeekResources} from "../src/db/week-clearance.js";
-import {planNextWorldResolutionAction} from "../src/db/world-resolution-pipeline.js";
+import {driveWorldResolution,planNextWorldResolutionAction} from "../src/db/world-resolution-pipeline.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -129,5 +129,50 @@ test("WWE and AEW AI book Night of Champions and Forbidden Door alongside televi
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
   }).finally(()=>db.close());
+ }
+});
+
+test("AI settles a committed PPV during biweekly TV's off-week and returns to its contracted night",{
+ skip:!url?"No disposable PostgreSQL":false,
+},async()=>{
+ const world="ai-biweekly-"+randomUUID(),db=postgresPool(url!,4);
+ const query=<T extends Record<string,unknown>>(sql:string)=>withWorldTransaction(db.pool,tx=>tx.query<T>(sql,[world]));
+ try{
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world,160));
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_show_series(world_id,promotion_id,series_id,name,role,event_type,cadence_weeks,anchor_week,importance)
+    VALUES($1,'promotion-0','biweekly','Tuesday Grappling','FLAGSHIP','REGULAR',2,0,60),
+     ($1,'promotion-0','premium','Winter Wrestling','PREMIUM','MAJOR',52,1,80)`,[world]);
+   await tx.query(`INSERT INTO ppw_annual_premium_plans(world_id,promotion_id,year,events,tier_at_commit,confirmed_week_index)
+    VALUES($1,'promotion-0',1,'[{"seriesId":"premium","week":2}]','INDEPENDENT',0)`,[world]);
+   await tx.query(`UPDATE ppw_worlds SET week=2,injury_rate_multiplier=0 WHERE world_id=$1`,[world]);
+   await tx.query(`INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,offer_code,
+    baseline_income,agreed_income,baseline_reach,agreed_reach,start_week_index,end_week_index,
+    source,exclusive_rights,airing_day,airing_hour)
+    VALUES($1,'network','promotion-0','BROADCAST','BROADCAST_GROWTH',25000,30000,70,76,0,25,'AI',true,2,20)`,[world]);
+  });
+  for(const week of [2,3]){
+   const [clock]=await query<{revision:string}>(`UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second'
+    WHERE world_id=$1 RETURNING revision::text`);
+   assert.equal((await lockWorldWeek(db.pool,{worldId:world,requestId:"lock-"+week,
+    expectedRevision:Number(clock?.revision)})).status,"APPLIED");
+   await assertPublished();
+   const shows=await query<{week:number;booking_class:string;show_day:number;show_name:string;audience_format:string}>(`
+    SELECT d.week,d.booking_class,d.show_day,d.show_name,e.audience_format
+    FROM ppw_booking_drafts d JOIN ppw_completed_shows c ON c.world_id=d.world_id AND c.show_id=d.draft_id
+    JOIN ppw_show_economics e ON e.world_id=c.world_id AND e.show_id=c.show_id
+    WHERE d.world_id=$1 AND d.promotion_id='promotion-0' ORDER BY d.week,d.booking_class`);
+   assert.equal(shows.filter(s=>s.week===2).length,1);
+   assert.equal(shows[0]?.booking_class,"PREMIUM");
+   assert.equal(shows[0]?.show_name,"Winter Wrestling");
+   assert.equal(shows[0]?.audience_format,"PPV");
+   if(week===3)assert.deepEqual(shows[1],{week:3,booking_class:"REGULAR",show_day:2,
+    show_name:"Tuesday Grappling",audience_format:"TV"});
+  }
+ }finally{await db.close();}
+ async function assertPublished(){
+  const run=await driveWorldResolution(db.pool,{worldId:world,resolutionId:"biweekly",
+   maxStages:16,manualRecovery:true});
+  assert.equal(run.status,"PUBLISHED",JSON.stringify(run));
  }
 });

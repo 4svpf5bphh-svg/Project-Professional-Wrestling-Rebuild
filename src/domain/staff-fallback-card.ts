@@ -29,7 +29,7 @@ const digest=(parts:readonly (string|number)[])=>createHash("sha256")
  */
 export function chooseEmergencyStaffCard(input:StaffFallbackCardInput):StaffCardChoice {
   if(!input.worldId||!input.worldSeed||!input.promotionId||!input.showId||
-    input.roster.length>256||input.bookedShows.length>128||
+    input.roster.length>256||input.bookedShows.length>256||
     (input.contractedDay!==null&&input.contractedDay!==undefined&&
      (!Number.isInteger(input.contractedDay)||input.contractedDay<1||input.contractedDay>7)))
     throw new Error("Invalid emergency staff card scope");

@@ -6,12 +6,15 @@ import {loadRingsideCommentary} from "./ringside-commentary.js";
 import {publishWeeklyWorldEditorial} from "./weekly-world-editorial.js";
 
 type Scope={worldId:string;year:number;week:number};
-type Job={show_id:string;promotion_id:string;player_id:string;state:string;busy:boolean};
+type Job={show_id:string;promotion_id:string;player_id:string;state:string;retry_after:number};
 type Claim={kind:"SHOW";scope:Scope;job:Job;token:string}|{kind:"PUBLIC";scope:Scope;token:string}|
- {kind:"WAIT"|"DONE"|"NONE"};
-const outcome=(status:"PUBLISHED"|"LIMIT_REACHED"|"BLOCKED",action?:string,blockers:string[]=[])=>({
- status,steps:action?[{action,status:"EXECUTED"}]:[],blockers
+ {kind:"WAIT";retryAfterSeconds?:number}|{kind:"DONE"|"NONE"};
+const outcome=(status:"PUBLISHED"|"LIMIT_REACHED"|"BLOCKED",action?:string,blockers:string[]=[],
+ editorial?:{state:"PROCESSING"|"RECOVERED"|"FALLBACK"|"READY";retryAfterSeconds?:number})=>({
+ status,steps:action?[{action,status:"EXECUTED"}]:[],blockers,...(editorial?{editorial}:{})
 });
+const processing=(retryAfterSeconds?:number)=>outcome("BLOCKED",undefined,["WORLD_UPDATE_IN_PROGRESS"],
+ {state:"PROCESSING",retryAfterSeconds});
 /** Inside the authoritative rollover transaction, after all certified settlement. */
 export async function startWorldUpdating(tx:SqlRows,scope:Scope){
  const p=[scope.worldId,scope.year,scope.week];
@@ -50,25 +53,25 @@ export async function processWorldUpdate(pool:TransactionPool,requested:Scope,de
    return {kind:"NONE"};
   }
   if(current!==next)return {kind:"WAIT"};
-  const runs=await tx.query<{year:number;week:number;public_state:string;busy:boolean}>(`
-   SELECT year,week,public_state,coalesce(public_claim_until>clock_timestamp(),false) AS busy
+  const runs=await tx.query<{year:number;week:number;public_state:string;retry_after:number}>(`
+   SELECT year,week,public_state,greatest(0,ceil(extract(epoch FROM public_claim_until-clock_timestamp())))::integer AS retry_after
    FROM ppw_world_update_runs WHERE world_id=$1 AND state='ACTIVE'`,[requested.worldId]);
   const run=runs[0];if(!run)throw Error("Active World update is missing");
   if(run.year!==requested.year||run.week!==requested.week)return {kind:"WAIT"};
   const scope={worldId:requested.worldId,year:run.year,week:run.week},p=[scope.worldId,scope.year,scope.week];
   const jobs=await tx.query<Job>(`SELECT show_id,promotion_id,player_id,state,
-   coalesce(claim_until>clock_timestamp(),false) AS busy
+   greatest(0,ceil(extract(epoch FROM claim_until-clock_timestamp())))::integer AS retry_after
    FROM ppw_world_update_jobs WHERE world_id=$1 AND year=$2 AND week=$3
    AND state IN ('WAITING','PROCESSING') ORDER BY show_day,show_id LIMIT 1`,p);
   const job=jobs[0],token=randomUUID();
   if(job){
-   if(job.state==="PROCESSING"&&job.busy)return {kind:"WAIT"};
+   if(job.state==="PROCESSING"&&job.retry_after>0)return {kind:"WAIT",retryAfterSeconds:job.retry_after};
    await tx.query(`UPDATE ppw_world_update_jobs SET state='PROCESSING',claim_token=$5,
     claim_until=clock_timestamp()+interval '210 seconds'
     WHERE world_id=$1 AND year=$2 AND week=$3 AND show_id=$4`,[...p,job.show_id,token]);
    return {kind:"SHOW",scope,job,token};
   }
-  if(run.public_state==="PROCESSING"&&run.busy)return {kind:"WAIT"};
+  if(run.public_state==="PROCESSING"&&run.retry_after>0)return {kind:"WAIT",retryAfterSeconds:run.retry_after};
   await tx.query(`UPDATE ppw_world_update_runs SET public_state='PROCESSING',public_claim_token=$4,
    public_claim_until=clock_timestamp()+interval '90 seconds'
    WHERE world_id=$1 AND year=$2 AND week=$3 AND state='ACTIVE'`,[...p,token]);
@@ -76,28 +79,38 @@ export async function processWorldUpdate(pool:TransactionPool,requested:Scope,de
  });
  if(claim.kind==="NONE")return null;
  if(claim.kind==="DONE")return outcome("PUBLISHED");
- if(claim.kind==="WAIT")return outcome("BLOCKED",undefined,["WORLD_UPDATE_IN_PROGRESS"]);
+ if(claim.kind==="WAIT")return processing(claim.retryAfterSeconds);
  if(claim.kind==="SHOW"){
   const {scope,job,token}=claim;
   let state="FALLBACK";
   try{
    const result=await (deps.generate??loadRingsideCommentary)(pool,{worldId:scope.worldId,
     promotionId:job.promotion_id,playerId:job.player_id,showId:job.show_id},
-    deps.terraKey,deps.transport??fetch,"OPENAI","UPDATE");
+    deps.terraKey,deps.transport??fetch,"OPENAI","UPDATE",token);
    if(result.status==="ready")state="READY";
-   if(result.status==="pending")return outcome("BLOCKED",undefined,["WORLD_UPDATE_IN_PROGRESS"]);
   }catch{/* Official certified result remains the fallback. */}
-  const saved=await withSqlClient(pool,db=>db.query(`UPDATE ppw_world_update_jobs SET state=$6,claim_until=NULL
-   WHERE world_id=$1 AND year=$2 AND week=$3 AND show_id=$4 AND claim_token=$5 AND state='PROCESSING'
-   RETURNING show_id`,[scope.worldId,scope.year,scope.week,job.show_id,token,state]));
-  return saved.length?outcome("LIMIT_REACHED","PREPARE_SHOW_ARTICLE"):outcome("BLOCKED",undefined,["WORLD_UPDATE_IN_PROGRESS"]);
+  const saved=await withWorldTransaction(pool,async tx=>{
+   const jobs=await tx.query(`UPDATE ppw_world_update_jobs SET state=$6,claim_token=NULL,claim_until=NULL
+    WHERE world_id=$1 AND year=$2 AND week=$3 AND show_id=$4 AND claim_token=$5 AND state='PROCESSING'
+    RETURNING show_id`,[scope.worldId,scope.year,scope.week,job.show_id,token,state]);
+   if(jobs.length&&state==="FALLBACK"){
+    // Close an interrupted nested claim. A stale worker's fenced write
+    // cannot replace the certified fallback after the World reopens.
+    await tx.query(`UPDATE ppw_ringside_reports SET state='FAILED',claim_until=least(claim_until,clock_timestamp()),updated_at=now()
+     WHERE world_id=$1 AND promotion_id=$2 AND show_id=$3 AND state='PENDING'`,
+     [scope.worldId,job.promotion_id,job.show_id]);
+   }
+   return jobs.length>0;
+  });
+  return saved?outcome("LIMIT_REACHED","PREPARE_SHOW_ARTICLE",[],
+   {state:state==="FALLBACK"?"FALLBACK":job.state==="PROCESSING"?"RECOVERED":"READY"}):processing();
  }
  if(claim.kind!=="PUBLIC")throw Error("Unknown World update stage");
  const {scope,token}=claim,p=[scope.worldId,scope.year,scope.week];
  let state="FALLBACK";
  if(deps.groqKey||deps.terraKey){
   try{
-   const result=await (deps.publish??publishWeeklyWorldEditorial)(pool,scope,deps.groqKey??"",deps.transport??fetch,deps.terraKey);
+   const result=await (deps.publish??publishWeeklyWorldEditorial)(pool,scope,deps.groqKey??"",deps.transport??fetch,deps.terraKey,token);
    if(result.state==="READY"||result.state==="EMPTY")state="READY";
    else if(result.state==="SKIPPED"){
     const existing=await withSqlClient(pool,db=>db.query<{state:string}>(
@@ -109,15 +122,15 @@ export async function processWorldUpdate(pool:TransactionPool,requested:Scope,de
  return withWorldTransaction(pool,async tx=>{
   await tx.query("SELECT world_id FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[scope.worldId]);
   const saved=await tx.query(`UPDATE ppw_world_update_runs SET state='COMPLETE',public_state=$5,
-   public_claim_until=NULL,finished_at=clock_timestamp()
+   public_claim_token=NULL,public_claim_until=NULL,finished_at=clock_timestamp()
    WHERE world_id=$1 AND year=$2 AND week=$3 AND public_claim_token=$4 AND state='ACTIVE'
    AND NOT EXISTS(SELECT 1 FROM ppw_world_update_jobs j WHERE j.world_id=$1 AND j.year=$2 AND j.week=$3
     AND j.state IN ('WAITING','PROCESSING')) RETURNING world_id`,[...p,token,state]);
-  if(!saved.length)return outcome("BLOCKED",undefined,["WORLD_UPDATE_IN_PROGRESS"]);
+  if(!saved.length)return processing();
   await tx.query(`UPDATE ppw_weekly_world_editorial SET state='FAILED',diagnostic='INTERRUPTED',
    completed_at=clock_timestamp() WHERE world_id=$1 AND year=$2 AND week=$3 AND state='PENDING'`,p);
   const opened=await tx.query("UPDATE ppw_worlds SET phase='OPEN',revision=revision+1 WHERE world_id=$1 AND phase='UPDATING' RETURNING world_id",[scope.worldId]);
   if(opened.length!==1)throw Error("World update could not reopen booking");
-  return outcome("PUBLISHED","PUBLISH_WORLD_EDITION");
+  return outcome("PUBLISHED","PUBLISH_WORLD_EDITION",[],{state:state==="READY"?"READY":"FALLBACK"});
  });
 }

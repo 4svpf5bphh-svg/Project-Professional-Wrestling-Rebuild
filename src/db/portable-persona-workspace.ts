@@ -1,3 +1,4 @@
+import {weekDateRangeSql} from "./week-date-sql.js";
 /** Roster-scoped, read-only wrestler-owned personas. The 643-roster guide is
  * static application content: never transferred from Neon or mistaken for a
  * wrestler's negotiated PPW career history.
@@ -179,8 +180,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "AND s.draft_id=d.draft_id",
    "WHERE r.status='PROMISED' AND d.world_id=r.world_id",
    "AND d.promotion_id=r.promotion_id AND d.status IN ('DRAFT','SUBMITTED')",
-   "AND (d.year-1)*52+d.week-1 BETWEEN greatest($4,r.responded_week_index)",
-   "AND r.due_week_index",
+   `AND ${weekDateRangeSql("d","greatest($4,r.responded_week_index)","r.due_week_index")}`,
    "AND s.payload->'participants' @>",
    "jsonb_build_array(jsonb_build_object('personId',r.person_id))",
    "AND ((r.decision='PROMISE_SEGMENT' AND s.kind='SEGMENT')",

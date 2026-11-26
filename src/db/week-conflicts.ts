@@ -22,6 +22,8 @@ export interface WeekConflictReport {
   inspectedSlots:number; blockers:WeekBlocker[];
   /** Internal server-only arbitration inputs, never a player read model. */
   worldSeed:string;arbitrationClaims:ResourceClaim[];
+  /** Unsettled uses of each signed deal, including shared parent deals. */
+  reservedContractDates:Map<string,number>;
   /** Hash over all current-week card/venue/contract evidence, not claims only. */
   stateFingerprint:string;
   /** Strict schedule, venue registry, signed date entitlement and capacity
@@ -90,6 +92,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   const wrestlers=new Map<string,{promotionId:string;showId:string;day:number;personId:string}>();
   const requested:Array<{promotionId:string;showId:string;day:number;personId:string;contractId:string;alreadyResolved:boolean}>=[];
   const venuesNeeded=new Set<string>();
+  const reservedContractDates=new Map<string,number>();
   const arbitrationClaims:ResourceClaim[]=[];
   let venueEvidence:Array<{venue_id:string;status:string}>=[];
   let contractEvidence:Array<{
@@ -140,6 +143,8 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     for(const a of appearances) {
       requested.push({promotionId:p.promotion_id,showId,day:p.show_day,personId:a.personId,
         contractId:a.contractId,alreadyResolved:p.already_resolved});
+      if(!p.already_resolved)reservedContractDates.set(a.contractId,
+        (reservedContractDates.get(a.contractId)??0)+1);
       const key=p.show_day+"\u0000"+a.personId;
       const prev=wrestlers.get(key);
       if(prev && prev.showId!==showId)blockers.push({
@@ -182,11 +187,12 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
            EXISTS(SELECT 1 FROM ppw_contracts x
              WHERE x.world_id=$1 AND x.person_id=req.person_id
                AND x.promotion_id<>c.promotion_id AND x.status='SIGNED'
-               AND x.family='EXCLUSIVE' AND x.expires_week_index >= $5) AS exclusive_elsewhere
+               AND x.family='EXCLUSIVE' AND x.start_week_index <= $5
+               AND x.expires_week_index >= $5) AS exclusive_elsewhere
          FROM unnest($2::text[],$3::text[],$4::text[]) AS req(promotion_id,person_id,contract_id)
          LEFT JOIN ppw_people p ON p.world_id=$1 AND p.person_id=req.person_id
          LEFT JOIN ppw_contracts c ON c.world_id=$1 AND c.contract_id=req.contract_id
-           AND c.person_id=req.person_id
+           AND c.person_id=req.person_id AND c.start_week_index<=$5
            AND (c.promotion_id=req.promotion_id OR EXISTS (
              SELECT 1 FROM ppw_wrestler_promotion_affiliations a
              JOIN ppw_promotions target ON target.world_id=a.world_id
@@ -284,7 +290,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
     contracts:contractEvidence,
   })).digest("hex");
   return {year,week,activePromotions:activePromotionIds.size,submittedShows,
-    inspectedSlots:slots.length,blockers,worldSeed,arbitrationClaims,stateFingerprint,
+    inspectedSlots:slots.length,blockers,worldSeed,arbitrationClaims,reservedContractDates,stateFingerprint,
     provisionalClear:activePromotionIds.size>0 &&
    submittedShows>=activePromotionIds.size&&blockers.length===0};
 }
