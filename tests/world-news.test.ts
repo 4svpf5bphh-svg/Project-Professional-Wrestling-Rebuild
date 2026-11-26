@@ -55,7 +55,7 @@ test("official stories describe events while dirt sheet claims remain explicitly
   "Official stories and speculation need distinct durable IDs");
  assert.ok(out.filter(x=>x.desk==="OFFICIAL").every(x=>x.certainty==="CONFIRMED"));
  assert.ok(rumour.some(x=>/not been established|has not been corroborated|no confrontation behind the curtain has been established|not been independently verified/i.test(x.summary)));
- assert.ok(out.some(x=>/replay queue/.test(x.summary)));
+ assert.ok(out.some(x=>/earns the replay/.test(x.title)));
  assert.ok(out.every(x=>!x.summary.includes("/100")),
   "The newspaper should not sound like a dashboard or disclose sim scales");
  assert.ok(!JSON.stringify(out).includes("NEVER LEAK"));
@@ -132,15 +132,15 @@ test("certified title transfers announce the recorded winner, but not invented f
  assert.ok(stories.every(s=>!/first champion|inaugural/i.test(s.summary)));
  const unknown=composeWorldNews([],[],[],[
   {...singles,winner_name:null}],names)[0]!;
- assert.match(unknown.summary,/unidentified winner is not guessed/);
+ assert.match(unknown.summary,/The World Crown changed hands at Fight Night/);
 });
 test("a certified exceptional bout spotlights a real prospect without claiming a solo victory",()=>{
  const stages=new Map([["a","PROSPECT"],["c","VETERAN"]]);
  const match={...b1,rating_stars:4.7};
  const hit=composeWorldNews([match],[],[],[],names,[],stages)[0]!;
  assert.match(hit.title,/Alice in the spotlight/);
- assert.match(hit.summary,/Prospect Alice was part of Alice vs Bob/);
- assert.match(hit.summary,/stars belong to the match/);
+ assert.match(hit.summary,/Alice vs Bob.*prospect Alice/);
+ assert.match(hit.summary,/delivered a 4\.70-star match/);
  assert.doesNotMatch(hit.summary,/wins|won|signed|improved skills/i);
  assert.doesNotMatch(composeWorldNews([{...match,rating_stars:4.0}],
   [],[],[],names,[],stages)[0]!.title,/Alice in the spotlight/);
@@ -166,8 +166,8 @@ test("one completely invented and explicitly unverified rumour complements a rea
  const empty=composeWorldNews([],[],[],[],names);
  assert.deepEqual(empty,[],"No show means no invented actual event or gossip");
  const only=composeWorldNews([],[],[pub("s1","human",80)],[],names);
- assert.equal(only.filter(x=>x.desk==="DIRT").length,1,
-  "Entirely speculative wrestling gossip is possible from a certified broadcast");
+ assert.equal(only.filter(x=>x.desk==="DIRT").length,0,
+  "A broadcast without a public cast need not generate gossip");
  assert.ok(only.every(x=>x.certainty!=="CONFIRMED"||x.desk==="OFFICIAL"));
 });
 
@@ -180,8 +180,8 @@ test("dirt sheet reporting remains event-linked, authored only at certification 
  assert.equal(dirt.length,2);
  assert.ok(dirt.some(x=>x.key.startsWith("rumour:title:")));
  assert.ok(dirt.every(x=>x.certainty==="SPECULATION"));
- assert.ok(dirt.every(x=>/anonymous|alleg|whisper|account|insider|claim/i.test(x.summary)));
- assert.ok(dirt.every(x=>/not|no |never|disagree|denie|doubt|dispute|unverified|question/i.test(x.summary)));
+ assert.ok(dirt.every(x=>/anonymous|alleg|whisper|account|insider|claim|theory/i.test(x.summary)));
+ assert.ok(dirt.every(x=>/not|no |never|disagree|denie|doubt|dispute|unverified|question|corroborated/i.test(x.summary)));
  assert.ok(!/NEVER LEAK|privatePromise|HIDDEN CONTRACT/i.test(JSON.stringify(out)));
  assert.ok(!/wellness violation|drug test|failed drug|criminal|arrested/i.test(JSON.stringify(out)));
  assert.deepEqual(out,composeWorldNews([b1],angles,publicShows,[title],names));
@@ -209,10 +209,26 @@ test("accepted World contract signings are official news, with no private offer 
  test("wild gossip spans playful wrestling culture and stays speculative",()=>{
  const titles=new Set<string>();let absurd=0;
  for(let i=0;i<64;i++){
-  const story=composeWorldNews([],[],[pub("variety:"+i,"human",80)],[],names).find(s=>s.key.startsWith("wild:"))!;
+  const story=composeWorldNews([{...b1,show_id:"variety:"+i}],[],[pub("variety:"+i,"human",80)],[],names).find(s=>s.key.startsWith("wild:"));
+  if(!story)continue;
   assert.equal(story.certainty,"SPECULATION");assert.equal(story.desk,"DIRT");
   titles.add(story.title);
   if(/concert|Court|rib|quiz|throne|mascot|catering|comedy/i.test(story.title))absurd++;
  }
  assert.ok(titles.size>=10);assert.ok(absurd>0&&absurd<64);
  });
+
+test("certified foreign-object and disqualification results remain separate from the PPV recap",()=>{
+ const tv=pub("s1","human");
+ const ppv={...pub("s2","human"),booking_class:"PREMIUM"};
+ const cleanlyRecorded=composeWorldNews([
+  {...b1,actual_finish:"DISQUALIFICATION",actual_winner_side:"B"},
+  {...b2,...ppv,actual_finish:"FOREIGN_OBJECT",actual_winner_side:"A"},
+ ],[],[tv,ppv],[],names);
+ const foreign=cleanlyRecorded.find(s=>s.key==="match:s2:m2")!;
+ const dq=cleanlyRecorded.find(s=>s.key==="match:s1:m1")!;
+ assert.match(foreign.summary,/Cara took the decision with a foreign object at Final Clash/);
+ assert.doesNotMatch(foreign.summary,/disqualification/);
+ assert.match(dq.summary,/Bob took the decision by disqualification at Fight Night/);
+ assert.match(cleanlyRecorded.find(s=>s.key==="event:s2")!.title,/Final Clash closes with Cara vs Drew/);
+});

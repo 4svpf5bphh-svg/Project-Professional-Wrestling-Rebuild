@@ -171,15 +171,15 @@ export function postShowVoicePrompt(brief:PostShowVoiceBrief){
    " HOT TAG FANS: Fill exactly the supplied keys in fans; each value {text,reply}. "+
    "Lead 8-22 words, reply 5-18 words when replyVoice is supplied; otherwise null. "+
    "When either side of a two-person thread is uncertain, omit that whole thread. "+
-   "Mention a full participant name in the lead. Give the assigned fan a real "+
+   "Mention a participant name in the lead. Give the assigned fan a real "+
    "point of view. FRONT ROW loves spectacle; SKEPTICAL SMARK challenges hype; "+
    "TAPE TRADER cares about craft; DIEHARD defends the entertainment; HEEL DEFENDER enjoys villainy; "+
    "RIVALRY ADDICT wants story progression; BACK ROW has dry jokes; CONCERNED FAN is considerate. "+
    "Avoid stock hype, polite agreement and generic compliments. Vary rhythm; a short sharp dig, "+
    "a passionate opinion or a playful wrestling argument is better than a bland summary. "+
    "Occasional wrestling-appropriate swearing is fine; never use slurs or threats. Replies should disagree "+
-   "or build on that specific post, not repeat it. Opinions and wishes only; "+
-   "do not narrate winners, finishes, injuries, backstage claims or future bookings. "+
+   "or build on that specific post by picking up a concrete word or phrase. Opinions and wishes only, except the exact publicFinish if supplied. "+
+   "Do not add any other outcome, injury, backstage claim or future booking. "+
    "Never invent accounts, quotations or facts. Use null if unsure.":"");
  const opponent=brief.wrestler?.opponentNames[0]??null;
  const wrestlerDirection=!brief.wrestler?"":opponent?

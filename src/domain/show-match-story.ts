@@ -31,14 +31,11 @@ export function describeMatchFinish(input:{
   CASKET_CLOSE:"The casket lid was closed on the defeated opponent.",
  };
  const base=(finish==="FOREIGN_OBJECT"&&input.finishProp?
-  "An illegal "+finishPropLabel(input.finishProp)+
-  " was used out of the referee's sight to secure a controversial result.":
-  descriptions[finish]??"The bout reached its official finish: "+
-  finish.toLowerCase().replaceAll("_"," ")+".")+
+  "The referee missed the "+finishPropLabel(input.finishProp).toLowerCase()+" strike. The decision stood.":
+  descriptions[finish]??"The referee brought the match to a close.")+
   (["FOREIGN_OBJECT","PROTECTED_FINISH"].includes(finish)&&
    input.refereeSpot==="REF_BUMP"?" The referee was knocked down before the decision.":"");
  if(finish==="INJURY_STOPPAGE")return {headline,summary:base};
  if(!winners.length)return {headline,summary:base};
- return {headline,summary:base+" "+winners.join(" & ")+
-  (winners.length>1?" are":" is")+" recorded as the winner"+(winners.length>1?"s":"")+"."};
+ return {headline,summary:base+" "+winners.join(" & ")+" took the decision."};
 }

@@ -469,7 +469,7 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
  // Certified match headlines contain genuine public names and, often, a
  // star rating. Make fan opinions about THAT bout instead of reusing three
  // generic comments beneath every four/five-star article.
- const named=kind==="MATCH"?story.title.match(/^(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s+(?:steals the show|at\s)/i):null;
+ const named=kind==="MATCH"?story.title.match(/^(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s+(?:steals the show|earns the replay|at\s)/i):null;
  const pairing=named?named[1]!.trim()+" vs "+named[2]!.trim():null;
  const stars=kind==="MATCH"?
   story.summary.match(/\b(\d(?:\.\d{1,2})?)-star match\b/i)?.[1]??null:null;
@@ -535,6 +535,21 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
    "A locker-room quiz would expose every self-proclaimed wrestling historian in seconds.",
    "If there's a quiz trophy, I want a ridiculously dramatic presentation ceremony."
   ]:[]:[];
+ const belt=story.title.match(/^(.+?) captures (.+?) at (.+)$/);
+ const main=story.title.match(/^(.+?) closes with (.+)$/);
+ const localTakes=belt?[
+  belt[1]+" with the "+belt[2]+" is a hell of a closing image for "+belt[3]+".",
+  "I want to know what the division looks like with "+belt[1]+" holding the "+belt[2]+".",
+  "The part I keep coming back to is how different the "+belt[2]+" looks on "+belt[1]+".",
+  "If you're in "+story.promotionName+", that "+belt[2]+" result ought to have your attention."
+ ]:main?[
+  main[2]+" was the right match to close "+main[1]+". I'd have put it there too.",
+  "If my mate missed "+main[1]+", I'd start the conversation with "+main[2]+".",
+  /quiet|restrained/.test(text)?
+   main[1]+" needed more from its big closing match. That was a quiet room.":
+   "The last match at "+main[1]+" had the pressure of going on last. That's the one I'm talking about.",
+  "Would I pay for "+main[2]+" as the main event? That's how I judge "+main[1]+"."
+ ]:[];
  const pool=[...wildSpecific,...specific,...pressSpecific,...reactions[kind],...expanded[kind],...rowdy[kind]];
  const used=new Set(excluded),handles=new Set<string>(),posts:HotTagNewsPost[]=[];
  const count=Math.max(Math.min(6,minimum),3+seed%4); // Three to six actual comments, not an identical trio every time.
@@ -545,11 +560,13 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
   const voice=HOT_TAG_FAN_ACCOUNTS[person]!;handles.add(voice.handle);
   // The first reaction anchors itself to real story context. The other fans
   // can be sarcastic, insightful or utterly unhelpful without inventing facts.
-  const candidates=i===0&&wildSpecific.length?wildSpecific:i===0&&pressSpecific.length?pressSpecific:
+  const candidates=i<2&&localTakes.length?
+   Array.from({length:localTakes.length},(_,offset)=>localTakes[(story.week+i+offset)%localTakes.length]!):
+   i===0&&wildSpecific.length?wildSpecific:i===0&&pressSpecific.length?pressSpecific:
    i===0&&specific.length?specific:
    i===0?lead[kind]:i===1?rowdy[kind]:pool;
   const fresh=(options:readonly string[],salt:string)=>{
-   const start=stableHotTagHash(key+salt)%options.length;
+   const start=i<2&&localTakes.length&&options===candidates?0:stableHotTagHash(key+salt)%options.length;
    for(let offset=0;offset<options.length;offset++){
     const candidate=options[(start+offset)%options.length]!;
     if(!used.has(hotTagReactionKey(candidate)))return candidate;
@@ -557,21 +574,23 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
    return undefined;
   };
   let message=fresh(candidates,":dialogue")??fresh(pool,":alternate");
-  let replies=count>=5&&i===count-1&&seed%3===0&&posts.length>0;
-  const response=[
-   "You read all that and THAT'S your take? Mate. 😂",
-   "I disagree with every word but I respect the chaos. 🤝",
-   "We both watched the same thing and somehow understood different planets.",
-   "Please log off before you book yourself as world champion. 💀",
-   "This is absolute bollocks and yet I've liked it. Help.",
-   "There are three genuine facts here and you've dodged all of them. 🤡",
-   "Stop shouting and watch next week's bloody show."];
-  if(replies){const reply=fresh(response,":reply");if(reply)message=reply;else replies=false;}
+  // Quote a concrete part of the first take so the reply stays attached to
+  // the point the account actually made, even after edition-wide deduping.
+  const parent=posts[0];
+  const excerpt=parent?.text.split(/(?<=[.!?])\s/)[0]?.replace(/\s+\p{Extended_Pictographic}.*$/u,"");
+  const replies=!!excerpt&&excerpt.length<=100&&count>=5&&i===count-1&&seed%3===0;
+  if(replies){
+   const reply="“"+excerpt+"” "+(rumour?
+    "I'd need more than the "+story.promotionName+" rumour column to buy that.":
+    kind==="RATINGS"?"I'm looking at a snapshot here. Give me a few weeks of numbers.":
+    "I'd sooner judge "+story.promotionName+" on whether people want to tune in again.");
+   if(!used.has(hotTagReactionKey(reply)))message=reply;
+  }
   if(!message)continue;
   used.add(hotTagReactionKey(message));
   const h=stableHotTagHash(key+":"+voice.handle);
   posts.push({...voice,text:message,
-   ...(replies?{replyTo:posts[0]!.handle}:{}),
+   ...(replies&&message.startsWith("“")?{replyTo:parent!.handle}:{}),
    likes:13+h%1300,replies:2+(h>>>7)%130,reposts:1+(h>>>12)%170});
  }
  return posts;

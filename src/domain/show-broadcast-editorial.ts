@@ -12,12 +12,7 @@ export interface FinalBellEditorial{
  championshipChanges:number;injuryReports:number;
  averageCriticalRating:number|null;
 }
-function plural(n:number,a:string,b=a+"s"){return n===1?a:b;}
 function round(n:number){return Math.round(n*10)/10;}
-function reportedWinner(entry:ShowResultEntry):string{
- const winners=entry.matchContext?.winnerNames??[];
- return winners.length?winners.join(" & "):"the recorded winner";
-}
 function matchName(entry:ShowResultEntry):string{
  const sides=entry.matchContext?.sides??[];
  return sides.length?sides.map(side=>side.join(" & ")).join(" vs "):
@@ -41,52 +36,39 @@ export function writeFinalBellEditorial(show:CompletedShowView):FinalBellEditori
  const injuries=matches.flatMap(entry=>(entry.fallout?.injuries??[])
   .map(injury=>({entry,injury})));
  const completedAngles=angles.filter(entry=>entry.outcome==="HAPPENS");
- const hotMoments=show.entries.filter(entry=>entry.crowdResponse>=80).length;
- const headline=transfers.length?"Gold changes hands at the final bell":
-  injuries.some(x=>x.injury.stoppage)?"A night interrupted by the referee":
-  standout?.fallout?.ratingStars!==undefined&&standout.fallout.ratingStars>=4?
-   "The card delivers a standout contest":
-  show.crowdResponse>=80?"An electric night for the promotion":
-  show.crowdResponse<45?"A tough night in front of the crowd":
-  "The final bell has sounded";
+ const event=show.showName??"The show";
+ const title=transfers[0]?.change;
+ const stoppage=injuries.find(x=>x.injury.stoppage);
+ const angle=[...completedAngles].sort((a,b)=>b.crowdResponse-a.crowdResponse||a.position-b.position)[0];
+ const standoutRating=standout?.fallout?.ratingStars;
+ const headline=title?title.winnerName+" takes the "+title.name:
+  stoppage?"A stoppage changes the night at "+event:
+  standout&&standoutRating!==undefined&&standoutRating>=4?matchName(standout)+" gives "+event+" its best bout":
+  show.crowdResponse<45?event+" struggles to get the crowd going":event+" at the final bell";
  const paragraphs:string[]=[];
- paragraphs.push("Year "+show.year+", week "+show.week+" is in the books. "+
-  matches.length+" "+plural(matches.length,"match","matches")+" and "+
-  angles.length+" "+plural(angles.length,"angle")+" made up the card. "+
-  "The show's overall audience response was "+round(show.crowdResponse)+"/100"+
-  (ratedAvg===null?".":", with an average in-ring rating of "+ratedAvg.toFixed(1)+
-   "/5 from "+rated.length+" scored "+plural(rated.length,"bout")+"."));
+ paragraphs.push(!show.entries.length?event+" closed without a recorded match or segment.":
+  show.crowdResponse>=80?event+" had a crowd that made itself heard.":
+  show.crowdResponse<45?event+" had trouble getting a reaction. A card can make sense on paper and still leave the room cold.":
+  event+" drew a mixed reception. Some parts of the card landed better than others.");
  if(standout){
-  const reviewed=reviewCompletedEntry(standout,show.showId);
-  const rating=standout.fallout?.ratingStars;
-  paragraphs.push((rating===undefined?"The crowd's standout contest":
-   "The highest-rated match")+" featured "+matchName(standout)+". "+
-   reportedWinner(standout)+" "+
-   (standout.outcome==="INJURY_STOPPAGE"?
-    "was awarded the result after a medical stoppage":
-    "finished on the winning side")+" via "+
-   standout.outcome.toLowerCase().replaceAll("_"," ")+". "+
-   (rating!==undefined?"The official match rating was "+rating.toFixed(2)+
-    "/5; ":"")+"the crowd scored it "+round(standout.crowdResponse)+"/100. "+
-   reviewed.verdict);
+  const review=reviewCompletedEntry(standout,show.showId);
+  const judgement=standoutRating===undefined?"The crowd’s standout":
+   standoutRating>=4?"The strongest wrestling on the card":
+   standoutRating<2.5?"Even the highest-rated match struggled":
+   "The highest-rated match";
+  paragraphs.push((standoutRating!==undefined&&standoutRating<2.5?
+   judgement+" to make a case for the card. "+matchName(standout)+" had the best of a thin field.":
+   judgement+" was "+matchName(standout)+".")+" "+review.verdict);
  }
- if(transfers.length||injuries.length||hotMoments>0||completedAngles.length){
-  const updates:string[]=[];
-  if(transfers.length)
-   updates.push(transfers.map(x=>x.change.winnerName+" won the "+
-    x.change.name).join("; ")+".");
-  if(injuries.length)
-   updates.push(injuries.length+" recorded "+plural(injuries.length,"injury","injuries")+
-    ", including "+injuries.slice(0,2).map(x=>x.injury.personName+
-     " ("+x.injury.severity.toLowerCase()+")").join(" and ")+".");
-  if(hotMoments>0)
-   updates.push(hotMoments+" "+plural(hotMoments,"moment")+
-    " drew an audience response of at least 80/100.");
-  if(completedAngles.length)
-   updates.push(completedAngles.length+" authored "+
-    plural(completedAngles.length,"angle")+" went ahead as booked.");
-  paragraphs.push("Beyond the bell: "+updates.join(" "));
- }
+ const updates=transfers.map(({change})=>change.winnerName+" won the "+change.name+
+  (change.priorHolderName?" from "+change.priorHolderName:change.priorHolderName===null?", filling the vacancy":"")+".");
+ if(stoppage)updates.push("The match involving "+stoppage.injury.personName+" ended in a medical stoppage.");
+ else if(injuries[0])updates.push("There was an injury concern for "+injuries[0].injury.personName+" after the match.");
+ if(angle)updates.push("Away from the matches, "+angle.headline+" drew "+
+  (angle.crowdResponse>=75?"a strong reaction.":angle.crowdResponse<45?"little response.":"a mixed response."));
+ if(!updates.length&&standout&&show.entries.some(e=>e.crowdResponse-standout.crowdResponse>=20))
+  updates.push("The best-reviewed wrestling and the loudest reaction came in different parts of the card.");
+ if(updates.length)paragraphs.push(updates.join(" "));
  return {headline,eyebrow:"THE FINAL BELL / EDITORIAL RECAP",
   paragraphs,standoutSlotId:standout?.slotId??null,
   championshipChanges:transfers.length,injuryReports:injuries.length,

@@ -45,7 +45,7 @@ const show:CompletedShowView={showId:"ascension-regression",showName:"Ascension"
 const matchRecaps=[
  "Parker recognised that the next exchange mattered more than controlling the pace. With three wrestlers in contention the contest became increasingly frantic. Nobody could afford a lengthy celebration after a counter. Parker capitalised on the opening and stole a sudden pinfall. The finish rewarded alertness rather than overwhelming dominance, and the crowd stayed involved until the bell.",
  "Reed kept Ellis working at a pace that suited neither wrestler for long. The early exchanges established a genuinely competitive rhythm, with both looking for an opening rather than rushing to the finish. Reed eventually found the decisive advantage and secured a clean pinfall. This was a solid contest whose outcome felt earned rather than inevitable.",
- "Joe made patience count as Smith tried to find room to manoeuvre. The tension came from the prospect of a hold changing the contest, not from a frantic sequence of near falls. The longer the struggle went on, the more important position became. Joe secured a submission victory, a convincing conclusion to an absorbing struggle.",
+ "Joe made patience count as Smith tried to find room to manoeuvre. The tension came from the prospect of a hold changing the contest, with the submission as its natural payoff. The longer the struggle went on, the more important position became. Joe secured a submission victory, a convincing conclusion to an absorbing struggle.",
  "Morgan and Regal offered a more contentious spectacle. The exchanges mattered, but it was the controversy around the finish that left the crowd with something to debate. Morgan emerged victorious after concealed cheating, a decision that hardly settled the question of superiority. It was an effective ending if the aim was to keep people talking."
 ];
 function draft():RingsideCopy{
@@ -121,7 +121,7 @@ test("Full generation path completes one paid request and exposes correct proven
   calls++;
   const request=JSON.parse(String(init?.body));
   assert.match(request.messages[0].content,/copy a complete line verbatim/);
-  assert.match(request.messages[0].content,/at least two distinct physical exchanges/);
+  assert.match(request.messages[0].content,/Do not report an unrecorded move/);
   assert.match(request.messages[0].content,/not merely paraphrase the director/);
   const slots=Object.fromEntries(raw.slots.map((s,i)=>["card_"+i,{headline:s.headline,recap:s.recap}]));
   return new Response(JSON.stringify({usage:{prompt_tokens:5257,completion_tokens:1450},

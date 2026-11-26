@@ -61,7 +61,17 @@ export function projectHotTagShowWrestlerPosts(show:CompletedShowView):HotTagWre
    const opponent=match.sideParticipants.length===2&&
     match.sideParticipants.find(side=>side!==winningSide)?.length===1?
     match.sideParticipants.find(side=>side!==winningSide)?.[0]?.name:undefined;
-   const lines=team?[
+   const belt=e.fallout?.title;
+   const lines=belt?.changed?[
+    (team?"We":"I")+" can finally say it. "+belt.name+" is coming home with "+(team?"us.":"me."),
+    "Still looking at the "+belt.name+" and trying to take it in. Thank you to everyone who backed "+(team?"us.":"me.")
+   ]:e.outcome==="DISQUALIFICATION"?[
+    (team?"We got":"I got")+" the decision. That is a hell of a way for the match to end.",
+    "You can argue with the referee all you like. "+(team?"We":"I")+" heard the bell."
+   ]:e.outcome==="FOREIGN_OBJECT"?[
+    "The decision stands. You don't have to like it.",
+    "Funny how everybody wants to talk about the finish. The result is there for anyone who missed it."
+   ]:team?[
     "We earned that result together. The bell doesn't lie.",
     "Everyone saw what our team did tonight. That's how you make a statement.",
     "A team wins and loses together. Tonight we got the win. Onto the next fight.",

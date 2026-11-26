@@ -13,7 +13,7 @@ import {readIndustryWorldNews} from "../src/db/industry-news.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {readBusinessWorkspace} from "../src/db/business-workspace.js";
 import {requestGroqEditorial} from "../src/db/groq-ai-director.js";
-import {publishWeeklyWorldEditorial} from "../src/db/weekly-world-editorial.js";
+import {publishWeeklyWorldEditorial,readWeeklyWorldEditorialRuns} from "../src/db/weekly-world-editorial.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("certified human and AI shows publish public awards, kept replay-safe and inaccessible to outsiders",{
@@ -281,7 +281,7 @@ test("certified human and AI shows publish public awards, kept replay-safe and i
 });
 
 
-test("AI-only week: one shared paced public batch, ratings, both managers, replay and failures",{skip:!url?"No disposable PostgreSQL":false},async()=>{
+test("AI-only week: one shared paced public batch, ratings, both managers, replay and failures",{skip:!url?"No disposable PostgreSQL":false},async(t)=>{
  const world="weekly-editorial-"+randomUUID(),players=["editorial-a-"+randomUUID(),"editorial-b-"+randomUUID()],db=postgresPool(url!,4);
  const reset=()=>withWorldTransaction(db.pool,async tx=>{
   await tx.query("DELETE FROM ppw_groq_dispatch_gate WHERE id=1",[]);
@@ -342,9 +342,9 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
    }:{
     headline:"Why "+s.promotion+" should make crowds care",
     commentary:"I hope "+s.promotion+" treats the audience as more than background noise.",
-    fans:["I love how "+s.promotion+" can make the crowd part of the story.",
+    fans:["I love how "+s.promotion+" made the crowd more than background noise.",
      "I think "+s.promotion+" still has plenty to prove.",
-     "Please give people a chance before writing them off.",
+     "Background noise? That Titan Wrestling crowd made the whole event.",
      "Titan Wrestling needs to make the next event even more entertaining.",
      "I would rather see Titan Wrestling concentrate on its own audience."]
    }]));
@@ -355,12 +355,36 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
   const batches=await Promise.all([publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport),publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport)]);
   assert.equal(calls,1);assert.ok(batches.some(b=>b.state==="READY"));
   assert.equal((await publishWeeklyWorldEditorial(db.pool,scope,"dummy",transport)).state,"SKIPPED");
-  const a=await readIndustryWorldNews(db.pool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
+  const metrics={queries:0,rows:0,bytes:0};
+  const measuredPool={async connect(){
+   const connection=await db.pool.connect();
+   return {release:()=>connection.release(),
+    async query<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]){
+     metrics.queries++;
+     const result=await connection.query<T>(sql,params);
+     metrics.rows+=result.length;
+     metrics.bytes+=Buffer.byteLength(JSON.stringify(result));
+     return result;
+    }};
+  }};
+  const a=await readIndustryWorldNews(measuredPool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
+  assert.equal(metrics.queries,5);
+  t.diagnostic("Two-manager public News read: "+JSON.stringify({...metrics,responseBytes:Buffer.byteLength(JSON.stringify(a))}));
+  const lab=await readWeeklyWorldEditorialRuns(db.pool,world);
+  assert.equal(lab[0]?.inspection?.model,"openai/gpt-oss-20b");
+  assert.match(JSON.stringify(lab[0]?.inspection?.context),/Titan Wrestling draws strong crowd/);
+  assert.doesNotMatch(JSON.stringify(lab),/PRIVATE FUTURE PLANS|dummy/);
+  assert.equal(lab[0]?.provider_calls,1);
+  assert.match(lab[0]?.diagnostic??"",/^ACCEPTED/);
+  t.diagnostic("Synthetic weekly dispatch: "+JSON.stringify({
+   bytes:lab[0]?.inspection?.promptBytes,inputTokens:lab[0]?.input_tokens,
+   outputTokens:lab[0]?.output_tokens,diagnostic:lab[0]?.diagnostic
+  }));
   const b=await readIndustryWorldNews(db.pool,{worldId:world,promotionId:"human-b",playerId:players[1]!});
   assert.deepEqual(a.stories,b.stories);
   assert.ok(a.stories.some(s=>s.sourceKind==="RATINGS"&&!s.editorial&&s.summary.includes("3.20")));
   assert.equal(a.stories.find(s=>s.id==="event:ai")?.editorial?.fans?.filter(Boolean).length,5);
-  assert.ok(a.stories.some(s=>s.desk==="DIRT"&&s.editorial?.headline));
+  assert.ok(a.stories.some(s=>s.desk==="DIRT"&&!s.editorial));
   const business=await readBusinessWorkspace(db.pool,{worldId:world,promotionId:"human-a",playerId:players[0]!});
   assert.equal(business.ratingsEditorial?.headline,a.stories.find(s=>s.sourceKind==="RATINGS")?.editorial?.headline);
   assert.equal(calls,1);
@@ -433,6 +457,11 @@ test("AI-only week: one shared paced public batch, ratings, both managers, repla
   const timeout=await withWorldTransaction(db.pool,tx=>tx.query(
    "SELECT diagnostic,provider_calls FROM ppw_weekly_world_editorial WHERE world_id=$1 AND week=5",[world]));
   assert.deepEqual(timeout,[{diagnostic:"TIMEOUT",provider_calls:1}]);
+  const afterTimeout=await readWeeklyWorldEditorialRuns(db.pool,world);
+  assert.equal(afterTimeout.find(run=>run.week===4)?.estimatedTerraUsd,0.00265);
+  assert.equal(afterTimeout[0]?.inspection?.model,"openai/gpt-oss-20b");
+  assert.equal(afterTimeout[0]?.accepted,null);
+  assert.match(paidRows[0]!.diagnostic,/PARTIAL.*reply.REPLY_CONTEXT/);
 
  }finally{
   await withWorldTransaction(db.pool,async tx=>{

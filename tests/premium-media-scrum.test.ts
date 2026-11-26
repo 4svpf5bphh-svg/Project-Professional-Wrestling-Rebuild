@@ -17,7 +17,7 @@ const premium:CompletedShowView={
 test("post-PPV scrum uses real event headlines, no fake wrestlers or invented outcomes",()=>{
  const qs=premiumScrumQuestions(premium);
  assert.deepEqual(qs.map(q=>q.id),["MAIN_EVENT","BIG_PICTURE","NEXT_CHAPTER"]);
- assert.ok(qs[0]?.question.includes("Champion survives controversial finish"));
+ assert.ok(qs[0]?.question.includes("A foreign object decided the main event"));
  assert.ok(qs[1]?.question.includes("Tag team clash opens the show"));
  assert.ok(qs.every(q=>q.answers.length===3));
  assert.ok(!qs.some(q=>/rating|score|simulat/i.test(q.question)));

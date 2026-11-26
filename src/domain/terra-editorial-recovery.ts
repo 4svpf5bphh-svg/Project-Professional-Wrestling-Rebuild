@@ -97,7 +97,7 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
  const diagnostics:TerraEditorialDiagnostics={version:1,
   slots:show.entries.map(e=>({slotId:e.slotId,source:"OPENAI",reasons:[]})),
   bookendsRepaired:false,warnings:[]};
- const maxFallback=show.entries.length>=4?Math.min(2,Math.floor(show.entries.length/3)):0;
+ const maxFallback=show.entries.length>1?Math.max(1,Math.min(2,Math.floor(show.entries.length/3))):0;
  const working:RingsideCopy={...input,slots:input.slots.map(s=>({...s}))};
  function mark(i:number,reason:TerraEditReason,replaced=false){
   const s=diagnostics.slots[i]!;
@@ -158,8 +158,17 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
  }
  // Keep every hard fact gate; subjective style/length warnings do not
  // trigger another billable request. The Groq pipeline retains its own rules.
- const check=(copy:RingsideCopy,view=show)=>
-  validateRingsideCopy(copy,view,{styleWarningOnly:true});
+ const check=(copy:RingsideCopy,view=show)=>{
+  // The completed match receipt has no recorded kickout or near-fall beats.
+  const unrecorded=/\b(?:kicks? out|kicked out|kick[- ]?outs?|near[- ]falls?)\b/i;
+  copy.slots.forEach((slot,i)=>{
+   if(view.entries[i]?.type==="MATCH"&&unrecorded.test(slot.headline+" "+slot.recap))
+    throw new RingsideSlotValidationError(i,"Terra reported an unrecorded near-fall");
+  });
+  if(unrecorded.test(copy.showHeadline+" "+copy.opening+" "+copy.closing))
+   throw new Error("Terra reported an unrecorded near-fall in the show summary");
+  return validateRingsideCopy(copy,view,{styleWarningOnly:true});
+ };
  let verified:RingsideCopy|null=null;
  for(let pass=0;pass<=maxFallback+2;pass++){
   try{verified=check(working);break;}

@@ -93,7 +93,10 @@ function arrangeNewsEditions(
  // post-show remarks. Keep that heading after dividing stories by week.
  const appendIssue=(target:HTMLElement,items:readonly HTMLElement[])=>{
   let dispatchLabelled=false;
+  const lead=items.find(item=>item.classList.contains("ppw-news-lead"));
+  if(lead)target.append(lead);
   for(const item of items){
+   if(item===lead)continue;
    if(item.classList.contains("ppw-news-voice")&&!dispatchLabelled){
     target.append(el("span","ppw-news-voices-heading",
      "THE PROMOTION / POST-SHOW DISPATCHES"));
@@ -880,13 +883,11 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    for(const story of published){const key=story.year+":"+story.week;const items=editions.get(key)??[];items.push(story);editions.set(key,items);}
    for(const stories of editions.values()){
     const usedFanText=new Set<string>();
-    const features=weeklyEditorialAnchors(stories.map(s=>({...s,humanManaged:s.promotionId===view?.ownPromotionId})),news?.awards??[]);
+    const features=weeklyEditorialAnchors(stories,news?.awards??[]);
     const featureIds=new Set(features.map(a=>a.story.id));
-    const isFeatured=(s:typeof stories[number])=>!official||featureIds.has(s.id)||!!s.editorial||!!projectHotTagNewsWrestlerPost(s,news?.awards??[])||!!projectHotTagBroadcasterPost(s);
+    const isFeatured=(s:typeof stories[number])=>!official||featureIds.has(s.id);
     const first=features[0]?.story.id;
     const ordered=[...stories].sort((a,b)=>Number(b.id===first)-Number(a.id===first)||Number(isFeatured(b))-Number(isFeatured(a))||weeklyStoryPriority(b)-weeklyStoryPriority(a)||a.id.localeCompare(b.id));
-    // AI coverage can include the other human promotion, not visible as an
-    // owned promotion on this client. Preserve those saved features too.
     const lead=ordered[0]?.id;let digest:HTMLElement|null=null;
     for(const story of ordered){
      const isFeature=isFeatured(story);
@@ -894,6 +895,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       if(!digest){digest=el("section","ppw-news-digest");digest.dataset.newsYear=String(story.year);digest.dataset.newsWeek=String(story.week);digest.append(el("h3","ppw-news-eyebrow","ELSEWHERE THIS WEEK"));section.append(digest);}
       const brief=document.createElement("details");brief.className="ppw-news-brief";
       brief.append(el("summary","ppw-news-story-title",story.title),el("p","",story.summary),el("small","ppw-industry-muted",story.promotionName));
+      if(story.editorial?.commentary)brief.append(el("p","ppw-news-editorial",story.editorial.commentary));
       if(story.id.startsWith("press:")&&story.promotionId===view.ownPromotionId&&port.openOwnResults)brief.append(btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId)));
       if(story.id.startsWith("programme:official:")){
        const open=programmeResultButton(story);
@@ -915,7 +917,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       el("span","ppw-dirt-byline",byline.byline+" · INSIDE REPORT"));
     }
     item.append(el("span","ppw-news-desk",official?(story.editorial?.commentary?"EDITORIAL / CONFIRMED SOURCE":"CONFIRMED / OFFICIAL"):
-     wild?"UNVERIFIED / DISPUTED REPORT 👀":"RUMOUR / NOT CONFIRMED"),
+     wild?"IN-GAME GOSSIP":"IN-GAME RUMOUR"),
      el("strong","ppw-news-story-title",story.editorial?.headline??story.title),
      el("p","",story.editorial?.commentary??story.summary),
      el("small","ppw-industry-muted",story.promotionName+

@@ -903,21 +903,24 @@ export function ringsideDramaCue(entry:ShowResultEntry):string|null{
  return stars>=4.25&&entry.crowdResponse>=80?"PEAK":"EARNED";
 }
 /** Send relevant certified facts once, without redundant IDs and analytics. */
-export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
+export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]},
+ certifiedActionOnly=false){
  const slotStories=verifiedSlotStoryThreads(show,memory);
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   audienceMood:crowdMood(show.crowdResponse),
   showFocus:directRingsideShow(show),
   slots:show.entries.map((e,i)=>({
    editorialLens:ringsideEditorialLens(e),
-   director:e.type==="MATCH"?directRingsideMatch(e):directRingsideAngle(e),
-   ...(ringsideDramaCue(e)?{dramaticCue:ringsideDramaCue(e)}:{}),
+   ...(e.type==="MATCH"&&certifiedActionOnly?{}:{
+    director:e.type==="MATCH"?directRingsideMatch(e):directRingsideAngle(e)
+   }),
+   ...(!certifiedActionOnly&&ringsideDramaCue(e)?{dramaticCue:ringsideDramaCue(e)}:{}),
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
    ...(ringsideViewerCallback(slotStories[i]??null)?{
     storyThread:ringsideViewerCallback(slotStories[i]??null)}:{}),
    ...(e.matchContext?{match:{format:e.matchContext.format,
-    ...(wrestlingMatchIQ(e)?{wrestlingIQ:{
+    ...(!certifiedActionOnly&&wrestlingMatchIQ(e)?{wrestlingIQ:{
      format:wrestlingMatchIQ(e)!.format,
      tempo:(e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)<7?"BRIEF":
       (e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)>=20?"LONG":"STANDARD",
@@ -931,7 +934,9 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
     ...(e.matchContext.refereeSpot?{refereeSpot:e.matchContext.refereeSpot}:{}),
     titleContested:e.matchContext.championshipContested,
     ...(verifiedStipulationNote(e.matchContext.format,e.outcome)?{
-     stipulationRules:verifiedStipulationNote(e.matchContext.format,e.outcome)}:{})}}:{}),
+     stipulationRules:certifiedActionOnly?
+      {winningCondition:verifiedStipulationNote(e.matchContext.format,e.outcome)?.winningCondition}:
+      verifiedStipulationNote(e.matchContext.format,e.outcome)}:{})}}:{}),
    ...(e.segmentContext?{angle:e.segmentContext}:{}),
    ...(e.segmentKind?{kind:e.segmentKind}:{}),
    ...(e.fallout?{fallout:{
@@ -941,7 +946,7 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
     eliminations:e.fallout.eliminations}}:{}),
    wrestlers:(e.performerIdentities??[]).map(p=>({
     name:p.ringName,character:p.character,style:p.style,
-    signatures:p.signatureMoves.slice(0,3),finishers:p.finishingMoves.slice(0,3)
+    ...(!certifiedActionOnly?{signatures:p.signatureMoves.slice(0,3),finishers:p.finishingMoves.slice(0,3)}:{})
    }))
   }))};
 }

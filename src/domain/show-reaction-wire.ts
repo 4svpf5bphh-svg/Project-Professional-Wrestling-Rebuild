@@ -72,13 +72,18 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
    return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ELIMINATION",priority:97,
     text:last+" went out, "+(winner??"the winner")+" finished on top. I need to see that final stretch again."};
   }
-  if(entry.outcome==="DISQUALIFICATION"||entry.outcome==="FOREIGN_OBJECT")
+  if(entry.outcome==="DISQUALIFICATION")
+   return {...base,voice:"THE HEEL DEFENDER",mood:"DEBATE",source:"FINISH",priority:94,
+    text:"I'm fine with the referee calling "+bout+". What are the rules for if nobody has to follow them?",
+    reply:{voice:"THE SKEPTICAL SMARK",
+     text:"The ref can be right and it can still be a lousy way to leave the match."}};
+  if(entry.outcome==="FOREIGN_OBJECT")
    return {...base,voice:"THE HEEL DEFENDER",mood:"DEBATE",source:"FINISH",priority:94,
     text:(f?.finishCheaterName?f.finishCheaterName+" knew exactly what they were doing. ":"Call it dirty if you want. ")+
      (winner?winner+" got the win. ":"")+
-     "I'm not saying it was fair. I'm saying the argument is half the fun.",
+     "I'd rather argue about a dirty win than forget how the match ended.",
     reply:{voice:"THE SKEPTICAL SMARK",
-     text:"The result is official. Doesn't mean I have to applaud the way they got there."}};
+     text:"A dirty win is worth arguing about, sure. The referee missing it is exactly why I'm still annoyed."}};
   if(f?.interference?.outcome==="SUCCESS")
    return {...base,voice:"THE SKEPTICAL SMARK",mood:"DEBATE",source:"FINISH",priority:91,
     text:"A run-in changed the complexion of "+bout+". Next week someone had better have something to say about that."};

@@ -6,9 +6,13 @@ import {requestGroqEditorial} from "./groq-ai-director.js";
 import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
 import {estimatedGroqTokens,groqResponseUsage} from "../domain/ai-director.js";
 import {weeklyEditorialAnchors,weeklyEditorialMessages,weeklyEditorialResponseFormat,validateWeeklyEditorialDetailed,weeklyRatingsStory,type WeeklyStory,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
+import {estimateTerraStandardUsd} from "../domain/paid-editorial-cost.js";
 import type {VerifiedHotTagAward} from "../domain/hot-tag-wrestler-voice.js";
+type WeeklyInspection={
+ model:string;promptBytes:number;instructions:string;context:unknown;
+};
 type Scope={worldId:string;year:number;week:number};
-type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;human_managed:boolean};
+type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;show_id:string|null};
 export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Scope,key:string,transport:typeof fetch=fetch,terraKey?:string,updateToken?:string){
  const {worldId,year,week}=scope,params=[worldId,year,week];
  if(!worldId||worldId.length>200||!Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||(!key&&!terraKey))
@@ -34,16 +38,22 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
   return active.length===1;
  }:undefined;
  let provider="GROQ",calls=0,state="FAILED",diagnostic="ERROR",estimate=0,inputTokens=0,outputTokens=0,copy:Record<string,WeeklyStoryCopy>={};
+ let inspection:WeeklyInspection|null=null;
  let ratingStory:WeeklyStory|null=null;
  try{
-  const previous=week===1?{year:year-1,week:52}:{year,week:week-1};
+  const index=(year-1)*52+week-1;
+  const cutoff=Math.max(0,index-3);
+  const earliest={year:Math.floor(cutoff/52)+1,week:cutoff%52+1};
   const [rows,awards,ratings,history]=await withSqlClient(pool,async db=>Promise.all([
    db.query<StoryRow>(`
-   SELECT n.story_key,n.desk,n.certainty,n.promotion_id,n.promotion_name,n.title,n.summary,n.source_kind,
-    EXISTS(SELECT 1 FROM ppw_promotion_controls p WHERE p.world_id=n.world_id AND p.promotion_id=n.promotion_id AND p.active) AS human_managed
+   SELECT n.story_key,n.desk,n.certainty,n.promotion_id,n.promotion_name,n.title,n.summary,n.source_kind,n.show_id
    FROM ppw_world_news_items n WHERE n.world_id=$1 AND n.year=$2 AND n.week=$3
-   ORDER BY CASE WHEN story_key LIKE 'broadcast:%' THEN 0
-    WHEN source_kind IN ('TITLE','EVENT') THEN 1 ELSE 2 END,desk,story_key LIMIT 40`,params),
+   AND n.desk='OFFICIAL' AND n.certainty='CONFIRMED'
+   ORDER BY CASE WHEN source_kind='TITLE' OR story_key LIKE 'title:%' THEN 0
+    WHEN story_key LIKE 'tournament:%' THEN 1
+    WHEN story_key LIKE 'event:%' THEN 2
+    WHEN story_key LIKE 'programme:official:%' THEN 3
+    WHEN source_kind='ANGLE' THEN 4 WHEN source_kind='MATCH' THEN 5 ELSE 6 END,story_key LIMIT 40`,params),
    db.query<{kind:"MATCH"|"ANGLE";promotion_id:string;show_id:string;slot_id:string;person_ids:string[];people_names:string[]}>(`
     SELECT kind,promotion_id,show_id,slot_id,person_ids,people_names
     FROM ppw_world_news_awards WHERE world_id=$1 AND year=$2 AND week=$3 ORDER BY kind LIMIT 2`,params),
@@ -61,25 +71,27 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
      WHERE e.world_id=$1 AND e.year=$2 AND e.week=$3 AND e.audience_format='TV' AND e.tv_household_rating IS NOT NULL
      ORDER BY e.promotion_id,e.tv_household_rating DESC,e.show_id LIMIT 40) latest
     ORDER BY human_managed DESC,rating DESC,promotion_id LIMIT 3`,params),
-   previous.year<1?Promise.resolve([]):db.query<{promotion_id:string;title:string;fans:unknown;desk:string}>(`
-    SELECT n.promotion_id,n.title,n.desk,b.copy_json->n.story_key->'fans' AS fans
+   index===0?Promise.resolve([]):db.query<{year:number;week:number;promotion_id:string;title:string;fans:unknown;desk:string}>(`
+    SELECT n.year,n.week,n.promotion_id,n.title,n.desk,b.copy_json->n.story_key->'fans' AS fans
     FROM ppw_world_news_items n LEFT JOIN ppw_weekly_world_editorial b
      ON b.world_id=n.world_id AND b.year=n.year AND b.week=n.week AND b.state='READY'
-    WHERE n.world_id=$1 AND n.year=$2 AND n.week=$3
-    ORDER BY (b.copy_json->n.story_key->'fans' IS NOT NULL) DESC,n.desk,n.story_key LIMIT 18`,[worldId,previous.year,previous.week])
+    WHERE n.world_id=$1 AND (n.year,n.week)>=($2::integer,$3::integer)
+     AND (n.year,n.week)<($4::integer,$5::integer)
+    ORDER BY (b.copy_json->n.story_key->'fans' IS NOT NULL) DESC,n.year DESC,n.week DESC,n.desk,n.story_key
+    LIMIT 18`,[worldId,earliest.year,earliest.week,year,week])
   ]));
   const stories:WeeklyStory[]=rows.map(s=>({id:s.story_key,year,week,desk:s.desk,certainty:s.certainty,
-   promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,humanManaged:s.human_managed}));
+   promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,showId:s.show_id??undefined}));
   const publicAwards:VerifiedHotTagAward[]=awards.map(a=>({year,week,kind:a.kind,promotionId:a.promotion_id,
    showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names}));
   ratingStory=weeklyRatingsStory(year,week,ratings.map(r=>({promotionId:r.promotion_id,promotionName:r.promotion_name,rating:r.rating,humanManaged:r.human_managed})));
   let anchors=weeklyEditorialAnchors(ratingStory?[ratingStory,...stories]:stories,publicAwards,
-   history.filter(h=>h.desk==="OFFICIAL").map(h=>({year:previous.year,week:previous.week,promotionId:h.promotion_id,title:h.title})),
+   history.filter(h=>h.desk==="OFFICIAL").map(h=>({year:h.year,week:h.week,promotionId:h.promotion_id,title:h.title})),
    history.flatMap(h=>Array.isArray(h.fans)?h.fans.filter((v):v is string=>typeof v==="string"):[]));
   if(!anchors.length){state="EMPTY";diagnostic="NO_PUBLIC_STORIES";}
   else{
    const build=()=>({model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",
-    max_completion_tokens:Math.max(2400,anchors.length*650),
+    max_completion_tokens:anchors.length===1?1600:2200,
     response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)});
    let body=build();
    estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
@@ -95,7 +107,16 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
     estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
    }
    if(estimate>7000){diagnostic="TOKEN_ENVELOPE";throw Error("Weekly editorial envelope too large");}
-   const measured:typeof fetch=async(url,init)=>{calls++;return transport(url,init);};
+   const measured:typeof fetch=async(url,init)=>{
+    calls++;
+    const sent=String(init?.body??"");
+    const payload=JSON.parse(sent);
+    // Capture only the editorial instructions and allowlisted public records.
+    // Headers, response drafts and provider credentials never enter this row.
+    inspection={model:payload.model,promptBytes:Buffer.byteLength(sent),
+     instructions:body.messages[0]!.content,context:JSON.parse(body.messages[1]!.content)};
+    return transport(url,init);
+   };
    let response:Response|null=null;
    if(key)try{response=await requestGroqEditorial({task:"SHORT_NEWS",key,pool,body,signal:AbortSignal.timeout(25000),
     pace:true,transport:measured,fence});}catch(error){
@@ -113,28 +134,29 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
     response.headers.get("x-ppw-budget-exhausted")==="true"?"BUDGET":
     response.status===429?"RATE_LIMITED":response.ok?"INVALID_RESPONSE":"HTTP_REJECTED";
    if(response.ok){
-    let rejectionSummary="";
+    let rejectionSummary="",truncated=false;
     const raw=await response.text();
     if(raw.length<=32000){
-     const envelope=JSON.parse(raw);
-     const usage=groqResponseUsage(envelope);
-     inputTokens=usage?.inputTokens??0;outputTokens=usage?.outputTokens??0;
-     const reply=envelope?.choices?.[0];
-     if(reply?.finish_reason==="length")diagnostic="TRUNCATED";
-     else if(typeof reply?.message?.content==="string"&&reply.message.content.length<=16000){
-      try{
+     try{
+      const envelope=JSON.parse(raw);
+      const usage=groqResponseUsage(envelope);
+      inputTokens=usage?.inputTokens??0;outputTokens=usage?.outputTokens??0;
+      const reply=envelope?.choices?.[0];
+      truncated=reply?.finish_reason==="length";
+      if(typeof reply?.message?.content==="string"&&reply.message.content.length<=16000){
        const decoded=JSON.parse(reply.message.content.trim().replace(/^\s*```(?:json)?\s*|\s*```\s*$/gi,""));
        const validated=validateWeeklyEditorialDetailed(anchors,decoded);
        copy=validated.copy;
-       rejectionSummary=Object.entries(validated.issues).sort(([a],[b])=>a.localeCompare(b)).map(([reason,n])=>reason+":"+n).join(",").slice(0,350);
-      }catch{diagnostic="INVALID_JSON";}
-     }else diagnostic="MISSING_CONTENT";
+       rejectionSummary=Object.entries({...validated.issues,...validated.fields}).sort(([a],[b])=>a.localeCompare(b))
+        .map(([reason,n])=>reason+":"+n).join(",").slice(0,350);
+      }else diagnostic="MISSING_CONTENT";
+     }catch{diagnostic=truncated?"TRUNCATED":"INVALID_JSON";}
     }
     if(Object.keys(copy).length){
      state="READY";
      diagnostic=anchors.every(a=>{
       const c=copy[a.story.id];
-      return c?.headline&&c.commentary&&c.fans?.every(Boolean)&&(!a.wrestler||c.wrestler);
+      return c?.headline&&c.commentary&&c.fans?.length===(a.key==="s0"?5:3)&&c.fans.every(Boolean)&&(!a.wrestler||c.wrestler);
      })?"ACCEPTED":"PARTIAL";
     }else if(diagnostic==="INVALID_RESPONSE")diagnostic="NO_VALID_CONTENT";
     if(rejectionSummary)diagnostic+=" / "+rejectionSummary;
@@ -147,9 +169,9 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
  }
  const saved=await withSqlClient(pool,db=>db.query(`
   UPDATE ppw_weekly_world_editorial SET state=$4,copy_json=$5::jsonb,provider_calls=$6,
-   diagnostic=$7,estimated_tokens=$8,input_tokens=$9,output_tokens=$10,rating_story=$11::jsonb,completed_at=clock_timestamp()
+   diagnostic=$7,estimated_tokens=$8,input_tokens=$9,output_tokens=$10,rating_story=$11::jsonb,inspection_json=$12::jsonb,completed_at=clock_timestamp()
   WHERE world_id=$1 AND year=$2 AND week=$3 AND state='PENDING' RETURNING state`,
-  [...params,state,state==="READY"?JSON.stringify(copy):null,calls,provider==="TERRA"?"TERRA / "+diagnostic:diagnostic,estimate,inputTokens,outputTokens,ratingStory?JSON.stringify(ratingStory):null]));
+  [...params,state,state==="READY"?JSON.stringify(copy):null,calls,provider==="TERRA"?"TERRA / "+diagnostic:diagnostic,estimate,inputTokens,outputTokens,ratingStory?JSON.stringify(ratingStory):null,inspection?JSON.stringify(inspection):null]));
  return saved.length?{state,providerCalls:calls,accepted:Object.keys(copy).length}:
   {state:"SKIPPED",providerCalls:calls,accepted:0};
 }
@@ -157,13 +179,27 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
 
 /** Owner-only AI Lab metadata. No rejected prose, private drafts or new provider calls. */
 export async function readWeeklyWorldEditorialRuns(pool:TransactionPool,worldId:string){
- return withSqlClient(pool,db=>db.query<{year:number;week:number;state:string;diagnostic:string;
+ const rows=await withSqlClient(pool,db=>db.query<{year:number;week:number;state:string;diagnostic:string;
   provider_calls:number;estimated_tokens:number;input_tokens:number;output_tokens:number;
-  accepted_stories:number;fan_threads:number;editorials:number;wrestler_posts:number}>(`
+  accepted_stories:number;fan_threads:number;editorials:number;wrestler_posts:number;
+  inspection:WeeklyInspection|null;accepted:Record<string,WeeklyStoryCopy>|null}>(`
+  WITH recent AS (
+   SELECT world_id,year,week,state,diagnostic,provider_calls,estimated_tokens,input_tokens,output_tokens,
+    inspection_json,copy_json
+   FROM ppw_weekly_world_editorial WHERE world_id=$1 ORDER BY year DESC,week DESC LIMIT 8
+  )
   SELECT b.year,b.week,b.state,b.diagnostic,b.provider_calls,b.estimated_tokens,b.input_tokens,b.output_tokens,
+   CASE WHEN (b.year,b.week)=(latest.year,latest.week) THEN b.inspection_json END AS inspection,
+   CASE WHEN (b.year,b.week)=(latest.year,latest.week) THEN b.copy_json END AS accepted,
    (SELECT count(*)::integer FROM jsonb_each(b.copy_json)) AS accepted_stories,
    (SELECT count(*)::integer FROM jsonb_each(b.copy_json) e WHERE e.value ? 'fans') AS fan_threads,
    (SELECT count(*)::integer FROM jsonb_each(b.copy_json) e WHERE e.value ? 'commentary') AS editorials,
    (SELECT count(*)::integer FROM jsonb_each(b.copy_json) e WHERE e.value ? 'wrestler') AS wrestler_posts
-  FROM ppw_weekly_world_editorial b WHERE b.world_id=$1 ORDER BY b.year DESC,b.week DESC LIMIT 8`,[worldId]));
+  FROM recent b LEFT JOIN (
+   SELECT year,week FROM recent
+   WHERE inspection_json IS NOT NULL ORDER BY year DESC,week DESC LIMIT 1
+  ) latest ON true
+  WHERE b.world_id=$1 ORDER BY b.year DESC,b.week DESC LIMIT 8`,[worldId]));
+ return rows.map(row=>({...row,estimatedTerraUsd:row.diagnostic.startsWith("TERRA / ")&&
+  row.input_tokens+row.output_tokens>0?estimateTerraStandardUsd(row.input_tokens,row.output_tokens):null}));
 }
