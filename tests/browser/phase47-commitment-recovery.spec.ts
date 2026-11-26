@@ -23,7 +23,9 @@ for(const width of [320,390])test(`Phase 47 ${width}px private request outcomes 
    decision:"PROMISE_APPEARANCE",trustDelta:-3,
    assessmentReason:"UNFULFILLED_COMMITMENT",plannedBooking:null},
   {personId:"eve",name:"Eve",kind:"TITLE_AMBITION",status:"ANSWERED",
-   decision:"TALK",trustDelta:0,assessmentReason:null,plannedBooking:null}
+   decision:"TALK",trustDelta:0,assessmentReason:null,plannedBooking:null},
+  {personId:"frank",name:"Frank",kind:"CONTRACT",status:"PENDING",
+   decision:null,trustDelta:0,assessmentReason:null,plannedBooking:null}
  ] as const;
  const roster=people.map(p=>({personId:p.personId,name:p.name,
   isCurrent:true,status:"ACTIVE",careerStage:"PRIME",fatigue:8,morale:66,
@@ -40,7 +42,11 @@ for(const width of [320,390])test(`Phase 47 ${width}px private request outcomes 
    const conversations=selected?[{
     conversationId:selected.personId,kind:selected.kind,status:selected.status,
     decision:selected.decision,createdWeekIndex:5,respondedWeekIndex:6,
-    dueWeekIndex:selected.kind==="TITLE_AMBITION"?null:8,
+    dueWeekIndex:selected.kind==="TITLE_AMBITION"||selected.kind==="CONTRACT"?null:8,
+    settledWeekIndex:selected.status==="FULFILLED"?7:null,
+    managementContext:selected.kind==="CONTRACT"?{
+     contractExpires:9,remainingDates:1,strongMatches:2,programmeId:"story",
+     championshipId:null,lastChapterWeek:6}:null,
     relatedPersonId:null,trustDelta:selected.trustDelta,
     assessmentReason:selected.assessmentReason,
     plannedBooking:selected.plannedBooking,followThroughWeekIndex:null,
@@ -76,6 +82,8 @@ for(const width of [320,390])test(`Phase 47 ${width}px private request outcomes 
  await expect(page.locator(".ppw-backstage-chapter")).toHaveAttribute(
   "data-commitment-stage","FULFILLED");
  await expect(page.locator(".ppw-backstage-chapter")).toContainText("certified show");
+ await expect(page.getByText("Follow-up · Y1 W8")).toBeVisible();
+ await expect(page.getByText("I'll look for it on the card by Y1 W9.")).toBeVisible();
  await page.getByRole("button",{name:"Back to messages"}).click();
  await open("Charlie");
  await expect(page.locator(".ppw-backstage-chapter")).toHaveAttribute(
@@ -97,5 +105,11 @@ for(const width of [320,390])test(`Phase 47 ${width}px private request outcomes 
   .toBeLessThanOrEqual(1);
  await page.getByRole("button",{name:"Plan their next opportunity →"}).click();
  await expect.poll(()=>page.evaluate(()=>location.hash)).toContain("planner");
+ await page.goto("/#/backstage");
+ await open("Frank");
+ await expect(page.getByText(/One paid appearance remains/)).toBeVisible();
+ await expect(page.getByRole("button",{name:"Review contract"})).toBeVisible();
+ await page.getByRole("button",{name:"Staff advice"}).click();
+ await expect.poll(()=>page.evaluate(()=>location.hash)).toContain("staff");
  expect(methods).not.toContain("saveCard");
 });

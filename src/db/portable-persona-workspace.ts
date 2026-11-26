@@ -6,6 +6,8 @@ import {weekDateRangeSql} from "./week-date-sql.js";
 import {withSqlClient} from "./postgres.js";
 import {readWorldMail} from "./backstage-world-mail.js";
 import type {TransactionPool} from "./transaction.js";
+import type {BackstageDecision,BackstageKind} from "../domain/backstage-conversations.js";
+import type {BackstageManagementContext} from "../domain/backstage-management-context.js";
 import {originalPersonaBaseline,validatePortablePersona,wrestlerIdentityReference}
  from "../domain/portable-persona.js";
 export interface PersonaScope{
@@ -88,9 +90,11 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   const incoming=roster.length?await tx.query<{
    person_id:string;request_id:string;kind:string;status:string;
    read_week_index:number|null;created_week_index:number;
-   career_stage_at_request:string|null;archived_through_week_index:number}>([
+   career_stage_at_request:string|null;archived_through_week_index:number;
+   last_activity_week_index:number}>([
    "SELECT DISTINCT ON (r.person_id) r.person_id,r.request_id,r.kind,r.status,",
    "r.read_week_index,r.created_week_index,r.career_stage_at_request,",
+   "greatest(r.created_week_index,r.settled_week_index) AS last_activity_week_index,",
    "coalesce(a.archived_through_week_index,-1) AS archived_through_week_index",
    "FROM ppw_backstage_requests r LEFT JOIN ppw_backstage_thread_archives a",
    "ON a.world_id=r.world_id AND a.promotion_id=r.promotion_id",
@@ -104,7 +108,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
   const listed=roster.map(x=>({personId:x.person_id,name:x.name,
    latestIncoming:incomingById.get(x.person_id)?{
     ...incomingById.get(x.person_id)!,
-    archived:incomingById.get(x.person_id)!.created_week_index<=
+    archived:incomingById.get(x.person_id)!.last_activity_week_index<=
      incomingById.get(x.person_id)!.archived_through_week_index,
    }:null,
    isCurrent:x.is_current,morale:x.morale,momentum:x.momentum,
@@ -143,9 +147,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "ORDER BY submitted_week_index DESC,request_id DESC LIMIT 5"
   ].join(" "),[s.worldId,selected,s.promotionId]);
   const conversations=await tx.query<{
-   request_id:string;kind:"CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"MENTORSHIP_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
+   request_id:string;kind:BackstageKind;
    related_person_id:string|null;status:string;
-   decision:"TALK"|"DECLINE"|"PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|"CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_MENTORSHIP"|"EXPLORE_RIVALRY"|"NOT_NOW"|null;
+   decision:BackstageDecision|null;
    created_week_index:number;responded_week_index:number|null;
    due_week_index:number|null;promised_role:string|null;
    observed_match_shows:number|null;observed_featured_shows:number|null;
@@ -157,6 +161,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    follow_through_week_index:number|null;follow_through_kind:string|null;
    observed_absent_weeks:number|null;observed_losses:number|null;
    relevant_title:string|null;career_stage_at_request:string|null;
+   settled_week_index:number|null;management_context:BackstageManagementContext|null;
+   promise_available_through:number|null;partner_available:boolean;
    planned_show_name:string|null;planned_show_year:number|null;
    planned_show_week:number|null;planned_show_status:string|null;
    planned_slot_kind:string|null}>([
@@ -169,6 +175,21 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "rival_verified_matches,rival_professional_trust,",
    "follow_through_week_index,follow_through_kind,",
    "observed_absent_weeks,observed_losses,relevant_title,career_stage_at_request,",
+   "r.settled_week_index,r.management_context,",
+   "CASE WHEN r.status='PENDING' THEN (SELECT max(deal.expires_week_index)",
+   "FROM ppw_contracts deal WHERE deal.world_id=r.world_id",
+   "AND deal.promotion_id=r.promotion_id AND deal.person_id=r.person_id",
+   "AND deal.status='SIGNED' AND deal.start_week_index<=$4 AND deal.expires_week_index>$4",
+   "AND (r.source_contract_id IS NULL OR deal.contract_id=r.source_contract_id)",
+   "AND (deal.family='EXCLUSIVE' OR deal.remaining_dates>0)) END AS promise_available_through,",
+   "CASE WHEN r.status='PENDING' AND r.related_person_id IS NOT NULL THEN EXISTS(",
+   "SELECT 1 FROM ppw_contracts partner JOIN ppw_people person",
+   "ON person.world_id=partner.world_id AND person.person_id=partner.person_id",
+   "WHERE partner.world_id=r.world_id AND partner.promotion_id=r.promotion_id",
+   "AND partner.person_id=r.related_person_id AND partner.status='SIGNED'",
+   "AND person.status='ACTIVE' AND partner.start_week_index<=$4 AND partner.expires_week_index>=$4",
+   "AND (partner.family='EXCLUSIVE' OR partner.remaining_dates IS NULL OR partner.remaining_dates>0))",
+   "ELSE false END AS partner_available,",
    "booked.show_name AS planned_show_name,booked.year AS planned_show_year,",
    "booked.week AS planned_show_week,booked.status AS planned_show_status,",
    "booked.kind AS planned_slot_kind",
@@ -182,10 +203,17 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "AND d.promotion_id=r.promotion_id AND d.status IN ('DRAFT','SUBMITTED')",
    `AND ${weekDateRangeSql("d","greatest($4,r.responded_week_index)","r.due_week_index")}`,
    "AND s.payload->'participants' @>",
-   "jsonb_build_array(jsonb_build_object('personId',r.person_id))",
-   "AND ((r.decision='PROMISE_SEGMENT' AND s.kind='SEGMENT')",
+   "jsonb_build_array(CASE WHEN r.decision='PROMISE_FEATURED' THEN",
+   "jsonb_build_object('personId',r.person_id,'contractId',r.source_contract_id)",
+   "ELSE jsonb_build_object('personId',r.person_id) END)",
+   "AND ((r.decision='PROMISE_SEGMENT' AND s.kind='SEGMENT'",
+   "AND coalesce(s.payload->>'outcome','HAPPENS')='HAPPENS')",
    "OR (r.decision IN ('PROMISE_APPEARANCE','PROMISE_FEATURED')",
    "AND s.kind='MATCH'))",
+   "AND (r.decision<>'PROMISE_FEATURED' OR (SELECT count(*)",
+   "FROM ppw_card_slots later WHERE later.world_id=s.world_id",
+   "AND later.draft_id=s.draft_id AND later.kind='MATCH' AND later.position>s.position)",
+   "<=CASE WHEN r.promised_role='MAIN_EVENT' THEN 0 ELSE 1 END)",
    "ORDER BY d.year,d.week,d.draft_id,s.position LIMIT 1) booked ON TRUE",
    "WHERE r.world_id=$1 AND r.promotion_id=$2",
    "AND r.person_id=$3 ORDER BY r.created_week_index DESC,r.request_id DESC LIMIT 30"
@@ -280,6 +308,8 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     observedAbsentWeeks:x.observed_absent_weeks,
     observedLosses:x.observed_losses,relevantTitle:x.relevant_title,
     careerStageAtRequest:x.career_stage_at_request,
+    managementContext:x.management_context,settledWeekIndex:x.settled_week_index,
+    promiseAvailableThrough:x.promise_available_through,partnerAvailable:x.partner_available,
    })),
    history:history.slice(0,50).map(x=>({
     revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),

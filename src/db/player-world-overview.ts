@@ -154,7 +154,7 @@ export async function readPlayerWorldOverview(
         /* The SMS inbox displays only the latest thread for a current
          * wrestler. Old unread requests cannot inflate the Home badge. */
         SELECT DISTINCT ON (r.person_id)
-         r.read_week_index,r.created_week_index,
+         r.read_week_index,greatest(r.created_week_index,r.settled_week_index) AS last_activity_week_index,
          coalesce(a.archived_through_week_index,-1) AS archived_through_week_index
         FROM ppw_backstage_requests r
         JOIN ppw_people person ON person.world_id=r.world_id
@@ -175,7 +175,7 @@ export async function readPlayerWorldOverview(
         ORDER BY r.person_id,r.created_week_index DESC,r.request_id DESC
        ) latest
        WHERE latest.read_week_index IS NULL
-        AND latest.created_week_index>latest.archived_through_week_index)
+        AND latest.last_activity_week_index>latest.archived_through_week_index)
       +(SELECT count(*)::integer FROM (
         SELECT n.story_key FROM ppw_world_news_items n
         WHERE n.world_id=w.world_id AND n.promotion_id=owned.promotion_id
@@ -534,7 +534,8 @@ export async function readPlayerWorldOverview(
        FROM ppw_backstage_requests b JOIN ppw_people p
         ON p.world_id=b.world_id AND p.person_id=b.person_id
        WHERE b.world_id=w.world_id AND b.promotion_id=owned.promotion_id
-        AND b.status='PENDING' AND p.status='ACTIVE'
+        AND b.status='PENDING' AND (p.status='ACTIVE'
+         OR (p.status='INJURED' AND b.kind='MEDICAL_SUPPORT'))
        ORDER BY b.created_week_index DESC,b.request_id DESC LIMIT 3) request
      ) AS backstage_requests,
      EXISTS (SELECT 1 FROM ppw_contracts c

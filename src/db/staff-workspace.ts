@@ -11,7 +11,9 @@ import type {GorillaPolicy} from "../domain/gorilla-position.js";
 import {selectScoutRecommendations,type ScoutProspect} from "../domain/talent-scout.js";
 import {deriveStaffRivalryObservations,type StaffRivalryEvidence}
  from "../domain/verified-wrestler-rivalry-memory.js";
-import {staffMeetingBrief} from "../domain/staff-meeting-brief.js";
+import {staffMeetingBrief,type StaffMeetingFacts,type StaffManagementCase}
+ from "../domain/staff-meeting-brief.js";
+import {recommendPromotionBudgets,type BudgetBasis} from "../domain/financial-adviser.js";
 
 export async function readStaffWorkspace(pool:TransactionPool,input:{
  worldId:string;promotionId:string;playerId:string
@@ -34,9 +36,23 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    manager_salary:string|null;occupied_staff_ids:string[];legacy_staff_ids:string[];alumni_staff:unknown;
    staff_aliases:Record<string,string>;staff_office_theme:string|null;
    featured_programme:StaffRivalryEvidence|null;
+   management_case:StaffManagementCase|null;
+   next_show:StaffMeetingFacts["nextShow"];workload:StaffMeetingFacts["workload"];
+   roster_depth:StaffMeetingFacts["rosterDepth"];budget_basis:BudgetBasis;
   }>(`
    SELECT w.year,w.week,w.revision,w.seed::text AS world_seed,
     p.cash::text AS promotion_cash,
+    discussion.follow_up AS management_case,calendar.next_show,
+    coalesce(medical.workload,roster.tired) AS workload,roster.roster_depth,
+    jsonb_build_object('cash',p.cash,'debt',p.debt,
+     'weeklyMediaIncome',p.weekly_media_income,'weeklySponsorIncome',p.weekly_sponsor_income,
+     'weeklyFixedOverhead',p.weekly_fixed_overhead,'weeklyGuarantees',roster.wages,
+     'weeklyStaffPayroll',coalesce((SELECT sum(e.weekly_salary) FROM ppw_staff_employments e
+      WHERE e.world_id=w.world_id AND e.promotion_id=$3 AND e.status='ACTIVE'
+       AND clock.week_index BETWEEN e.start_week_index AND e.expires_week_index),0),
+     'recentShowAppearanceFees',coalesce(last_event.appearance_fees,0),
+     'recentShowTotalCost',last_event.total_cost,'recentShowGateRevenue',last_event.gate_revenue,
+     'lastWeeklyNet',p.last_weekly_net) AS budget_basis,
     (SELECT style FROM ppw_kp_staff_office_themes WHERE player_id=$2) AS staff_office_theme,
      COALESCE((SELECT jsonb_object_agg(a.staff_id,a.alias) FROM ppw_kp_staff_aliases a
       WHERE a.world_id=w.world_id AND a.promotion_id=$3
@@ -131,6 +147,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     AND m.status='ACTIVE'
    JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id
     AND p.lifecycle='ACTIVE'
+   CROSS JOIN LATERAL (SELECT (w.year-1)*52+w.week-1 AS week_index) clock
    LEFT JOIN ppw_staff_continuity_settings s ON s.world_id=w.world_id
     AND s.promotion_id=$3 AND s.owner_player_id=$2
    LEFT JOIN ppw_week_logistics_authorizations l
@@ -138,7 +155,10 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
     AND l.promotion_id=$3 AND l.controller_player_id=$2
    LEFT JOIN LATERAL (
     SELECT count(DISTINCT injury.person_id)::integer AS risks,
-       min(person.name) AS wrestler
+       min(person.name) AS wrestler,
+       (array_agg(jsonb_build_object('name',person.name,'fatigue',person.fatigue,
+        'wear',person.wear,'clearanceWeek',injury.cleared_week_index)
+        ORDER BY injury.cleared_week_index,person.person_id))[1] AS workload
     FROM ppw_medical_absences injury
     JOIN ppw_contracts contract ON contract.world_id=injury.world_id
      AND contract.person_id=injury.person_id AND contract.promotion_id=$3
@@ -150,6 +170,66 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
       AND injury.injured_week_index<(w.year-1)*52+w.week-1
       AND injury.cleared_week_index>(w.year-1)*52+w.week-1
    ) medical ON TRUE
+   LEFT JOIN LATERAL (
+    SELECT coalesce(sum(deal.weekly_guarantee),0) AS wages,
+     jsonb_build_object(
+      'men',count(DISTINCT person.person_id) FILTER(WHERE person.booking_division='MEN' AND available.usable),
+      'women',count(DISTINCT person.person_id) FILTER(WHERE person.booking_division='WOMEN' AND available.usable)
+     ) AS roster_depth,
+     (array_agg(jsonb_build_object('name',person.name,'fatigue',person.fatigue,
+      'wear',person.wear,'clearanceWeek',NULL)
+      ORDER BY person.fatigue DESC NULLS LAST,person.person_id) FILTER (WHERE available.usable))[1] AS tired
+    FROM ppw_contracts deal JOIN ppw_people person USING(world_id,person_id)
+    CROSS JOIN LATERAL (SELECT person.status='ACTIVE' AND
+     (deal.family='EXCLUSIVE' OR deal.remaining_dates>0) AS usable) available
+    WHERE deal.world_id=w.world_id AND deal.promotion_id=$3 AND deal.status='SIGNED'
+     AND clock.week_index BETWEEN deal.start_week_index AND deal.expires_week_index
+   ) roster ON true
+   LEFT JOIN LATERAL (
+    SELECT jsonb_build_object(
+     'name',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM' THEN 'The next PPV' ELSE 'The next show' END),
+     'weekIndex',(d.year-1)*52+d.week-1,'premium',d.booking_class='PREMIUM',
+     'venue',venue.name,'venueCost',venue.weekly_hire_cost,
+     'venueSuitability',venue.production_suitability) AS next_show
+    FROM ppw_booking_drafts d LEFT JOIN ppw_venues venue
+     ON venue.world_id=d.world_id AND venue.venue_id=d.venue_id
+    WHERE d.world_id=w.world_id AND d.promotion_id=$3 AND d.status IN ('DRAFT','SUBMITTED')
+     AND ${weekDateRangeSql("d","clock.week_index","clock.week_index+6")}
+    ORDER BY d.year,d.week,d.show_day NULLS LAST,d.draft_id LIMIT 1
+   ) calendar ON true
+   LEFT JOIN LATERAL (
+    SELECT e.appearance_fees,e.total_cost,e.gate_revenue FROM ppw_show_economics e
+    WHERE e.world_id=w.world_id AND e.promotion_id=$3
+     AND ${weekDateRangeSql("e","greatest(0,clock.week_index-8)","clock.week_index")}
+    ORDER BY e.year DESC,e.week DESC,e.show_id DESC LIMIT 1
+   ) last_event ON true
+   LEFT JOIN LATERAL (
+    SELECT jsonb_build_object('personId',r.person_id,'personName',person.name,
+     'conversationId',r.request_id,'kind',r.kind,'context',r.management_context||
+      jsonb_build_object('contractExpires',deal.expires_week_index,'remainingDates',deal.remaining_dates,
+       'programmeId',active.programme_id,'championshipId',active.championship_id),
+     'renewalPending',EXISTS(SELECT 1 FROM ppw_contract_offers pending
+      WHERE pending.world_id=r.world_id AND pending.promotion_id=$3
+       AND pending.source_contract_id=deal.contract_id AND pending.status='PENDING')
+      OR EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals pending
+       WHERE pending.world_id=r.world_id AND pending.promotion_id=$3
+        AND pending.contract_id=deal.contract_id AND pending.status='PENDING'),
+     'renewalArranged',EXISTS(SELECT 1 FROM ppw_signed_service_windows secured
+      WHERE secured.world_id=r.world_id AND secured.promotion_id=$3
+       AND secured.person_id=r.person_id AND secured.status='SIGNED'
+       AND secured.expires_week_index>deal.expires_week_index
+       AND secured.start_week_index<=deal.expires_week_index+1)) AS follow_up
+    FROM ppw_backstage_requests r
+    JOIN ppw_people person USING(world_id,person_id)
+    JOIN ppw_contracts deal ON deal.world_id=r.world_id AND deal.contract_id=r.source_contract_id
+    LEFT JOIN ppw_programmes active ON active.world_id=r.world_id AND active.promotion_id=$3
+     AND active.programme_id=r.management_context->>'programmeId' AND active.status='ACTIVE'
+    WHERE r.world_id=w.world_id AND r.promotion_id=$3 AND r.management_context IS NOT NULL
+     AND r.created_week_index BETWEEN greatest(0,clock.week_index-6) AND clock.week_index
+     AND r.status IN ('PENDING','ANSWERED','PROMISED') AND deal.status='SIGNED'
+     AND person.status='ACTIVE' AND clock.week_index BETWEEN deal.start_week_index AND deal.expires_week_index
+    ORDER BY (r.kind='CONTRACT') DESC,r.created_week_index DESC,r.request_id LIMIT 1
+   ) discussion ON true
    -- One named active programme per promotion, picked by heat.
    -- Each lateral lookup is bounded to that programme using existing indexes.
    LEFT JOIN LATERAL (
@@ -303,16 +383,18 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    fatigueConcerns:current.fatigue_concerns,
    recentMatches:current.recent_matches,recentShows:current.recent_shows,
    recentDisqualifications:current.recent_disqualifications,
-   scoutLeads:scoutReport
+   scoutLeads:scoutReport,managementCase:current.management_case,nextShow:current.next_show,
+   rosterDepth:current.roster_depth,workload:current.workload
   };
   const meetings=STAFF_ROLES.map(role=>{
    const member=officeRole(role);
    return {role,staffName:member?.name??null,
     personality:member?.personality??null,
     specialism:member?.specialism??null,
-    ...staffMeetingBrief(role,meetingFacts),
-    consultationOptions:contextualConsultationOptions(role,meetingFacts)};
+    ...staffMeetingBrief(role,meetingFacts,member),
+    consultationOptions:contextualConsultationOptions(role,meetingFacts,member)};
   });
+  const financialAdvice=current.budget_basis?recommendPromotionBudgets(current.budget_basis):null;
   const venues=await tx.query<{venue_id:string;name:string;
    capacity:number|null;weekly_hire_cost:string|null}>(`
    SELECT venue_id,name,capacity,weekly_hire_cost::text
@@ -332,7 +414,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    promotionCash:Number(current.promotion_cash),
    weeklyPayroll:employees.reduce((sum,e)=>sum+e.weeklySalary,0),
    notices:notices.slice(0,8),
-   meetings,scoutReport,
+   meetings,scoutReport,financialAdvice,managementCase:current.management_case,
    employmentHistory:current.employment_history as {staffId:string;role:StaffRole;promotionName:string;startedWeekIndex:number;endedWeekIndex:number}[],
    allowLogisticsFallback:current.allow_logistics_fallback===true,
    permittedDays:current.permitted_days??[],

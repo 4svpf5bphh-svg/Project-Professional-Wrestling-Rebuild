@@ -16,7 +16,7 @@ export async function setBackstageThreadArchive(pool:TransactionPool,input:{
    "INSERT INTO ppw_backstage_thread_archives(",
    "world_id,promotion_id,player_id,person_id,archived_through_week_index)",
    "SELECT r.world_id,r.promotion_id,c.player_id,r.person_id,",
-   "CASE WHEN $5::boolean THEN max(r.created_week_index) ELSE -1 END",
+   "CASE WHEN $5::boolean THEN max(greatest(r.created_week_index,r.settled_week_index)) ELSE -1 END",
    "FROM ppw_backstage_requests r",
    "JOIN ppw_worlds w ON w.world_id=r.world_id",
    "JOIN ppw_promotion_controls c ON c.world_id=r.world_id",

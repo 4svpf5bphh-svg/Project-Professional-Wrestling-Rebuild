@@ -4,7 +4,8 @@ import {withSqlClient} from "./postgres.js";
 import {contractDeskEntry} from "../domain/contract-desk.js";
 import {serviceCapacityDatesPerWeek,purchasedDateLimits,maxPurchasedDates,maxExclusiveTermWeeks,unpackSignedCommitments,type CompactSignedCommitment,type Stage} from "../domain/contract-economics.js";
 import {forecastTalentBudget} from "../domain/talent-budget.js";
-import {worldTalentManagers} from "../domain/world-staff.js";
+import {worldStaff} from "../domain/world-staff.js";
+import {sameTermsRenewal} from "../domain/renewal-terms.js";
 import type {ContractAvailabilityInput} from "../domain/contract-availability.js";
 
 /** One consistent World-clock snapshot, including pending negotiations.
@@ -57,7 +58,7 @@ export async function readContractDesk(
   const currentWeekIndex=(auth[0]!.year-1)*52+auth[0]!.week-1;
   const managerId=auth[0]!.manager_id;
   const talentManager=managerId?
-   worldTalentManagers(auth[0]!.world_seed).find(m=>m.staffId===managerId)??{
+   worldStaff(auth[0]!.world_seed).find(m=>m.staffId===managerId)??{
     staffId:managerId,name:"Talent Manager",insight:55
    }:null;
   const contracts=await tx.query<{
@@ -207,7 +208,25 @@ export async function readContractDesk(
    worldRevision:Number(auth[0]!.revision),canEdit:auth[0]!.can_edit,
    roster:roster.map(c=>{const cost=byContract.get(c.contractId)!;
     const commitments=unpackSignedCommitments(cost.other_commitments);
-    const exclusiveLimit=maxExclusiveTermWeeks(cost.expires_week_index+1,commitments);
+    const renewalStart=cost.expires_week_index+1;
+    const exclusiveLimit=maxExclusiveTermWeeks(renewalStart,commitments);
+    const service=cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
+     {careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,
+      weeklyServiceCapacity:cost.weekly_service_capacity}:null;
+    const renewalLimits=service?purchasedDateLimits(service,renewalStart,commitments,currentWeekIndex):null;
+    const sameTerms=sameTermsRenewal({
+     family:cost.family,status:cost.status,startWeekIndex:cost.start_week_index,
+     expiresWeekIndex:cost.expires_week_index,dateEntitlement:cost.date_entitlement,
+     weeklyGuarantee:Number(cost.weekly_guarantee),appearanceFee:Number(cost.appearance_fee),
+     roleExpectation:cost.role_expectation,creativeControl:cost.creative_control
+    });
+    const sameTermsUnavailableReason=!sameTerms?"The current agreement needs a new negotiated package.":
+     sameTerms.family==="EXCLUSIVE"&&sameTerms.termWeeks>exclusiveLimit?
+      "Another signed commitment overlaps this renewal.":
+     sameTerms.family!=="EXCLUSIVE"&&
+      (renewalLimits?.[sameTerms.termWeeks-1]??Infinity)<sameTerms.dateEntitlement?
+      "This renewal asks for more dates than the wrestler can deliver.":
+     null;
     const density=commitments.filter(other=>other.startWeekIndex<=cost.expires_week_index+52&&
      other.expiresWeekIndex>=cost.expires_week_index+1).reduce((sum,other)=>sum+
       (other.family==="EXCLUSIVE"?1:Math.max(0,other.remainingDates??0)/
@@ -229,8 +248,7 @@ export async function readContractDesk(
      ["PROSPECT","PRIME","VETERAN","SPECIAL_ATTRACTION"].includes(cost.career_stage??"")?
       Math.max(0,serviceCapacityDatesPerWeek({careerStage:cost.career_stage as Stage,
        stamina:cost.stamina,fatigue:cost.fatigue})-density):null,
-    renewalDateLimits:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
-     purchasedDateLimits({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},cost.expires_week_index+1,commitments,currentWeekIndex):null,
+    renewalDateLimits:renewalLimits,sameTermsUnavailableReason,
     maxAdditionalDates:cost.stamina!=null&&cost.fatigue!=null&&cost.career_stage?
      Math.max(0,maxPurchasedDates({careerStage:cost.career_stage as Stage,stamina:cost.stamina,fatigue:cost.fatigue,weeklyServiceCapacity:cost.weekly_service_capacity},currentWeekIndex,c.weeksRemaining,commitments,currentWeekIndex)-(c.remainingDates??0)):null,
     renewalExclusiveTermLimit:exclusiveLimit,

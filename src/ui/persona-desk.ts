@@ -7,6 +7,7 @@ type View=Awaited<ReturnType<typeof readPortablePersonaWorkspace>>;
 import {describeWrestlerRivalryMemory} from "../domain/verified-wrestler-rivalry-memory.js";
 import {livingWrestlerMotivation} from "../domain/living-character-motivation.js";
 import {describeBookingCommitment} from "../domain/backstage-booking-commitment.js";
+import {managementWeek} from "../domain/backstage-management-context.js";
 import {BACKSTAGE_CHOICES,BACKSTAGE_LABELS,backstageManagerReply,backstageMessage,backstageReply,
  type BackstageDecision} from "../domain/backstage-conversations.js";
 import type {WorldMail,WorldMailAction} from "../db/backstage-world-mail.js";
@@ -1141,6 +1142,7 @@ export function mountPersonaDesk(root:HTMLElement,
      observedAbsentWeeks:item.observedAbsentWeeks,
      observedLosses:item.observedLosses,
      relevantTitle:item.relevantTitle,
+     managementContext:item.managementContext,
      careerStage:item.careerStageAtRequest as
       "PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION"|null,
      createdWeekIndex:item.createdWeekIndex},item.conversationId)));
@@ -1162,13 +1164,22 @@ export function mountPersonaDesk(root:HTMLElement,
      item.observedFeaturedShows+" featured"));
    if(item.decision){
     chat.append(el("div","ppw-persona-bubble ppw-persona-out",
-     backstageManagerReply(item.decision,item.kind)));
+     backstageManagerReply(item.decision,item.kind,item.dueWeekIndex)));
     if(item.respondedWeekIndex!==null)
      chat.append(el("small","ppw-backstage-sent-stamp","Sent · Y"+
       (Math.floor(item.respondedWeekIndex/52)+1)+" W"+
       (item.respondedWeekIndex%52+1)));
-    chat.append(el("div","ppw-persona-bubble ppw-persona-in",
-     backstageReply(item.decision,item.status,item.kind)));
+    const settled=["FULFILLED","BROKEN","EXCUSED"].includes(item.status)&&
+     item.dueWeekIndex!==null;
+    chat.append(el("div","ppw-persona-bubble ppw-persona-in",settled||
+     item.status==="PROMISED"?"I'll look for it on the card by "+
+     managementWeek(item.dueWeekIndex!)+".":backstageReply(item.decision,item.status,item.kind)));
+    if(settled){
+     if(item.settledWeekIndex!=null)chat.append(el("small","ppw-backstage-sent-stamp",
+      "Follow-up · "+managementWeek(item.settledWeekIndex)));
+     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
+      backstageReply(item.decision,item.status,item.kind)));
+    }
     if(item.kind==="PARTNERSHIP"&&item.decision==="MEDIATE"&&
      item.followThroughWeekIndex===null)
      chat.append(el("small","ppw-backstage-promise",
@@ -1219,23 +1230,49 @@ export function mountPersonaDesk(root:HTMLElement,
      "Locker-room update · no reply needed"));
    }else if(item.status==="EXCUSED"){
     chat.append(el("div","ppw-persona-bubble ppw-persona-in",
-     "This conversation has closed because the wrestler is no longer available under this contract."));
-   }else if(view.canEdit&&wrestler?.isCurrent!==false){
+     item.assessmentReason==="REPLY_WINDOW_ELAPSED"?"The window to reply to this request has passed.":
+      "This conversation has closed because the wrestler is no longer available under this contract."));
+   }else if(view.canEdit&&wrestler?.isCurrent!==false&&
+    (wrestler?.status!=="INJURED"||item.kind==="MEDICAL_SUPPORT")){
     const actions=el("div","ppw-backstage-replies ppw-backstage-composer");
     actions.append(el("span","ppw-backstage-composer-caption","YOUR REPLY · TAP A MESSAGE TO SEND"));
     for(const decision of BACKSTAGE_CHOICES[item.kind]){
+     const promise=decision==="PROMISE_APPEARANCE"||decision==="PROMISE_SEGMENT"||
+      decision==="PROMISE_FEATURED";
+     if(promise&&item.promiseAvailableThrough===null)continue;
+     if((decision==="EXPLORE_MENTORSHIP"||decision==="EXPLORE_TEAM"||
+      decision==="EXPLORE_RIVALRY")&&item.partnerAvailable===false)continue;
+     const now=(view.worldYear-1)*52+view.worldWeek-1;
+     const deadline=promise&&item.promiseAvailableThrough!=null?
+      Math.min(item.promiseAvailableThrough,now+(decision==="PROMISE_FEATURED"?4:2)):null;
+     const dialogue=backstageManagerReply(decision,item.kind,deadline);
      const reply=button("",()=>void decide(item.conversationId,decision),loading);
      reply.classList.add("ppw-backstage-reply-choice");
      reply.append(el("small","ppw-backstage-reply-intent",BACKSTAGE_LABELS[decision]),
-      el("span","ppw-backstage-reply-statement",backstageManagerReply(decision,item.kind)));
-     reply.setAttribute("aria-label",backstageManagerReply(decision,item.kind));
+      el("span","ppw-backstage-reply-statement",dialogue));
+     reply.setAttribute("aria-label",dialogue);
      actions.append(reply);
     }
     chat.append(actions);
    }else{
     chat.append(el("p","ppw-muted",wrestler?.isCurrent===false?
      "Read-only conversation: this wrestler is no longer under contract.":
-     "Reply when the next booking window opens."));
+     wrestler?.status==="INJURED"&&item.kind!=="MEDICAL_SUPPORT"?
+      "Replies to this request resume when the wrestler is available.":
+      "Reply when the next booking window opens."));
+   }
+   if(wrestler?.isCurrent!==false&&item.managementContext&&
+    (item.status==="PENDING"||item.status==="ANSWERED")){
+    const related=el("div","ppw-backstage-replies");
+    const programmeId=item.managementContext.programmeId;
+    if(programmeId&&port.openStoryProgramme)related.append(button("Review programme",
+     ()=>port.openStoryProgramme?.(programmeId),loading));
+    if(port.openDepartment){
+     if(item.kind==="CONTRACT")related.append(button("Review contract",
+      ()=>port.openDepartment?.("CONTRACTS"),loading));
+     related.append(button("Staff advice",()=>port.openDepartment?.("STAFF"),loading));
+    }
+    if(related.childElementCount)chat.append(related);
    }
   }
   for(const p of [...view.recentRequests].reverse()){

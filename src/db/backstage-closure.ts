@@ -11,13 +11,14 @@ export async function closeUnavailableBackstageRequests(
   throw new Error("Invalid Backstage World week");
  const rows=await tx.query<{request_id:string}>([
   "UPDATE ppw_backstage_requests r SET status='EXCUSED',",
-  "assessment_reason=CASE WHEN person.status<>'ACTIVE'",
-  "THEN 'WRESTLER_UNAVAILABLE' ELSE 'CONTRACT_UNAVAILABLE' END",
+  "assessment_reason=CASE WHEN person.status NOT IN ('ACTIVE','INJURED')",
+  "THEN 'WRESTLER_UNAVAILABLE' WHEN r.created_week_index<=$2-12",
+  "THEN 'REPLY_WINDOW_ELAPSED' ELSE 'CONTRACT_UNAVAILABLE' END",
   "FROM ppw_people person WHERE r.world_id=$1 AND r.status='PENDING'",
   "AND person.world_id=r.world_id AND person.person_id=r.person_id",
   // Medical absence is temporary; retain an unanswered medical-support
   // request when a signed deal still exists, rather than fabricating refusal.
-  "AND (person.status NOT IN ('ACTIVE','INJURED') OR NOT EXISTS(",
+  "AND (person.status NOT IN ('ACTIVE','INJURED') OR r.created_week_index<=$2-12 OR NOT EXISTS(",
   "SELECT 1 FROM ppw_contracts c WHERE c.world_id=r.world_id",
   "AND c.promotion_id=r.promotion_id AND c.person_id=r.person_id",
   "AND c.status='SIGNED' AND c.start_week_index<=$2",

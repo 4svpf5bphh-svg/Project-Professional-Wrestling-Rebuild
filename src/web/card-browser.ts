@@ -497,6 +497,10 @@ function staffPort(root:HTMLElement,scope:Scope,
   openRoster:()=>{window.location.hash=hostSectionHash("roster");},
   openMarket:()=>{window.location.hash=hostSectionHash("market");},
   openProgrammes:()=>{window.location.hash=hostSectionHash("programmes");},
+  openBusiness:()=>{window.location.hash=hostSectionHash("business");},
+  openBackstage:personId=>{
+   window.dispatchEvent(new CustomEvent("ppw:open-backstage",{detail:{personId}}));
+  },
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>mountWorldHomePage(root,scope)
  };

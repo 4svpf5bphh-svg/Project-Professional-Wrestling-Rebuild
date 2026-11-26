@@ -12,8 +12,11 @@ export async function publishBackstageMemories(
  // Historical threads are a verified source. A prior READY conversation is
  // projected at most once, keyed by exact request/outcome, not reauthored.
  const fromRequests=await tx.query<{memory_id:string}>([
-  "WITH facts AS (",
-  "SELECT r.promotion_id,r.person_id,r.request_id,r.responded_week_index,",
+  "WITH pruned AS (DELETE FROM ppw_backstage_memories",
+  "WHERE world_id=$1 AND occurred_week_index<greatest(0,$2-104)",
+  "), facts AS (",
+  "SELECT r.promotion_id,r.person_id,r.request_id,",
+  "coalesce(r.settled_week_index,r.responded_week_index) AS occurred_week_index,",
   "CASE WHEN r.status='FULFILLED' THEN 'PROMISE_KEPT'",
   "WHEN r.status='BROKEN' THEN 'PROMISE_BROKEN'",
   "WHEN r.status='EXCUSED' AND r.decision IS NOT NULL THEN 'PROMISE_EXCUSED'",
@@ -29,7 +32,7 @@ export async function publishBackstageMemories(
   "occurred_week_index,importance,source_id)",
   "SELECT $1,f.promotion_id,f.person_id,",
   "'request:'||f.request_id||':'||f.memory_kind,f.memory_kind,",
-  "f.responded_week_index,",
+  "f.occurred_week_index,",
   "CASE f.memory_kind WHEN 'PROMISE_BROKEN' THEN 5",
   "WHEN 'PROMISE_KEPT' THEN 4 WHEN 'PROMISE_MADE' THEN 3",
   "WHEN 'REQUEST_DECLINED' THEN 2 ELSE 1 END,",

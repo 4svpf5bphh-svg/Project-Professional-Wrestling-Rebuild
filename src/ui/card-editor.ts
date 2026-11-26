@@ -218,7 +218,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const otherWeek=crossShowWorkloadNotes((match??segment)!,
    view?.otherShowWorkloads??[],people,staffed);
   if(match){
-   const all=[...otherWeek,...workload,...matchStaffNotes(match,people,staffed),
+   const agent=view?.advisers?.find(member=>member.role==="ROAD_AGENT");
+   const all=[...otherWeek,...workload,...matchStaffNotes(match,people,staffed,agent),
     ...matchPartnershipNotes(match,people,staffed)];
    return [...all.filter(n=>n.level==="WATCH"),...all.filter(n=>n.level==="INFO")].slice(0,6);
   }

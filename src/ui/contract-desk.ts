@@ -447,7 +447,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     if(c.renewalArranged)body.append(el("p","ppw-contract-renew-hint",
      "A renewal has already been accepted. Its new terms begin after this agreement expires; no second offer is needed."));
     if(c.renewalEligible&&!c.pendingRenewal&&view!.canEdit&&!negotiatedPending){
-     body.append(btn("Offer same-terms renewal",()=>void action(
+     if(c.sameTermsUnavailableReason)body.append(el("p","ppw-contract-renew-hint",
+      c.sameTermsUnavailableReason));
+     else body.append(btn("Offer same-terms renewal",()=>void action(
       "renew:"+c.contractId,m=>port.renewal({...m,contractId:c.contractId}),
       "Same-terms renewal offered. Awaiting wrestler decision."),!editable()));
      const open=expandedRenewals.has(c.contractId);
@@ -468,12 +470,13 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      const currentWeeks=Math.max(1,Math.min(52,c.expiresWeekIndex-c.startWeekIndex+1));
      const exclusiveFloor=c.estimatedWeeklyValue==null?null:
       minimumExclusiveWeeklyGuarantee(c.estimatedWeeklyValue);
-     const suggestion=view?.talentManager&&originalFamily==="LIMITED_NON_EXCLUSIVE"?
+     const suggestion=view?.talentManager&&originalFamily!=="ONE_OFF"?
       recommendTalentOffer({personId:c.personId,name:c.name,
        marketWeeklyValue:c.estimatedWeeklyValue??9000,
        popularity:c.popularity??null,recognition:c.recognition??null,
        morale:c.morale??null,careerStage:c.careerStage,
-       interest:"INTERESTED",
+       interest:"UNKNOWN",renewal:true,preferredFamily:originalFamily,
+       exclusiveTermLimit:c.renewalExclusiveTermLimit,
        remainingServiceDensityPerWeek:c.nextTermServiceDensity,purchasedDateLimits:c.renewalDateLimits},view.talentManager):null;
      const initialDraft:OfferTerms={
       family:originalFamily,roleExpectation:c.roleExpectation as OfferTerms["roleExpectation"],
@@ -500,7 +503,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       opinion.append(el("small","ppw-contract-manager-tag",
        suggestion.managerName+" · TALENT MANAGER"),
        el("p","",suggestion.voice),
-       el("small","",suggestion.rationale));
+       el("small","",suggestion.availability));
+      if(recommended)opinion.append(el("small","",suggestion.willingness));
       if(recommended){
        const restore=btn("Use recommended terms",()=>{
         Object.assign(draft,recommended);

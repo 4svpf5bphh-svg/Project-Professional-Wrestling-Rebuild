@@ -8,6 +8,7 @@ import {GORILLA_POLICIES,type GorillaPolicy} from "../domain/gorilla-position.js
 import {staffMeetingDialogue,staffRecommendationVoice} from "./staff-meeting-voice.js";
 import {STAFF_PURPOSE} from "../domain/staff-meeting-brief.js";
 import {staffOfficeThemeClass} from "../domain/staff-office-themes.js";
+import {managementContractHorizon} from "../domain/backstage-management-context.js";
 import "./staff-office-themes.css";
 export type StaffView=Awaited<ReturnType<typeof readStaffWorkspace>>;
 export interface StaffPort{
@@ -25,6 +26,7 @@ export interface StaffPort{
   weeklySalary:number;termWeeks:52|104}):Promise<unknown>;
  openContracts?():void;openProgrammes?():void;openRoster?():void;
  openMarket?():void;openGorilla?():void;back?():void;
+ openBackstage?(personId:string):void;openBusiness?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -204,6 +206,33 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    panel.append(control,content);meeting.append(panel);
   }
   const attendees=el("div","ppw-staff-meeting-grid");
+  const shared=view.managementCase;
+  if(shared){
+   const followUp=el("article","ppw-staff-meeting-brief");
+   followUp.append(el("strong","",shared.personName),
+    el("p","",managementContractHorizon(shared.context)));
+   for(const brief of view.meetings.filter(brief=>brief.staffName&&
+    ["TALENT_MANAGER","ROAD_AGENT","CREATIVE"].includes(brief.role)&&brief.urgency!=="CLEAR")){
+    if(brief.role==="TALENT_MANAGER"&&shared.kind!=="CONTRACT")continue;
+    if(brief.role==="ROAD_AGENT"&&shared.context.strongMatches<2)continue;
+    followUp.append(el("p","ppw-staff-meeting-recommendation",brief.staffName+" · "+brief.nextStep));
+   }
+   if(port.openBackstage)followUp.append(button("Open conversation",
+    ()=>port.openBackstage?.(shared.personId)));
+   if(shared.kind==="CONTRACT"&&port.openContracts)followUp.append(button("Review contracts",()=>port.openContracts?.()));
+   if(port.openProgrammes)followUp.append(button("Review programmes",()=>port.openProgrammes?.()));
+   meeting.append(followUp);
+  }
+  if(view.financialAdvice){
+   const finance=el("details","ppw-staff-meeting-brief");
+   finance.append(el("summary","","Financial adviser"),
+    el("p","",view.financialAdvice.summary),
+    el("p","",view.financialAdvice.operatingRoom<0?
+     "Before adding a weekly guarantee, compare an existing roster booking or reserve a smaller package for the dates you actually need.":
+     "Set aside the next venue and production costs before agreeing a signing bonus. Compare a short deal with a full renewal."));
+   if(port.openBusiness)finance.append(button("Review spending policy",()=>port.openBusiness?.()));
+   meeting.append(finance);
+  }
   // Put genuinely urgent staffed decisions first; vacancies stay last.
   // Pure sorting, no extra World query or editor state change.
   const urgencyRank={ACTION:0,WATCH:1,CLEAR:2} as const;

@@ -1,5 +1,7 @@
 /** Text is presentation; request, decision and certified match evidence are gameplay. */
-export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"MENTORSHIP_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN";
+import {managementContractHorizon,managementWeek,type BackstageManagementContext}
+ from "./backstage-management-context.js";
+export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"MENTORSHIP_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN"|"MOMENTUM_OPPORTUNITY";
 export type BackstageDecision="TALK"|"DECLINE"|"PROMISE_APPEARANCE"|
  "PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|
  "CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_MENTORSHIP"|"EXPLORE_RIVALRY"|"NOT_NOW";
@@ -7,6 +9,7 @@ export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]
  CONTRACT:["EXPLORE_RENEWAL","TALK","DECLINE"],
  MORALE:["PROMISE_APPEARANCE","TALK","DECLINE"],
  MOMENTUM:["PROMISE_APPEARANCE","TALK","DECLINE"],
+ MOMENTUM_OPPORTUNITY:["PROMISE_APPEARANCE","PROMISE_SEGMENT","TALK","DECLINE"],
  CREATIVE:["PROMISE_SEGMENT","TALK","DECLINE"],
  PARTNERSHIP:["MEDIATE","TALK","DECLINE"],
  ROLE_USAGE:["PROMISE_FEATURED","TALK","DECLINE"],
@@ -51,6 +54,7 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
  verifiedSinglesShows?:number|null;professionalTrust?:number|null;
  observedAbsentWeeks?:number|null;observedLosses?:number|null;
  relevantTitle?:string|null;
+ managementContext?:BackstageManagementContext|null;
  careerStage?:"PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION"|null;
  createdWeekIndex?:number|null;
 },requestId=""){
@@ -60,6 +64,24 @@ export function backstageMessage(kind:BackstageKind,evidence?:{
  for(const ch of requestId)hash=(Math.imul(hash,31)+ch.charCodeAt(0))|0;
  const voice=requestId?Math.abs(hash%3):0;
  const partner=evidence?.partnerName??"that wrestler";
+ const management=evidence?.managementContext;
+ if(kind==="CONTRACT"&&management){
+  const opening=management.strongMatches>=2?
+   "We've had a good run lately. I'd like to know how much further we can take it together.":
+   "Can we talk about what comes next for me here?";
+  return opening+" "+managementContractHorizon(management)+
+   (management.programmeId?" I'd like to know what that means for my story.":"");
+ }
+ if(kind==="MOMENTUM_OPPORTUNITY"){
+  if(evidence?.careerStage==="PROSPECT")return "Thanks for the run you've given me. The last few shows felt like a step forward. Could I show you what I can do with a bigger part?";
+  if(evidence?.careerStage==="VETERAN")return "That crowd still likes a good night's wrestling. We've given them a couple lately. Give me something with stakes and I'll make it count.";
+  if(evidence?.careerStage==="SPECIAL_ATTRACTION")return "Those appearances got people talking. Let's make the next one feel like an occasion.";
+  return [
+   "Did you hear them out there? I'm enjoying this run. I think we can give the crowd something bigger next.",
+   "The last couple of matches clicked. I'd love a match with stakes or a chance to tell the crowd what I want next.",
+   "We've got the room with us lately. I'd like more responsibility on the show while we've got their attention."
+  ][voice]!;
+ }
  // Rivalry pitches are preserved at their original request, but the
  // wrestler can speak about the *certified number of shared shows* that
  // actually justified that message. Never borrow future matches or current
@@ -298,16 +320,18 @@ const topicManagerReplies:Partial<Record<BackstageKind,Partial<Record<"TALK"|"DE
   DECLINE:"I can't undo the broken promise. I'm not making another one I may miss."}
 };
 /** The manager speaks naturally; labels remain brief buttons, not dialogue. */
-export function backstageManagerReply(decision:BackstageDecision,kind?:BackstageKind):string{
+export function backstageManagerReply(decision:BackstageDecision,kind?:BackstageKind,
+ dueWeekIndex?:number|null):string{
+ const deadline=dueWeekIndex==null?null:managementWeek(dueWeekIndex);
  const specific=(decision==="TALK"||decision==="DECLINE")&&kind?
   topicManagerReplies[kind]?.[decision]:undefined;
  if(specific)return specific;
  switch(decision){
   case "TALK":return "You've got my attention. Tell me what you've got in mind.";
   case "DECLINE":return "I've heard your case, but I can't agree right now.";
-  case "PROMISE_APPEARANCE":return "I'll put you in a match within the next two weeks.";
-  case "PROMISE_SEGMENT":return "I'll give you promo or angle time within two weeks.";
-  case "PROMISE_FEATURED":return "I'll get you a featured match within four weeks.";
+  case "PROMISE_APPEARANCE":return deadline?"I'll put you in a match by "+deadline+".":"I'll put you in a match within the next two weeks.";
+  case "PROMISE_SEGMENT":return deadline?"I'll give you promo or angle time by "+deadline+".":"I'll give you promo or angle time within two weeks.";
+  case "PROMISE_FEATURED":return deadline?"I'll get you a featured match by "+deadline+".":"I'll get you a featured match within four weeks.";
   case "EXPLORE_RENEWAL":return "Let's discuss a new deal. We still need to agree the terms.";
   case "MEDIATE":return "I'll speak to both of you. The trust still has to be earned in the ring.";
   case "CONSIDER_REPACKAGE":return "Let's explore a character that fits you. Nothing changes without your approval.";
@@ -328,6 +352,9 @@ const topicWrestlerReplies:Partial<Record<BackstageKind,Partial<Record<"TALK"|"D
  MOMENTUM:{
   TALK:"All right. I don't want this cold run to become the whole story.",
   DECLINE:"I was hoping for an opportunity to turn things around."},
+ MOMENTUM_OPPORTUNITY:{
+  TALK:"Thanks. I'd like to pitch something we can build on.",
+  DECLINE:"Fair enough. I'll keep making the most of the time you've given me."},
  CREATIVE:{
   TALK:"I've got an idea in mind. I'll make the case for it when we talk.",
   DECLINE:"I still think I've got more to offer than we're showing."},

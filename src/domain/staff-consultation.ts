@@ -40,10 +40,13 @@ export const CONSULTATION_OPTIONS:Record<StaffRole,readonly [string,string]>={
  * borrows the existing story-follow-up system for non-rivalry formats.
  * Never turn a solo character, relationship or faction into a rivalry.
  */
-export function contextualConsultationOptions(role:StaffRole,facts:StaffMeetingFacts):
+export function contextualConsultationOptions(role:StaffRole,facts:StaffMeetingFacts,
+ member?:WorldStaffMember):
  readonly [string,string]{
- const brief=staffMeetingBrief(role,facts);
+ const brief=staffMeetingBrief(role,facts,member);
  const alternate=CONSULTATION_OPTIONS[role][1];
+ if(facts.managementCase&&["CREATIVE","ROAD_AGENT","TALENT_MANAGER"].includes(role))
+  return [brief.nextStep,alternate];
  if(role==="MEDICAL"){
   if(facts.medicalRisks>0)return [brief.nextStep,
    "Review non-physical presentation options for unavailable talent; keep all recorded medical restrictions in force."];
