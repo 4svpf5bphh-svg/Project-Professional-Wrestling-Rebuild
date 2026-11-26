@@ -9,11 +9,11 @@ import {defaults,seriesDue,regularRole} from "../domain/show-calendar.js";
 import {suggestedAnnualPremiumEvents} from "../domain/annual-premium-plan.js";
 import type {StandingTier} from "../domain/annual-promotion-standing.js";
 import {readWorldAiBookingContext} from "./ai-booking-context.js";
-import {chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch,type AiCardInput} from "../domain/ai-world-card.js";
+import {chooseAiTelevisionCard,chooseAiWorldCard,chooseAiTitleChallenger,type AiRosterCandidate,type AiCardMatch,type AiCardInput} from "../domain/ai-world-card.js";
 import {aiPromotionStrategy} from "../domain/ai-promotion-strategy.js";
-import {planAiProgrammeBeat,startAiProgramme,type AiProgramme,type AiProgrammeAngle} from "../domain/ai-programmes.js";
+import {aiTagPairKey,planAiProgrammeBeat,startAiProgramme,type AiProgramme,type AiProgrammeAngle} from "../domain/ai-programmes.js";
 import type {ProgrammePayoff} from "../domain/programme-finales.js";
-import {insertAiProgrammes,planAiFinales,readAiFactionCasts,readAiProgrammes,retireAiProgrammes}
+import {insertAiProgrammes,planAiFinales,readAiFactionCasts,readAiProgrammes,readAiTagSeparations,retireAiProgrammes}
  from "./ai-programmes.js";
 
 export interface GenerateStaffFallbackCardsInput{
@@ -339,6 +339,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
        await readAiProgrammes(tx,input.worldId,aiCompanyIds,weekIndex):null;
       const factions=creativeEnabled?
        await readAiFactionCasts(tx,input.worldId,aiCompanyIds):new Map<string,string[][]>();
+      const separations=creativeEnabled?
+       await readAiTagSeparations(tx,input.worldId,aiCompanyIds,weekIndex):new Map<string,Set<string>>();
       const stories=new Map(creativeContext?.active);
       const starts=new Map<string,AiProgramme>();
       const retired:{promotionId:string;programmeId:string;reason:string}[]=[];
@@ -358,12 +360,23 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
          broadcast:company.contracted_day!==null},
        });
       };
+      const titleFor=(promotionId:string,programme:AiProgramme)=>
+       context?.championships.get(promotionId)?.find(title=>title.championshipId===programme.championshipId);
+      const chaseTitle=(promotionId:string)=>{
+       const story=stories.get(promotionId);
+       return story?.championshipId?titleFor(promotionId,story):undefined;
+      };
+      const titleReserved=(promotionId:string,title:NonNullable<ReturnType<typeof chaseTitle>>)=>
+       title.holderId!==null&&title.championshipId===stories.get(promotionId)?.championshipId&&
+       title.holderId===stories.get(promotionId)?.sideB[0];
       if(creativeContext)for(const promotionId of aiCompanyIds){
        const existingStory=stories.get(promotionId);
        const roster=aiRoster.get(promotionId)??[];
        const healthy=new Set(roster.map(p=>p.personId));
        if(existingStory){
-        const cast=[...existingStory.sideA,...existingStory.sideB];
+        const staleTitle=existingStory.championshipId&&
+         titleFor(promotionId,existingStory)?.holderId!==existingStory.sideB[0];
+        const cast=staleTitle?existingStory.sideA:[...existingStory.sideA,...existingStory.sideB];
         const missing=cast.filter(id=>!healthy.has(id));
         const injured=injuredByPromotion.get(promotionId);
         const idle=weekIndex-(existingStory.lastWeek??existingStory.started);
@@ -385,7 +398,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
        const next=nextPremium.get(promotionId);
        const programme=startAiProgramme({seed:String(worlds[0]!.seed),promotionId,week:weekIndex,
         roster,strategy:strategyFor(promotionId),titles:context?.championships.get(promotionId)??[],
-        contenders:context?.recentSingles.get(promotionId)??[],teams:context?.teams??[],
+        contenders:context?.recentSingles.get(promotionId)??[],
+        teams:(context?.teams??[]).filter(team=>!separations.get(promotionId)?.has(aiTagPairKey(team.aId,team.bId))),
         factions:factions.get(promotionId)??[],history,premiumSoon:next!==undefined&&next-weekIndex<=4});
        if(programme){
         starts.set(promotionId,programme);
@@ -401,7 +415,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
        // A development beat can still air on TV when the story needs it.
        const options={programme,roster,week:weekIndex,nextPremium:next,
         strategy:strategyFor(promotionId),results:context?.recentSingles.get(promotionId)??[],
-        title:context?.championships.get(promotionId)?.find(t=>t.championshipId===programme.championshipId)};
+        title:titleFor(promotionId,programme)};
        return planAiProgrammeBeat({...options,premium});
       };
       const protectedPair=(promotionId:string):[string,string]|undefined=>{
@@ -454,64 +468,62 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const eligible=(aiRoster.get(promotionId)??[]).filter(hasDate);
           const premiumFinale=duePremium.has(promotionId)?creativeFor(promotionId,eligible,true):null;
           const premiumCast=new Set(premiumFinale?.payoff?
-           [...premiumFinale.programme.sideA,...premiumFinale.programme.sideB]:[]);
-          const rested=eligible.filter(w=>!premiumCast.has(w.personId));
-          // Reserve the advertised attraction when an independent TV card
-          // can run without its cast. Service, venue and contract checks
-          // still decide whether either card can actually be booked.
-          const roster=premiumCast.size&&rested.length>=8&&
-           (["MEN","WOMEN"] as const).some(division=>rested.filter(w=>w.bookingDivision===division).length>=2)?
-           rested:eligible;
-          const byId=new Map(roster.map(p=>[p.personId,p]));
-          const rivals=context?.programmes.get(promotionId)??[];
-          const creative=d.premium_only_week||premiumFinale?.payoff?null:creativeFor(promotionId,roster,false);
-          // Vacant titles can still be crowned on periodic television.
-          // Defences are focused on title programmes and true PPVs rather
-          // than pseudo-premium regular broadcasts.
-          const titles=(context?.championships.get(promotionId)??[]).filter(t=>
-           t.championshipId!==stories.get(promotionId)?.championshipId).filter(t=>
-           (eventType==="MAJOR"&&year<worlds[0]!.premium_plan_start_year)||
-           (t.holderId===null&&weekIndex%4===0&&
-            !rivals.some(r=>r.heat>=85)));
-          const challengers=titles.flatMap<AiFeaturedPair>(t=>{
-            if(t.holderId===null){
-              const pair=inauguralPair(roster,t.bookingDivision);
-              return pair?[{...pair,kind:"VACANT_SINGLES_TITLE" as const,
-               championshipId:t.championshipId,heat:t.heat}]:[];
-            }
-            const champ=byId.get(t.holderId);
-            if(!champ)return [];
-            const candidate=chooseAiTitleChallenger({
-              roster,holderId:t.holderId,championshipId:t.championshipId,
-              worldSeed:String(worlds[0]!.seed),promotionId,year,week,
-              recentPairs:recent.get(promotionId)??[],
-             recentResults:[...(context?.recentSingles.get(promotionId)??[]),
-                ...(context?.recentTags.get(promotionId)??[])],
+           premiumFinale.kind==="ANGLE"?[...premiumFinale.angle.actorIds,...premiumFinale.angle.targetIds]:
+            [...premiumFinale.programme.sideA,...premiumFinale.programme.sideB]:[]);
+          const card=chooseAiTelevisionCard(eligible,premiumCast,roster=>{
+           const byId=new Map(roster.map(p=>[p.personId,p]));
+           const rivals=context?.programmes.get(promotionId)??[];
+           const creative=d.premium_only_week||premiumFinale?.payoff?null:creativeFor(promotionId,roster,false);
+           // Vacant titles can still be crowned on periodic television.
+           // Defences are focused on title programmes and true PPVs rather
+           // than pseudo-premium regular broadcasts.
+           const titles=(context?.championships.get(promotionId)??[]).filter(t=>
+            !titleReserved(promotionId,t)).filter(t=>{
+             const vacancy=t.holderId===null&&t.championshipId===chaseTitle(promotionId)?.championshipId;
+             if(vacancy)return !duePremium.has(promotionId);
+             return (eventType==="MAJOR"&&year<worlds[0]!.premium_plan_start_year)||
+              (t.holderId===null&&weekIndex%4===0&&!rivals.some(r=>r.heat>=85));
             });
-            return candidate?[{kind:"SINGLES_TITLE" as const,
-              aId:t.holderId,bId:candidate.personId,holderId:t.holderId,
-              championshipId:t.championshipId,heat:t.heat}]:[];
-          });
-          const establishedPartners=[...byId.keys()].flatMap(aId=>
-            (context?.partners.get(aId)??[]).filter(bId=>aId<bId)
-              .map(bId=>({aId,bId})));
-          const card=chooseAiWorldCard({
-             contractedDay:d.contracted_day,
-            worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
-            promotionId,showId,roster,
-            activeVenues:venueRows.map(x=>x.venue_id),bookedShows:booked,
-            eventType,riskTolerance:profile.ai_risk_tolerance,
-            matchQualityPreference:profile.ai_match_quality_preference,
-            starPreference:profile.ai_star_preference,
-            strategy:strategyFor(promotionId),creative,
-            protectedProgrammePair:protectedPair(promotionId),
-            recentPairs:recent.get(promotionId)??[],
-             recentResults:[...(context?.recentSingles.get(promotionId)??[]),
-                ...(context?.recentTags.get(promotionId)??[])],
-            featuredPairs:[...challengers,...rivals],
-            establishedPartners,
-            establishedTeams:context?.teams,
-            tagTitles:context?.tagChampionships.get(promotionId),
+           const challengers=titles.flatMap<AiFeaturedPair>(t=>{
+             if(t.holderId===null){
+               const pair=inauguralPair(roster,t.bookingDivision);
+               return pair?[{...pair,kind:"VACANT_SINGLES_TITLE" as const,
+                championshipId:t.championshipId,heat:t.heat}]:[];
+             }
+             const champ=byId.get(t.holderId);
+             if(!champ)return [];
+             const candidate=chooseAiTitleChallenger({
+               roster,holderId:t.holderId,championshipId:t.championshipId,
+               worldSeed:String(worlds[0]!.seed),promotionId,year,week,
+               recentPairs:recent.get(promotionId)??[],
+              recentResults:[...(context?.recentSingles.get(promotionId)??[]),
+                 ...(context?.recentTags.get(promotionId)??[])],
+             });
+             return candidate?[{kind:"SINGLES_TITLE" as const,
+               aId:t.holderId,bId:candidate.personId,holderId:t.holderId,
+               championshipId:t.championshipId,heat:t.heat}]:[];
+           });
+           const establishedPartners=[...byId.keys()].flatMap(aId=>
+             (context?.partners.get(aId)??[]).filter(bId=>aId<bId)
+               .map(bId=>({aId,bId})));
+           return chooseAiWorldCard({
+              contractedDay:d.contracted_day,
+             worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
+             promotionId,showId,roster,
+             activeVenues:venueRows.map(x=>x.venue_id),bookedShows:booked,
+             eventType,riskTolerance:profile.ai_risk_tolerance!,
+             matchQualityPreference:profile.ai_match_quality_preference!,
+             starPreference:profile.ai_star_preference!,
+             strategy:strategyFor(promotionId),creative,
+             protectedProgrammePair:protectedPair(promotionId),
+             recentPairs:recent.get(promotionId)??[],
+              recentResults:[...(context?.recentSingles.get(promotionId)??[]),
+                 ...(context?.recentTags.get(promotionId)??[])],
+             featuredPairs:[...challengers,...rivals],
+             establishedPartners,
+             establishedTeams:context?.teams,separatedTagPairs:separations.get(promotionId),
+             tagTitles:context?.tagChampionships.get(promotionId),
+           });
           });
           if(card.status==="UNFILLED"){
             unfilled.push({promotionId,reason:card.reason});continue;
@@ -575,7 +587,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         const rosterById=new Map(roster.map(p=>[p.personId,p]));
         const creative=creativeFor(promotionId,roster,true);
         const titleChallenges=(context?.championships.get(promotionId)??[])
-         .filter(t=>t.championshipId!==stories.get(promotionId)?.championshipId)
+         .filter(t=>!titleReserved(promotionId,t))
          .flatMap<AiFeaturedPair>(title=>{
           if(title.holderId===null){
             const pair=inauguralPair(roster,title.bookingDivision);
@@ -614,7 +626,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
                 ...(context?.recentTags.get(promotionId)??[])],
           featuredPairs:[...titleChallenges,
            ...(context?.programmes.get(promotionId)??[])],
-          establishedTeams:context?.teams,
+          establishedTeams:context?.teams,separatedTagPairs:separations.get(promotionId),
           establishedPartners:roster.flatMap(p=>
             (context?.partners.get(p.personId)??[])
               .filter(bId=>p.personId<bId).map(bId=>({aId:p.personId,bId}))),

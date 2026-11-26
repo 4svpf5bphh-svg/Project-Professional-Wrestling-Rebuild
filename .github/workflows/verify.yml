@@ -888,6 +888,11 @@ jobs:
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
         run: npm run test:postgres
+      - name: Run the mixed human and AI Programme acceptance playtest
+        env:
+          PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test
+          PPW_CREATIVE_HUMAN: '1'
+        run: npm exec -- tsx --test tests/ai-programme-world-postgres.test.ts
       - name: Bound stalled disposable PostgreSQL statements during season tests
         env:
           PGPASSWORD: ppw_test

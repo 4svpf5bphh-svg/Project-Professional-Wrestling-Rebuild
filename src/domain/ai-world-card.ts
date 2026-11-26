@@ -10,7 +10,7 @@ import type {StaffWrestlerCandidate} from "./staff-fallback-card.js";
 import type {EventType} from "./legacy-show-economics.js";
 import type {AiPromotionStrategy} from "./ai-promotion-strategy.js";
 import {rankEarnedContenders,type CertifiedContenderResult} from "./earned-contenders.js";
-import {bookAiProgrammeAngle,type AiProgrammeAngle,type AiProgrammeBeat} from "./ai-programmes.js";
+import {aiTagPairKey,bookAiProgrammeAngle,type AiProgrammeAngle,type AiProgrammeBeat} from "./ai-programmes.js";
 import type {ProgrammePayoff} from "./programme-finales.js";
 export interface AiRosterCandidate extends StaffWrestlerCandidate{
  momentum:number;popularity:number;recognition:number;presentation:number;matchCraft:number;
@@ -31,6 +31,7 @@ export interface AiCardInput{
  creative?:AiProgrammeBeat|null;
  recentResults?:readonly CertifiedContenderResult[];
  establishedPartners?:readonly {aId:string;bId:string}[];
+ separatedTagPairs?:ReadonlySet<string>;
  establishedTeams?:readonly {teamId:string;aId:string;bId:string}[];
  tagTitles?:readonly {championshipId:string;holderTeamId:string|null;heat:number;bookingDivision?:"MEN"|"WOMEN"|null}[];
  featuredPairs?:readonly {aId:string;bId:string;kind:"PROGRAMME"|"SINGLES_TITLE"|"VACANT_SINGLES_TITLE";
@@ -154,6 +155,22 @@ export function chooseAiTitleChallenger(input:{
  }
  return shortlist[starting]!;
 }
+/** Resting the premium cast is a preference within the regular show's
+ * normal scheduling pass. Both attempts use the same live reservations. */
+export function chooseAiTelevisionCard(
+ eligible: AiRosterCandidate[], premiumCast: ReadonlySet<string>,
+ book: (roster: AiRosterCandidate[]) => AiCardResult,
+): AiCardResult {
+ if (premiumCast.size) {
+  const rested = eligible.filter(wrestler => !premiumCast.has(wrestler.personId));
+  if (rested.length >= 8 && rested.length < eligible.length) {
+   const preferred = book(rested);
+   if (preferred.status === "READY") return preferred;
+  }
+ }
+ return book(eligible);
+}
+
 export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
  if(!input.worldId||!input.showId||!input.promotionId||!input.worldSeed||
   !Number.isSafeInteger(input.year)||input.year<1||
@@ -253,6 +270,7 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
    programmeId:beat.programme.programmeId,championshipId:beat.programme.championshipId??undefined,
    heat:0}:null;
  const reserve=creativePair??priority[0]??null;
+ const canTeam=(a:string,b:string)=>!input.separatedTagPairs?.has(aiTagPairKey(a,b));
  const establishedTagCandidates:(readonly {
   teamId:string;aId:string;bId:string;a:AiRosterCandidate|undefined;
   b:AiRosterCandidate|undefined;provisional:boolean}[]) =
@@ -260,7 +278,7 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
    if(!t.teamId||!t.aId||!t.bId||t.aId===t.bId)
     throw new Error("Invalid established tag team");
    return {...t,a:byId.get(t.aId),b:byId.get(t.bId),provisional:false};
-  }).filter(t=>t.a&&t.b&&t.a.bookingDivision===t.b.bookingDivision &&
+  }).filter(t=>t.a&&t.b&&t.a.bookingDivision===t.b.bookingDivision && canTeam(t.aId,t.bId) &&
    ![t.aId,t.bId].some(id=>id===reserve?.aId||id===reserve?.bId));
  const titleCandidates=(input.tagTitles??[]).filter(t=>{
   if(!t.championshipId||(t.holderTeamId!==null&&!t.holderTeamId)||!isStat(t.heat)||
@@ -289,11 +307,16 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
     p.personId!==reserve?.aId&&p.personId!==reserve?.bId).sort(best);
    // Two pairs per division suffice for an inaugural title or a defense.
    // Keep their identities transient; no tag name or contract is invented.
-   for(let i=0;i+1<Math.min(free.length,4);i+=2){
-    const a=free[i]!,b=free[i+1]!;
+   let pairs=0;
+   while(pairs<2&&free.length>=2){
+    const a=free.shift()!;
+    const partner=free.findIndex(b=>canTeam(a.personId,b.personId));
+    if(partner<0)continue;
+    const b=free.splice(partner,1)[0]!;
     provisionalTagCandidates.push({
-     teamId:"__draft_tag_"+division+"_"+i,aId:a.personId,bId:b.personId,
+     teamId:"__draft_tag_"+division+"_"+pairs*2,aId:a.personId,bId:b.personId,
      a,b,provisional:true});
+    pairs++;
    }
   }
  }
@@ -347,10 +370,13 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   const wrestler=byId.get(id);
   return wrestler?[wrestler]:[];
  }):available;
- const otherTeam=lead&&partner&&lead.bookingDivision===partner.bookingDivision&&
+ const candidateOpponents=lead&&partner&&lead.bookingDivision===partner.bookingDivision&&canTeam(lead.personId,partner.personId)&&
   ![reserve?.aId,reserve?.bId].some(id=>id===lead.personId||id===partner.personId)?
   eligibleTagOpponents.filter(p=>p.bookingDivision===lead.bookingDivision&&
-   ![lead.personId,partner.personId,reserve?.aId,reserve?.bId].includes(p.personId)).slice(0,2):[];
+   ![lead.personId,partner.personId,reserve?.aId,reserve?.bId].includes(p.personId)):[];
+ const firstOpponent=candidateOpponents.find((a,i)=>candidateOpponents.slice(i+1).some(b=>canTeam(a.personId,b.personId)));
+ const secondOpponent=firstOpponent&&candidateOpponents.find(p=>p!==firstOpponent&&canTeam(firstOpponent.personId,p.personId));
+ const otherTeam=firstOpponent&&secondOpponent?[firstOpponent,secondOpponent]:[];
  const creativeTag=lead&&partner&&otherTeam.length===2&&(!ordinaryTag?.titleId||beat?.payoff)?
   {first:{aId:lead.personId,bId:partner.personId},
    second:{aId:otherTeam[0]!.personId,bId:otherTeam[1]!.personId},titleId:null,inaugural:false}:null;

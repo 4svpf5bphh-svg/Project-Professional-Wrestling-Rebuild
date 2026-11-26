@@ -8,17 +8,22 @@ import { lockWorldWeek } from "../src/db/world-lock.js";
 import { driveWorldResolution } from "../src/db/world-resolution-pipeline.js";
 import { readIndustryWorldHub } from "../src/db/industry-world-hub.js";
 import { readIndustryWorldNews } from "../src/db/industry-news.js";
+import { readAiAcceptanceEvidence } from "./fixtures/ai-acceptance-evidence.js";
+import { readAiTagSeparations } from "../src/db/ai-programmes.js";
+import { aiTagPairKey } from "../src/domain/ai-programmes.js";
+import { bookAiPlaytestHumanCard, prepareAiManagerPlaytest } from "./fixtures/ai-manager-playtest.js";
 import { readPublicCompletedShow } from "../src/db/public-completed-show.js";
 
 const url = process.env.PPW_NEON_TEST_URL;
 const weeks = Number(process.env.PPW_CREATIVE_WEEKS ?? 13);
 const seed = Number(process.env.PPW_CREATIVE_SEED ?? 31);
+const controlled = process.env.PPW_CREATIVE_HUMAN === "1";
 const baseline = process.env.PPW_CREATIVE_BASELINE === "1";
 
 test("AI programmes develop and settle through the real World pipeline", {
  skip: !url ? "Disposable PostgreSQL required" : false, timeout: 1200000,
 }, async t => {
- const worldId = "test-ai-creative-" + seed + "-" + weeks;
+ const worldId = "test-ai-creative-" + seed + "-" + weeks + (controlled ? "-human" : "");
  const playerId = worldId + "-viewer";
  const db = postgresPool(url!, 4);
  const fixture = originalGenesisFixture(worldId);
@@ -88,7 +93,20 @@ test("AI programmes develop and settle through the real World pipeline", {
     ($1,'promotion-3','audit-faction','audit-2','person-11',0),
     ($1,'promotion-3','audit-faction','audit-3','person-19',0)
   `);
+  const tensions: {week:number; pairs:string[]}[]=[];
+  if (controlled) await prepareAiManagerPlaytest(db.pool,worldId,playerId);
   for (let index = 0; index < weeks; index++) {
+   const authored=controlled?await bookAiPlaytestHumanCard(db.pool,worldId,playerId,index):null;
+   if (controlled && index===1) {
+    // Simulate the persisted state after the original champion has retired.
+    // The following coronation and fallout must run through real certification.
+    await q(`UPDATE ppw_championship_reigns SET status='ENDED',ended_week_index=0
+     WHERE world_id=$1 AND reign_id='review-reign'`);
+    await q(`UPDATE ppw_championships SET current_reign_id=NULL
+     WHERE world_id=$1 AND current_reign_id='review-reign'`);
+    await q(`UPDATE ppw_people SET status='RETIRED' WHERE world_id=$1 AND person_id='person-26'`);
+   }
+
    const year = Math.floor(index / 52) + 1, week = index % 52 + 1;
    const clock = await q<{ revision: number | string }>(`
     UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second'
@@ -96,20 +114,61 @@ test("AI programmes develop and settle through the real World pipeline", {
    `, [worldId, year, week]);
    assert.equal(clock.length, 1);
    // New arrivals inherit the comparison fixture's single-service policy.
-   if (index >= 52) await q("UPDATE ppw_people SET weekly_service_capacity=1 WHERE world_id=$1 AND weekly_service_capacity IS DISTINCT FROM 1");
+   if (!controlled && index >= 52) await q("UPDATE ppw_people SET weekly_service_capacity=1 WHERE world_id=$1 AND weekly_service_capacity IS DISTINCT FROM 1");
    const before = { ...totals };
    assert.equal((await lockWorldWeek(measuringPool, {
     worldId, requestId: "creative-lock-" + index, expectedRevision: Number(clock[0]!.revision),
    })).status, "APPLIED");
-   const run = await driveWorldResolution(measuringPool, {
-    worldId, resolutionId: "creative-audit", maxStages: 16, manualRecovery: true,
+   let run = await driveWorldResolution(measuringPool, {
+    worldId, resolutionId: "creative-audit", maxStages: controlled && index === 0 ? 1 : 16, manualRecovery: true,
    }).catch((error: unknown) => {
     throw new Error("Creative audit failed in World week " + (index + 1), { cause: error });
    });
+   if(controlled && index===0){
+    const view={worldId,playerId,viewerPromotionId:"promotion-7",targetPromotionId:"promotion-1",
+     showId:"ai-week-1-1-promotion-1"};
+    for(let step=0;run.status==="LIMIT_REACHED"&&step<16;step++){
+     const action=run.steps.at(-1)?.action;
+     if(action==="GENERATE_STAFF_AND_AI_CARDS"||action==="CERTIFY_WEEK"){
+      await assert.rejects(readPublicCompletedShow(db.pool,view),/unavailable/);
+      assert.equal((await readIndustryWorldNews(db.pool,{worldId,playerId,promotionId:"promotion-7"})).stories.length,0);
+     }
+     run=await driveWorldResolution(measuringPool,{worldId,resolutionId:"creative-audit",maxStages:1,manualRecovery:true});
+    }
+    const published=await readPublicCompletedShow(db.pool,view);
+    assert.ok(published.entries.some(e=>e.programme));
+    assert.doesNotMatch(JSON.stringify(published),/scriptedWinner|contractId|creative_intent|destination/);
+   }
+   if(authored){
+    const actual=await q<{script:string;result:string;finish:string;origin:string}>(`
+     SELECT slot.payload->>'scriptedWinnerSide' AS script,m.actual_winner_side AS result,m.actual_finish AS finish,d.booking_origin AS origin
+     FROM ppw_booking_drafts d JOIN ppw_card_slots slot ON (slot.world_id,slot.draft_id)=(d.world_id,d.draft_id)
+     JOIN ppw_completed_show_matches m ON (m.world_id,m.show_id,m.match_id)=(slot.world_id,slot.draft_id,slot.slot_id)
+     WHERE d.world_id=$1 AND d.draft_id=$2`,[worldId,authored.showId]);
+    assert.equal(actual[0]?.script,authored.winner);
+    assert.notEqual(actual[0]?.origin,"AI");
+    if(actual[0]?.finish!=="INJURY_STOPPAGE")assert.equal(actual[0]?.result,authored.winner);
+   }
    assert.equal(run.status, "PUBLISHED", "Week " + (index + 1) + " " + JSON.stringify(run));
    samples.push({ week: index + 1, statements: totals.statements - before.statements,
     writeStatements: totals.writeStatements - before.writeStatements, rows: totals.rows - before.rows,
     inputBytes: totals.inputBytes - before.inputBytes, outputBytes: totals.outputBytes - before.outputBytes });
+   if(controlled){
+    const previous=tensions.at(-1)?.pairs??[];
+    if(previous.length){
+     const teams=await q<{a:string;b:string}>(`
+      SELECT side->'participants'->0->>'personId' AS a,side->'participants'->1->>'personId' AS b
+      FROM ppw_booking_drafts d JOIN ppw_card_slots slot ON (slot.world_id,slot.draft_id)=(d.world_id,d.draft_id)
+      CROSS JOIN LATERAL jsonb_array_elements(slot.payload->'sides') side
+      WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3 AND d.promotion_id IN ('promotion-3','promotion-4')
+       AND jsonb_array_length(side->'participants')=2
+     `,[worldId,year,week]);
+     assert.ok(teams.every(team=>!previous.includes(aiTagPairKey(team.a,team.b))),
+      "The following certified cards keep the conflicted talent on different tag sides");
+    }
+    const pairs=await withWorldTransaction(db.pool,tx=>readAiTagSeparations(tx,worldId,["promotion-3","promotion-4"],index+1));
+    tensions.push({week:index+1,pairs:[...pairs.values()].flatMap(set=>[...set]).sort()});
+   }
    if (index === 0 || index + 1 === weeks) {
     const tried = await driveWorldResolution(db.pool, {
      worldId, resolutionId: "creative-audit", maxStages: 2, manualRecovery: true,
@@ -202,6 +261,21 @@ test("AI programmes develop and settle through the real World pipeline", {
    assert.equal(counts.initiated, 0);
    return;
   }
+  if(controlled||process.env.PPW_CREATIVE_EVIDENCE==="1"){
+   const evidence=await withWorldTransaction(db.pool,tx=>readAiAcceptanceEvidence(tx,worldId,weeks,controlled));
+   console.log("AI acceptance evidence "+JSON.stringify({seed,weeks,controlled,...evidence,tensions}));
+   if(controlled){
+    assert.ok(tensions[1]?.pairs.includes(aiTagPairKey("person-3","person-27")),"An aired faction interruption changes next week's partnership choices");
+    assert.ok(tensions.some(t=>t.pairs.includes(aiTagPairKey("person-4","person-28"))),"A certified betrayal changes subsequent partnership choices");
+    const canonical=await q(`
+     SELECT (SELECT count(*)::int FROM ppw_tag_team_members
+             WHERE world_id=$1 AND team_id='turning-point' AND active) AS tag_members,
+            (SELECT count(*)::int FROM ppw_stable_memberships
+             WHERE world_id=$1 AND stable_id='audit-faction' AND active) AS stable_members
+    `);
+    assert.deepEqual(canonical,[{tag_members:2,stable_members:3}],"The on-air conflict does not rewrite the real rosters");
+   }
+  }
   assert.ok(Number(counts.initiated) >= 8);
   assert.ok(Number(counts.completed) >= 4);
   assert.ok(Number(counts.angles) >= 12);
@@ -227,9 +301,11 @@ test("AI programmes develop and settle through the real World pipeline", {
    `))[0];
   assert.deepEqual(consistency, { phantom_payoffs: 0, delivered: counts.completed,
    finale_events: counts.completed, duplicate_counts: 0 });
-  await q("INSERT INTO ppw_players(player_id) VALUES($1)", [playerId]);
+  if(!controlled){
+   await q("INSERT INTO ppw_players(player_id) VALUES($1)", [playerId]);
   await q("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')", [worldId, playerId]);
   await q("INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,'promotion-7')", [worldId, playerId]);
+  }
   const viewer = { worldId, playerId, promotionId: "promotion-7" };
   const read = await readIndustryWorldNews(db.pool, viewer);
   const story = read.stories.find(s => s.id.startsWith("programme:official:") && s.promotionId !== viewer.promotionId);

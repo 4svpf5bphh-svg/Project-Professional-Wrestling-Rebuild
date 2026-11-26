@@ -23,6 +23,7 @@ export interface AiProgramme {
  lastWeek: number | null;
  lastCrowd: number | null;
  lastFinish: string | null;
+ lastMatchWeek?: number | null;
  lastWinnerSide: string | null;
 }
 export interface AiProgrammeTitle {
@@ -47,6 +48,7 @@ const wrestling = (p: AiRosterCandidate) => p.matchCraft * .65 + p.momentum * .3
 const seedOrder = (seed: string, key: string) =>
  createHash("sha256").update(JSON.stringify([seed, key])).digest().readUInt32BE(0) / 0xffffffff;
 const personRef = (refId: string): ProgrammeRef => ({ kind: "PERSON", refId });
+export const aiTagPairKey = (a: string, b: string) => JSON.stringify(a < b ? [a,b] : [b,a]);
 export function aiProgrammeKey(programme: Pick<AiProgramme, "format" | "sideA" | "sideB">) {
  return programmeIdentity({ sideA: programme.sideA.map(personRef), sideB: programme.sideB.map(personRef) },
   programme.format);
@@ -151,15 +153,9 @@ export function planAiProgrammeBeat(input: {
  const { programme: p, week, premium } = input;
  const cast = [...p.sideA, ...p.sideB];
  const roster = new Map(input.roster.map(person => [person.personId, person]));
- if (cast.some(id => !roster.has(id))) return null;
  const leadId = cast[0]!;
  const foil = p.sideB[0] ?? p.sideA[1];
  const blueprint = p.intent.blueprintId;
- const weakReaction = p.lastCrowd !== null && p.lastCrowd < 42;
- const expiring = cast.some(id => (roster.get(id)!.contractExpires ?? Infinity) <= week + 1 ||
-  (roster.get(id)!.remainingDates ?? Infinity) <= 1);
- const waitingForPremium = !premium && input.nextPremium !== null && input.nextPremium - week <= 4 &&
-  !expiring && !weakReaction;
  const angle = (kind: SegmentBookingInput["kind"], purpose: NonNullable<SegmentBookingInput["scene"]>["purpose"],
   actorIds: string[], targetIds: string[] = [], payoff?: ProgrammePayoff): AiProgrammeBeat => ({
   kind: "ANGLE", programme: p, payoff,
@@ -169,18 +165,28 @@ export function planAiProgrammeBeat(input: {
    ...(kind === "INTERRUPTION" ? { creativeBeat: initialCreativeBeat(kind)! } : {}),
    scene: { ...initialAngleScene(kind), purpose } },
  });
- if (p.lastWeek === week) return null;
+ if (p.lastWeek === week || !roster.has(leadId)) return null;
+ // A certified vacancy or new champion changes the premise of this chase.
+ // The contender can acknowledge it without booking the former champion.
+ if (p.championshipId && input.title?.holderId !== foil)
+  return angle("INTERVIEW", "REVEAL_MOTIVATION", [leadId], [], "FINAL_CHAPTER");
+ if (cast.some(id => !roster.has(id))) return null;
+ const weakReaction = p.lastCrowd !== null && p.lastCrowd < 42;
+ const expiring = cast.some(id => (roster.get(id)!.contractExpires ?? Infinity) <= week + 1 ||
+  (roster.get(id)!.remainingDates ?? Infinity) <= 1);
+ const weeksToPremium = input.nextPremium === null ? Infinity : input.nextPremium - week;
+ const personalRivalry = blueprint === "JEALOUSY" && !input.strategy.cautious &&
+  input.strategy.identity !== "WORKRATE";
+ const canReachPremium = input.nextPremium !== null &&
+  cast.every(id => (roster.get(id)!.contractExpires ?? Infinity) >= input.nextPremium!);
+ const waitingForPremium = !premium && canReachPremium && !expiring && !weakReaction &&
+  weeksToPremium <= (personalRivalry ? 7 : 4);
  if (p.angleCount === 0) {
   if (p.championshipId) return angle("INTERVIEW", "TARGET_CHAMPIONSHIP", [leadId]);
   if (blueprint === "BETRAYAL") return angle("INTERVIEW", "TEASE_BETRAYAL", [leadId], [foil!]);
   if (blueprint === "FACTION_CIVIL_WAR") return angle("PROMO", "BUILD_FACTION", cast);
   const opening = storyBlueprint(blueprint)?.beats[0];
   return angle(opening?.kind ?? "INTERVIEW", opening?.purpose ?? "BUILD_CHARACTER", [leadId]);
- }
- if (p.championshipId && !input.title?.holderId) return null;
- const currentTitleHolder = input.title?.holderId;
- if (p.championshipId && currentTitleHolder !== foil) {
-  return angle("INTERVIEW", "REVEAL_MOTIVATION", [leadId], [], "FINAL_CHAPTER");
  }
  const match = (winnerId: string, options: Partial<Omit<Extract<AiProgrammeBeat, { kind: "MATCH" }>,
   "kind" | "programme" | "leadId" | "winnerId">>): AiProgrammeBeat =>
@@ -223,9 +229,14 @@ export function planAiProgrammeBeat(input: {
    [leadId], [foil]);
  }
  if (waitingForPremium) {
-  if (!p.matchCount && !p.championshipId && !weakReaction && !earnedWin &&
-   input.nextPremium! - week >= 2) return match(leadId, { support: true });
-  if (p.angleCount === 2 && input.nextPremium! === week + 1)
+  if (personalRivalry && !p.matchCount && weeksToPremium >= 4)
+   return match(foil, { opponentId: foil, protected: true });
+  if (personalRivalry && p.lastFinish === "PROTECTED_FINISH" && p.angleCount === 2 &&
+   weeksToPremium >= 2 && week - (p.lastMatchWeek ?? week) >= 2)
+   return angle("CONFRONTATION", "SEEK_REVENGE", [leadId], [foil]);
+  if (!p.matchCount && !p.championshipId && !earnedWin && weeksToPremium >= 2)
+   return match(leadId, { support: true });
+  if (p.angleCount <= 3 && weeksToPremium === 1)
    return angle("VIDEO_PACKAGE", "BUILD_ANTICIPATION", [leadId], [foil]);
   return null;
  }
@@ -233,8 +244,7 @@ export function planAiProgrammeBeat(input: {
   return match(leadId, { tagPartnerId: p.sideA[1], opposingTag: [p.sideB[0]!, p.sideB[1]!], payoff: "DECISIVE_MATCH" });
  // A protected result earns a rematch only once. A stoppage also gives the
  // opponents a reason to return when both are medically available again.
- if (blueprint === "JEALOUSY" && !p.matchCount && !premium && !expiring && !weakReaction &&
-  input.strategy.identity !== "WORKRATE" && !input.strategy.cautious)
+ if (personalRivalry && !p.matchCount && !premium && !expiring && !weakReaction)
   return match(foil, { opponentId: foil, protected: true });
  const inconclusive = p.lastFinish === "PROTECTED_FINISH" || p.lastFinish === "INJURY_STOPPAGE" ||
   p.lastFinish === "DISQUALIFICATION";

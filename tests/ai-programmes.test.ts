@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planAiProgrammeBeat, type AiProgramme } from "../src/domain/ai-programmes.js";
-import { chooseAiWorldCard, type AiRosterCandidate } from "../src/domain/ai-world-card.js";
+import { aiTagPairKey, planAiProgrammeBeat, type AiProgramme } from "../src/domain/ai-programmes.js";
+import { chooseAiTelevisionCard, chooseAiWorldCard, type AiRosterCandidate } from "../src/domain/ai-world-card.js";
 
 const roster: AiRosterCandidate[] = Array.from({ length: 10 }, (_, i) => ({
  personId: "w" + i, contractId: "c" + i, bookingDivision: "MEN", weeklyCapacity: 2,
@@ -65,4 +65,64 @@ test("an established tag rivalry settles through the original two-sided match", 
  assert.equal(main.programmeId, "story");
  assert.deepEqual(main.sides?.map(side => side.participants.map(p => p.personId)),
   [["w0", "w2"], ["w1", "w3"]]);
+});
+
+test("premium cast resting retries full TV eligibility on the contracted broadcast night", () => {
+ const premiumCast = new Set(["w0", "w1"]);
+ const bookedShows = [{ showId: "submitted-human", day: 3, venueId: "human-arena",
+  personIds: roster.slice(2).map(p => p.personId) }];
+ const input = { ...card, eventType: "REGULAR" as const, contractedDay: 3, bookedShows };
+ const book = (available: AiRosterCandidate[]) => chooseAiWorldCard({ ...input, roster: available });
+ const rested = roster.filter(p => !premiumCast.has(p.personId));
+ assert.equal(rested.length, 8);
+ assert.equal(book(rested).status, "UNFILLED", "The old reduced-roster attempt drops legal TV");
+ const tv = chooseAiTelevisionCard(roster, premiumCast, book);
+ assert.equal(tv.status, "READY");
+ if (tv.status !== "READY") return;
+ assert.equal(tv.schedule.day, 3);
+ assert.deepEqual(tv.matches.flatMap(match => match.participants.map(p => p.personId)).sort(), ["w0", "w1"]);
+ const ppv = chooseAiWorldCard({ ...card, excludedDays: [3], bookedShows: [...bookedShows, {
+  showId: "tv", day: 3, venueId: tv.schedule.venueId, personIds: ["w0", "w1"],
+ }] });
+ assert.equal(ppv.status, "READY");
+ if (ppv.status === "READY") assert.notEqual(ppv.schedule.day, 3);
+});
+
+test("a vacancy frees the title and the former contender can address it alone", () => {
+ const aftermath=planAiProgrammeBeat({
+  programme:rivalry,roster:roster.filter(p=>p.personId!=="w1"),week:3,
+  title:{...title,holderId:null},strategy,nextPremium:9,results:[],premium:false,
+ });
+ assert.ok(aftermath?.kind==="ANGLE"&&aftermath.payoff==="FINAL_CHAPTER");
+ assert.deepEqual(aftermath.angle.actorIds,["w0"]);
+ assert.deepEqual(aftermath.angle.targetIds,[]);
+ const booked=chooseAiWorldCard({
+  ...card,creative:aftermath,
+  featuredPairs:[{aId:"w2",bId:"w3",kind:"VACANT_SINGLES_TITLE",championshipId:"belt",heat:70}],
+ });
+ assert.equal(booked.status,"READY");
+ if(booked.status!=="READY")return;
+ assert.equal(booked.angle?.payoff,"FINAL_CHAPTER");
+ assert.equal(booked.matches.at(-1)?.championshipId,"belt");
+});
+
+test("aired tensions keep partners apart on ordinary, makeshift title and Programme tag cards", () => {
+ const teams=[
+  {teamId:"established",aId:"w8",bId:"w9"},
+  {teamId:"second",aId:"w6",bId:"w7"},
+ ];
+ const separatedTagPairs=new Set([aiTagPairKey("w8","w9")]);
+ const tv={...card,eventType:"REGULAR" as const,establishedTeams:teams};
+ const united=chooseAiWorldCard(tv);
+ assert.equal(united.status,"READY");
+ if(united.status!=="READY")return;
+ const paired=(result:ReturnType<typeof chooseAiWorldCard>)=>result.status==="READY"&&result.matches.some(m=>
+  m.sides?.some(s=>s.participants.some(p=>p.personId==="w8")&&s.participants.some(p=>p.personId==="w9")));
+ assert.equal(paired(united),true);
+ assert.equal(paired(chooseAiWorldCard({...tv,separatedTagPairs})),false);
+ assert.equal(paired(chooseAiWorldCard({...card,separatedTagPairs,tagTitles:[
+  {championshipId:"tag",holderTeamId:null,heat:65}]})),false);
+ const programme={...rivalry,format:"RELATIONSHIP" as const,sideA:["w8","w9"],sideB:[],championshipId:null};
+ assert.equal(paired(chooseAiWorldCard({...tv,separatedTagPairs,
+  creative:{kind:"MATCH",programme,leadId:"w8",winnerId:"w8",tagPartnerId:"w9"}})),false);
 });

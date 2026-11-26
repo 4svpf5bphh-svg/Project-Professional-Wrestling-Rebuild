@@ -1,4 +1,4 @@
-import { aiProgrammeKey, type AiProgramme } from "../domain/ai-programmes.js";
+import { aiProgrammeKey, aiTagPairKey, type AiProgramme } from "../domain/ai-programmes.js";
 import { parseProgrammeCreativeIntent } from "../domain/programme-creative-intent.js";
 import type { ProgrammeFormat } from "../domain/programme-lifecycle.js";
 import type { ProgrammePayoff } from "../domain/programme-finales.js";
@@ -9,7 +9,7 @@ type ProgrammeRow = {
  championship_id: string | null; creative_intent: unknown; programme_key: string | null;
  status: string; started_week_index: number; segment_count: number; match_count: number;
  side_a: string[]; side_b: string[]; last_week: number | null; last_crowd: number | null;
- last_finish: string | null; last_winner_side: string | null; ended_week_index: number | null;
+ last_finish: string | null; last_match_week: number | null; last_winner_side: string | null; ended_week_index: number | null;
 };
 
 export async function readAiProgrammes(tx: SqlRows, worldId: string, promotionIds: string[], week: number) {
@@ -32,7 +32,7 @@ export async function readAiProgrammes(tx: SqlRows, worldId: string, promotionId
    p.programme_key,p.status,p.started_week_index,p.segment_count,p.match_count,p.ended_week_index,
    coalesce(lineup.side_a,ARRAY[]::text[]) side_a,coalesce(lineup.side_b,ARRAY[]::text[]) side_b,
    chapter.week_index last_week,chapter.crowd_response last_crowd,
-   last_match.actual_finish last_finish,last_match.winner_side last_winner_side
+   last_match.actual_finish last_finish,last_match.winner_side last_winner_side,last_match.week_index last_match_week
   FROM featured p
   JOIN LATERAL (
    SELECT array_agg(ref_id ORDER BY position) FILTER(WHERE side='A') side_a,
@@ -47,7 +47,7 @@ export async function readAiProgrammes(tx: SqlRows, worldId: string, promotionId
    ORDER BY a.week_index DESC,a.show_id DESC,a.slot_id DESC LIMIT 1
   ) chapter ON true
   LEFT JOIN LATERAL (
-   SELECT m.actual_finish,a.winner_side FROM ppw_programme_resolved_activities a
+   SELECT m.actual_finish,a.winner_side,a.week_index FROM ppw_programme_resolved_activities a
    JOIN ppw_completed_show_matches m ON (m.world_id,m.show_id,m.match_id)=(a.world_id,a.show_id,a.slot_id)
    WHERE p.status='ACTIVE' AND (a.world_id,a.promotion_id,a.programme_id)=
     (p.world_id,p.promotion_id,p.programme_id) AND a.week_index >= $3 - 22
@@ -65,7 +65,7 @@ export async function readAiProgrammes(tx: SqlRows, worldId: string, promotionId
     sideA: row.side_a, sideB: row.side_b, championshipId: row.championship_id,
     started: row.started_week_index, angleCount: row.segment_count, matchCount: row.match_count,
     lastWeek: row.last_week, lastCrowd: row.last_crowd, lastFinish: row.last_finish,
-    lastWinnerSide: row.last_winner_side,
+    lastWinnerSide: row.last_winner_side, lastMatchWeek: row.last_match_week,
    });
   } else if (row.ended_week_index !== null) {
    const companyHistory = history.get(row.promotion_id) ?? [];
@@ -201,4 +201,68 @@ export async function planAiFinales(tx: SqlRows, worldId: string, week: number, 
   slot_id: r.slotId, kind: r.kind, payoff: r.payoff,
  })))]);
  if (saved.length !== rows.length) throw new Error("AI finale was already settled");
+}
+
+/** A promotion can cool a partnership on air without touching team, stable,
+ * title or consent records. Only aired chapters from the recent window count. */
+export async function readAiTagSeparations(tx: SqlRows, worldId: string, promotionIds: string[], week: number) {
+ const rows = await tx.query<{ promotion_id: string; actor: string; target: string }>(`
+  WITH eligible AS (
+   SELECT p.world_id,p.promotion_id,p.programme_id,p.programme_format
+   FROM ppw_programmes p
+   WHERE p.world_id=$1 AND p.promotion_id=ANY($2::text[]) AND p.ai_authored
+    AND p.status='ACTIVE' AND p.programme_format='FACTION'
+   UNION ALL
+   SELECT world_id,promotion_id,programme_id,programme_format
+   FROM unnest($2::text[]) company(id) CROSS JOIN LATERAL (
+    SELECT p.world_id,p.promotion_id,p.programme_id,p.programme_format
+    FROM ppw_programmes p
+    WHERE p.world_id=$1 AND p.promotion_id=company.id AND p.ai_authored
+     AND p.ended_week_index >= $3::integer - 8 AND p.ended_week_index < $3::integer
+    ORDER BY p.ended_week_index DESC,p.programme_id LIMIT 8
+   ) recent
+  ), tension AS (
+   SELECT p.promotion_id,a.week_index,a.show_id,d.show_day,slot.position,
+    slot.payload->'actorIds' actors,slot.payload->'targetIds' targets
+   FROM eligible p JOIN ppw_programme_resolved_activities a USING(world_id,promotion_id,programme_id)
+   JOIN ppw_booking_drafts d ON (d.world_id,d.draft_id)=(a.world_id,a.show_id)
+   JOIN ppw_card_slots slot ON (slot.world_id,slot.draft_id,slot.slot_id)=(a.world_id,a.show_id,a.slot_id)
+   LEFT JOIN ppw_programme_finales f ON (f.world_id,f.promotion_id,f.programme_id,f.show_id,f.slot_id)=
+    (a.world_id,a.promotion_id,a.programme_id,a.show_id,a.slot_id) AND f.resolved_week_index=a.week_index
+   WHERE a.kind='SEGMENT' AND a.week_index >= $3::integer-8 AND a.week_index < $3::integer
+    AND (f.payoff='BETRAYAL' OR (p.programme_format='FACTION'
+     AND slot.payload->>'kind' IN ('INTERRUPTION','CONFRONTATION')))
+  ), latest AS (
+   SELECT DISTINCT ON(t.promotion_id,least(actor.id,target.id),greatest(actor.id,target.id))
+    t.promotion_id,least(actor.id,target.id) AS actor,greatest(actor.id,target.id) AS target,
+    t.week_index,t.show_id,t.show_day,t.position
+   FROM tension t CROSS JOIN LATERAL jsonb_array_elements_text(t.actors) actor(id)
+   CROSS JOIN LATERAL jsonb_array_elements_text(t.targets) target(id)
+   ORDER BY t.promotion_id,least(actor.id,target.id),greatest(actor.id,target.id),
+    t.week_index DESC,t.show_day DESC NULLS LAST,t.show_id DESC,t.position DESC
+  )
+  SELECT t.promotion_id,t.actor,t.target FROM latest t
+  WHERE NOT EXISTS (
+   SELECT 1 FROM ppw_completed_shows c JOIN ppw_completed_show_segments a USING(world_id,show_id)
+   JOIN ppw_booking_drafts d ON (d.world_id,d.draft_id)=(c.world_id,c.show_id)
+   JOIN ppw_card_slots slot ON (slot.world_id,slot.draft_id,slot.slot_id)=(a.world_id,a.show_id,a.slot_id)
+   WHERE c.world_id=$1 AND c.promotion_id=t.promotion_id
+    AND (c.year,c.week)>=($4::integer,$5::integer) AND (c.year,c.week)<($6::integer,$7::integer)
+    AND ((c.year-1)*52+c.week-1>t.week_index OR
+     ((c.year-1)*52+c.week-1=t.week_index AND d.show_day>t.show_day) OR
+     (c.show_id=t.show_id AND slot.position>t.position))
+    AND a.kind='STABLE_RECONCILIATION' AND a.authored_outcome='HAPPENS'
+    AND slot.payload->>'stableDecision'='ACCEPTED'
+    AND ((slot.payload->'actorIds' ? t.actor AND slot.payload->'targetIds' ? t.target) OR
+         (slot.payload->'actorIds' ? t.target AND slot.payload->'targetIds' ? t.actor))
+  )
+ `, [worldId, promotionIds, week, Math.floor(Math.max(0, week-8)/52)+1, Math.max(0, week-8)%52+1,
+  Math.floor(week/52)+1, week%52+1]);
+ const separated = new Map<string,Set<string>>();
+ for (const pair of rows) {
+  const keys=separated.get(pair.promotion_id)??new Set<string>();
+  keys.add(aiTagPairKey(pair.actor,pair.target));
+  separated.set(pair.promotion_id,keys);
+ }
+ return separated;
 }
