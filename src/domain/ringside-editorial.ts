@@ -909,7 +909,11 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   audienceMood:crowdMood(show.crowdResponse),
   showFocus:directRingsideShow(show),
-  slots:show.entries.map((e,i)=>({
+  slots:show.entries.map((e,i)=>{
+   const stipulation=e.matchContext?verifiedStipulationNote(e.matchContext.format,e.outcome):null;
+   const stipulationRules=stipulation&&certifiedActionOnly?
+    {...stipulation,plausibleAction:undefined,dramaticBeats:undefined}:stipulation;
+   return {
    editorialLens:ringsideEditorialLens(e),
    ...(e.type==="MATCH"&&certifiedActionOnly?{}:{
     director:e.type==="MATCH"?directRingsideMatch(e):directRingsideAngle(e)
@@ -933,10 +937,7 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
     ...(e.matchContext.finishProp?{bookedWeapon:finishPropLabel(e.matchContext.finishProp)}:{}),
     ...(e.matchContext.refereeSpot?{refereeSpot:e.matchContext.refereeSpot}:{}),
     titleContested:e.matchContext.championshipContested,
-    ...(verifiedStipulationNote(e.matchContext.format,e.outcome)?{
-     stipulationRules:certifiedActionOnly?
-      {winningCondition:verifiedStipulationNote(e.matchContext.format,e.outcome)?.winningCondition}:
-      verifiedStipulationNote(e.matchContext.format,e.outcome)}:{})}}:{}),
+    ...(stipulationRules?{stipulationRules}:{})}}:{}),
    ...(e.segmentContext?{angle:e.segmentContext}:{}),
    ...(e.segmentKind?{kind:e.segmentKind}:{}),
    ...(e.fallout?{fallout:{
@@ -948,7 +949,8 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
     name:p.ringName,character:p.character,style:p.style,
     ...(!certifiedActionOnly?{signatures:p.signatureMoves.slice(0,3),finishers:p.finishingMoves.slice(0,3)}:{})
    }))
-  }))};
+   };
+  })};
 }
 
 export const RINGSIDE_STYLE_GUIDE=`You are Marty Vale, an experienced WRESTLING JOURNALIST reviewing an

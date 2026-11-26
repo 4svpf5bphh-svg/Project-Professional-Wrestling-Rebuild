@@ -122,6 +122,11 @@ test("Full generation path completes one paid request and exposes correct proven
   const request=JSON.parse(String(init?.body));
   assert.match(request.messages[0].content,/copy a complete line verbatim/);
   assert.match(request.messages[0].content,/Do not report an unrecorded move/);
+  const records=JSON.parse(request.messages[1].content.split("Records:\n").at(-1)!);
+  assert.ok(records.slots.filter((slot:{type:string})=>slot.type==="MATCH")
+   .every((slot:{director?:unknown;dramaticCue?:unknown;wrestlers:{signatures?:unknown}[]})=>
+    !slot.director&&!slot.dramaticCue&&slot.wrestlers.every(wrestler=>!wrestler.signatures)));
+
   assert.match(request.messages[0].content,/not merely paraphrase the director/);
   const slots=Object.fromEntries(raw.slots.map((s,i)=>["card_"+i,{headline:s.headline,recap:s.recap}]));
   return new Response(JSON.stringify({usage:{prompt_tokens:5257,completion_tokens:1450},
