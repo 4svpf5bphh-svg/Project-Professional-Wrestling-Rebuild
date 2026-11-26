@@ -47,6 +47,9 @@ test("13 certified publications follow two human desks through form, contracts, 
  ];
  const trace:unknown[]=[];
  const checkpoints:unknown[]=[];
+ const moraleTrace:Record<string,unknown>[]=[];
+ const adviceCounts={ACTION:0,WATCH:0,CLEAR:0,repeated:0};
+ const seenAdvice=new Set<string>();
  const readThread=(personId:string,scope=a)=>readPortablePersonaWorkspace(db.pool,{...scope,personId});
  const getRequest=async (personId:string,kind:string,scope=a)=>
   (await readThread(personId,scope)).conversations.find(row=>row.kind===kind);
@@ -78,9 +81,14 @@ test("13 certified publications follow two human desks through form, contracts, 
  const measured:TransactionPool={async connect(){
   const client=await db.pool.connect();
   return {release:()=>client.release(),query:<R extends Record<string,unknown>>(
-   statement:string,params:readonly unknown[])=>meter.execute(()=>
-    isBackstageWrite.test(statement)?backstageMeter.execute(()=>client.query<R>(statement,params)):
-     client.query<R>(statement,params))};
+   statement:string,params:readonly unknown[])=>meter.execute(async()=>{
+    const rows=await (isBackstageWrite.test(statement)?backstageMeter.execute(()=>client.query<R>(statement,params)):
+     client.query<R>(statement,params));
+    if(statement.includes("AS person_status")&&statement.includes("AS had_show")&&Number(params[2])<=13){
+     for(const row of rows.filter(row=>row.person_id==="rook"))moraleTrace.push({week:params[2],...row});
+    }
+    return rows;
+   })};
  }};
  let providerCalls=0;
  t.mock.method(globalThis,"fetch",async ()=>{
@@ -171,6 +179,16 @@ test("13 certified publications follow two human desks through form, contracts, 
    const weekIndex=week-1;
    const year=Math.floor(weekIndex/52)+1;
    const calendarWeek=weekIndex%52+1;
+   if(week<=13){
+    const advice=await readStaffWorkspace(db.pool,a);
+    for(const brief of advice.meetings.filter(brief=>brief.staffName)){
+     adviceCounts[brief.urgency]++;
+     if(brief.urgency==="CLEAR")continue;
+     const key=JSON.stringify([brief.role,brief.message,brief.nextStep]);
+     if(seenAdvice.has(key))adviceCounts.repeated++;
+     seenAdvice.add(key);
+    }
+   }
    if(week===3){
     const opportunity=await getRequest("rook","MOMENTUM_OPPORTUNITY");
     assert.equal(opportunity?.managementContext?.programmeId,"breakwater");
@@ -214,6 +232,43 @@ test("13 certified publications follow two human desks through form, contracts, 
     const vale=await getRequest("vale","CONTRACT");
     assert.equal(vale?.followThroughKind,"CONTRACT_NEGOTIATION_STARTED");
     trace.push({week,personId:"vale",followThrough:vale?.followThroughKind});
+    await withWorldTransaction(db.pool,async tx=>{
+     await tx.query("UPDATE ppw_programmes SET status='COMPLETED' WHERE world_id=$1 AND programme_id='breakwater'",[worldId]);
+     await tx.query(`INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition)
+      VALUES($1,'quay','new-direction','ACTIVE',70,0)`,[worldId]);
+     await tx.query(`INSERT INTO ppw_programme_participants(world_id,promotion_id,programme_id,person_id,side)
+      VALUES($1,'quay','new-direction','vale','A')`,[worldId]);
+     await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_name)
+      VALUES($1,'future-event','quay',1,10,'DRAFT','Quay Return')`,[worldId]);
+    });
+    const recovered=await readStaffWorkspace(db.pool,a);
+    assert.equal(recovered.managementCase?.context.programmeId,"new-direction");
+    assert.equal(recovered.managementCase?.renewalArranged,true);
+    assert.equal(recovered.managementCase?.nextShowCovered,true);
+    assert.equal(recovered.managementCase?.renewalPending,false);
+    const manager=recovered.meetings.find(m=>m.role==="TALENT_MANAGER")!;
+    assert.match(manager.nextStep,/cover Quay Return/);
+    assert.equal(manager.urgency,"WATCH");
+    assert.equal((await getRequest("vale","CONTRACT"))?.activeProgrammeId,"new-direction");
+    trace.push({week,afterRenewal:recovered.managementCase,nextStep:manager.nextStep});
+    await withWorldTransaction(db.pool,async tx=>{
+     await tx.query(`UPDATE ppw_contract_renewal_proposals SET status='ACTIVATED'
+      WHERE world_id=$1 AND contract_id='deal-vale' AND status='ACCEPTED'`,[worldId]);
+     await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,
+      start_week_index,expires_week_index,remaining_dates)
+      VALUES($1,'exhausted-vale','vale','quay','LIMITED_NON_EXCLUSIVE','SIGNED',9,20,0)`,[worldId]);
+    });
+    const uncovered=await readStaffWorkspace(db.pool,a);
+    assert.equal(uncovered.managementCase?.renewalArranged,false);
+    assert.equal(uncovered.managementCase?.nextShowCovered,false);
+    assert.match(uncovered.meetings.find(m=>m.role==="TALENT_MANAGER")!.nextStep,/alternate chapter/);
+    await withWorldTransaction(db.pool,async tx=>{
+     await tx.query("DELETE FROM ppw_contracts WHERE world_id=$1 AND contract_id='exhausted-vale'",[worldId]);
+     await tx.query(`UPDATE ppw_contract_renewal_proposals SET status='ACCEPTED'
+      WHERE world_id=$1 AND contract_id='deal-vale' AND status='ACTIVATED'`,[worldId]);
+     await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1 AND draft_id='future-event'",[worldId]);
+    });
+
     await answer("cruz","PARTNERSHIP","MEDIATE");
     const partner=(await withWorldTransaction(db.pool,tx=>readWorldMail(tx,a)))
      .find(message=>message.canPartnerRespond);
@@ -335,7 +390,7 @@ test("13 certified publications follow two human desks through form, contracts, 
      FROM ppw_backstage_requests WHERE world_id=$1 GROUP BY 1,2,3 HAVING count(*)>1) duplicate) AS repeats`);
   if(totalWeeks===13)assert.equal(history[0]?.repeats,0);
   assert.equal(providerCalls,0);
-  t.diagnostic(JSON.stringify({categories,history,growth,trust,providerCalls,checkpoints,publication:meter.sample(),backstageWrites:backstageMeter.sample(),
+  t.diagnostic(JSON.stringify({categories,history,growth,trust,providerCalls,checkpoints,adviceCounts,moraleTrace,publication:meter.sample(),backstageWrites:backstageMeter.sample(),
    trace:trace.sort((left,right)=>(left as {week:number}).week-(right as {week:number}).week)}));
  }finally{
   await withWorldTransaction(db.pool,async tx=>{

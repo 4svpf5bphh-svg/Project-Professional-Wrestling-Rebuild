@@ -46,6 +46,8 @@ export function describeBookingCommitment(input:PromiseEvidence,
    "A certified injury prevented the promised in-ring appearance. No trust penalty.":
    input.assessmentReason==="NO_COMPLETED_SHOW"?
    "No show was completed in the delivery window. No trust penalty.":
+   input.assessmentReason==="EXTERNAL_BOOKING_UNAVAILABLE"?
+   "Other certified bookings used the available dates or weekly capacity. No trust penalty.":
    input.assessmentReason==="CONTRACT_UNAVAILABLE"?
    "Valid contracted appearances were unavailable. No trust penalty.":
    "Circumstances prevented the booking. No trust penalty.",

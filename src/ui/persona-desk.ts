@@ -46,6 +46,7 @@ export interface PersonaDeskPort{
    sourceShowId:string;sourceSlotId:string;sourceWeekIndex:number}}>;
  openStoryProgramme?(programmeId:string):void;
  openRecruitment?(personId:string,name:string):void;
+ openContract?(personId:string):void;
  openDepartment?(action:WorldMailAction):void;
  archiveThread(personId:string,archived:boolean):Promise<unknown>;
  decide(input:{conversationId:string;decision:BackstageDecision;
@@ -65,7 +66,7 @@ const button=(title:string,action:()=>void,disabled=false)=>{
 export function mountPersonaDesk(root:HTMLElement,
  port:PersonaDeskPort,onBack?:()=>void,
  onOpenProgrammes?:(personId:string,opponentId:string)=>void,
- initialInboxFilter:"ALL"|"UNREAD"="ALL",initialPersonId?:string){
+ initialInboxFilter:"ALL"|"UNREAD"="ALL",initialPersonId?:string,initialConversationId?:string){
  // Keep the company inbox in memory while the manager opens a wrestler thread.
  let inboxWorldMessages:WorldMail[]|null=null;
  let inboxWorldRevision:number|null=null;
@@ -91,6 +92,7 @@ export function mountPersonaDesk(root:HTMLElement,
  let inboxSearch="";
  let lastInboxScroll=0;
  let scrollToLatest=false;
+ let conversationToFocus=initialConversationId;
  let pendingDecision:{conversationId:string;decision:BackstageDecision;revision:number;requestId:string}|null=null;
  let pendingPitch:{personId:string;gimmickId:string;revision:number;requestId:string}|null=null;
  let gimmickExpanded=false,showAllGimmicks=false;
@@ -1126,6 +1128,7 @@ export function mountPersonaDesk(root:HTMLElement,
   // Only durable incoming correspondence appears as a wrestler bubble.
   // Store conversations as immutable World facts; UI renders only the last
   // 30 selected messages and never generates messages on opening a thread.
+  let focusedMessage:HTMLElement|undefined;
   for(const item of view.conversations){
    const stamp="Y"+(Math.floor(item.createdWeekIndex/52)+1)+
     " · W"+(item.createdWeekIndex%52+1);
@@ -1146,6 +1149,10 @@ export function mountPersonaDesk(root:HTMLElement,
      careerStage:item.careerStageAtRequest as
       "PROSPECT"|"PRIME"|"VETERAN"|"SPECIAL_ATTRACTION"|null,
      createdWeekIndex:item.createdWeekIndex},item.conversationId)));
+   if(item.conversationId===conversationToFocus){
+    focusedMessage=chat.lastElementChild as HTMLElement;
+    focusedMessage.tabIndex=-1;
+   }
    if(item.followThroughWeekIndex!==null)
     chat.append(el("small","ppw-backstage-promise",
      (item.followThroughKind==="RIVALRY_PROGRAMME_STARTED"?
@@ -1262,14 +1269,14 @@ export function mountPersonaDesk(root:HTMLElement,
       "Reply when the next booking window opens."));
    }
    if(wrestler?.isCurrent!==false&&item.managementContext&&
-    (item.status==="PENDING"||item.status==="ANSWERED")){
+    (["PENDING","ANSWERED","PROMISED","FULFILLED"].includes(item.status))){
     const related=el("div","ppw-backstage-replies");
-    const programmeId=item.managementContext.programmeId;
+    const programmeId=item.activeProgrammeId===undefined?item.managementContext.programmeId:item.activeProgrammeId;
     if(programmeId&&port.openStoryProgramme)related.append(button("Review programme",
      ()=>port.openStoryProgramme?.(programmeId),loading));
     if(port.openDepartment){
-     if(item.kind==="CONTRACT")related.append(button("Review contract",
-      ()=>port.openDepartment?.("CONTRACTS"),loading));
+     if(item.kind==="CONTRACT"&&view.personId&&port.openContract)related.append(button("Review contract",
+      ()=>port.openContract?.(view!.personId!),loading));
      related.append(button("Staff advice",()=>port.openDepartment?.("STAFF"),loading));
     }
     if(related.childElementCount)chat.append(related);
@@ -1293,6 +1300,15 @@ export function mountPersonaDesk(root:HTMLElement,
   root.append(chat);
   requestAnimationFrame(()=>{
    if(!root.contains(chat))return;
+   if(conversationToFocus){
+    conversationToFocus=undefined;
+    if(focusedMessage){
+     focusedMessage.focus({preventScroll:true});
+     focusedMessage.scrollIntoView({block:"center"});
+     scrollToLatest=false;
+     return;
+    }
+   }
    // iPhone: the document owns the only vertical scroll. The old nested flex
    // scroller could trap touch gestures before later messages were reachable.
    // Keep the independent pane for larger screens.

@@ -55,7 +55,7 @@ let sessionReadSequence=0;
 let drawerExpanded=false;
 let drawerRoot:HostDrawerRoot="world";
 // Private one-shot navigation target; no wrestler IDs in URLs or storage.
-let pendingBackstagePersonId:string|null=null;
+let pendingBackstageThread:{personId:string;conversationId?:string}|null=null;
 let backstageReturnSection:HostSection="home";
 let lastRenderedSection:HostSection|null=null;
 let bookingDirty=false;
@@ -110,7 +110,7 @@ function commandAccepted(result:unknown){
   ["APPLIED","REPLAYED"].includes(String((result as {status?:unknown}).status));
 }
 /** Mobile shell is independent of the workspace root and remains accessible. */
-function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:string){
+function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:string,conversationId?:string){
  if(!confirmLeavingBooking(section))return;
  const wasDrawerOpen=drawerExpanded;
  drawerExpanded=false;
@@ -118,14 +118,14 @@ function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:str
    const previous=readHostSection(location.hash);
    if(previous!=="backstage")backstageReturnSection=previous;
   }
-  pendingBackstagePersonId=section==="backstage"&&personId?personId:null;
+  pendingBackstageThread=section==="backstage"&&personId?{personId,conversationId}:null;
  const target=section==="contracts"&&(focus==="EXPIRING"||focus==="PENDING")?
   contractAttentionHash(focus):
   section==="planner"&&focus==="CARD"?plannerCardHash:
   section==="backstage"&&focus==="UNREAD"?backstageUnreadHash:
   hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
- else if(pendingBackstagePersonId)renderSection(true);
+ else if(pendingBackstageThread)renderSection(true);
  else{
   renderNavigation(section);
   if(wasDrawerOpen)game.querySelector<HTMLElement>(".ppw-workspace")?.focus({preventScroll:true});
@@ -290,8 +290,8 @@ function renderSection(moveFocus=false){
  if(section!=="card"&&section!=="planner"){
   clearBookingFocus();clearTitleChallengeFocus();
  }
- const backstagePersonId=section==="backstage"?pendingBackstagePersonId:null;
- pendingBackstagePersonId=null;
+ const backstageThread=section==="backstage"?pendingBackstageThread:null;
+ pendingBackstageThread=null;
  clearLegendRevealPortal();
  const scope:CardSessionScope={worldId:session.worldId,
   promotionId:session.overview.promotion.id,showId:"",
@@ -391,7 +391,7 @@ function renderSection(moveFocus=false){
   case "roster":mountRosterPage(view,scope);break;
   case "backstage":mountPersonaPage(view,scope,
    location.hash===backstageUnreadHash?"UNREAD":"ALL",
-   backstagePersonId??undefined,()=>openSection(backstageReturnSection));break;
+   backstageThread?.personId,()=>openSection(backstageReturnSection),backstageThread?.conversationId);break;
   case "market":mountTalentMarketPage(view,scope);break;
   case "contracts":mountContractsPage(view,scope,readContractFocus(location.hash));break;
   case "business":case "finances":case "commercials":case "ratings-war":
@@ -466,14 +466,14 @@ window.addEventListener("beforeunload",event=>{
 });
 window.addEventListener("ppw:session-lost",()=>{void loadSession();});
 window.addEventListener("ppw:open-backstage",event=>{
- const personId=(event as CustomEvent<{personId?:unknown}>).detail?.personId;
+ const {personId,conversationId}=(event as CustomEvent<{personId?:unknown;conversationId?:unknown}>).detail??{};
  if(typeof personId==="string"&&personId.length>0&&personId.length<=128)
-  openSection("backstage",undefined,personId);
+  openSection("backstage",undefined,personId,typeof conversationId==="string"?conversationId:undefined);
 });
 
 async function loadSession(){
  const sequence=++sessionReadSequence;
- pendingBackstagePersonId=null;pendingLegends=null;
+ pendingBackstageThread=null;pendingLegends=null;
  lastRenderedSection=null;backstageReturnSection="home";
  clearBookingFocus();clearTitleChallengeFocus();clearLegendRevealPortal();
  drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();

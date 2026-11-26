@@ -24,9 +24,9 @@ export interface StaffPort{
  release(input:{requestId:string;expectedRevision:number;employmentId:string}):Promise<unknown>;
  renew(input:{requestId:string;expectedRevision:number;employmentId:string;
   weeklySalary:number;termWeeks:52|104}):Promise<unknown>;
- openContracts?():void;openProgrammes?():void;openRoster?():void;
+ openContracts?(personId?:string):void;openProgrammes?(programmeId?:string):void;openRoster?():void;
  openMarket?():void;openGorilla?():void;back?():void;
- openBackstage?(personId:string):void;openBusiness?():void;
+ openBackstage?(personId:string,conversationId:string):void;openBusiness?():void;
 }
 const el=(tag:string,cls="",content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -206,21 +206,27 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
    panel.append(control,content);meeting.append(panel);
   }
   const attendees=el("div","ppw-staff-meeting-grid");
-  const shared=view.managementCase;
-  if(shared){
+  for(const shared of view.managementCases??(view.managementCase?[view.managementCase]:[])){
    const followUp=el("article","ppw-staff-meeting-brief");
+   const briefs=(view.managementBriefs??view.meetings).filter(brief=>
+    brief.staffName&&brief.conversationId===shared.conversationId);
+   const needsReply=shared.requestStatus==="PENDING"&&!shared.renewalArranged&&!shared.renewalPending;
+   const needsAttention=needsReply||briefs.some(brief=>brief.urgency==="ACTION");
    followUp.append(el("strong","",shared.personName),
-    el("p","",managementContractHorizon(shared.context)));
-   for(const brief of view.meetings.filter(brief=>brief.staffName&&
-    ["TALENT_MANAGER","ROAD_AGENT","CREATIVE"].includes(brief.role)&&brief.urgency!=="CLEAR")){
-    if(brief.role==="TALENT_MANAGER"&&shared.kind!=="CONTRACT")continue;
-    if(brief.role==="ROAD_AGENT"&&shared.context.strongMatches<2)continue;
-    followUp.append(el("p","ppw-staff-meeting-recommendation",brief.staffName+" · "+brief.nextStep));
+    el("small","ppw-staff-muted",needsAttention?"Needs attention":"Still open"),
+    el("p","",shared.renewalArranged?(shared.nextShowCovered?
+     "Signed terms cover the next planned event.":"Follow-on terms signed."):
+     shared.renewalPending?"Renewal offer awaiting a decision.":managementContractHorizon(shared.context)));
+   for(const brief of briefs){
+    followUp.append(el("p","ppw-staff-dialogue",brief.staffName+" · "+brief.message),
+     el("p","ppw-staff-meeting-recommendation",brief.nextStep));
    }
    if(port.openBackstage)followUp.append(button("Open conversation",
-    ()=>port.openBackstage?.(shared.personId)));
-   if(shared.kind==="CONTRACT"&&port.openContracts)followUp.append(button("Review contracts",()=>port.openContracts?.()));
-   if(port.openProgrammes)followUp.append(button("Review programmes",()=>port.openProgrammes?.()));
+    ()=>port.openBackstage?.(shared.personId,shared.conversationId)));
+   if(shared.kind==="CONTRACT"&&port.openContracts)followUp.append(button("Review contract",
+    ()=>port.openContracts?.(shared.personId)));
+   if(port.openProgrammes&&shared.context.programmeId)followUp.append(button("Review programme",
+    ()=>port.openProgrammes?.(shared.context.programmeId!)));
    meeting.append(followUp);
   }
   if(view.financialAdvice){
@@ -248,7 +254,9 @@ export function mountStaffDesk(root:HTMLElement,port:StaffPort){
     el("strong","",brief.staffName??"Vacant · no specialist employed"));
    lead.append(caption);slot.append(lead);
    slot.append(el("p","ppw-staff-meeting-context",remit.responsibility+" — "+remit.effect));
-   if(brief.staffName){
+   if(brief.staffName&&brief.conversationId){
+    slot.append(el("p","ppw-staff-muted","See the connected conversation above."));
+   }else if(brief.staffName){
     slot.append(el("p","ppw-staff-dialogue",
      staffMeetingDialogue({role:brief.role,staffName:brief.staffName,
       personality:brief.personality,message:brief.message})));

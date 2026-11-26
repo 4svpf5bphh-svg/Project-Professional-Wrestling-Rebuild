@@ -82,6 +82,11 @@ export function consumeBackstageStoryFocus(worldId:string,promotionId:string){
  pendingBackstageStoryFocus=null;
  return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?focus:null;
 }
+let pendingContractFocus:{worldId:string;promotionId:string;personId:string}|null=null;
+function openFocusedContracts(scope:Scope,personId?:string){
+ pendingContractFocus=personId?{worldId:scope.worldId,promotionId:scope.promotionId,personId}:null;
+ window.location.hash=hostSectionHash("contracts");
+}
 /** A single private route handoff to the *existing* recruitment editor.
  * No wrestler ID in a public hash or localStorage; consume only for the
  * exact World and promotion. Server verifies person and offer eligibility.
@@ -493,13 +498,16 @@ function staffPort(root:HTMLElement,scope:Scope,
    save:input=>call("saveGorillaShow",{...input,targetShowId:input.showId}),
    back:()=>mountStaffDesk(root,staffPort(root,scope,call))
   }),
-  openContracts:()=>{window.location.hash=hostSectionHash("contracts");},
+  openContracts:personId=>openFocusedContracts(scope,personId),
   openRoster:()=>{window.location.hash=hostSectionHash("roster");},
   openMarket:()=>{window.location.hash=hostSectionHash("market");},
-  openProgrammes:()=>{window.location.hash=hostSectionHash("programmes");},
+  openProgrammes:programmeId=>{
+   if(programmeId)queueBackstageStoryFocus({...scope,programmeId});
+   window.location.hash=hostSectionHash("programmes");
+  },
   openBusiness:()=>{window.location.hash=hostSectionHash("business");},
-  openBackstage:personId=>{
-   window.dispatchEvent(new CustomEvent("ppw:open-backstage",{detail:{personId}}));
+  openBackstage:(personId,conversationId)=>{
+   window.dispatchEvent(new CustomEvent("ppw:open-backstage",{detail:{personId,conversationId}}));
   },
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>mountWorldHomePage(root,scope)
@@ -674,7 +682,10 @@ export function mountTalentMarketPage(root:HTMLElement,scope:Scope){
 export function mountContractsPage(root:HTMLElement,scope:Scope,
  focus:ContractFocus="ATTENTION"){
  const call=createCardClient(scope);
- return mountContractDesk(root,contractPort(call,root,scope),undefined,focus);
+ const pending=pendingContractFocus;
+ pendingContractFocus=null;
+ const personId=pending?.worldId===scope.worldId&&pending.promotionId===scope.promotionId?pending.personId:undefined;
+ return mountContractDesk(root,contractPort(call,root,scope),undefined,focus,personId);
 }
 
 function tagTeamPort(call:ReturnType<typeof createCardClient>,
@@ -932,6 +943,7 @@ function personaPort(call:ReturnType<typeof createCardClient>,
   markRead:personId=>call("markBackstageRead",{personId}),
   markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),
   chooseStoryFollowUp:input=>call("chooseBackstageStoryFollowUp",input),
+  openContract:personId=>openFocusedContracts(scope,personId),
   openStoryProgramme:programmeId=>{
    queueBackstageStoryFocus({worldId:scope.worldId,
     promotionId:scope.promotionId,programmeId});
@@ -961,13 +973,13 @@ function personaPort(call:ReturnType<typeof createCardClient>,
 }
 /** Direct wrestler-directory route; display never edits a booked card. */
 export function mountPersonaPage(root:HTMLElement,scope:Scope,
- filter:"ALL"|"UNREAD"="ALL",initialPersonId?:string,onBack?:()=>void){
+ filter:"ALL"|"UNREAD"="ALL",initialPersonId?:string,onBack?:()=>void,conversationId?:string){
  return mountPersonaDesk(root,personaPort(createCardClient(scope),root,scope),
   onBack,(personId,opponentId)=>{
    queueBackstageRivalryFocus({worldId:scope.worldId,
     promotionId:scope.promotionId,personId,opponentId});
    window.location.hash=hostSectionHash("programmes");
-  },filter,initialPersonId);
+  },filter,initialPersonId,conversationId);
 }
 
 /** Host-level planner entry point. The existing card editor remains the

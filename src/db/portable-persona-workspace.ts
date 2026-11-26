@@ -1,3 +1,4 @@
+import {managementProgrammeSql} from "./backstage-management-programme.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 /** Roster-scoped, read-only wrestler-owned personas. The 643-roster guide is
  * static application content: never transferred from Neon or mistaken for a
@@ -161,7 +162,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    follow_through_week_index:number|null;follow_through_kind:string|null;
    observed_absent_weeks:number|null;observed_losses:number|null;
    relevant_title:string|null;career_stage_at_request:string|null;
-   settled_week_index:number|null;management_context:BackstageManagementContext|null;
+   active_programme_id:string|null;settled_week_index:number|null;management_context:BackstageManagementContext|null;
    promise_available_through:number|null;partner_available:boolean;
    planned_show_name:string|null;planned_show_year:number|null;
    planned_show_week:number|null;planned_show_status:string|null;
@@ -176,6 +177,9 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "follow_through_week_index,follow_through_kind,",
    "observed_absent_weeks,observed_losses,relevant_title,career_stage_at_request,",
    "r.settled_week_index,r.management_context,",
+   `CASE WHEN r.management_context IS NOT NULL THEN
+    (SELECT live.programme_id FROM (${managementProgrammeSql("r.world_id","r.promotion_id","r.person_id","$4")}) live)
+    END AS active_programme_id,`,
    "CASE WHEN r.status='PENDING' THEN (SELECT max(deal.expires_week_index)",
    "FROM ppw_contracts deal WHERE deal.world_id=r.world_id",
    "AND deal.promotion_id=r.promotion_id AND deal.person_id=r.person_id",
@@ -308,7 +312,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     observedAbsentWeeks:x.observed_absent_weeks,
     observedLosses:x.observed_losses,relevantTitle:x.relevant_title,
     careerStageAtRequest:x.career_stage_at_request,
-    managementContext:x.management_context,settledWeekIndex:x.settled_week_index,
+    managementContext:x.management_context,activeProgrammeId:x.active_programme_id,settledWeekIndex:x.settled_week_index,
     promiseAvailableThrough:x.promise_available_through,partnerAvailable:x.partner_available,
    })),
    history:history.slice(0,50).map(x=>({

@@ -45,7 +45,7 @@ export function contextualConsultationOptions(role:StaffRole,facts:StaffMeetingF
  readonly [string,string]{
  const brief=staffMeetingBrief(role,facts,member);
  const alternate=CONSULTATION_OPTIONS[role][1];
- if(facts.managementCase&&["CREATIVE","ROAD_AGENT","TALENT_MANAGER"].includes(role))
+ if(brief.conversationId)
   return [brief.nextStep,alternate];
  if(role==="MEDICAL"){
   if(facts.medicalRisks>0)return [brief.nextStep,

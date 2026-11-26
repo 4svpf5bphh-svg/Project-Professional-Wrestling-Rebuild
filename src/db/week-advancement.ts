@@ -238,6 +238,8 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
        UPDATE ppw_staff_employments SET status='ENDED',ended_week_index=$2+1
        WHERE world_id=$1 AND status='ACTIVE' AND expires_week_index<=$2
       `,[input.worldId,weekIndex]);
+      // Record booking opportunity before roster restructures or contract rollover rewrite service windows.
+      await settleBackstagePromises(tx,input.worldId,weekIndex);
       // Original long-term World systems: one atomic certified-week mutation.
       // Careers and vacancies settle after the recorded show finishes, and
       // before contract expiry and next week's player planning rights.
@@ -306,7 +308,6 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         AND c.world_id=r.world_id AND c.contract_id=r.contract_id
         AND c.status='EXPIRED'`,[input.worldId]);
       // One atomic, certified-week reconciliation. No background polling.
-      await settleBackstagePromises(tx,input.worldId,weekIndex);
       await settleBackstageContractDiscussions(tx,input.worldId,weekIndex);
       await settleBackstageMediations(tx,input.worldId,weekIndex);
       await settleBackstageTagFollowThrough(tx,input.worldId,weekIndex);

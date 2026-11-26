@@ -27,10 +27,12 @@ export interface StaffManagementCase{
  kind:"CONTRACT"|"MOMENTUM_OPPORTUNITY";
  context:BackstageManagementContext;
  renewalPending:boolean;renewalArranged:boolean;
+ requestStatus?:string;nextShowCovered?:boolean|null;
 }
 export interface StaffMeetingBrief{
  message:string;nextStep:string;target:StaffMeetingTarget;
  urgency:"ACTION"|"WATCH"|"CLEAR";
+ conversationId?:string;
 }
 /** These are actual working mechanics, not promises about future results. */
 export const STAFF_PURPOSE:Record<StaffRole,{
@@ -77,22 +79,30 @@ export function staffMeetingBrief(role:StaffRole,f:StaffMeetingFacts,
  const discussion=f.managementCase;
  const context=discussion?.context;
  const nextShow=f.nextShow;
- const nextNeedsCover=context&&nextShow&&(nextShow.weekIndex>context.contractExpires||
-  context.remainingDates===0);
+ const nextNeedsCover=context&&nextShow&&
+  (discussion?.nextShowCovered===false||
+   (discussion?.nextShowCovered==null&&(nextShow.weekIndex>context.contractExpires||context.remainingDates===0)));
  const work=f.workload;
  const ambitious=member?.personality==="AMBITIOUS";
  switch(role){
  case "TALENT_MANAGER":{
   if(discussion?.kind==="CONTRACT"&&context){
-   const risk=discussion.personName+" asked about their future. "+managementContractHorizon(context)+
+   const risk=discussion.personName+(discussion.renewalArranged?" has signed follow-on terms.":
+    discussion.renewalPending?" has a renewal offer awaiting a decision.":
+    " asked about their future. "+managementContractHorizon(context))+
     (context.programmeId?" They're part of an active Programme.":"");
-   return {target:"contracts",urgency:discussion.renewalArranged?"WATCH":"ACTION",message:risk,
+   return {target:"contracts",conversationId:discussion.conversationId,
+    urgency:nextNeedsCover&&!discussion.renewalPending?"ACTION":
+     discussion.renewalArranged||discussion.renewalPending?"WATCH":"ACTION",message:risk,
     nextStep:discussion.renewalArranged?
-     "Check the signed follow-on dates against the next chapter before putting it on the card.":
+     (nextNeedsCover?"The signed windows leave "+nextShow.name+" uncovered. Plan an alternative appearance.":
+      discussion.nextShowCovered?"The signed dates cover "+nextShow?.name+". Follow the current booking plan.":
+      "Check the signed dates against the next card once its date is set.") :
      discussion.renewalPending?"We've opened talks. Keep a version of the next card that works if the offer is turned down.":
      nextNeedsCover?"Check actual terms before committing "+nextShow.name+" to them. Keep an alternate chapter ready.":
      member?.specialism==="contract trust"||member?.people&&member.people>=72?
-      "Reply to them directly, then discuss a package that covers the story's remaining dates.":
+      (discussion.requestStatus==="PENDING"?"Reply to them directly, then discuss a package that covers the story's remaining dates.":
+       "Continue the discussion in Contract Desk when you have dates and terms to offer.") :
       "Count the appearances you need. Compare an addendum with renewal terms before committing more of the card."};
   }
   const first=f.renewals[0];
@@ -108,7 +118,7 @@ export function staffMeetingBrief(role:StaffRole,f:StaffMeetingFacts,
  case "ROAD_AGENT":
   if(discussion&&context&&context.strongMatches>=2){
    const depth=member&&(member.craft>=72||member.insight>=72);
-   return {target:"gorilla",urgency:"WATCH",
+   return {target:"gorilla",urgency:"WATCH",conversationId:discussion.conversationId,
     message:discussion.personName+" helped deliver "+context.strongMatches+
      " recent shows with strong execution and crowd response.",
     nextStep:nextNeedsCover?"Keep a different performer ready for "+nextShow.name+
@@ -122,7 +132,7 @@ export function staffMeetingBrief(role:StaffRole,f:StaffMeetingFacts,
    message:story.roadAgent,
    nextStep:"If these wrestlers meet again, I'll review pacing and the planned finish at Gorilla. "+
     "A new slot or a different opponent is your decision, not mine."}:
-   {target:"gorilla",urgency:count(f.recentMatches)>0?"WATCH":"CLEAR",
+   {target:"gorilla",urgency:"CLEAR",
     message:count(f.recentMatches)>0?
      "We've completed "+count(f.recentMatches)+" matches in the recent show window.":
      "There isn't a completed match to review yet.",
@@ -155,7 +165,7 @@ export function staffMeetingBrief(role:StaffRole,f:StaffMeetingFacts,
      "Develop one fresh chapter around the current cast. An interview can advance the story without a repeat bout.":
     ambitious?"Give them an earned step towards contender status. Start with a match that tests that case.":
      "Try a short character scene that shows what they want. Give it time before committing to a long arc.";
-   return {target:"programmes",urgency:nextNeedsCover?"ACTION":"WATCH",
+   return {target:"programmes",urgency:nextNeedsCover?"ACTION":"WATCH",conversationId:discussion.conversationId,
     message:discussion.personName+(context.programmeId?
      " has an active Programme."+chapter:" has been getting a response in certified matches and has no active Programme."),
     nextStep:nextNeedsCover?"Finish the next beat within the dates already signed, or write it around another available participant.":direction};

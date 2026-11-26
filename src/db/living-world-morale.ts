@@ -53,10 +53,12 @@ export async function settleLivingMorale(tx:SqlRows,worldId:string,year:number,w
   if(!valid(p.morale)||!valid(p.momentum)||!valid(p.fatigue))continue;
   const relevant=contracts.flatMap(r=>{
    const role=recognizedRole(r.role_expectation);
-   if(r.promotion_id===null||role===null||
-    !states.has(r.financial_distress??""))return [];
+   if(r.promotion_id===null||role===null)return [];
+   // An unknown finance grade supplies no penalty. It does not erase
+   // certified use or omission under an otherwise valid contract.
+   const distress=states.has(r.financial_distress??"")?r.financial_distress as Distress:"HEALTHY";
    return [{role,hadVerifiedShow:r.had_show===true,
-    used:r.used===true,distress:r.financial_distress as Distress,
+    used:r.used===true,distress,
     inactive:r.lifecycle==="DORMANT"||r.lifecycle==="CLOSED"}];
   });
   const next=originalWeeklyMorale({morale:p.morale!,momentum:p.momentum!,

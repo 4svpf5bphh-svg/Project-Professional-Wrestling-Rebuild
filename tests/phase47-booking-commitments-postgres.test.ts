@@ -250,3 +250,79 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
   }).finally(()=>db.close());
  }
 });
+
+test("Promises preserve a prior eligible event and distinguish rival collisions and exhausted service from omission", {
+ skip:!url?"Disposable PostgreSQL required":false
+},async()=>{
+ const db=postgresPool(url!,3),world="promise-availability-"+randomUUID();
+ const people=[
+  ["collision",2],["capacity",1],["free",2],["terminated",2],["shared-date",2],["own-segment",1]
+ ] as const;
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:world,name:"Fair promises",seed:12,rulesetVersion:"test"});
+   await addPromotion(tx,world,{id:"home",name:"Home",tier:"LOCAL"});
+   await addPromotion(tx,world,{id:"away",name:"Away",tier:"LOCAL"});
+   for(const [person,capacity] of people){
+    await tx.query("INSERT INTO ppw_people(world_id,person_id,name,weekly_service_capacity) VALUES($1,$2,$2,$3)",
+     [world,person,capacity]);
+    await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,
+     family,status,remaining_dates,expires_week_index) VALUES($1,$2,$3,'home','LIMITED_NON_EXCLUSIVE','SIGNED',2,10),
+     ($1,$4,$3,'away','LIMITED_NON_EXCLUSIVE','SIGNED',2,10)`,[world,"h-"+person,person,"a-"+person]);
+    await tx.query(`INSERT INTO ppw_backstage_requests(world_id,request_id,promotion_id,
+     person_id,kind,status,decision,created_week_index,responded_week_index,due_week_index,source_contract_id)
+     VALUES($1,$2,'home',$2,'MORALE','PROMISED','PROMISE_APPEARANCE',$3,$3,2,$4)`,
+     [world,person,person==="terminated"?0:1,"h-"+person]);
+   }
+   for(const [show,promo,week,day,cast] of [
+    ["earlier","home",1,3,[]],["qualifier","home",2,3,["own-segment"]],
+    ["same-day","away",2,3,["collision"]],
+    ["other-day","away",2,4,["capacity","free","shared-date"]]
+   ] as const){
+    await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,show_day,status,booking_class)
+     VALUES($1,$2,$3,1,$4,$5,'SUBMITTED',$6)`,[world,show,promo,week,day,show==="other-day"?"PREMIUM":"REGULAR"]);
+    await tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,
+     resolution_id,crowd_response,receipt_json,receipt_digest)
+     VALUES($1,$3,$2,1,$4,'certified-'||$2,60,'{}',repeat('b',64))`,[world,show,promo,week]);
+    await tx.query(`INSERT INTO ppw_show_resolutions(world_id,show_id,promotion_id,resolved_week_index,
+     command_request_id,performers_count,dates_charged,appearance_person_ids)
+     VALUES($1,$2,$3,$4,'certified-'||$2,$5,$5,$6)`,[world,show,promo,week-1,cast.length,JSON.stringify(cast)]);
+   }
+   // The rival charged a shared appearance against the source agreement.
+   await tx.query(`INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
+    VALUES($1,'other-day','charged-shared',0,'MATCH',
+    '{"participants":[{"personId":"shared-date","contractId":"h-shared-date"}]}')`,[world]);
+   await tx.query(`INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
+    VALUES($1,'qualifier','own-angle',0,'SEGMENT',
+    '{"participants":[{"personId":"own-segment","contractId":"h-own-segment"}]}')`,[world]);
+   assert.equal((await settleBackstagePromises(tx,world,0)).settled,0);
+   await tx.query(`UPDATE ppw_contracts SET status='TERMINATED'
+    WHERE world_id=$1 AND contract_id='h-terminated'`,[world]);
+   await tx.query(`UPDATE ppw_contracts SET remaining_dates=0
+    WHERE world_id=$1 AND contract_id IN ('h-shared-date','h-own-segment')`,[world]);
+   assert.equal((await settleBackstagePromises(tx,world,1)).settled,0);
+   assert.deepEqual(await settleBackstagePromises(tx,world,2),{settled:6,broken:3});
+   assert.deepEqual(await settleBackstagePromises(tx,world,2),{settled:0,broken:0});
+   const rows=await tx.query<{person_id:string;status:string;assessment_reason:string;trust_delta:number;
+    first_opportunity_week_index:number|null}>(`SELECT person_id,status,assessment_reason,trust_delta,
+    first_opportunity_week_index FROM ppw_backstage_requests WHERE world_id=$1`,[world]);
+   const byPerson=new Map(rows.map(row=>[row.person_id,row]));
+   for(const id of ["collision","capacity","shared-date"]){
+    assert.equal(byPerson.get(id)?.assessment_reason,"EXTERNAL_BOOKING_UNAVAILABLE");
+    assert.equal(byPerson.get(id)?.trust_delta,0);
+   }
+   for(const [id,first] of [["free",1],["terminated",0],["own-segment",1]] as const){
+    assert.equal(byPerson.get(id)?.status,"BROKEN");
+    assert.equal(byPerson.get(id)?.first_opportunity_week_index,first);
+    assert.equal(byPerson.get(id)?.trust_delta,-3);
+   }
+  });
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_backstage_promotion_trust","ppw_backstage_requests","ppw_ledger_events",
+    "ppw_show_resolutions","ppw_completed_shows","ppw_card_slots","ppw_booking_drafts",
+    "ppw_contracts","ppw_people","ppw_promotions","ppw_worlds"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
+  }).finally(()=>db.close());
+ }
+});
