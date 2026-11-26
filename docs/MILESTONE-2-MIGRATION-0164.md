@@ -4,16 +4,16 @@ Run during an owner-approved idle window before releasing the Milestone 2 applic
 
 ## Confirm the idle window
 
-Pause manual World advancement and booking traffic for the window. Verify the current application can still run during a migration abort. Confirm migration 0163 is already recorded through the repository's normal migration tracking and inspect the database from a short read-only session.
+Pause manual World advancement and booking traffic for the window. Verify the current application can still run during a migration abort. Confirm the preceding release's active-career index from migration 0163 is present. Inspect the database from a short read-only session.
 
 ```sql
 SELECT phase, count(*) FROM ppw_worlds GROUP BY phase;
 SELECT count(*) AS active_updates FROM ppw_world_update_runs WHERE state = 'ACTIVE';
 SELECT current_database(), current_schema();
-SELECT to_regclass('ppw_programmes');
+SELECT to_regclass('ppw_programmes'), to_regclass('ppw_people_working_careers');
 ```
 
-Proceed when the Worlds are open and active updates are zero. Close the read-only session before applying the migration. Long-lived sessions holding Programme locks can prevent the schema change during an otherwise idle application window.
+Proceed once both catalog names resolve, the Worlds in scope are open and active updates are zero. Close the read-only session before applying the migration. Long-lived sessions holding Programme locks can prevent the schema change during an otherwise idle application window.
 
 ## Apply in a single transaction
 
