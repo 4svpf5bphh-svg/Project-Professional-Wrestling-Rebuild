@@ -170,3 +170,13 @@ test("title-win discussion reaches the exact match on the correct completed show
  assert.equal(posts[2]?.replyTo,posts[0]?.handle);
  assert.deepEqual(posts,weeklyHotTagThread(official,saved[official.id]));
  });
+
+test("fallback threads keep distinct reactions across an edition without discarding real AI copy",()=>{
+ const seen=new Set<string>();
+ for(let i=0;i<3;i++){
+  const posts=weeklyHotTagThread({...official,id:"angle:"+i,title:"A wrestling angle",sourceKind:"ANGLE"},undefined,seen);
+  assert.ok(posts.length>=3&&posts.length<=6);
+  for(const post of posts){const key=post.text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();assert.ok(!seen.has(key));seen.add(key);}
+ }
+ assert.equal(weeklyHotTagThread(official,{fans:[null,"Crown Wrestling needs better stories.",null]},seen).length,1);
+});

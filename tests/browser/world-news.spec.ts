@@ -3,6 +3,7 @@ const overview={world:{revision:4,name:"PPW",year:2,week:7,phase:"OPEN",
  nextLockEpoch:Date.now()/1000+6000,serverEpoch:Date.now()/1000},
  membership:"ACTIVE",promotion:{id:"human",name:"Human Pro",tier:"LOCAL",
  cash:1000000,debt:0,lastWeeklyNet:10,financialDistress:"HEALTHY"}};
+function assertUnique(texts:string[]){const keys=texts.map(t=>t.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim());expect(new Set(keys).size).toBe(keys.length);}
 const session={worldId:"world",playerId:"owner",csrfToken:"opaque",overview,
  availablePromotions:[]};
 test("iPhone World News awards, official and dirt sheets render on demand and never spill plans",async({page},testInfo)=>{
@@ -104,6 +105,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(comment).toHaveCSS("color","rgb(230, 236, 248)");
  // A verified wrestler post plus a variable three-to-six fan reactions.
  const officialTotal=await officialThread.locator(".ppw-hot-tag-news-copy p").count();
+ const editionFans=await page.locator(".ppw-news-official .ppw-hot-tag-news-post:not(.ppw-hot-tag-wrestler):not(.ppw-hot-tag-network) .ppw-hot-tag-news-copy p").allTextContents();
+ assertUnique(editionFans);
  expect(officialTotal).toBeGreaterThanOrEqual(4);
  expect(officialTotal).toBeLessThanOrEqual(7);
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toHaveCount(1);

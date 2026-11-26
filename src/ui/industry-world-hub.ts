@@ -933,7 +933,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      {...wrestler,text:story.editorial.wrestler.text}:wrestler;
     const broadcaster=projectHotTagBroadcasterPost(story);
     const shown=new Set<string>();
-    const fans=weeklyHotTagThread(story,story.editorial).filter(p=>{
+    const fans=weeklyHotTagThread(story,story.editorial,usedFanText).filter(p=>{
      const key=p.text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
      if(usedFanText.has(key)||(p.replyTo&&!shown.has(p.replyTo)))return false;
      usedFanText.add(key);shown.add(p.handle);return true;

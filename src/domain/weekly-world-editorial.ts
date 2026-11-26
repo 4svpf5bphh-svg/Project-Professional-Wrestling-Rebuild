@@ -1,5 +1,5 @@
 
-import {projectHotTagNewsThread,hotTagFanTemperament,type HotTagNewsStory,type HotTagNewsPost} from "./hot-tag-news.js";
+import {projectHotTagNewsThread,projectUniqueHotTagNewsThread,hotTagFanTemperament,type HotTagNewsStory,type HotTagNewsPost} from "./hot-tag-news.js";
 export type WeeklyStory = HotTagNewsStory & {certainty:"CONFIRMED"|"SPECULATION";humanManaged?:boolean};
 import {projectHotTagNewsWrestlerPost,type HotTagWrestlerPost,type VerifiedHotTagAward} from "./hot-tag-wrestler-voice.js";
 export type WeeklyStoryCopy = {headline?:string;commentary?:string;fans?:[string|null,string|null,string|null,...(string|null)[]];wrestler?:{personId:string;text:string}};
@@ -231,9 +231,10 @@ export function validateWeeklyEditorial(anchors:readonly WeeklyAnchor[],value:un
 }
 /** Use the existing stable identities. Reject only the offending post;
  * a missing parent cannot receive an AI reply. */
-export function weeklyHotTagThread(story:WeeklyStory,copy:unknown):HotTagNewsPost[]{
- const fans=validateWeeklyStoryCopy(story,copy)?.fans,local=projectHotTagNewsThread(story,fans?.length??3);
- if(!fans||local.length<3)return local.slice(0,3).filter(p=>!p.replyTo||local.slice(0,3).some(q=>q.handle===p.replyTo));
+export function weeklyHotTagThread(story:WeeklyStory,copy:unknown,excluded:ReadonlySet<string>=new Set()):HotTagNewsPost[]{
+ const fans=validateWeeklyStoryCopy(story,copy)?.fans;
+ if(!fans)return projectUniqueHotTagNewsThread(story,excluded);
+ const local=projectHotTagNewsThread(story,fans.length);
  const written=local.slice(0,fans.length).flatMap((p,i)=>{
   const text=fans[i];if(!text)return [];
   const {replyTo:_,...identity}=p;
@@ -241,8 +242,7 @@ export function weeklyHotTagThread(story:WeeklyStory,copy:unknown):HotTagNewsPos
  });
  // Prefer two real editorial voices to six repetitive synthetic reactions.
  // Never attach a generic reply to a different, AI-authored parent.
- if(written.length>=2)return written;
- return written.length?written:local.filter(p=>!p.replyTo).slice(0,2);
+ return written.length?written:projectUniqueHotTagNewsThread(story,excluded);
 }
 export function weeklyShowMomentSlot(story:WeeklyStory,showId:string,slots:readonly string[]):string|null{
  if(story.desk!=="OFFICIAL"||!["MATCH","ANGLE","TITLE"].includes(story.sourceKind??""))return null;

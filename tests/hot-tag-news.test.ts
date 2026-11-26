@@ -191,3 +191,10 @@ test("wild entertainment receives story-specific fallback jokes without treating
  assert.match(projectHotTagNewsThread(concert)[0]!.text,/encore|soundcheck/i);
  assert.match(projectHotTagNewsThread(court)[0]!.text,/pudding|dessert/i);
 });
+
+test("a weekly TV snapshot never implies a common timeslot, network warning or winning a ratings battle",()=>{
+ for(let week=1;week<=52;week++){
+  const posts=projectHotTagNewsThread({...rumour,id:"broadcast:ratings:weekly",desk:"OFFICIAL",week,title:"Weekly TV watch: CWA / Rivals",summary:"CWA: 0.40 household rating; Rivals: 0.60 household rating. Separate broadcasts."});
+  assert.ok(posts.length>=3);assert.doesNotMatch(posts.map(p=>p.text).join(" "),/same hour|won the time slot|three weeks of|network has spoken|network paid|ratings are dropping/i);
+ }
+});

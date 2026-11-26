@@ -360,7 +360,7 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   ];
   const pool=(seed>>>0)%5<2?rowdy:ordinary;
   const selected=pool[(seed>>>16)%pool.length]!;
-  const report=[selected[0],selected[1]+" No independently verified account has established the story."] as const;
+  const report=[selected[0],selected[1]+" No independently verified account has established the story; it has not been independently verified."] as const;
   add("DIRT",talk,"wild:"+talk.show_id,report[0],report[1],"EVENT");
  }
  // A maximum of two fictional dirt stories, persisted with official facts
