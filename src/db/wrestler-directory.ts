@@ -105,7 +105,7 @@ export async function readWrestlerDirectory(
      END AS weekly_income,
     owner.weekly_fixed_overhead::text,
     costs.active_guarantees,costs.signed_roster_exposure,
-    costs.active_roster_depth,shows.next_tv,shows.next_ppv,
+    ${f.view==="MARKET"?"costs.active_roster_depth,shows.next_tv,shows.next_ppv,":""}
     (SELECT coalesce(sum(employee.weekly_salary),0)::text
      FROM ppw_staff_employments employee WHERE employee.world_id=w.world_id
       AND employee.promotion_id=owner.promotion_id AND employee.status='ACTIVE'
@@ -113,7 +113,7 @@ export async function readWrestlerDirectory(
       AND employee.expires_week_index>=(w.year-1)*52+w.week-1) AS staff_payroll,
     plan.weekly_wage_limit::text AS plan_wage_limit,
     plan.cash_reserve::text AS plan_cash_reserve,
-    plan.show_talent_limit::text AS plan_show_limit,
+    ${f.view==="MARKET"?"plan.show_talent_limit::text AS plan_show_limit,":""}
     (SELECT adviser.staff_id FROM ppw_staff_employments adviser
      WHERE adviser.world_id=w.world_id AND adviser.promotion_id=owner.promotion_id
       AND adviser.role='TALENT_MANAGER' AND adviser.status='ACTIVE'
