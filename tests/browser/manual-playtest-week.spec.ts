@@ -101,3 +101,48 @@ test("Home has no test-only World advance panel; Admin remains the only operator
  await expect(page.getByRole("button",{name:"Advance Week"})).toBeVisible();
  expect(calls).toBe(0);
 });
+
+for(const width of [320,390]){
+ test(`Admin resumes interrupted editorial with a certified fallback at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  const updating={...world,week:2,phase:"UPDATING"};
+  const overview={world:updating,membership:"ACTIVE",promotion};
+  await page.route("**/api/session",route=>route.fulfill({json:{
+   worldId:"world-20261017",playerId:"owner",csrfToken:"csrf",
+   overview,availablePromotions:[],canManualAdvance:true
+  }}));
+  await page.route("**/api/card",route=>route.fulfill({json:overview}));
+  let batches=0;
+  await page.route("**/api/admin",route=>{
+   const data=admin(batches===3?{...world,week:2}:{...updating,week:1});
+   return route.fulfill({json:{...data,plan:{...data.plan,ready:{...data.plan.ready,
+    ...(batches<3?{editorialProgress:{total:1,completed:0,fallbacks:0,
+     state:batches===0?"RECOVERY_AVAILABLE":"PROCESSING"}}:{})}}}});
+  });
+  await page.route("**/api/playtest-week",route=>{
+   expect(route.request().postDataJSON()).toEqual({confirm:"ADVANCE_SHARED_WORLD",year:1,week:1});
+   batches++;
+   return route.fulfill({json:batches===1?{
+    status:"BLOCKED",steps:[],blockers:["WORLD_UPDATE_IN_PROGRESS"],
+    editorial:{state:"PROCESSING",retryAfterSeconds:17}
+   }:batches===2?{
+    status:"LIMIT_REACHED",steps:[{action:"PREPARE_SHOW_ARTICLE",status:"EXECUTED"}],blockers:[],
+    editorial:{state:"FALLBACK"}
+   }:{
+    status:"PUBLISHED",steps:[{action:"PUBLISH_WORLD_EDITION",status:"EXECUTED"}],blockers:[],
+    editorial:{state:"READY"}
+   }});
+  });
+  await page.goto("/#/admin");
+  const resume=page.getByRole("button",{name:"Resume World Updating"});
+  await expect(page.getByText("The previous attempt expired. Resume World Updating to recover.")).toBeVisible();
+  expect(batches).toBe(0);
+  await resume.click();
+  await expect(page.getByText(/recovery will be available within 17 seconds/)).toBeVisible();
+  expect(batches).toBe(1);
+  await resume.click();
+  await expect(page.getByText("Week advanced. Certified results and news are available where editorial could not finish.")).toBeVisible();
+  await expect(page.getByRole("button",{name:"Advance Week",exact:true})).toBeVisible();
+  expect(batches).toBe(3);
+ });
+}

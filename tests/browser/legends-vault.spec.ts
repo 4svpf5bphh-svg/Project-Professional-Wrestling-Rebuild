@@ -234,8 +234,10 @@ test("historically unlocked Trish, Taz and Jerry Lynn show the original collecti
  await page.goto("/#/industry/legends");
  for(const entry of items){
   const tile=page.locator('.ppw-legend-tile[data-legend-id="'+entry.id+'"]');
-  await expect(tile.locator("img.ppw-legend-card-art")).toHaveAttribute("src",entry.card);
-  await expect(tile.locator("img.ppw-legend-card-art")).toHaveJSProperty("naturalWidth",960);
+  const artwork=tile.locator("img.ppw-legend-card-art");
+  await expect(artwork).toHaveAttribute("src",entry.card);
+  await artwork.scrollIntoViewIfNeeded();
+  await expect(artwork).toHaveJSProperty("naturalWidth",960);
   await expect(tile.getByRole("button",{name:/Collect card/})).toBeEnabled();
  }
  await expect(page.getByRole("button",{name:"Card artwork not yet available"})).toHaveCount(0);
