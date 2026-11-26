@@ -1,23 +1,34 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import {rumourFollowup,rumourCaseVeracity,type Veracity} from "../src/domain/wrestling-rumour-cases.js";
-const facts={case_key:"rumour:s1",origin_week_index:12,last_followup_week_index:null,
- chapter:0,promotion_id:"p1",promotion_name:"CWA",show_id:"s1",headline:"Title-loss rumours"};
-test("rumour continuity gives fiction, distortion and genuine fictional backstage tension separate outcomes",()=>{
- for(const veracity of ["SUBSTANTIATED","DISTORTED","FABRICATED"] as Veracity[]){
-  const early=rumourFollowup({...facts,veracity},1,14);
-  const late=rumourFollowup({...facts,chapter:1,veracity},1,16);
-  assert.equal(early.desk,"DIRT");assert.equal(early.certainty,"SPECULATION");
-  assert.equal(early.promotionId,"p1");assert.notEqual(early.title,late.title);
-  assert.ok(late.summary.length<=600);
-  assert.ok(!JSON.stringify([early,late]).includes("private"));
-  assert.doesNotMatch(JSON.stringify([early,late]),
-   /fictional source|certified event|simulation|genuine backstage tension/i,
-   "Dirt Sheets must sound like wrestling journalists, never game operators");
-  assert.ok([early,late].every(s=>
-   s.summary.includes("rumour")||/allegation|claim|account|report|outlet|source|tip/i.test(s.summary)),
-   "A rumour follow-up must keep its attribution");
- }
- assert.equal(rumourCaseVeracity("case"),rumourCaseVeracity("case"));
- assert.match(rumourFollowup({...facts,chapter:1,veracity:"FABRICATED"},1,16).summary,/withdrawn/);
-});
+/** One bounded transactionally recorded rumour arc per certified World week.
+ * No private booking, morale, message or contract reads. All incidents here are
+ * fictional editorial colour and have no hidden gameplay consequences. */
+import type {SqlRows} from "./world-operations.js";
+import type {WorldNewsStory} from "./world-news.js";
+import {canFollowRumour,publicRumourDevelopment,rumourCaseVeracity,rumourFollowup,type RumourCase} from "../src/domain/wrestling-rumour-cases.js";
+export async function continueWorldRumours(tx:SqlRows,worldId:string,year:number,
+ week:number,stories:readonly WorldNewsStory[]):Promise<WorldNewsStory[]>{
+ const index=(year-1)*52+week-1;
+ const hasPublicDevelopment=stories.some(s=>s.desk==="OFFICIAL"&&["TITLE","ANGLE","MATCH"].includes(s.sourceKind));
+ const old=hasPublicDevelopment?await tx.query<RumourCase>(`
+  SELECT case_key,origin_week_index,last_followup_week_index,chapter,veracity,
+   promotion_id,promotion_name,show_id,headline FROM ppw_world_rumour_cases
+  WHERE world_id=$1 AND chapter<2 AND origin_week_index BETWEEN $2-6 AND $2-1
+   AND (last_followup_week_index IS NULL OR last_followup_week_index<=$2-2)
+  ORDER BY origin_week_index DESC,case_key LIMIT 12`,[worldId,index]):[];
+ const development=old.flatMap(c=>{
+  const evidence=publicRumourDevelopment(c,stories);
+  return evidence?[{c,evidence}]:[];
+ })[0];
+ if(development)await tx.query(`
+  UPDATE ppw_world_rumour_cases SET chapter=chapter+1,last_followup_week_index=$3
+  WHERE world_id=$1 AND case_key=$2 AND chapter=$4`,
+  [worldId,development.c.case_key,index,development.c.chapter]);
+ const next=stories.find(s=>s.desk==="DIRT"&&canFollowRumour(s.key));
+ if(next)await tx.query(`
+  INSERT INTO ppw_world_rumour_cases(
+   world_id,case_key,origin_week_index,chapter,veracity,promotion_id,
+   promotion_name,show_id,headline)
+  VALUES($1,$2,$3,0,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING`,
+  [worldId,next.key,index,rumourCaseVeracity(worldId+":"+next.key),
+   next.promotionId,next.promotionName,next.showId,next.title]);
+ return development?[rumourFollowup(development.c,year,week,development.evidence)]:[];
+}

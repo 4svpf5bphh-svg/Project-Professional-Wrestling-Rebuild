@@ -9,27 +9,37 @@ export function rumourCaseVeracity(key:string):Veracity{
  let h=2166136261;for(const c of key){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}
  return (["SUBSTANTIATED","DISTORTED","FABRICATED"] as const)[(h>>>0)%3]!;
 }
-export function rumourFollowup(c:RumourCase,year:number,week:number):WorldNewsStory{
- const final=c.chapter>0,truth=c.veracity;
- const titles=final?
-  {SUBSTANTIATED:"More backstage accounts emerge, but the details remain disputed",
-   DISTORTED:"Earlier backstage claims appear to have been exaggerated",
-   FABRICATED:"Dirt sheet retracts controversial locker-room story"}:
-  {SUBSTANTIATED:"A second backstage account supports an earlier rumour",
-   DISTORTED:"A competing locker-room source challenges the sensational claims",
-   FABRICATED:"Reporter challenged to identify the source behind backstage allegations"};
- // Veracity labels are legacy editorial-arc states, not evidence that a
- // private locker-room incident happened. Even a second anonymous tip is
- // still gossip. Keep backstage allegations in the voice of an actual outlet.
- const summaries=final?
-  {SUBSTANTIATED:"A second account has echoed the earlier allegation, but the descriptions still clash and nobody involved has gone on the record. The publication has not established what, if anything, happened backstage.",
-   DISTORTED:"The first headline was emphatic. The follow-ups have been much less so. The more colourful details remain unsupported, and the publication is now questioning how the story was framed.",
-   FABRICATED:"The outlet has withdrawn its original locker-room report after its tip could not be corroborated. Its editor has apologised for running the claim. The story now is how the paper got it so wrong."}:
-  {SUBSTANTIATED:"Another unnamed tipster has repeated part of the locker-room story, while disagreeing with key details. More whispers are not the same as evidence, and no participant has confirmed the account.",
-   DISTORTED:"One tip painted a spectacular picture. A competing account says the headline exaggerated a much more ordinary moment. Neither version has been established, but the rumour is drawing plenty of attention.",
-   FABRICATED:"Other wrestling reporters have challenged the alleged source behind the original scoop. The journalist has yet to offer anything that backs up the claim, and rival outlets are asking uncomfortable questions."};
+export function canFollowRumour(key:string):boolean{
+ return /^rumour:(?:title|angle|breakout):/.test(key);
+}
+export function publicRumourDevelopment(c:RumourCase,stories:readonly WorldNewsStory[]):WorldNewsStory|undefined{
+ const sourceKind=c.case_key.startsWith("rumour:title:")?"TITLE":
+  c.case_key.startsWith("rumour:angle:")?"ANGLE":
+  c.case_key.startsWith("rumour:breakout:")?"MATCH":null;
+ if(!sourceKind)return undefined;
+ // New pitches name their subject in the headline. Match contiguous name
+ // phrases to a later public story, using only the same promotion and desk.
+ const subject=c.headline.match(/^(?:How far will )(.+?) take the champion/i)?.[1]??
+  c.headline.match(/^(.+?) have the theory merchants/i)?.[1]??
+  c.headline.match(/^Is (.+?) getting a major push/i)?.[1];
+ if(!subject)return undefined;
+ const normalize=(s:string)=>" "+s.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim()+" ";
+ return stories.find(s=>s.desk==="OFFICIAL"&&s.certainty==="CONFIRMED"&&
+  s.promotionId===c.promotion_id&&s.showId!==c.show_id&&s.sourceKind===sourceKind&&
+  subject.split(/ and /i).some(name=>normalize(s.title+" "+s.summary).includes(normalize(name))));
+}
+export function rumourFollowup(c:RumourCase,year:number,week:number,evidence:WorldNewsStory):WorldNewsStory{
+ const final=c.chapter>0;
+ const title=final?"The gossip desk revisits "+evidence.promotionName:
+  "A fresh twist for the "+evidence.promotionName+" rumour mill";
+ const angle=c.veracity==="SUBSTANTIATED"?
+  "That keeps the old theory in circulation. It still takes a leap to get from the new result to the original rumour.":
+  c.veracity==="DISTORTED"?
+   "The public story is more interesting than the loudest version of the rumour.":
+   final?"The desk is retiring its earlier theory. The latest story stands on its own.":
+    "The desk is revisiting its earlier theory in light of the new result.";
  return {key:"followup:"+c.case_key+":"+year+":"+week,desk:"DIRT",
   certainty:"SPECULATION",promotionId:c.promotion_id,promotionName:c.promotion_name,
-  showId:c.show_id,sourceKind:"EVENT",title:titles[truth],
-  summary:("FOLLOWING UP: "+c.headline+". "+summaries[truth]).slice(0,600)};
+  showId:evidence.showId,sourceKind:evidence.sourceKind,title,
+  summary:("The earlier rumour: "+c.headline+" Now: "+evidence.title+". "+angle).slice(0,600)};
 }

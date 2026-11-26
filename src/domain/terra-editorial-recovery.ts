@@ -159,14 +159,14 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
  // Keep every hard fact gate; subjective style/length warnings do not
  // trigger another billable request. The Groq pipeline retains its own rules.
  const check=(copy:RingsideCopy,view=show)=>{
-  // The completed match receipt has no recorded kickout or near-fall beats.
-  const unrecorded=/\b(?:kicks? out|kicked out|kick[- ]?outs?|near[- ]falls?)\b/i;
+  // The completed match receipt has no recorded kickout, near-fall or move beats.
+  const unrecorded=/\b(?:kicks? out|kicked out|kick[- ]?outs?|near[- ]falls?)\b|\b(?:hit|hits|lands?|landed|delivered|connected with) (?:a |the )?(?:suplex|powerbomb|moonsault|ddt|clothesline|chokeslam|dropkick|brainbuster|piledriver)\b/i;
   copy.slots.forEach((slot,i)=>{
    if(view.entries[i]?.type==="MATCH"&&unrecorded.test(slot.headline+" "+slot.recap))
-    throw new RingsideSlotValidationError(i,"Terra reported an unrecorded near-fall");
+    throw new RingsideSlotValidationError(i,"Terra reported an unrecorded match spot");
   });
   if(unrecorded.test(copy.showHeadline+" "+copy.opening+" "+copy.closing))
-   throw new Error("Terra reported an unrecorded near-fall in the show summary");
+   throw new Error("Terra reported an unrecorded match spot in the show summary");
   return validateRingsideCopy(copy,view,{styleWarningOnly:true});
  };
  let verified:RingsideCopy|null=null;

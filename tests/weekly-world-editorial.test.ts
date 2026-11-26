@@ -197,3 +197,9 @@ test("unrelated replies fail without discarding either independent fan",()=>{
  assert.deepEqual(result.copy[official.id]?.fans,[copy.fans[0],copy.fans[1],null]);
  assert.equal(result.fields["reply.REPLY_CONTEXT"],1);
 });
+
+test("an actual concealed finish has more editorial weight than the general event recap",()=>{
+ const bout={...official,id:"match:ppv:main",showId:"ppv",sourceKind:"MATCH",title:"A foreign object decides Alice Reed vs Bob Ward"};
+ const recap={...official,id:"event:ppv",showId:"ppv",sourceKind:"EVENT"};
+ assert.deepEqual(weeklyEditorialAnchors([recap,bout]).map(a=>a.story.id),[bout.id]);
+});

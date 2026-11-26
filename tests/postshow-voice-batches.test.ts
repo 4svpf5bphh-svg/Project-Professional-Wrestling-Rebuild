@@ -603,7 +603,7 @@ test("Mixed broadcast validates five independent sources and complete fan debate
  const fans=Object.fromEntries(brief.fans!.map((a,i)=>[a.key,{
   text:i===0?a.participants[0]+" is exactly the sort of wrestler I want to see more of.":
    a.participants[0]+" deserves a crowd that appreciates the craft, not just the spectacle.",
-  reply:i===0?"That wrestler can carry a bout, but the rest of the card needs room too.":
+  reply:i===0?"I think that wrestler can carry a bout, but the rest of the card needs room too.":
    "The spectacle is why I buy a ticket. Technique only gets you so far."
  }]));
  const raw={news:valid.news,wrestler:valid.wrestler,

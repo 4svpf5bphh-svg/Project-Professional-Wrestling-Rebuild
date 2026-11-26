@@ -110,7 +110,9 @@ export function validateWeeklyStoryCopy(story:WeeklyStory,value:unknown,speaker?
 export function weeklyStoryPriority(story:Pick<WeeklyStory,"id"|"sourceKind"|"title">):number{
  if(story.sourceKind==="TITLE"||story.id.startsWith("title:"))return 100;
  if(story.id.startsWith("tournament:"))return 94;
+ if(story.id.startsWith("match:")&&story.title.startsWith("A foreign object decides "))return 89;
  if(story.id.startsWith("event:"))return 88;
+ if(story.id.startsWith("match:")&&story.title.includes(" in the spotlight at "))return 84;
  if(story.id.startsWith("programme:official:"))return 86;
  if(story.sourceKind==="ANGLE"||story.id.startsWith("angle:"))return 82;
  if(story.sourceKind==="MATCH"||story.id.startsWith("match:"))return 76;
