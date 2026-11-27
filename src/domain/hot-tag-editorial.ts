@@ -7,6 +7,7 @@ export interface HotTagEditorialAnchor{
  key:string;slotId:string;voice:ReactionVoice;replyVoice?:ReactionVoice;
  participants:string[];subject:string;context:string;
  otherPerformers?:string[];
+ publicFinish?:string;
 }
 export interface HotTagEditorialCopy{
  slotId:string;voice:ReactionVoice;text?:string;
@@ -27,10 +28,16 @@ export function hotTagEditorialAnchors(show:CompletedShowView):HotTagEditorialAn
    [...(entry.segmentContext?.actorNames??[]),...(entry.segmentContext?.targetNames??[])])]
    .filter(n=>typeof n==="string"&&n.trim()).slice(0,6).map(n=>tidy(n,100));
   if(!participants.length)return [];
+  const winner=entry.matchContext?.winnerNames.join(" & ");
+  const method=entry.outcome==="DISQUALIFICATION"?"by disqualification":
+   entry.outcome==="FOREIGN_OBJECT"?"with a foreign object":
+   entry.outcome==="SUBMISSION"?"by submission":"";
+  const publicFinish=winner&&method?tidy(winner+" won "+method,160):undefined;
   return [{key:"f"+i,slotId:r.slotId,voice:r.voice,
    ...(r.reply?{replyVoice:r.reply.voice}:{}),participants,
    subject:tidy(entry.headline,130),
    context:tidy(r.text,210),
+   ...(publicFinish?{publicFinish}:{}),
    otherPerformers:[...new Set(show.entries.filter(e=>e.slotId!==r.slotId).flatMap(e=>
     e.matchContext?.sides.flat()??[...(e.segmentContext?.actorNames??[]),
      ...(e.segmentContext?.targetNames??[])]))]
@@ -50,18 +57,29 @@ const opinion=/\b(?:i|my|me|we|our|think|thought|love|hate|want|prefer|hope|wish
 function opinionText(raw:unknown,anchor:HotTagEditorialAnchor,reply=false):string|null{
  if(typeof raw!=="string"||raw.length>230||/[\u0000-\u001f<>]/.test(raw))return null;
  const text=raw.trim(),words=text.split(/\s+/).length;
- if(words<5||words>36||factClaim.test(text)||meta.test(text)||hostile.test(text)||
+ const norm=" "+normalize(text)+" ";
+ const facts=anchor.publicFinish?normalize(anchor.publicFinish):null;
+ const claims=text.split(/[.!?]+/).map(normalize).filter(sentence=>sentence!==facts).join(" ");
+ if(words<5||words>36||factClaim.test(claims)||meta.test(text)||hostile.test(text)||
   !opinion.test(text)||/[“”"]/.test(text)||/https?:|@[a-z0-9_]/i.test(text))return null;
  // The first post must refer to the actual subject; a reply may disagree
  // directly without restating its name. Exact word-boundary name match.
- const norm=" "+normalize(text)+" ";
- if(!reply&&!anchor.participants.some(n=>norm.includes(" "+normalize(n)+" ")))return null;
+ const names=anchor.participants.map(normalize);
+ const surnames=[...names,...(anchor.otherPerformers??[]).map(normalize)].map(n=>n.split(" ").at(-1));
+ if(!reply&&!names.some(name=>{
+  const surname=name.split(" ").at(-1);
+  return norm.includes(" "+name+" ")||!!surname&&surname.length>=4&&
+   surnames.filter(n=>n===surname).length===1&&norm.includes(" "+surname+" ");
+ }))return null;
  // Don't let a fan transplant an unrelated wrestler into this slot.
  if(anchor.otherPerformers?.some(n=>norm.includes(" "+normalize(n)+" ")))return null;
  if(normalize(text)===normalize(anchor.context))return null;
  return text;
 }
 export function validateHotTagEditorial(anchors:readonly HotTagEditorialAnchor[],candidate:unknown):HotTagEditorialCopy[]{
+ return readThreadCopy(anchors,candidate,true);
+}
+function readThreadCopy(anchors:readonly HotTagEditorialAnchor[],candidate:unknown,requireConnection:boolean):HotTagEditorialCopy[]{
  const raw=object(candidate),used=new Set<string>();
  const copy:HotTagEditorialCopy[]=[];
  for(const anchor of anchors){
@@ -72,7 +90,11 @@ export function validateHotTagEditorial(anchors:readonly HotTagEditorialAnchor[]
   if(accepted)used.add(normalize(accepted));
   // A model reply must respond to its model-written first post, not an
   // unrelated local fallback; if the lead fails retain the original thread.
-  const reply=accepted&&response&&!used.has(normalize(response))&&anchor.replyVoice?
+  const responseWords=new Set(response?normalize(response).split(" "):[]);
+  const relevant=accepted&&response&&(!requireConnection||
+   normalize(accepted).split(" ").some(word=>word.length>=5&&responseWords.has(word)&&
+    !/^(?:wrestling|really|would|should|think|could|about|which|people|their|those)$/.test(word)));
+  const reply=relevant&&response&&!used.has(normalize(response))&&anchor.replyVoice?
    {voice:anchor.replyVoice,text:response}:undefined;
   if(reply)used.add(normalize(reply.text));
   // Treat a two-person conversation as a unit. Never combine a model
@@ -94,5 +116,5 @@ export function readHotTagEditorial(anchors:readonly HotTagEditorialAnchor[],can
   raw[anchor.key]={text:item.text,
    ...(reply.voice===anchor.replyVoice?{reply:reply.text}:{})};
  }
- return validateHotTagEditorial(anchors,raw);
+ return readThreadCopy(anchors,raw,false);
 }

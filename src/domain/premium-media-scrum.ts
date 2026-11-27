@@ -16,9 +16,17 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
  const opener=matches[0];
  const mainWinner=main?.matchContext?.winnerNames.join(" and ");
  const mainOpponents=main?.matchContext?.sides.filter(side=>!side.some(n=>main.matchContext!.winnerNames.includes(n))).flat().join(" and ");
- const mainContest=mainWinner&&mainOpponents?
-  `${mainWinner} defeated ${mainOpponents}`:main?.headline;
+ const mainSides=main?.matchContext?.sides.map(side=>side.join(" and ")).join(" against ");
+ const mainContest=main?.outcome==="DISQUALIFICATION"?
+  (mainWinner?`${mainWinner} took the decision by disqualification`:"The main event ended in disqualification"):
+  main?.outcome==="FOREIGN_OBJECT"?
+   (mainWinner?`${mainWinner} got the decision with a foreign object`:"A foreign object decided the main event"):
+   mainWinner&&mainOpponents?`${mainWinner} defeated ${mainOpponents}`:
+    mainSides?`The main event was ${mainSides}`:"The main event has concluded";
  const titleChange=main?.fallout?.title?.changed?main.fallout.title:null;
+ const disputedTitle=main?.outcome==="FOREIGN_OBJECT"?
+  " A foreign object helped settle the match.":
+  main?.outcome==="DISQUALIFICATION"?" The match ended in disqualification.":"";
  const other=matches.find(m=>m!==main&&m.fallout?.title&&!m.fallout.title.changed&&!m.fallout.title.priorHolderName)
   ??matches.find(m=>m!==main&&m.fallout?.title?.changed);
  const retained=matches.find(m=>m!==main&&m!==other&&m.fallout?.title&&!m.fallout.title.changed&&
@@ -26,13 +34,13 @@ export function premiumScrumQuestions(show:CompletedShowView):ScrumQuestion[]{
  return [{
   id:"MAIN_EVENT",journalist:"Mara Finch · The Final Bell",
   question:titleChange?
-   `At ${event}, ${titleChange.winnerName} ${titleChange.priorHolderName?"took the "+titleChange.name+" from "+titleChange.priorHolderName:"claimed the "+titleChange.name}. What does that result mean for the promotion?`:
+   `At ${event}, ${titleChange.winnerName} ${titleChange.priorHolderName?"took the "+titleChange.name+" from "+titleChange.priorHolderName:"claimed the "+titleChange.name}.${disputedTitle} ${
+    disputedTitle?"How do you respond to the fans questioning the finish?":"How does that result change the title picture?"}`:
    main?
-   `The cameras are still rolling after ${event}. ${mainContest??"The main event has concluded"}. ${main.fallout?.title?.changed?
-    "A championship changed hands — what's your reaction?":
-    main.outcome==="FOREIGN_OBJECT"||main.outcome==="DISQUALIFICATION"?
-     "That finish will divide opinion. Do you stand behind it?":
-     "What's your reaction to that finish?"}`:
+   `At ${event}, ${mainContest}. ${
+    main.outcome==="FOREIGN_OBJECT"?"What do you say to the fans arguing over how that result was earned?":
+    main.outcome==="DISQUALIFICATION"?"What did the referee's decision do to the main event?":
+    "What will people take away from the way that match ended?"}`:
    `After ${event}, how do you assess the final moments of the night?`,
   answers:[
    "What happened in that ring speaks for itself. The audience saw it.",

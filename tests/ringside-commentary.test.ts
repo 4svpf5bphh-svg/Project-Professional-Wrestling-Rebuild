@@ -243,7 +243,7 @@ test("OpenAI preview uses the same certified Ringside validator with mocked prov
     showHeadline:"Teams go to war",opening:"A hot crowd awaited.",
     closing:"A deserved team victory.",
     slots:{card_0:{headline:"Double trouble",
-     recap:"Each side took turns controlling the corner until a legal tag sparked a comeback. The winners earned the official fall."}}
+     recap:"Kenny Omega and Matt Jackson took the decision by clean pinfall. The opposition still gave the crowd reason to care about the finish."}}
    })}}]}));
  };
  const article=await generateGroqReview(team,"fixture",transport,
@@ -892,7 +892,7 @@ test("Terra accepts a complete article delivered AFTER the old 28-second deadlin
   usage:{prompt_tokens:5100,completion_tokens:1760},
   choices:[{finish_reason:"stop",message:{content:JSON.stringify({
    showHeadline:review.showHeadline,opening:review.opening,closing:review.closing,
-   slots:{card_0:{headline:review.slots[0]!.headline,recap:review.slots[0]!.recap}}
+   slots:{card_0:{headline:"Omega takes the clean fall",recap:"Kenny Omega won by clean pinfall. The finish settled a match that had the crowd paying attention."}}
   })}}]
  })));
  const out=await pending;

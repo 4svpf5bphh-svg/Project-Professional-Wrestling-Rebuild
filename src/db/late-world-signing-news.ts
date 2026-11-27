@@ -10,9 +10,10 @@ export async function publishLateAiSigningNews(tx:SqlRows,
  worldId:string,year:number,week:number):Promise<number>{
  const events=await tx.query<{event_id:string;
   event_type:ConfirmedWorldSigning["eventType"];person_name:string;
-  promotion_id:string;promotion_name:string}>(`
+  promotion_id:string;promotion_name:string;headliner:boolean}>(`
   SELECT e.event_id::text AS event_id,e.event_type,
-   person.name AS person_name,p.promotion_id,p.name AS promotion_name
+   person.name AS person_name,p.promotion_id,p.name AS promotion_name,
+   coalesce(greatest(person.popularity,person.recognition)>=75,false) AND e.event_type<>'EMERGENCY_TALENT_SIGNED' AS headliner
   FROM ppw_ledger_events e
   JOIN ppw_world_news_weeks issue ON issue.world_id=e.world_id
    AND issue.year=e.year AND issue.week=e.week
@@ -27,7 +28,7 @@ export async function publishLateAiSigningNews(tx:SqlRows,
  if(events.length>32)throw Error("Late World signings exceed the bounded edition");
  const stories=composeConfirmedSigningNews(events.map(e=>({
   eventId:e.event_id,eventType:e.event_type,personName:e.person_name,
-  promotionId:e.promotion_id,promotionName:e.promotion_name
+  promotionId:e.promotion_id,promotionName:e.promotion_name,headliner:e.headliner
  })));
  if(!stories.length)return 0;
  const written=await tx.query<{story_key:string}>(`

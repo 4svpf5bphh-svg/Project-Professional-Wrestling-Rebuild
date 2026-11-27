@@ -74,7 +74,7 @@ test("Two-person threads are accepted or fall back as a complete conversation",(
  assert.deepEqual(validateHotTagEditorial([anchor],{f0:{text:lead}}),[]);
  assert.deepEqual(validateHotTagEditorial([anchor],{f0:{text:lead,reply:"Regal signed a contract today and I love it."}}),[]);
  const full=validateHotTagEditorial([anchor],{f0:{text:lead,
-  reply:"Nah, I would rather see a proper contest."}});
+  reply:"A villain needs a proper foil. I thought Regal gave Místico one."}});
  assert.equal(full.length,1);assert.equal(full[0]?.reply?.voice,anchor.replyVoice);
  assert.deepEqual(readHotTagEditorial([anchor],full),full);
 });
@@ -103,4 +103,20 @@ test("The explicit JSON response contract includes every eligible fan thread",as
  assert.deepEqual(Object.keys(schema.fans),brief.fans!.map(f=>f.key));
  assert.match(system,/HEEL DEFENDER enjoys villainy/);
  assert.match(system,/When either side of a two-person thread is uncertain/);
+});
+
+test("a fan can react to the exact public finish but cannot transpose a win",()=>{
+ const anchor={key:"f0",slotId:"main",voice:"THE HEEL DEFENDER" as const,
+  participants:["Alice Reed","Bob Ward"],subject:"Alice Reed vs Bob Ward",
+  context:"A disputed result",publicFinish:"Alice Reed won by disqualification"};
+ const result=validateHotTagEditorial([anchor],{f0:{
+  text:"Alice Reed won by disqualification. I thought it was a damn shame."
+ }});
+ assert.equal(result.length,1);
+ assert.equal(validateHotTagEditorial([anchor],{f0:{
+  text:"Bob Ward won by disqualification. I thought it was a damn shame."
+ }}).length,0);
+ assert.equal(validateHotTagEditorial([anchor],{f0:{
+  text:"I thought Reed deserved a better ending."
+ }}).length,1);
 });

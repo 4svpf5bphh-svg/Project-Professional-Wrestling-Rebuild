@@ -18,7 +18,7 @@ type Broadcast = {
 };
 interface Bout extends Broadcast{
  slot_id:string;position:number;rating_stars:string|number|null;
- match_crowd:string|number;payload:unknown;
+ match_crowd:string|number;payload:unknown;actual_finish?:string;actual_winner_side?:string|null;
 }
 interface Angle extends Broadcast{
  slot_id:string;position:number;kind:string;authored_outcome:string;
@@ -26,7 +26,7 @@ interface Angle extends Broadcast{
 }
 interface TitleChange extends Broadcast{
  slot_id:string;title_name:string;winner_name?:string|null;
- prior_reign_id?:string|null;
+ prior_reign_id?:string|null;prior_holder_name?:string|null;
 }
 export interface TournamentFinal extends Broadcast {
  [key:string]:unknown;
@@ -75,7 +75,7 @@ export interface WorldNewsStory{
  */
 export interface ConfirmedWorldSigning{
  eventId:string;eventType:"CONTRACT_SIGNED"|"AI_STRATEGIC_TALENT_SIGNED"|"EMERGENCY_TALENT_SIGNED";
- personName:string;promotionId:string;promotionName:string;
+ personName:string;promotionId:string;promotionName:string;headliner?:boolean;
 }
 export function composeConfirmedSigningNews(
  events:readonly ConfirmedWorldSigning[]):WorldNewsStory[]{
@@ -93,8 +93,7 @@ export function composeConfirmedSigningNews(
    showId:"",sourceKind:"EVENT" as const,
    title:e.personName+" signs with "+e.promotionName,
    summary:e.personName+" has agreed a contract with "+e.promotionName+
-    ". The signing is confirmed; it does not establish an unbooked debut, "+
-    "a title opportunity or an immediate first appearance."
+    (e.headliner?". An established headliner joins the roster.":". The promotion has added to its roster.")
   }));
 }
 const significant=new Set(["TURN","ATTACK","POST_MATCH_ASSAULT","DEBUT",
@@ -160,6 +159,13 @@ export function chooseWeeklyAwards(bouts:readonly Bout[],angles:readonly Angle[]
  }
  return results;
 }
+function matchNewsSides(bout:Bout,names:ReadonlyMap<string,string>){
+ try{
+  const sides=readCanonicalMatchLayout(bout.payload).sides;
+  const display=sides.map(side=>({key:side.sideId,names:side.participants.map(p=>names.get(p.personId)??"")}));
+  return display.every(side=>side.names.every(Boolean))?display:[];
+ }catch{return [];}
+}
 /** Short, personality-led newsroom copy built only from certified public facts.
  * Smark flavour is editorial; it never invents sources, backstage leaks,
  * booking decisions or a result that the player did not author.
@@ -191,18 +197,18 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
    champion?champion+" captures "+c.title_name+" at "+c.show_name:
     c.title_name+" changes hands at "+c.show_name,
    champion?champion+" is the new "+c.title_name+
-    " champion after a certified result at "+c.show_name+". "+
-    (c.prior_reign_id===null?"The title was vacant heading into the contest. ":
-     c.prior_reign_id?"A previous reign has ended. ":"")+
-    "The division has a new name at the top.":
+    " champion after the match at "+c.show_name+". "+
+    (c.prior_reign_id===null?"The title was vacant heading into the contest.":
+     c.prior_holder_name?"That ends "+c.prior_holder_name+"’s reign.":
+      c.prior_reign_id?"The previous reign ended there.":""):
     "The "+c.title_name+" changed hands at "+c.show_name+
-    ". The result is certified; an unidentified winner is not guessed.",
+    ".",
    "TITLE");
  }
  const angleHeadlines:Record<string,(person:string,show:string)=>string>={
-  TURN:(p,s)=>p+" changes course at "+s,
+  TURN:(p,s)=>p+" takes a different tack at "+s,
   ATTACK:(p,s)=>p+" sparks trouble at "+s,
-  POST_MATCH_ASSAULT:(p,s)=>p+" makes a statement at "+s,
+  POST_MATCH_ASSAULT:(p,s)=>p+" strikes after the bell at "+s,
   DEBUT:(p,s)=>p+" arrives at "+s,
   STABLE_EXIT:(p,s)=>p+" parts company at "+s,
   STABLE_INVITATION:(p,s)=>p+" gets a faction invitation at "+s,
@@ -224,36 +230,46 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
     "The bell may have moved on, but that on-screen moment is part of the story now."),
    "ANGLE");
  }
- for(const s of [...bouts].filter(x=>x.rating_stars!==null&&
-  Number(x.rating_stars)>=4).sort((a,b)=>Number(b.rating_stars)-
-  Number(a.rating_stars)||byId(a,b)).slice(0,3)){
-  const cast=participants(s.payload).map(id=>names.get(id)).filter(
-   (x):x is string=>!!x).slice(0,4);
-  const opposition=cast.length>=2?cast.join(" vs "):"A standout contest";
-  // A prospect appearing in an exceptional certified match is a factual
-  // spotlight, not evidence of an individual score, victory or skill change.
+ for(const s of [...bouts].filter(x=>x.actual_finish==="FOREIGN_OBJECT"||
+  x.actual_finish==="DISQUALIFICATION"||x.rating_stars!==null&&Number(x.rating_stars)>=4)
+  .sort((a,b)=>Number(["FOREIGN_OBJECT","DISQUALIFICATION"].includes(b.actual_finish??""))-
+   Number(["FOREIGN_OBJECT","DISQUALIFICATION"].includes(a.actual_finish??""))||
+   Number(b.rating_stars)-Number(a.rating_stars)||byId(a,b)).slice(0,4)){
+  const sides=matchNewsSides(s,names);
+  if(sides.length<2)continue;
+  const opposition=sides.map(side=>side.names.join(" & ")).join(" vs ");
+  const champion=sides.find(side=>side.key===s.actual_winner_side)?.names.join(" & ");
+  const prop=s.actual_finish==="FOREIGN_OBJECT",dq=s.actual_finish==="DISQUALIFICATION";
   const emerging=Number(s.rating_stars)>=4.5?
    participants(s.payload).find(id=>careerStages.get(id)==="PROSPECT"&&names.has(id)):undefined;
   const prospect=emerging?names.get(emerging):undefined;
-  add("OFFICIAL",s,"match:"+s.show_id+":"+s.slot_id,
+  const matchTitle=prop?"A foreign object decides "+opposition:
+   dq?opposition+" ends in disqualification":
    prospect?prospect+" in the spotlight at "+s.show_name:
-    opposition+" steals the show at "+s.show_name,
-   s.show_name+" delivered a "+Number(s.rating_stars).toFixed(2)+
-   "-star match for "+s.promotion_name+". "+
-   (prospect?"Prospect "+prospect+" was part of "+opposition+
-    ". A big stage for an emerging name; the stars belong to the match, not any one wrestler.":
-    "One for the replay queue; performances like that do the talking."),
-   "MATCH");
+   opposition+" earns the replay at "+s.show_name;
+  const matchResult=prop?
+   (champion?champion+" took the decision with a foreign object at "+s.show_name:
+    "A foreign object decided "+opposition+" at "+s.show_name)+". The result stood.":
+   dq?(champion?champion+" took the decision by disqualification":"The bout ended in disqualification")+
+    " at "+s.show_name+".":
+   opposition+" delivered a "+Number(s.rating_stars).toFixed(2)+"-star match at "+s.show_name+
+    (prospect?", with prospect "+prospect+" sharing the spotlight.":".");
+  add("OFFICIAL",s,"match:"+s.show_id+":"+s.slot_id,matchTitle,matchResult,"MATCH");
  }
  for(const s of shows.filter(s=>s.booking_class==="PREMIUM")
   .sort((a,b)=>Number(b.crowd_response)-Number(a.crowd_response)||
    a.show_id.localeCompare(b.show_id)).slice(0,2)){
-  add("OFFICIAL",s,"event:"+s.show_id,s.show_name+" takes centre stage",
-   s.promotion_name+" staged its premium event, "+s.show_name+
-   ". "+(Number(s.crowd_response)>=75?
-    "The audience responded to the occasion; big nights are supposed to feel like big nights.":
-    "The crowd response was more restrained than the billing, leaving plenty to prove next time."),
-   "EVENT");
+  const final=bouts.filter(b=>b.show_id===s.show_id).reduce<Bout|undefined>(
+   (last,b)=>!last||b.position>last.position?b:last,undefined);
+  const sides=final?matchNewsSides(final,names):[];
+  const contest=sides.map(side=>side.names.join(" & ")).join(" vs ");
+  const audience=Number(s.crowd_response)>=75?"The crowd was up for it.":
+   Number(s.crowd_response)<50?"The crowd was quiet for a show of this billing.":
+   "The audience gave it a mixed reception.";
+  add("OFFICIAL",s,"event:"+s.show_id,
+   contest?s.show_name+" closes with "+contest:s.promotion_name+" presents "+s.show_name,
+   s.promotion_name+" held "+s.show_name+(contest?", with "+contest+" as the final match.":".")+
+    " "+audience,"EVENT");
  }
  // Fictional in-universe dirt sheets are now reports with contradictory
  // versions, editorial agendas and disputed 'inside' claims. Only confirmed
@@ -274,13 +290,16 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
  const title=[...changes].sort((a,b)=>byId(a,b)).find(x=>x.winner_name?.trim());
  if(title){
   const champion=title.winner_name!.trim();
+  const ideas=[
+   "Would the champion ask for a belt-first introduction or keep the same music and walk straight to the ring?",
+   "Could the champion turn the belt reveal into a travelling display, with the fans choosing where it goes next?",
+   "Does the champion need a formal challenge at the start of a show, or would an open invitation land better?"
+  ];
+  const idea=ideas[[...title.show_id].reduce((n,ch)=>n+ch.codePointAt(0)!,0)%ideas.length]!;
   add("DIRT",title,"rumour:title:"+title.show_id+":"+title.slot_id,
-   "Backstage heat after "+champion+"'s title victory? Conflicting reports surface",
-   "The title change at "+title.show_name+" is confirmed. What happened afterwards is another matter. "+
-   "One anonymous account claims the decision left people inside "+title.promotion_name+
-   " furious, with talk of an ugly argument about the finish. A second version says everyone "+
-   "left as planned and the supposed confrontation never took place. "+
-   "Neither claim has been corroborated. Is this genuine dressing-room heat, a bad tip, or a work?",
+   "How far will "+champion+" take the champion's presentation?",
+   champion+" took the "+title.title_name+" at "+title.show_name+
+   ". The theory doing the rounds: "+idea+" The gossip desk has not corroborated either idea.",
    "EVENT");
  }else if(hot){
   const cast=storyPeople(hot.story_json).map(id=>names.get(id))
@@ -288,12 +307,11 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   const star=cast[0]??"a wrestler";
   const other=cast[1]??"another member of the roster";
   add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
-   "Was "+star+"'s "+name(hot.kind).toLowerCase()+" a work, or did tensions spill backstage?",
-   star+" and "+other+" were part of a confirmed on-screen incident at "+hot.show_name+
-   ". Now an anonymous account is alleging that words were exchanged afterwards in the dressing room. "+
-   "A competing account insists the performers were simply carrying out the show as intended. "+
-   "No confrontation behind the curtain has been established. "+
-   "The conflicting whispers have fans arguing over where the storyline ends.",
+   star+" and "+other+" have the theory merchants working overtime",
+   star+" and "+other+" shared an on-screen incident at "+hot.show_name+
+   ". One reading has this turning into a rivalry fought entirely through interruptions. "+
+   "Another has them teaming up against a common enemy before anyone gets a clean microphone. "+
+   "Both are theories about what the audience saw. No backstage version of events has been established.",
    "ANGLE");
  }else if(breakout){
   const participantId=participants(breakout.payload).find(id=>
@@ -303,20 +321,17 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
    "rumour:breakout:"+breakout.show_id+":"+breakout.slot_id,
    "Is "+wrestler+" getting a major push? Rival stories emerge after "+breakout.show_name,
    wrestler+" appeared in a standout match at "+breakout.show_name+". "+
-   "One supposed insider says management wants a bigger spotlight for the rising name. "+
-   "Another says that is merely what fans want to believe. The performance was real; "+
-   "the creative discussions have not been independently verified. "+
+   "One fan theory puts the rising name first on the poster. The other would give that performer a few shorter appearances to build familiarity. "+
    "Whether "+breakout.promotion_name+" gives "+wrestler+
    " a bigger opportunity remains a question, not an announced plan.",
    "MATCH");
  }else if(rough){
   add("DIRT",rough,"rumour:creative:"+rough.show_id,
-   "Creative meeting after "+rough.show_name+"? "+rough.promotion_name+" facing questions",
-   "The crowd response at "+rough.show_name+" was muted. "+
-   "Behind the curtain, a supposed source claims the booking team had a tense meeting "+
-   "about changes to future cards. Another account dismisses that as fans mistaking "+
-   "a disappointing show for an internal crisis. Nobody has verified that a meeting "+
-   "or dispute occurred. What is certain is how the audience reacted.",
+   "Could "+rough.promotion_name+" ditch the long walk to the ring?",
+   "The crowd was quiet at "+rough.show_name+
+   ". One theory doing the rounds is that stripping the entrances back could get the audience into the wrestling sooner. "+
+   "The opposing camp would hand the wrestlers more fireworks and see which part of the building wakes up first. "+
+   "The gossip desk has no confirmed production changes.",
    "CROWD");
  }
  // A second, independently selected tabloid claim may be entirely invented.
@@ -362,12 +377,13 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   const pool=(seed>>>0)%5<2?rowdy:ordinary;
   const selected=pool[(seed>>>16)%pool.length]!;
   const report=[selected[0],selected[1]+" The story has not been independently verified."] as const;
-  add("DIRT",talk,"wild:"+talk.show_id,report[0],report[1],"EVENT");
+  if(appeared.length&&(seed>>>0)%5!==0)
+   add("DIRT",talk,"wild:"+talk.show_id,report[0],report[1],"EVENT");
  }
  // A maximum of two fictional dirt stories, persisted with official facts
  // in the same replay-safe World Lock transaction. This is narrative colour,
  // never an actual disciplinary event or new simulation consequence.
- return [...official.slice(0,8),...dirt.filter(x=>!x.key.startsWith("wild:")).slice(0,1),
+ return [...official,...dirt.filter(x=>!x.key.startsWith("wild:")).slice(0,1),
   ...dirt.filter(x=>x.key.startsWith("wild:")).slice(0,1)];
 
 }
@@ -400,9 +416,9 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  const sources=new Map(shows.map(s=>[s.show_id,s]));
  const [matches,segments,changes]=await Promise.all([
   tx.query<{show_id:string;slot_id:string;position:number;
-   rating_stars:string|number|null;match_crowd:string|number;payload:unknown}>(`
+   rating_stars:string|number|null;match_crowd:string|number;payload:unknown;actual_finish:string;actual_winner_side:string|null}>(`
    SELECT m.show_id,m.match_id AS slot_id,m.position,
-    f.rating_stars,m.crowd_response AS match_crowd,slot.payload
+    f.rating_stars,m.crowd_response AS match_crowd,slot.payload,m.actual_finish,m.actual_winner_side
    FROM ppw_completed_shows c
    JOIN ppw_completed_show_matches m ON m.world_id=c.world_id AND m.show_id=c.show_id
    JOIN ppw_card_slots slot ON slot.world_id=m.world_id
@@ -420,9 +436,10 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
    WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
    ORDER BY a.show_id,a.position LIMIT 3001`,[worldId,year,week]),
   tx.query<{show_id:string;slot_id:string;title_name:string;
-   winner_name:string|null;prior_reign_id:string|null}>(`
+   winner_name:string|null;prior_reign_id:string|null;prior_holder_name:string|null}>(`
    SELECT x.show_id,x.slot_id,t.name AS title_name,x.prior_reign_id,
-    coalesce(person.name,team.name) AS winner_name
+    coalesce(person.name,team.name) AS winner_name,
+    coalesce(previous_person.name,previous_team.name) AS prior_holder_name
    FROM ppw_completed_shows c
    JOIN ppw_championship_contests x ON x.world_id=c.world_id
     AND x.show_id=c.show_id AND x.promotion_id=c.promotion_id AND x.title_changed
@@ -432,6 +449,13 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
     AND person.person_id=x.winner_person_id
    LEFT JOIN ppw_tag_teams team ON team.world_id=x.world_id
     AND team.team_id=x.winner_team_id
+   LEFT JOIN ppw_championship_reigns previous ON previous.world_id=x.world_id
+    AND previous.promotion_id=x.promotion_id AND previous.championship_id=x.championship_id
+    AND previous.reign_id=x.prior_reign_id
+   LEFT JOIN ppw_people previous_person ON previous_person.world_id=previous.world_id
+    AND previous_person.person_id=previous.person_id
+   LEFT JOIN ppw_tag_teams previous_team ON previous_team.world_id=previous.world_id
+    AND previous_team.team_id=previous.team_id
    WHERE c.world_id=$1 AND c.year=$2 AND c.week=$3
    ORDER BY x.show_id,x.slot_id LIMIT 501`,[worldId,year,week])
  ]);
@@ -520,9 +544,10 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  // One bounded publisher-only read. Other promotions' settled signings
  // are public World news; pending offers and private wages are never shown.
  const signings=await tx.query<{event_id:string;event_type:ConfirmedWorldSigning["eventType"];
-  person_name:string;promotion_id:string;promotion_name:string}>(`
+  person_name:string;promotion_id:string;promotion_name:string;headliner:boolean}>(`
   SELECT e.event_id::text AS event_id,e.event_type,
-    person.name AS person_name,p.promotion_id,p.name AS promotion_name
+    person.name AS person_name,p.promotion_id,p.name AS promotion_name,
+   coalesce(greatest(person.popularity,person.recognition)>=75,false) AND e.event_type<>'EMERGENCY_TALENT_SIGNED' AS headliner
   FROM ppw_ledger_events e
   JOIN ppw_people person ON person.world_id=e.world_id
    AND person.person_id=e.payload->>'personId'
@@ -536,7 +561,7 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  if(signings.length>32)throw new Error("Certified signing news exceeds bounded World events");
  const publicSignings=composeConfirmedSigningNews(signings.map(e=>({
   eventId:e.event_id,eventType:e.event_type,personName:e.person_name,
-  promotionId:e.promotion_id,promotionName:e.promotion_name
+  promotionId:e.promotion_id,promotionName:e.promotion_name,headliner:e.headliner
  })));
  const programmes=await readCertifiedAiProgrammeNews(tx,worldId,year,week);
  const stories=[...publicSignings,...programmes,...weeklyStories,...pressFollowups,...followups];

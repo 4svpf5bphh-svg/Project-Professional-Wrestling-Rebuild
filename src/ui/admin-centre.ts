@@ -57,7 +57,9 @@ type LabData={usage:LabDay[];runs:LabRun[];scores:{
  shortformRuns?:ShortformLabRun[];
  weeklyWorldRuns?:{year:number;week:number;state:string;diagnostic:string;provider_calls:number;
   estimated_tokens:number;input_tokens:number;output_tokens:number;accepted_stories:number;
-  fan_threads:number;editorials:number;wrestler_posts:number}[];
+  fan_threads:number;editorials:number;wrestler_posts:number;
+  inspection?:{model:string;promptBytes:number;instructions:string;context:unknown}|null;
+  accepted?:unknown;estimatedTerraUsd?:number|null}[];
  providers?:{groq:boolean;openai:boolean};
  paid?:{month:string;spent:string;reserved:string;calls:number}|null};
 type Recap={showHeadline:string;opening:string;closing:string;
@@ -294,16 +296,29 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
     "No recorded provider requests during the last seven days."));
    const weeklyWorld=el("section","ppw-lab-benchmark");
    weeklyWorld.append(el("h3","","Live weekly World editorial"),
-    el("p","ppw-admin-small","One shared free Groq batch per completed game week. News, Dirt Sheets, HOT TAG and Ratings War use the same cached edition. Private consultations use PPW fallback during this pilot."));
+    el("p","ppw-admin-small","One shared public editorial batch per completed game week. The latest dispatch includes its public brief, acceptance details and published copy."));
    const weeklyRuns=data.weeklyWorldRuns??[];
    if(!weeklyRuns.length)weeklyWorld.append(el("p","ppw-admin-small","No weekly public batch yet. Advance a game week normally to populate this report."));
    for(const run of weeklyRuns){
     const row=el("article","ppw-lab-period");
     row.append(el("strong","","Y"+run.year+" W"+run.week+" · "+run.state+" / "+run.diagnostic),
-     el("span","",run.provider_calls+" Groq request(s) · "+run.estimated_tokens.toLocaleString("en-GB")+" estimated token ceiling · "+
+     el("span","",run.provider_calls+" request(s) · "+run.estimated_tokens.toLocaleString("en-GB")+" estimated token ceiling · "+
       (run.input_tokens+run.output_tokens).toLocaleString("en-GB")+" reported tokens"),
      el("span","",run.accepted_stories+" covered stories · "+run.fan_threads+" fan threads · "+
       run.editorials+" opinion pieces · "+run.wrestler_posts+" wrestler posts"));
+    if(run.inspection){
+     const details=document.createElement("details");
+     details.append(el("summary","",run.inspection.model+" · "+run.inspection.promptBytes.toLocaleString("en-GB")+" request bytes"));
+     if(run.estimatedTerraUsd!=null)details.append(el("p","ppw-admin-small",
+      "Estimated Terra list cost $"+run.estimatedTerraUsd.toFixed(5)+" USD"));
+     const pre=el("pre","ppw-admin-small",run.inspection.instructions+"\n\n"+
+      JSON.stringify(run.inspection.context,null,2)+"\n\nPublished copy\n"+
+      JSON.stringify(run.accepted??null,null,2));
+     pre.style.whiteSpace="pre-wrap";
+     pre.style.overflowWrap="anywhere";
+     details.append(pre);
+     row.append(details);
+    }
     weeklyWorld.append(row);
    }
    const scoreTitle=el("h3","","Editorial scorecard · 30 days");

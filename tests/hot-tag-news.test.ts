@@ -204,3 +204,45 @@ test("default fan projection is unary while the editorial lead can explicitly re
  assert.deepEqual(stories.map(projectHotTagNewsThread),stories.map(s=>projectHotTagNewsThread(s)));
  for(const story of stories){const posts=projectUniqueHotTagNewsThread(story,new Set(),5);assert.ok(posts.length>=5);}
 });
+
+test("chronological editions rotate accounts and avoid repeated fallback copy",async t=>{
+ const {nearHotTagCopy}=await import("../src/domain/hot-tag-news.js");
+ const topics=[
+  ["title","Cara Bell captures World Crown at Final Clash","A new champion."],
+  ["signing","Hana Reed signs with Crown Wrestling","A headliner joins the roster."],
+  ["event","Northbound closes with Drew King vs Cara Bell","The room was quiet."],
+  ["match","Alice Reed vs Bob Ward earns the replay at Crossroads","A 4.75-star match."],
+  ["wild","Could the inflatable mascot get a belt?","A theory about its entrance."],
+  ["angle","Tara Moon takes a different tack at Turbulence","The turn happened on air."],
+  ["broadcast","Crown Wrestling needs more eyes on Crossroads","The broadcaster issued a warning."]
+ ];
+ const recent:string[][]=[],counts=new Map<string,number>();
+ let repeats=0,total=0,replies=0;
+ const seen:string[]=[];
+ for(let i=0;i<21;i++){
+  const [kind,title,summary]=topics[i%topics.length]!;
+  const edition=[
+   {...rumour,id:kind+":"+i,week:i+1,desk:kind==="wild"?"DIRT" as const:"OFFICIAL" as const,title:title!,summary:summary!},
+   {...rumour,id:"broadcast:"+i,week:i+1,desk:"OFFICIAL" as const,title:"Weekly television watch",summary:"A separate broadcast for each promotion."}
+  ];
+  const used=new Set(recent.flat()),newCopy:string[]=[];
+  for(const s of edition){
+   const posts=projectUniqueHotTagNewsThread(s,used);
+   for(const post of posts){
+    if(seen.some(text=>nearHotTagCopy(text,post.text)))repeats++;
+    if(post.replyTo){
+     replies++;
+     assert.ok(posts.some(parent=>parent.handle===post.replyTo&&parent.text!==post.text));
+     assert.doesNotMatch(post.text,/^“|whether people want to tune in again/);
+    }
+    counts.set(post.handle,(counts.get(post.handle)??0)+1);
+    total++;seen.push(post.text);used.add(post.text);newCopy.push(post.text);
+   }
+  }
+  recent.push(newCopy);if(recent.length>12)recent.shift();
+ }
+ t.diagnostic(JSON.stringify({total,repeats,replies,accounts:counts.size}));
+ assert.ok(total>=110&&repeats/total<0.39);
+ assert.ok(counts.size>=45&&Math.max(...counts.values())/total<0.09);
+ assert.ok(replies>=10);
+});

@@ -1,3 +1,4 @@
+import {weeklyNewsPrioritySql} from "./weekly-news-priority.js";
 /** One on-demand public news read: cached snapshots, never draft cards or private
  * backstage/contract data. Access is tied to an authenticated active manager.
  */
@@ -49,10 +50,11 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
    tx.query<{year:number;week:number;story_key:string;desk:"OFFICIAL"|"DIRT";
     certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;
     promotion_name:string;show_id:string;title:string;summary:string;
-    source_kind:string;editorial:unknown}>(`
+    source_kind:string;editorial:unknown;priority:number}>(`
+    SELECT * FROM (
     SELECT i.year,i.week,i.story_key,i.desk,i.certainty,i.promotion_id,i.promotion_name,
      coalesce(i.show_id,'') AS show_id,i.title,i.summary,i.source_kind,
-     b.copy_json->i.story_key AS editorial
+     b.copy_json->i.story_key AS editorial,(${weeklyNewsPrioritySql}) AS priority
     FROM ppw_world_news_items i
     LEFT JOIN ppw_weekly_world_editorial b ON b.world_id=i.world_id
      AND b.year=i.year AND b.week=i.week AND b.state='READY'
@@ -62,10 +64,10 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
     SELECT b.year,b.week,b.rating_story->>'id','OFFICIAL','CONFIRMED',
      b.rating_story->>'promotionId',b.rating_story->>'promotionName','',
      b.rating_story->>'title',b.rating_story->>'summary','RATINGS',
-     b.copy_json->(b.rating_story->>'id')
+     b.copy_json->(b.rating_story->>'id'),10
     FROM ppw_weekly_world_editorial b WHERE b.world_id=$1 AND b.rating_story IS NOT NULL
      AND (b.year,b.week)>=($2::integer,$3::integer) AND (b.year,b.week)<=($4::integer,$5::integer)
-    ORDER BY year DESC,week DESC,desk,story_key LIMIT 130`,params),
+    ) issue ORDER BY year DESC,week DESC,priority DESC,story_key COLLATE "C" LIMIT 130`,params),
    // Annual best-of can be certified only after every one of the 52 World
    // weeks has a durable publication checkpoint. Existing midyear saves
    // must not award a title using incomplete history.
@@ -132,7 +134,7 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
   })),stories:items.map(s=>{
    const story={year:s.year,week:s.week,id:s.story_key,desk:s.desk,certainty:s.certainty,
     promotionId:s.promotion_id,promotionName:s.promotion_name,
-    showId:s.show_id,title:s.title,summary:s.summary,sourceKind:s.source_kind};
+    showId:s.show_id,title:s.title,summary:s.summary,sourceKind:s.source_kind,priority:s.priority};
    const speaker=projectHotTagNewsWrestlerPost(story,awards.map(a=>({year:a.year,week:a.week,kind:a.kind,
     promotionId:a.promotion_id,showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names})));
    const copy=validateWeeklyStoryCopy(story,s.editorial,speaker);

@@ -121,6 +121,29 @@ export function projectHotTagNewsThread(story:HotTagNewsStory):HotTagNewsPost[]{
  return projectUniqueHotTagNewsThread(story,new Set());
 }
 export const hotTagReactionKey=(text:string)=>text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
+/** Detect copied scaffolding even when small words and punctuation change. */
+export function nearHotTagCopy(a:string,b:string):boolean{
+ const left=hotTagReactionKey(a),right=hotTagReactionKey(b);
+ if(left===right)return true;
+ const tokens=(s:string)=>new Set(s.split(" ").filter(word=>word.length>2));
+ const x=tokens(left),y=tokens(right);
+ return x.size>=5&&y.size>=5&&[...x].filter(word=>y.has(word)).length/new Set([...x,...y]).size>=0.72;
+}
+export function hotTagNewsCast(story:HotTagNewsStory,count:number,legacy=false):HotTagNewsPost[]{
+ const pool=HOT_TAG_FAN_ACCOUNTS;
+ const edition=(story.year-1)*52+story.week;
+ const start=(edition*11+stableHotTagHash(story.desk)+stableHotTagHash(story.id)%13)%pool.length;
+ const handles=new Set<string>();
+ return Array.from({length:Math.min(count,6)},(_,i)=>{
+  const key=story.id+":"+story.year+":"+story.week+":"+i;
+  let index=legacy?stableHotTagHash(key+":persona")%pool.length:(start+i*17)%pool.length;
+  while(handles.has(pool[index]!.handle))index=(index+1)%pool.length;
+  const voice=pool[index]!;
+  handles.add(voice.handle);
+  const h=stableHotTagHash(key+":"+voice.handle);
+  return {...voice,text:"",likes:13+h%1300,replies:2+(h>>>7)%130,reposts:1+(h>>>12)%170};
+ });
+}
 export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:ReadonlySet<string>,minimum=3):HotTagNewsPost[]{
  const seed=stableHotTagHash([story.id,story.year,story.week,story.desk].join(":"));
  const text=(story.title+" "+story.summary).toLowerCase();
@@ -469,7 +492,7 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
  // Certified match headlines contain genuine public names and, often, a
  // star rating. Make fan opinions about THAT bout instead of reusing three
  // generic comments beneath every four/five-star article.
- const named=kind==="MATCH"?story.title.match(/^(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s+(?:steals the show|at\s)/i):null;
+ const named=kind==="MATCH"?story.title.match(/^(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s+(?:steals the show|earns the replay|at\s)/i):null;
  const pairing=named?named[1]!.trim()+" vs "+named[2]!.trim():null;
  const stars=kind==="MATCH"?
   story.summary.match(/\b(\d(?:\.\d{1,2})?)-star match\b/i)?.[1]??null:null;
@@ -535,44 +558,74 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
    "A locker-room quiz would expose every self-proclaimed wrestling historian in seconds.",
    "If there's a quiz trophy, I want a ridiculously dramatic presentation ceremony."
   ]:[]:[];
+ const belt=story.title.match(/^(.+?) captures (.+?) at (.+)$/);
+ const main=story.title.match(/^(.+?) closes with (.+)$/);
+ const signing=story.title.match(/^(.+?) signs with (.+)$/);
+ const pairingName=main?.[2]??pairing;
+ // Each exchange starts with a claim and gives the second fan a concrete
+ // point to dispute. Both positions use only facts from this story.
+ const exchanges:readonly (readonly [string,string])[]=belt?[
+  [`${belt[1]} carrying the ${belt[2]} is the shot I'd put on the poster.`,
+   `The ${belt[2]} on the poster is easy. Who can make ${belt[1]} look beatable when the bell goes?`],
+  [`I'd leave ${belt[1]} alone with the ${belt[2]} for a bit. Let the change sink in.`,
+   `Leave ${belt[1]} alone and the division goes quiet. I want to hear who thinks that ${belt[2]} should be theirs.`]
+ ]:signing?[
+  [`I'd put ${signing[1]} on the first ${signing[2]} poster they can print.`,
+   `A poster gets my eye. Give ${signing[1]} somebody with a reason to beat them and you've got my money.`],
+  [`${signing[2]} should give ${signing[1]} room to find their feet first.`,
+   `Finding their feet is fine. If ${signing[1]} feels like everybody else on the card, why make the signing?`]
+ ]:pairingName?(/quiet|restrained/.test(text)?[
+  [`I needed more from ${pairingName}. The room never found a reason to get loud.`,
+   `I wouldn't grade ${pairingName} by the noise alone. Sometimes the work comes across better on a second watch.`]
+ ]:[
+  [`${pairingName} is the bout I'd show somebody who says they don't get wrestling.`,
+   `I'd show them a short grudge match first. ${pairingName} is the one you put on once they're hooked.`],
+  [`I'd leave ${pairingName} alone for a while. Let the last match sit with people.`,
+   `If people still want to argue about ${pairingName}, I'd give them a reason to pick sides again.`]
+ ]):kind==="RATINGS"||kind==="BROADCAST"?[
+  [`The television numbers are the first thing I'd look at if I ran ${story.promotionName}.`,
+   `Numbers tell me who tuned in. Before I touch ${story.promotionName}'s card I'd want to know why they stayed.`],
+  [`I'd leave the wrestling alone and look at how ${story.promotionName} sells the broadcast.`,
+   `You can sell the broadcast once. I want a reason to watch ${story.promotionName} all the way to the bell.`]
+ ]:rumour&&/mascot|inflatable/.test(text)?[
+  [`If ${story.promotionName} gives the inflatable mascot a belt, I'd put it on the poster.`,
+   `Put the mascot on the poster and everyone will ask what it draws. Let it stay a silly entrance gag.`]
+ ]:rumour&&/merchandise|shirt/.test(text)?[
+  [`I'd buy the daft ${story.promotionName} shirt if it ever existed. The arrow is the joke.`,
+   `An arrow makes me laugh once. If I'm buying the shirt I want to be able to wear it outside the arena.`]
+ ]:rumour&&/velvet rope|entrance|fireworks/.test(text)?[
+  [`If ${story.promotionName} really is thinking about the entrance, go ridiculous. I want to see the cheap seats point and laugh.`,
+   `Go ridiculous every time and the entrance stops feeling special. Save the fireworks for somebody I'd pay to see.`]
+ ]:[];
+ const exchange=exchanges.length?exchanges[(stableHotTagHash(story.id+":exchange")+story.week)%exchanges.length]:undefined;
  const pool=[...wildSpecific,...specific,...pressSpecific,...reactions[kind],...expanded[kind],...rowdy[kind]];
- const used=new Set(excluded),handles=new Set<string>(),posts:HotTagNewsPost[]=[];
+ const used=new Set(excluded),posts:HotTagNewsPost[]=[];
  const count=Math.max(Math.min(6,minimum),3+seed%4); // Three to six actual comments, not an identical trio every time.
- for(let i=0;i<count;i++){
+ for(const [i,voice] of hotTagNewsCast(story,count).entries()){
   const key=story.id+":"+story.year+":"+story.week+":"+i;
-  let person=stableHotTagHash(key+":persona")%HOT_TAG_FAN_ACCOUNTS.length;
-  while(handles.has(HOT_TAG_FAN_ACCOUNTS[person]!.handle))person=(person+1)%HOT_TAG_FAN_ACCOUNTS.length;
-  const voice=HOT_TAG_FAN_ACCOUNTS[person]!;handles.add(voice.handle);
   // The first reaction anchors itself to real story context. The other fans
   // can be sarcastic, insightful or utterly unhelpful without inventing facts.
+  const temperament=hotTagFanTemperament(voice.handle);
   const candidates=i===0&&wildSpecific.length?wildSpecific:i===0&&pressSpecific.length?pressSpecific:
-   i===0&&specific.length?specific:
-   i===0?lead[kind]:i===1?rowdy[kind]:pool;
+   i===0&&specific.length?specific:i===0?lead[kind]:
+   /wind-up|contrarian/.test(temperament)?rowdy[kind]:
+   /technical|business|sceptical/.test(temperament)?expanded[kind]:reactions[kind];
   const fresh=(options:readonly string[],salt:string)=>{
    const start=stableHotTagHash(key+salt)%options.length;
    for(let offset=0;offset<options.length;offset++){
     const candidate=options[(start+offset)%options.length]!;
-    if(!used.has(hotTagReactionKey(candidate)))return candidate;
+    if(![...used].some(previous=>nearHotTagCopy(previous,candidate)))return candidate;
    }
    return undefined;
   };
-  let message=fresh(candidates,":dialogue")??fresh(pool,":alternate");
-  let replies=count>=5&&i===count-1&&seed%3===0&&posts.length>0;
-  const response=[
-   "You read all that and THAT'S your take? Mate. 😂",
-   "I disagree with every word but I respect the chaos. 🤝",
-   "We both watched the same thing and somehow understood different planets.",
-   "Please log off before you book yourself as world champion. 💀",
-   "This is absolute bollocks and yet I've liked it. Help.",
-   "There are three genuine facts here and you've dodged all of them. 🤡",
-   "Stop shouting and watch next week's bloody show."];
-  if(replies){const reply=fresh(response,":reply");if(reply)message=reply;else replies=false;}
+  const useExchange=exchange&&seed%4!==0&&
+   ![...excluded].some(previous=>exchange.some(line=>nearHotTagCopy(previous,line)));
+  const replies=!!useExchange&&i===2&&posts[0]?.text===exchange?.[0];
+  const message=replies?exchange![1]:i===0&&useExchange?exchange![0]:
+   fresh(candidates,":dialogue")??fresh(pool,":alternate");
   if(!message)continue;
   used.add(hotTagReactionKey(message));
-  const h=stableHotTagHash(key+":"+voice.handle);
-  posts.push({...voice,text:message,
-   ...(replies?{replyTo:posts[0]!.handle}:{}),
-   likes:13+h%1300,replies:2+(h>>>7)%130,reposts:1+(h>>>12)%170});
+  posts.push({...voice,text:message,...(replies?{replyTo:posts[0]!.handle}:{})});
  }
  return posts;
 }

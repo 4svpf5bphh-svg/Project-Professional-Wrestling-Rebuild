@@ -72,13 +72,18 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
    return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"ELIMINATION",priority:97,
     text:last+" went out, "+(winner??"the winner")+" finished on top. I need to see that final stretch again."};
   }
-  if(entry.outcome==="DISQUALIFICATION"||entry.outcome==="FOREIGN_OBJECT")
+  if(entry.outcome==="DISQUALIFICATION")
+   return {...base,voice:"THE HEEL DEFENDER",mood:"DEBATE",source:"FINISH",priority:94,
+    text:"I'm fine with the referee calling "+bout+". What are the rules for if nobody has to follow them?",
+    reply:{voice:"THE SKEPTICAL SMARK",
+     text:"The ref can be right and it can still be a lousy way to leave the match."}};
+  if(entry.outcome==="FOREIGN_OBJECT")
    return {...base,voice:"THE HEEL DEFENDER",mood:"DEBATE",source:"FINISH",priority:94,
     text:(f?.finishCheaterName?f.finishCheaterName+" knew exactly what they were doing. ":"Call it dirty if you want. ")+
      (winner?winner+" got the win. ":"")+
-     "I'm not saying it was fair. I'm saying the argument is half the fun.",
+     "I'd rather argue about a dirty win than forget how the match ended.",
     reply:{voice:"THE SKEPTICAL SMARK",
-     text:"The result is official. Doesn't mean I have to applaud the way they got there."}};
+     text:"A dirty win is worth arguing about, sure. The referee missing it is exactly why I'm still annoyed."}};
   if(f?.interference?.outcome==="SUCCESS")
    return {...base,voice:"THE SKEPTICAL SMARK",mood:"DEBATE",source:"FINISH",priority:91,
     text:"A run-in changed the complexion of "+bout+". Next week someone had better have something to say about that."};
@@ -92,8 +97,11 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
    return {...base,voice:"THE TAPE TRADER",mood:"BUZZ",source:"MATCH",priority:82,
     text:pick([
      bout+" was the kind of wrestling worth clearing an evening for. I already want the rematch.",
-     "The little things in "+bout+" were terrific. Wrestling rewards people who actually watch it.",
-    ],key,4)};
+     bout+" held my attention without asking me to remember every week of television. That's a good match to lend someone.",
+     "I'm glad "+bout+" had enough on the page to stand on its own. I would watch it with the sound off and see what still lands.",
+    ],key,4),
+    ...(entry.crowdResponse<70?{reply:{voice:"THE FRONT ROW" as const,
+     text:"I'd still put the crowd back in that test. Good wrestling can leave a room cold and I want to know why this one did."}}:{})};
   if(entry.outcome==="VERBAL_SURRENDER"&&entry.crowdResponse>=65)
    return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"FINISH",priority:80,
     text:(winner??"The winner")+" heard those two words: 'I quit'. Nobody had to count three."};

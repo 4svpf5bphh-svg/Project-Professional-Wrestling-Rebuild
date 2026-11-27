@@ -1,3 +1,5 @@
+import {estimateTerraPreviewMicropounds} from "../src/db/openai-editorial-preview.js";
+import {estimatedGroqTokens} from "../src/domain/ai-director.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import type {CompletedShowView,ShowResultEntry} from "../src/db/show-results-view.js";
@@ -45,7 +47,7 @@ const show:CompletedShowView={showId:"ascension-regression",showName:"Ascension"
 const matchRecaps=[
  "Parker recognised that the next exchange mattered more than controlling the pace. With three wrestlers in contention the contest became increasingly frantic. Nobody could afford a lengthy celebration after a counter. Parker capitalised on the opening and stole a sudden pinfall. The finish rewarded alertness rather than overwhelming dominance, and the crowd stayed involved until the bell.",
  "Reed kept Ellis working at a pace that suited neither wrestler for long. The early exchanges established a genuinely competitive rhythm, with both looking for an opening rather than rushing to the finish. Reed eventually found the decisive advantage and secured a clean pinfall. This was a solid contest whose outcome felt earned rather than inevitable.",
- "Joe made patience count as Smith tried to find room to manoeuvre. The tension came from the prospect of a hold changing the contest, not from a frantic sequence of near falls. The longer the struggle went on, the more important position became. Joe secured a submission victory, a convincing conclusion to an absorbing struggle.",
+ "Joe made patience count as Smith tried to find room to manoeuvre. The tension came from the prospect of a hold changing the contest, with the submission as its natural payoff. The longer the struggle went on, the more important position became. Joe secured a submission victory, a convincing conclusion to an absorbing struggle.",
  "Morgan and Regal offered a more contentious spectacle. The exchanges mattered, but it was the controversy around the finish that left the crowd with something to debate. Morgan emerged victorious after concealed cheating, a decision that hardly settled the question of superiority. It was an effective ending if the aim was to keep people talking."
 ];
 function draft():RingsideCopy{
@@ -120,8 +122,19 @@ test("Full generation path completes one paid request and exposes correct proven
  const review=await generateGroqReview(show,"fixture",async(_url,init)=>{
   calls++;
   const request=JSON.parse(String(init?.body));
+  const body=String(init?.body);
+  console.log("Terra nine-slot mock reservation",JSON.stringify({
+   bytes:Buffer.byteLength(body),ceiling:request.max_completion_tokens,
+   tokens:estimatedGroqTokens(body,request.max_completion_tokens),
+   micropounds:estimateTerraPreviewMicropounds(body,request.max_completion_tokens)
+  }));
   assert.match(request.messages[0].content,/copy a complete line verbatim/);
-  assert.match(request.messages[0].content,/at least two distinct physical exchanges/);
+  assert.match(request.messages[0].content,/Do not report an unrecorded move/);
+  const records=JSON.parse(request.messages[1].content.split("Records:\n").at(-1)!);
+  assert.ok(records.slots.filter((slot:{type:string})=>slot.type==="MATCH")
+   .every((slot:{director?:unknown;dramaticCue?:unknown;wrestlers:{signatures?:unknown}[]})=>
+    !slot.director&&!slot.dramaticCue&&slot.wrestlers.every(wrestler=>!wrestler.signatures)));
+
   assert.match(request.messages[0].content,/not merely paraphrase the director/);
   const slots=Object.fromEntries(raw.slots.map((s,i)=>["card_"+i,{headline:s.headline,recap:s.recap}]));
   return new Response(JSON.stringify({usage:{prompt_tokens:5257,completion_tokens:1450},
@@ -182,4 +195,18 @@ test("W31 natural pinfall wording is locally polished without another request",(
  assert.equal(out.diagnostics.slots[3]?.source,"CLEANED");
  assert.ok(out.diagnostics.slots[3]?.reasons.includes("INTERNAL_LABEL"));
  validateRingsideCopy(out.review,show,{styleWarningOnly:true});
+});
+
+test("a profile move is rejected even when Terra gives it to its actual owner",()=>{
+ const view={...show,entries:show.entries.map((entry,i)=>i!==3?entry:{...entry,
+  performerIdentities:[{personId:"reed",ringName:"Reed",character:"technician",style:null,
+   signatureMoves:[],finishingMoves:["Northbound Driver"],source:"WORLD_RECORD" as const}]
+ })};
+ const raw=draft();
+ raw.slots[3]!.recap="Reed executed the Northbound Driver and secured a clean pinfall.";
+ const final=finalizeTerraEditorial(raw,view);
+ assert.equal(final.diagnostics.slots[3]?.source,"PPW_FALLBACK");
+ assert.ok(final.diagnostics.slots[3]?.reasons.includes("FACTUAL_CONTRADICTION"));
+ assert.doesNotMatch(final.review.slots[3]!.recap,/Northbound Driver/);
+ assert.equal(final.diagnostics.slots[1]?.source,"OPENAI");
 });

@@ -112,7 +112,9 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toHaveCount(1);
  await expect(officialThread.locator(".ppw-hot-tag-wrestler")).toContainText("Cara");
  await expect(officialThread.getByRole("button",{name:"View wrestler dossier"})).toHaveCount(1);
- const networkThread=page.locator(".ppw-news-official .ppw-news-story").filter({hasText:"BBS Sports demands better television"}).locator(".ppw-hot-tag-thread");
+ const networkBrief=page.locator(".ppw-news-official .ppw-news-brief").filter({hasText:"BBS Sports demands better television"});
+ await networkBrief.locator(":scope > summary").click();
+ const networkThread=networkBrief.locator(".ppw-hot-tag-thread");
  await networkThread.locator("summary").click();
  const networkPost=networkThread.locator(".ppw-hot-tag-network");
  await expect(networkPost).toHaveCount(1);
@@ -149,8 +151,8 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
   path:testInfo.outputPath("phase45-dirt-sheets-390.png")});
 
  await expect(page.locator(".ppw-news-story-title").filter({hasText:"Creative shake-up?"})).toBeVisible();
- await expect(page.getByText("RUMOUR / NOT CONFIRMED")).toBeVisible();
- await expect(page.getByText("UNVERIFIED / DISPUTED REPORT 👀")).toBeVisible();
+ await expect(page.getByText("IN-GAME RUMOUR")).toBeVisible();
+ await expect(page.getByText("IN-GAME GOSSIP")).toBeVisible();
  await expect(page.locator(".ppw-dirt-outlet")).toHaveCount(2);
  await expect(page.locator(".ppw-news-dirt")).toHaveCount(1);
  await expect(page.locator(".ppw-news-dirt .ppw-news-voice"),

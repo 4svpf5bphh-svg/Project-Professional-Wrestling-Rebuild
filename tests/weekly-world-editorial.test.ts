@@ -1,3 +1,4 @@
+import {hotTagNewsCast,hotTagFanTemperament} from "../src/domain/hot-tag-news.js";
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -5,13 +6,13 @@ import {estimatedGroqTokens} from "../src/domain/ai-director.js";
 import {weeklyEditorialAnchors,weeklyEditorialMessages,weeklyEditorialResponseFormat,validateWeeklyEditorial,validateWeeklyEditorialDetailed,weeklyShowMomentSlot,weeklyHotTagThread,weeklyRatingsStory,readWeeklyRatingsStory,type WeeklyStory} from "../src/domain/weekly-world-editorial.js";
 const official:WeeklyStory={id:"broadcast:ratings",year:1,week:30,title:"Crown Wrestling ratings decline",summary:"Crown Wrestling recorded a lower audience.",promotionName:"Crown Wrestling",promotionId:"a",desk:"OFFICIAL",certainty:"CONFIRMED"};
 const dirt:WeeklyStory={...official,id:"rumour:1",desk:"DIRT",certainty:"SPECULATION",title:"Rival Wrestling future uncertain",promotionId:"b",promotionName:"Rival Wrestling"};
-const copy={headline:"Why Crown Wrestling should rethink its approach",commentary:"I think Crown Wrestling should give the audience a better reason to care.",fans:["I hope Crown Wrestling makes the next broadcast worth watching.","Crown Wrestling should worry less about hype and more about good wrestling.","Nah mate, I think you are being far too harsh."]};
+const copy={headline:"Why Crown Wrestling should rethink its approach",commentary:"I think Crown Wrestling should give the audience a better reason to care.",fans:["I hope Crown Wrestling makes the next broadcast worth watching.","Crown Wrestling should worry less about hype and more about good wrestling.","That broadcast was worth watching for the opener alone."]};
 test("weekly brief includes public anchors and coherent fan replies with stable identities",()=>{
  const anchors=weeklyEditorialAnchors([official,dirt]);
- assert.equal(anchors.length,2);
- assert.match(weeklyEditorialMessages(anchors)[1]!.content,/SPECULATION/);
+ assert.equal(anchors.length,1);
+ assert.doesNotMatch(weeklyEditorialMessages(anchors)[1]!.content,/SPECULATION/);
  const saved=validateWeeklyEditorial(anchors,{s0:copy});
- assert.deepEqual(saved[official.id],copy);
+ assert.deepEqual(saved[official.id],{...copy,fanCast:"ROTATING"});
  const thread=weeklyHotTagThread(official,saved[official.id]);
  assert.equal(thread.length,3);assert.equal(thread[2]!.replyTo,thread[0]!.handle);
  assert.equal(thread[0]!.text,copy.fans[0]);
@@ -48,35 +49,35 @@ test("wrestler voice is attached only to the verified public award identity",()=
 });
 
 test("one previous public source per promotion, no duplicate threads across stories",()=>{
- const second={...official,id:"event:other",title:"Crown Wrestling future direction"};
+ const second={...official,id:"event:other",title:"Crown Wrestling tournament outlook"};
  const anchors=weeklyEditorialAnchors([official,second],[],[
-  {year:1,week:29,promotionId:"a",title:"Public prior headline"},
-  {year:1,week:31,promotionId:"a",title:"Private future plans"}]);
- assert.match(weeklyEditorialMessages(anchors)[1]!.content,/Public prior headline/);
- assert.doesNotMatch(weeklyEditorialMessages(anchors)[1]!.content,/Private future plans/);
+  {year:1,week:29,promotionId:"a",title:"Public prior tournament headline"},
+  {year:1,week:31,promotionId:"a",title:"Private future tournament plans"}]);
+ assert.match(weeklyEditorialMessages(anchors)[1]!.content,/Public prior tournament headline/);
+ assert.doesNotMatch(weeklyEditorialMessages(anchors)[1]!.content,/Private future tournament plans/);
  assert.equal(Object.keys(validateWeeklyEditorial(anchors,{s0:copy,s1:copy})).length,1);
 });
 
 test("W31 public story accepts surname, CWA acronym, natural opinions and independent replies from the explicit response envelope",()=>{
  const joe:WeeklyStory={id:"angle:ascension:assault",year:1,week:31,desk:"OFFICIAL",certainty:"CONFIRMED",promotionId:"cwa",promotionName:"Chaotic Wrestling Alliance",title:"Samoa Joe makes a statement at Ascension",summary:"The post match assault happened on Chaotic Wrestling Alliance's Ascension, with Matt Riddle also involved.",sourceKind:"ANGLE",humanManaged:true};
  const anchors=weeklyEditorialAnchors([joe]);
- const result=validateWeeklyEditorialDetailed(anchors,{stories:[{key:"s0",headline:"Joe brings the heat",commentary:"Riddle and Joe are the reason to watch CWA right now.",fans:["Joe is an absolute menace.","Riddle needs to get his own back.","Nah mate, let him cook."]}]});
+ const result=validateWeeklyEditorialDetailed(anchors,{stories:[{key:"s0",headline:"Joe brings the heat",commentary:"Riddle and Joe are the reason to watch CWA right now.",fans:["Joe is an absolute menace.","Riddle needs to get his own back.","Calling Joe a menace is fair, but Riddle looks ready for a fight."]}]});
  assert.equal(result.copy[joe.id]?.fans?.[0],"Joe is an absolute menace.");
  assert.equal(result.copy[joe.id]?.fans?.[1],"Riddle needs to get his own back.");
- assert.equal(result.copy[joe.id]?.fans?.[2],"Nah mate, let him cook.");
- const rejected=validateWeeklyEditorialDetailed(anchors,{stories:[{key:"s0",fans:["Joe signed a new contract yesterday.","Riddle needs to get his own back.","Nah mate, let him cook."]}]});
+ assert.equal(result.copy[joe.id]?.fans?.[2],"Calling Joe a menace is fair, but Riddle looks ready for a fight.");
+ const rejected=validateWeeklyEditorialDetailed(anchors,{stories:[{key:"s0",fans:["Joe signed a new contract yesterday.","Riddle needs to get his own back.","Calling Joe a menace is fair, but Riddle looks ready for a fight."]}]});
  assert.equal(rejected.issues.UNVERIFIED_CLAIM,1);assert.equal(rejected.issues.PARENT_REJECTED,1);
  assert.equal(rejected.copy[joe.id]?.fans?.[1],"Riddle needs to get his own back.");
  assert.equal(weeklyShowMomentSlot(joe,"ascension",["assault"]),"assault");
  assert.equal(weeklyShowMomentSlot(joe,"another",["assault"]),null);
  assert.equal(weeklyShowMomentSlot({...joe,desk:"DIRT"},"ascension",["assault"]),null);
 });
-test("both human promotions get their own actual moment before optional award coverage",()=>{
+test("an ordinary match and a rumour do not take up a second feature",()=>{
  const a={...official,id:"angle:a:slot",sourceKind:"ANGLE",humanManaged:true};
  const b={...a,id:"match:b:slot",sourceKind:"MATCH",promotionId:"b",promotionName:"Rival Wrestling"};
  const rating={...official,id:"broadcast:ratings:weekly"};
  const anchors=weeklyEditorialAnchors([rating,dirt,a,b]);
- assert.deepEqual(anchors.map(x=>x.story.id),[a.id,b.id,dirt.id]);
+ assert.deepEqual(anchors.map(x=>x.story.id),[a.id]);
 });
 
 test("strict weekly response requires every anchor, with distinct fan fields and no unknown keys",()=>{
@@ -87,7 +88,7 @@ test("strict weekly response requires every anchor, with distinct fan fields and
  const response=weeklyEditorialResponseFormat(anchors);
  assert.equal(response.json_schema.strict,true);
  const schema=response.json_schema.schema;
- assert.deepEqual(schema.required,["s0","s1","s2"]);
+ assert.deepEqual(schema.required,["s0","s1"]);
  assert.equal(schema.additionalProperties,false);
  for(const [key,field] of Object.entries(schema.properties)){
   assert.equal(field.additionalProperties,false);
@@ -96,7 +97,7 @@ test("strict weekly response requires every anchor, with distinct fan fields and
  const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([official]),{s0:{
   headline:copy.headline,commentary:copy.commentary,fan1:copy.fans[0],fan2:copy.fans[1],reply:copy.fans[2],wrestler:null
  }});
- assert.deepEqual(result.copy[official.id],copy);
+ assert.deepEqual(result.copy[official.id],{...copy,fanCast:"ROTATING"});
 });
 test("weekly ratings snapshot cannot establish promotion growth",()=>{
  const story=weeklyRatingsStory(1,32,[{promotionId:"a",promotionName:"Crown Wrestling",rating:0.8,humanManaged:true}])!;
@@ -106,12 +107,12 @@ test("weekly ratings snapshot cannot establish promotion growth",()=>{
  assert.equal(result.copy[story.id]?.fans?.[1],"Crown Wrestling has a respectable audience.");
 });
 
-test("four full-sized weekly editorial sources fit the shared dispatch reservation",()=>{
+test("two full-sized weekly editorial sources fit the shared dispatch reservation",()=>{
  const sources=Array.from({length:3},(_,i)=>({...official,id:"title:"+i,sourceKind:"TITLE",humanManaged:true,promotionId:"p"+i,title:"x".repeat(200),summary:"x".repeat(500),promotionName:"p".repeat(110)}));
  const anchors=weeklyEditorialAnchors([...sources,{...dirt,id:"wild:show",title:"y".repeat(200),summary:"y".repeat(500)}]);
  const body={model:"openai/gpt-oss-20b",temperature:0.7,reasoning_effort:"low",max_completion_tokens:2600,
   response_format:weeklyEditorialResponseFormat(anchors),messages:weeklyEditorialMessages(anchors)};
- assert.equal(anchors.length,4);
+ assert.equal(anchors.length,2);
  assert.ok(estimatedGroqTokens(JSON.stringify(body),2600)<=7000);
 });
 
@@ -145,13 +146,13 @@ test("title-win discussion reaches the exact match on the correct completed show
  assert.equal(weeklyShowMomentSlot({...s,desk:"DIRT"},"extreme",["main"]),null);
 });
 
- test("championship is the lead, local promotions get a feature and the wild rumour beats routine gossip",()=>{
+ test("championship leads, with a worthwhile rumour before the TV angle",()=>{
  const title={...official,id:"title:ppv:m1",sourceKind:"TITLE",humanManaged:true};
  const other={...official,id:"angle:tv:a1",sourceKind:"ANGLE",promotionId:"b",promotionName:"Rival Wrestling",humanManaged:true};
  const wild={...dirt,id:"wild:tv"};
  const routine={...official,id:"signing:routine"};
  const anchors=weeklyEditorialAnchors([routine,dirt,wild,other,title]);
- assert.deepEqual(anchors.map(a=>a.story.id),[title.id,other.id,wild.id]);
+ assert.deepEqual(anchors.map(a=>a.story.id),[title.id,wild.id]);
  });
  test("recent fan copy is rejected without discarding fresh opinions",()=>{
  const anchors=weeklyEditorialAnchors([official],[],[],[copy.fans[0]!]);
@@ -179,4 +180,46 @@ test("fallback threads keep distinct reactions across an edition without discard
   for(const post of posts){const key=post.text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();assert.ok(!seen.has(key));seen.add(key);}
  }
  assert.equal(weeklyHotTagThread(official,{fans:[null,"Crown Wrestling needs better stories.",null]},seen).length,1);
+});
+
+test("a same-show recap, human controls and unconfirmed stories cannot change the public lead",()=>{
+ const belt={...official,id:"title:ppv:main",title:"Alice captures the World Crown",showId:"ppv",sourceKind:"TITLE",promotionId:"ai"};
+ const recap={...belt,id:"event:ppv",sourceKind:"EVENT"};
+ const tv={...belt,id:"angle:tv:turn",showId:"tv",sourceKind:"ANGLE"};
+ const hidden={...belt,id:"title:other:main",certainty:"SPECULATION" as const};
+ assert.deepEqual(weeklyEditorialAnchors([official,recap,tv,hidden,belt]).map(a=>a.story.id),[belt.id,tv.id]);
+ assert.deepEqual(weeklyEditorialAnchors([dirt]),[]);
+});
+
+test("unrelated replies fail without discarding either independent fan",()=>{
+ const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([official]),{s0:{
+  ...copy,fans:[copy.fans[0],copy.fans[1],"Nah mate, let them cook."]
+ }});
+ assert.deepEqual(result.copy[official.id]?.fans,[copy.fans[0],copy.fans[1],null]);
+ assert.equal(result.fields["reply.REPLY_CONTEXT"],1);
+});
+
+test("an actual concealed finish has more editorial weight than the general event recap",()=>{
+ const bout={...official,id:"match:ppv:main",showId:"ppv",sourceKind:"MATCH",title:"A foreign object decides Alice Reed vs Bob Ward"};
+ const recap={...official,id:"event:ppv",showId:"ppv",sourceKind:"EVENT"};
+ assert.deepEqual(weeklyEditorialAnchors([recap,bout]).map(a=>a.story.id),[bout.id]);
+});
+
+test("public headliner signing and exceptional performance outrank a vacant secondary title",()=>{
+ const routine={...official,id:"title:tv:main",title:"Alice captures the Local Cup",sourceKind:"TITLE"};
+ const match={...official,id:"match:ppv:main",title:"A featured bout",summary:"The pair put on a 4.75-star match."};
+ const signing={...official,id:"signing:star",summary:"An established headliner joins the roster."};
+ assert.equal(weeklyEditorialAnchors([routine,match])[0]?.story.id,match.id);
+ assert.equal(weeklyEditorialAnchors([routine,match,signing])[0]?.story.id,signing.id);
+});
+
+test("a rejected parent leaves no fallback reply and accepted voices use the dispatched cast",()=>{
+ const anchors=weeklyEditorialAnchors([official]);
+ const cast=hotTagNewsCast(official,5);
+ const sent=JSON.parse(weeklyEditorialMessages(anchors)[1]!.content)[0];
+ assert.deepEqual(sent.voices,cast.map(x=>hotTagFanTemperament(x.handle)));
+ const partial=validateWeeklyEditorial(anchors,{s0:{...copy,fans:["Invented winner signed last night.",copy.fans[1],copy.fans[2]]}});
+ const visible=weeklyHotTagThread(official,partial[official.id]);
+ assert.deepEqual(visible.map(x=>[x.handle,x.replyTo]),[[cast[1]!.handle,undefined]]);
+ assert.equal(weeklyHotTagThread(official,copy)[0]?.handle,hotTagNewsCast(official,3,true)[0]?.handle);
 });

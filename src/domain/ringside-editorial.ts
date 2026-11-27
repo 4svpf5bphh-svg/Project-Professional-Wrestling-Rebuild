@@ -692,6 +692,8 @@ export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCo
    const opponents=sides.filter(side=>!side.some(n=>names.includes(n)))
     .flat().filter(Boolean).slice(0,5).join(" & ");
    const format=(entry.matchContext?.format??"match").replaceAll("_"," ").toLowerCase();
+   const billing=format==="2v2"?"a tag match":format==="singles"?"a singles match":
+    format==="match"?"the ring":"a "+format+" match";
    const finish:Record<string,string>={
     CLEAN_PIN:"secured a clean pinfall",FLASH_PIN:"snatched a sudden pinfall",
     SUBMISSION:"earned a submission victory",
@@ -716,21 +718,29 @@ export function buildVerifiedRingsideFallback(show:CompletedShowView):RingsideCo
     " "+title.winnerName+" is the new champion.":!title.priorHolderName?
     " The "+title.name+" remains vacant.":
     " "+title.priorHolderName+" remains champion.":"";
-   const reaction=entry.crowdResponse>=75?
-    "The crowd responded strongly to the decision.":
-    entry.crowdResponse<45?"The response was noticeably quiet.":
-     "The reaction was mixed.";
+   const quarter=entry.fallout?.ratingStars;
+   const reaction=quarter!==undefined&&quarter>=4.25?
+    (entry.crowdResponse>=75?"The finish gave a strong match the payoff it deserved.":
+     "The wrestling was worth a second look, even if the room never warmed to it."):
+    quarter!==undefined&&quarter<2.5?
+     (entry.crowdResponse>=75?"The finish got a reaction. The wrestling leading to it was less convincing.":
+      "The decision settled the result. It did little to rescue a flat match."):
+     entry.crowdResponse>=75?"The crowd gave the finish plenty back.":
+      entry.crowdResponse<45?"The finish drew little response.":"The reaction was mixed.";
    const matchup=sides.length>=2?sides.map(side=>side.join(" & ")).join(" against "):
     (opponents?winner+" against "+opponents:winner);
-   const when=entry.fallout?.actualMinutes!==undefined&&
-    entry.fallout.actualMinutes!==null?
-    " After "+entry.fallout.actualMinutes+" minutes, ":" ";
-   const ordinal=["opening","second","third","fourth","fifth","sixth","seventh",
-    "eighth","ninth","tenth"][entry.position]??"later";
+   const minutes=entry.fallout?.actualMinutes;
+   const timing=minutes!=null&&minutes<=6?minutes+" minutes was all this one had. ":
+    minutes!=null&&minutes>=22?"After "+minutes+" minutes, the match needed a finish worth the wait. ":"";
+   const interference=entry.fallout?.interference;
+   const intervention=interference?.personName&&interference.outcome==="SUCCESS"?
+    " "+interference.personName+"'s interference affected the finish.":
+    interference?.personName&&interference.outcome==="THWARTED"?
+     " "+interference.personName+" tried to interfere, but the attempt was stopped.":"";
    return {slotId:entry.slotId,
     headline:(entry.headline||winner+(opponents?" defeats "+opponents:" wins")).slice(0,140),
-    recap:("In the "+ordinal+" bout, "+matchup+" met in a "+format+"."+
-     when+result+"."+weapon+titleNote+" "+reaction).slice(0,1750)};
+    recap:("In the "+(["opening","second","third","fourth","fifth","sixth","seventh","eighth","ninth","tenth"][entry.position]??"later")+" bout, "+
+     matchup+" met in "+billing+". "+timing+result+"."+weapon+intervention+titleNote+" "+reaction).slice(0,1750)};
   })
  };
 }
@@ -903,21 +913,28 @@ export function ringsideDramaCue(entry:ShowResultEntry):string|null{
  return stars>=4.25&&entry.crowdResponse>=80?"PEAK":"EARNED";
 }
 /** Send relevant certified facts once, without redundant IDs and analytics. */
-export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]}){
+export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={priorMatches:[],programmes:[]},
+ certifiedActionOnly=false){
  const slotStories=verifiedSlotStoryThreads(show,memory);
  return {show:show.showName??"Weekly show",year:show.year,week:show.week,
   audienceMood:crowdMood(show.crowdResponse),
   showFocus:directRingsideShow(show),
-  slots:show.entries.map((e,i)=>({
+  slots:show.entries.map((e,i)=>{
+   const stipulation=e.matchContext?verifiedStipulationNote(e.matchContext.format,e.outcome):null;
+   const stipulationRules=stipulation&&certifiedActionOnly?
+    {...stipulation,plausibleAction:undefined,dramaticBeats:undefined}:stipulation;
+   return {
    editorialLens:ringsideEditorialLens(e),
-   director:e.type==="MATCH"?directRingsideMatch(e):directRingsideAngle(e),
-   ...(ringsideDramaCue(e)?{dramaticCue:ringsideDramaCue(e)}:{}),
+   ...(e.type==="MATCH"&&certifiedActionOnly?{}:{
+    director:e.type==="MATCH"?directRingsideMatch(e):directRingsideAngle(e)
+   }),
+   ...(!certifiedActionOnly&&ringsideDramaCue(e)?{dramaticCue:ringsideDramaCue(e)}:{}),
    key:"card_"+i,type:e.type,finish:e.outcome,audienceMood:crowdMood(e.crowdResponse),
    summary:e.summary,
    ...(ringsideViewerCallback(slotStories[i]??null)?{
     storyThread:ringsideViewerCallback(slotStories[i]??null)}:{}),
    ...(e.matchContext?{match:{format:e.matchContext.format,
-    ...(wrestlingMatchIQ(e)?{wrestlingIQ:{
+    ...(!certifiedActionOnly&&wrestlingMatchIQ(e)?{wrestlingIQ:{
      format:wrestlingMatchIQ(e)!.format,
      tempo:(e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)<7?"BRIEF":
       (e.fallout?.actualMinutes??e.matchContext.plannedMinutes??12)>=20?"LONG":"STANDARD",
@@ -930,8 +947,7 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
     ...(e.matchContext.finishProp?{bookedWeapon:finishPropLabel(e.matchContext.finishProp)}:{}),
     ...(e.matchContext.refereeSpot?{refereeSpot:e.matchContext.refereeSpot}:{}),
     titleContested:e.matchContext.championshipContested,
-    ...(verifiedStipulationNote(e.matchContext.format,e.outcome)?{
-     stipulationRules:verifiedStipulationNote(e.matchContext.format,e.outcome)}:{})}}:{}),
+    ...(stipulationRules?{stipulationRules}:{})}}:{}),
    ...(e.segmentContext?{angle:e.segmentContext}:{}),
    ...(e.segmentKind?{kind:e.segmentKind}:{}),
    ...(e.fallout?{fallout:{
@@ -941,9 +957,10 @@ export function ringsideBrief(show:CompletedShowView,memory:RingsideMemory={prio
     eliminations:e.fallout.eliminations}}:{}),
    wrestlers:(e.performerIdentities??[]).map(p=>({
     name:p.ringName,character:p.character,style:p.style,
-    signatures:p.signatureMoves.slice(0,3),finishers:p.finishingMoves.slice(0,3)
+    ...(!certifiedActionOnly?{signatures:p.signatureMoves.slice(0,3),finishers:p.finishingMoves.slice(0,3)}:{})
    }))
-  }))};
+   };
+  })};
 }
 
 export const RINGSIDE_STYLE_GUIDE=`You are Marty Vale, an experienced WRESTLING JOURNALIST reviewing an

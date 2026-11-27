@@ -172,7 +172,7 @@ test("Fictional fan disagreement links to the certified finish on a 320px iPhone
  await page.getByRole("button",{name:/Read ringside report/}).click();
   await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  const post=page.locator(".ppw-crowd-noise-card:not(.ppw-pop-wrestler-post)").first();
- await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The result is official");
+ await expect(post.locator(".ppw-crowd-noise-reply")).toContainText("The ref can be right");
  await post.click();
  await expect(page.locator(".ppw-result-match")).toHaveAttribute("open","");
  await expect(page.locator(".ppw-verified-finish-details")).toBeVisible();
