@@ -9,7 +9,7 @@ import {assessBroadcastNetwork,type BroadcastNetworkReview,
  from "../domain/broadcast-network-review.js";
 interface ReviewRow extends Record<string,unknown>{
  deal_id:string;promotion_id:string;promotion_name:string;offer_code:string;
- tier:string;start_week_index:number;end_week_index:number;
+ agreed_reach:number|null;tier:string;start_week_index:number;end_week_index:number;
  airing_day:number|null;airing_hour:number|null;last_slot_change_week:number|null;
  show_id:string|null;year:number|null;week:number|null;
  show_day:number|null;audience_format:"TV"|"PPV"|null;
@@ -30,7 +30,7 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
  const rows=await tx.query<ReviewRow>(`
  SELECT deal.deal_id,deal.promotion_id,p.name AS promotion_name,
   deal.offer_code,p.tier,deal.start_week_index,deal.end_week_index,
-  deal.airing_day,deal.airing_hour,
+  deal.airing_day,deal.airing_hour,deal.agreed_reach,
   regular.schedule AS regular_schedule,
   (SELECT max((e.payload->>'effectiveWeekIndex')::integer)
    FROM ppw_ledger_events e
@@ -91,7 +91,7 @@ export async function reviewWorldBroadcasters(tx:SqlRows,
    startWeekIndex:Math.max(first.start_week_index,
     first.last_slot_change_week??first.start_week_index),
    endWeekIndex:first.end_week_index,
-   airingDay:first.airing_day,airingHour:first.airing_hour,
+   airingDay:first.airing_day,airingHour:first.airing_hour,agreedReach:first.agreed_reach,
    regularSchedule:first.regular_schedule??undefined};
   // A negotiated new slot starts a fresh compliance streak; previous
   // correctly aired shows must not be retrospectively labelled off-slot.

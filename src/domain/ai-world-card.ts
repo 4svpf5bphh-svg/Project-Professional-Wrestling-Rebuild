@@ -380,7 +380,15 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
  const creativeTag=lead&&partner&&otherTeam.length===2&&(!ordinaryTag?.titleId||beat?.payoff)?
   {first:{aId:lead.personId,bId:partner.personId},
    second:{aId:otherTeam[0]!.personId,bId:otherTeam[1]!.personId},titleId:null,inaugural:false}:null;
- const tagChoice=creativeTag??ordinaryTag;
+ const weekIndex=(input.year-1)*52+input.week-1;
+ // Spread limited service dates across the weeks they still cover. Reserve
+ // actual clearances unchanged; the budget only controls AI card depth.
+ const coverage=available.reduce((sum,p)=>sum+(
+  p.remainingDates==null||p.contractExpires===undefined?1:
+   Math.min(1,p.remainingDates/Math.max(1,p.contractExpires-weekIndex+1))
+ ),0);
+ const appearanceBudget=Math.max(2,Math.floor(coverage/2)*2);
+ const tagChoice=appearanceBudget>=(reserve?6:4)?creativeTag??ordinaryTag:null;
  const tagIds=new Set(tagChoice?[tagChoice.first.aId,tagChoice.first.bId,
   tagChoice.second.aId,tagChoice.second.bId]:[]);
  // Keep recognisable headliners, but rotate credible undercard opportunities.
@@ -406,7 +414,7 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
  // never by inventing extra matches or reusing a wrestler twice.
  // Only a consequential title match earns extra cast capacity. Ordinary
  // established-team TV bouts keep their original ten-appearance ceiling.
- const maxCast=tagChoice?.titleId?12:10;
+ const maxCast=Math.min(appearanceBudget,tagChoice?.titleId?12:10);
  const chosen:AiRosterCandidate[]=[];
  if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
  if(tagChoice)for(const id of tagIds)chosen.push(byId.get(id)!);

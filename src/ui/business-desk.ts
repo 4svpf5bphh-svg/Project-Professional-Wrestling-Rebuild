@@ -1054,11 +1054,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     const reserved=(view.partnerInventory??[]).find(d=>d.offerCode===code);
     const offer=view.commercialOffers.find(d=>d.code===code);
     const qualified=(view.commercialQualified??view.commercialOffers).find(d=>d.code===code);
+    const offeredReach=view.mediaReach==null?null:Math.min(100,
+     view.mediaReach+(qualified?.reachIncrease??0));
     const item=el("article","ppw-commercial-offer");
     item.dataset.availability=reserved?"TAKEN":offer?"AVAILABLE":"LOCKED";
     item.append(commercialPartnerBrand(code));
     item.append(el("p","ppw-commercial-voice",partnerResponse(code,{
-     tier:view.tier,averageTvRating:view.averageTvRating,
+     tier:view.tier,reach:offeredReach,averageTvRating:view.averageTvRating,
      crowd:view.recentAverageCrowd,current:false,
      heldBy:reserved?.promotionName??null
     })));
@@ -1077,7 +1079,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
       item.append(el("span","ppw-commercial-slot",
        "Contracted weekly slot: "+(day[identity.preferredDay-1]??"weekly")+
        " at "+identity.airtime+" · Rating target "+
-       broadcasterRatingTarget(code,view.tier).toFixed(1)));
+       broadcasterRatingTarget(code,view.tier,offeredReach).toFixed(2)));
       item.append(el("span","ppw-commercial-slot",
        "+"+Math.round(offer.reachIncrease)+" distribution reach"));
      }else item.append(el("small","ppw-commercial-slot",identity.preference));

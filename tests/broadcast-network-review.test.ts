@@ -144,3 +144,14 @@ test("network desk describes actual recurrence without implying an off-week viol
   {cadenceWeeks:2,anchorWeek:21}]),"Multiple TV series");
  assert.equal(broadcastScheduleLabel(undefined),"Weekly TV");
 });
+
+test("a low-reach independent deal cannot demand a rating beyond its distribution",()=>{
+ const network={...deal,tier:"INDEPENDENT",offerCode:"BROADCAST_STABLE",agreedReach:15};
+ assert.equal(broadcasterRatingTarget(network.offerCode,network.tier),.10);
+ const strong=assessBroadcastNetwork(network,[ep(15,.09)],15)!;
+ const weak=assessBroadcastNetwork(network,[ep(15,.06)],15)!;
+ assert.equal(strong.target,.09);
+ assert.equal(strong.status,"ON_TARGET");
+ assert.equal(weak.status,"BELOW_TARGET");
+ assert.equal(broadcasterRatingTarget("BROADCAST_TV","NATIONAL",15),1.69);
+});

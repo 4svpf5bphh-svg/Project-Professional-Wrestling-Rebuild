@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+import type {OriginalGenesisSource} from "../src/domain/original-genesis-projection.js";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
 import {type TransactionPool,withWorldTransaction} from "../src/db/transaction.js";
@@ -26,8 +28,16 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
  const weeks=Number(process.env.PPW_BALANCE_WEEKS??156),started=Date.now();
  assert.ok(seed===null||Number.isSafeInteger(seed)&&seed>=0);
  assert.ok(seed===null?weeks===156:[13,52,156].includes(weeks));
+ const originalPath=process.env.PPW_BALANCE_GENESIS;
+ const original=originalPath?JSON.parse(await readFile(originalPath,"utf8")) as OriginalGenesisSource:null;
+ if(original){
+  assert.equal(original.world.seed,seed,"Match the original-main export seed");
+  assert.ok(original.ruleset.injuryRateMultiplier>0);
+  assert.ok(original.promotions.every(p=>p.lifecycle==="ACTIVE"&&p.controllerType==="AI"));
+ }
  // Some match and booking tie-breaks incorporate World identity.
- const world=seed===null?"phase17-three-year-"+randomUUID():"milestone5-balance-"+seed;
+ const world=original?.world.id??
+  (seed===null?"phase17-three-year-"+randomUUID():"milestone5-balance-"+seed);
  const db=postgresPool(url!,4);
  let ownsWorld=false;
  const activeMeter:{session?:MeasuredQuerySession;writes:number}={writes:0};
@@ -52,8 +62,8 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
   diagnostic("seeding genesis");
-  const fixture=originalGenesisFixture(world);
-  if(seed!==null){
+  const fixture=original??originalGenesisFixture(world);
+  if(!original&&seed!==null){
    fixture.world.seed=seed;
    fixture.people.forEach((person,index)=>{
     const age={PROSPECT:20,PRIME:28,VETERAN:38,SPECIAL_ATTRACTION:45}[person.careerStage];
@@ -72,11 +82,11 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
      "WHERE c.world_id=p.world_id AND c.person_id=p.person_id",
      "AND c.status='SIGNED'))::integer AS free_agents",
      "FROM ppw_people p WHERE p.world_id=$1"].join(" "),[world]));
-  assert.deepEqual(population,[{talent:643,free_agents:243}],
+  if(!original)assert.deepEqual(population,[{talent:643,free_agents:243}],
    "Real Genesis depth matters; an all-contracted synthetic market cannot recruit");
   // Use the real company identities; the named premium calendar
   // belongs to WWE and AEW, not to anonymous Genesis fixture labels.
-  await withWorldTransaction(db.pool,async tx=>{
+  if(!original)await withWorldTransaction(db.pool,async tx=>{
    await tx.query(["UPDATE ppw_promotions SET name=CASE",
     "WHEN promotion_id='promotion-0' THEN 'WWE'",
     "WHEN promotion_id='promotion-1' THEN 'AEW' ELSE name END",
@@ -163,13 +173,15 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
    ].join(" "),[world,calendarWeek,calendarYear]));
    assert.equal(facts.length,1);
    const f=facts[0]!;
-   assert.equal(f.booked,8,"All autonomous companies need real submitted cards");
-   assert.equal(f.certified,8,"All eight companies must be certified once");
+   assert.equal(f.booked,fixture.promotions.length,"All autonomous companies need real submitted cards");
+   assert.equal(f.certified,fixture.promotions.length,"All companies must be certified once");
    assert.equal(f.completed,f.shows,"Every submitted card must have real results");
    assert.ok(f.matches>=30,
     "The authentic free-agent market should preserve credible AI card depth in Week "+week);
    assert.equal(f.weekly_ledger,1,"World should publish only once per week");
-   assert.equal(f.payroll,8,"Every company pays its actual weekly contracts");
+   if(original)assert.ok(f.payroll>0&&f.payroll<=f.certified,
+    "The archived World has affiliate promotions without direct payroll");
+   else assert.equal(f.payroll,8,"Every company pays its actual weekly contracts");
    if(week===1||week%8===0)diagnostic("week certified",{
     week,matches:f.matches,completed:f.completed,certified:f.certified
    });
@@ -197,7 +209,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
   diagnostic("all weeks certified",{weeks});
   assert.equal(snapshots.length,weeks);
   assert.notEqual(snapshots[weeks-1]!.cash,snapshots[0]!.cash);
-  if(weeks<52)return;
+  if(original||weeks<52)return;
   const ppvs=await withWorldTransaction(db.pool,tx=>tx.query<{
    promotion_id:string;name:string|null
   }>(["SELECT promotion_id,show_name AS name FROM ppw_booking_drafts",

@@ -260,6 +260,10 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         const balance=contractBalances.get(p.contractId);
         return balance===null||(balance!==undefined&&balance>(reservedDates.get(p.contractId)??0));
       };
+      const availableAiRoster=(promotionId:string)=>
+        (aiRoster.get(promotionId)??[]).filter(hasDate).map(p=>p.remainingDates==null?p:{
+          ...p,remainingDates:p.remainingDates-(reservedDates.get(p.contractId)??0),
+        });
       const reserveDates=(participants:readonly {contractId:string}[])=>{
         for(const id of new Set(participants.map(p=>p.contractId)))
           reservedDates.set(id,(reservedDates.get(id)??0)+1);
@@ -465,7 +469,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           const eventType:"REGULAR"|"MAJOR"=oldYear&&!branded&&
            majorInterval&&((weekIndex+1)%majorInterval===0)?"MAJOR":"REGULAR";
           const importance=branded?tv?.importance??70:eventType==="MAJOR"?85:58;
-          const eligible=(aiRoster.get(promotionId)??[]).filter(hasDate);
+          const eligible=availableAiRoster(promotionId);
           const premiumFinale=duePremium.has(promotionId)?creativeFor(promotionId,eligible,true):null;
           const premiumCast=new Set(premiumFinale?.payoff?
            premiumFinale.kind==="ANGLE"?[...premiumFinale.angle.actorIds,...premiumFinale.angle.targetIds]:
@@ -580,7 +584,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           !profile||profile.ai_risk_tolerance===null||
           profile.ai_match_quality_preference===null||profile.ai_star_preference===null)
           continue;
-        const roster=(aiRoster.get(promotionId)??[]).filter(hasDate);
+        const roster=availableAiRoster(promotionId);
         // World-scoped title-holder context is already in the single AI
         // preparation batch. A premium show should prioritize a defensible
         // title challenge, not merely rebrand an ordinary television card.
