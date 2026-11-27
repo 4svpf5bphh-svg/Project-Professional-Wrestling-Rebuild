@@ -597,8 +597,8 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
   const show=await readShowScope(tx,id);
   const week=(show.year-1)*52+show.week-1;
   const rows=await tx.query<ContractRow>([
-    "SELECT c.person_id,c.contract_id,COALESCE(renewal.terms->>'appearanceFee',c.appearance_fee::text) AS appearance_fee,",
-    "COALESCE(renewal.terms->>'creativeControl',c.creative_control) AS creative_control,p.name,p.booking_division,",
+    "SELECT c.person_id,c.contract_id,COALESCE(c.renewal_terms->>'appearanceFee',c.appearance_fee::text) AS appearance_fee,",
+    "COALESCE(c.renewal_terms->>'creativeControl',c.creative_control) AS creative_control,p.name,p.booking_division,",
     "p.popularity,p.recognition,p.momentum,p.in_ring_quality,p.match_craft,",
     "p.presentation,p.stamina,p.safety,p.fatigue,p.wear,"+
     workingPairsSql("p")+" AS working_connections,",
@@ -609,10 +609,10 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "identity.persona->>'primaryStyle' AS identity_style,",
     "identity.persona->'signatureMoves'->0->>'name' AS identity_signature,",
     "identity.persona->'finishingMoves'->0->>'name' AS identity_finisher,",
-    "p.status AS person_status,COALESCE(renewal.terms->>'family',c.family) AS family,c.status,",
-    "CASE WHEN renewal.terms IS NOT NULL THEN c.expires_week_index+1 ELSE c.start_week_index END AS start_week_index,",
-    "CASE WHEN renewal.terms IS NOT NULL THEN c.expires_week_index+(renewal.terms->>'termWeeks')::integer ELSE c.expires_week_index END AS expires_week_index,",
-    "CASE WHEN renewal.terms IS NOT NULL THEN CASE WHEN renewal.terms->>'family'='EXCLUSIVE' THEN NULL ELSE (renewal.terms->>'dateEntitlement')::integer END ELSE c.remaining_dates END AS remaining_dates,",
+    "p.status AS person_status,COALESCE(c.renewal_terms->>'family',c.family) AS family,c.status,",
+    "CASE WHEN c.renewal_terms IS NOT NULL THEN c.expires_week_index+1 ELSE c.start_week_index END AS start_week_index,",
+    "CASE WHEN c.renewal_terms IS NOT NULL THEN c.expires_week_index+(c.renewal_terms->>'termWeeks')::integer ELSE c.expires_week_index END AS expires_week_index,",
+    "CASE WHEN c.renewal_terms IS NOT NULL THEN CASE WHEN c.renewal_terms->>'family'='EXCLUSIVE' THEN NULL ELSE (c.renewal_terms->>'dateEntitlement')::integer END ELSE c.remaining_dates END AS remaining_dates,",
     "(SELECT a.cleared_week_index FROM ppw_medical_absences a",
     "WHERE a.world_id=p.world_id AND a.person_id=p.person_id",
     "AND a.status='ACTIVE' AND a.injured_week_index<$5",
@@ -622,9 +622,13 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "AND other.promotion_id<>c.promotion_id AND other.status='SIGNED'",
     "AND other.family='EXCLUSIVE' AND other.expires_week_index>=$5)",
     "AS exclusive_elsewhere",
-    // One actual show-week-eligible agreement per wrestler before pagination.
-    // A new signed renewal wins over an older still-overlapping agreement.
-    "FROM (SELECT DISTINCT ON(c.person_id) c.* FROM ppw_contracts c",
+    // Prefer an eligible agreement. Keep the best unavailable signed one so a
+    // manager can see why a wrestler is missing for this particular event.
+    "FROM (SELECT DISTINCT ON(c.person_id) c.*,renewal.terms AS renewal_terms FROM ppw_contracts c",
+    "LEFT JOIN LATERAL (SELECT r.proposed_terms AS terms FROM ppw_contract_renewal_proposals r",
+    "WHERE r.world_id=c.world_id AND r.contract_id=c.contract_id AND r.status='ACCEPTED'",
+    "AND $5 BETWEEN c.expires_week_index+1 AND c.expires_week_index+(r.proposed_terms->>'termWeeks')::integer",
+    "ORDER BY r.proposal_id LIMIT 1) renewal ON TRUE",
     "WHERE c.world_id=$1 AND c.status='SIGNED'",
     "AND (c.promotion_id=$2 OR EXISTS (",
     "SELECT 1 FROM ppw_wrestler_promotion_affiliations a",
@@ -633,10 +637,11 @@ export async function readBookableCardTalent(pool:TransactionPool,id:CardEditorI
     "WHERE a.world_id=c.world_id AND a.person_id=c.person_id",
     "AND a.promotion_id=$2 AND a.basis='PARENT_COMPANY'",
     "AND parent.parent_promotion_id=c.promotion_id))",
-    "AND "+"((c.start_week_index<=$5 AND c.expires_week_index>=$5 AND (c.family='EXCLUSIVE' OR c.remaining_dates>0)) OR EXISTS (SELECT 1 FROM ppw_contract_renewal_proposals r WHERE r.world_id=c.world_id AND r.contract_id=c.contract_id AND r.status='ACCEPTED' AND $5 BETWEEN c.expires_week_index+1 AND c.expires_week_index+(r.proposed_terms->>'termWeeks')::integer))",
-    "ORDER BY c.person_id,c.start_week_index DESC,",
+    "ORDER BY c.person_id,",
+    "(renewal.terms IS NOT NULL OR (c.start_week_index<=$5 AND c.expires_week_index>=$5",
+    "AND (c.family='EXCLUSIVE' OR coalesce(c.remaining_dates,0)>0))) DESC,",
+    "(c.start_week_index<=$5 AND c.expires_week_index>=$5) DESC,c.start_week_index DESC,",
     "CASE WHEN c.family='EXCLUSIVE' THEN 0 ELSE 1 END,c.contract_id) c",
-    "LEFT JOIN LATERAL (SELECT r.proposed_terms AS terms FROM ppw_contract_renewal_proposals r WHERE r.world_id=c.world_id AND r.contract_id=c.contract_id AND r.status='ACCEPTED' AND $5 BETWEEN c.expires_week_index+1 AND c.expires_week_index+(r.proposed_terms->>'termWeeks')::integer ORDER BY r.proposal_id LIMIT 1) renewal ON TRUE",
     "JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id",
     "LEFT JOIN ppw_portable_personas identity ON identity.world_id=p.world_id",
     "AND identity.person_id=p.person_id",

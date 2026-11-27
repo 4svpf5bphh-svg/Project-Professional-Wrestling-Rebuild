@@ -276,12 +276,22 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    const fixedWeekly=view.weeklyFixedOverhead!=null?
     view.weeklyFixedOverhead+view.weeklyGuarantees+view.weeklyStaffPayroll:null;
    const bank=el("section","ppw-finance-first");
-   bank.append(el("span","ppw-business-kicker","YOUR COMPANY / YOUR MONEY"),
-    el("h2","","Financial position"));
+   const financialHead=el("header","ppw-finance-heading");
+   financialHead.append(el("h2","","Financial position"));
+   if(view.financialDistress){
+    const badge=el("span","ppw-finance-health",
+     {HEALTHY:"Healthy",WATCH:"Watch",DISTRESSED:"Distressed",CRISIS:"Crisis"}[
+      view.financialDistress]??view.financialDistress.replaceAll("_"," "));
+    badge.dataset.health=view.financialDistress.toLowerCase();
+    financialHead.append(badge);
+   }
+   bank.append(financialHead);
    const balance=el("div","ppw-finance-bank");
    balance.append(el("small","","Cash in the bank"),
     el("strong","",money(view.cash)));
-   bank.append(balance);
+   if(view.runwayWeeks!=null)balance.append(el("small","ppw-finance-runway",
+    "Estimated runway · "+view.runwayWeeks.toFixed(1)+" weeks"));
+   bank.append(balance,el("h3","ppw-finance-group-label","Recurring weekly commitments"));
    const snapshot=el("div","ppw-finance-snapshot");
    const item=(caption:string,figure:string,help:string)=>{
     const tile=el("div","ppw-finance-snapshot-tile");
@@ -294,10 +304,15 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     item("Weekly commitments",fixedWeekly===null?"Not reported":money(fixedWeekly),
      "Wages, staff and overhead"),
     item("Operating room",view.recurringMargin===null?"Not reported":
-     money(view.recurringMargin),"Before show income and costs"),
-    item("Last week net",view.lastWeeklyNet===null?"Not settled":
-     money(view.lastWeeklyNet),"After the last weekly settlement"));
-   bank.append(snapshot);
+     money(view.recurringMargin),"Before show income and costs"));
+   bank.append(snapshot,el("h3","ppw-finance-group-label","Recorded cash activity"));
+   const settled=el("div","ppw-finance-snapshot ppw-finance-settled");
+   settled.append(item("Last week net",view.lastWeeklyNet===null?"Not settled":
+    money(view.lastWeeklyNet),"Weekly settlement"));
+   if(view.rollingFourWeeks)settled.append(
+    item("Recent income",money(view.rollingFourWeeks.income),"Last four weeks"),
+    item("Recent spending",money(view.rollingFourWeeks.spending),"Last four weeks"));
+   bank.append(settled);
    // Full-term roster exposure remains available in Contracts, where it is actionable.
    if(view.debt>0)bank.append(el("p","ppw-finance-debt",
     "Outstanding debt · "+money(view.debt)));

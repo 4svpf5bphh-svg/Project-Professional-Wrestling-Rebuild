@@ -620,7 +620,7 @@ for(const width of [320,390]){
  });
 }
 
-test("named Armageddon Inferno poster overrides global Results Skin and weekly TV package",async({page})=>{
+test("renamed PPV preserves its poster choice and the equipped Results skin",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.route("**/api/session",r=>r.fulfill({json:session}));
  await page.route("**/api/card",r=>{
@@ -629,7 +629,7 @@ test("named Armageddon Inferno poster overrides global Results Skin and weekly T
    items:[{showId:"armageddon",year:1,week:14,showName:"Armageddon",
     bookingClass:"PREMIUM",crowdResponse:84,matchCount:1,angleCount:1}],
    nextCursor:null
-  }:{...show,showId:"armageddon",showName:"Armageddon",year:1,week:14,
+  }:{...show,showId:"armageddon",showName:"The Lottery",year:1,week:14,
    promotionName:"Chaotic Wrestling Alliance",bookingClass:"PREMIUM",
    eventPosterStyle:"INFERNO",resultsSkin:"RETRO_BOOKER_02",
    broadcastPackage:"MIDNIGHT_FREQUENCY"}});
@@ -637,16 +637,19 @@ test("named Armageddon Inferno poster overrides global Results Skin and weekly T
  await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await expect(page.locator(".ppw-results")).toHaveAttribute("data-premium-poster","inferno");
- await expect(page.locator(".ppw-results")).not.toHaveAttribute("data-results-skin");
+ await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
  const artwork=page.locator(".ppw-results-event-poster .ppw-event-poster");
  await expect(artwork).toHaveAttribute("data-poster","inferno");
- await expect(artwork.locator(".ppw-ep-title")).toHaveText("Armageddon");
+ await expect(artwork.locator(".ppw-ep-title")).toHaveText("The Lottery");
  await expect(artwork.locator(".ppw-ep-main-label")).toHaveText("MAIN EVENT");
  await expect(artwork.locator(".ppw-ep-main")).toHaveText("Kenny Omega vs Samoa Joe");
  await expect(artwork).not.toContainText("TO BE ANNOUNCED");
  await expect(page.locator(".ppw-tv-opening-wrap")).toHaveCount(0);
- await expect(page.locator(".ppw-retro-station")).toHaveCount(0);
+ await expect(page.locator(".ppw-results-page[data-page=full]")).toBeVisible();
+ expect(await page.evaluate(()=>getComputedStyle(document.body).backgroundColor))
+  .toBe("rgb(36, 39, 44)");
+ await page.getByRole("button",{name:"Post-show brief",exact:true}).first().click();
+ await expect(page.locator(".ppw-results-page[data-page=after]")).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -743,8 +746,8 @@ test("A certified HOT TAG wrestler post opens focused Programmes without booking
  await expect(page).toHaveURL(/#\/programmes$/);
  await expect(page.getByRole("heading",{name:"Programmes"})).toBeVisible();
  await expect(page.locator(".ppw-programme-create-fold")).toHaveAttribute("open","");
- await expect(page.getByRole("combobox",{name:"Choose rivalry participant"}).first())
-  .toHaveValue("PERSON:omega");
+ await expect(page.getByRole("button",{name:/^Side [AB] participant/}).first())
+  .toContainText("Kenny Omega");
  expect(methods).toEqual(["resultsArchive","results","programmes"]);
  expect(methods).not.toContain("startProgramme");
  expect(methods).not.toContain("saveCard");

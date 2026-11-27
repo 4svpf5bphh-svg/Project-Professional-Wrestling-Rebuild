@@ -177,6 +177,9 @@ test("a premium-only booking never conceals the mandatory weekly-show reminder",
   const together=await readPlayerWorldOverview(db.pool,worldId,playerId);
   assert.equal(together?.promotion?.attention.plannedShows,1,
    "The required normal show is now planned; optional premium must not count twice");
+  assert.deepEqual(together?.promotion?.upcomingShows?.map(show=>[
+   show.showId,show.bookingClass,show.hasVenue]),
+   [["premium-draft","PREMIUM",false],["weekly-draft","REGULAR",false]]);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);

@@ -12,6 +12,10 @@ export interface HomeCompletedShow{
  showId:string;year:number;week:number;showName:string;crowdResponse:number;
  bookingClass:"REGULAR"|"PREMIUM";showDay:number|null;
 }
+export interface HomeUpcomingShow{
+ showId:string;year:number;week:number;showName:string;ready:boolean;status:string;
+ bookingClass:"REGULAR"|"PREMIUM";showDay:number|null;hasVenue:boolean;
+}
 export interface PlayerWorldOverview {
  world:{id:string;name:string;year:number;week:number;day:number;
   phase:string;revision:number;nextLockEpoch:number;serverEpoch:number};
@@ -24,6 +28,7 @@ export interface PlayerWorldOverview {
    standing?:{position:number;total:number}|null;
    competition?:PromotionCompetitionCard|null;
    nextShow?:{year:number;week:number;showName:string;ready:boolean;status:string}|null;
+   upcomingShows?:HomeUpcomingShow[];
    latestShow?:{year:number;week:number;showName:string;crowdResponse:number}|null;
    latestShows?:HomeCompletedShow[];
    flagshipName?:string|null;
@@ -88,7 +93,7 @@ export async function readPlayerWorldOverview(
    contract_alerts:unknown;title_news:unknown;injury_news:unknown;
    medical_clearances:unknown;world_stories:unknown;
    kp_claim_available:boolean|null;unseen_legends:number|null;
-   standing:unknown;next_show:unknown;latest_shows:unknown;flagship_name:string|null;
+   standing:unknown;upcoming_shows:HomeUpcomingShow[]|null;latest_shows:unknown;flagship_name:string|null;
    cp:PromotionCompetitionCard|null;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
@@ -110,7 +115,7 @@ export async function readPlayerWorldOverview(
     notices.business_updates,notices.contract_alerts,notices.title_news,
     notices.injury_news,notices.medical_clearances,
     public_news.world_stories,kp.kp_claim_available,legends.unseen_legends,
-    dashboard.standing,dashboard.next_show,dashboard.latest_shows,dashboard.flagship_name,
+    dashboard.standing,dashboard.upcoming_shows,dashboard.latest_shows,dashboard.flagship_name,
     ${promotionCompetitionProjectionSql("w.world_id","owned.promotion_id")}
      AS cp
    FROM ppw_worlds w
@@ -932,14 +937,19 @@ export async function readPlayerWorldOverview(
         count(*) OVER()::integer AS total
        FROM ppw_promotions WHERE world_id=w.world_id AND lifecycle='ACTIVE'
       ) rank WHERE rank.promotion_id=owned.promotion_id) AS standing,
-     (SELECT jsonb_build_object('year',d.year,'week',d.week,
-      'showName',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
-       THEN 'Premium event' ELSE 'Weekly show' END),
-      'ready',d.lock_ready_fingerprint IS NOT NULL,'status',d.status)
-      FROM ppw_booking_drafts d
-      WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
-       AND (d.year,d.week)>=(w.year,w.week)
-      ORDER BY d.year,d.week,d.show_day NULLS LAST,d.draft_id LIMIT 1) AS next_show,
+     (SELECT coalesce(jsonb_agg(upcoming.card ORDER BY upcoming.year,upcoming.week,
+       upcoming.show_day NULLS LAST,upcoming.draft_id),'[]'::jsonb)
+      FROM (SELECT d.year,d.week,d.show_day,d.draft_id,jsonb_build_object(
+       'showId',d.draft_id,'year',d.year,'week',d.week,'showDay',d.show_day,
+       'showName',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
+        THEN 'Premium event' ELSE 'Weekly show' END),
+       'bookingClass',d.booking_class,'ready',d.lock_ready_fingerprint IS NOT NULL,
+       'status',d.status,'hasVenue',d.venue_id IS NOT NULL) AS card
+       FROM ppw_booking_drafts d
+       WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
+        AND (d.year,d.week)>=(w.year,w.week) AND d.status IN ('DRAFT','SUBMITTED')
+       ORDER BY d.year,d.week,d.show_day NULLS LAST,d.draft_id LIMIT 2
+      ) upcoming) AS upcoming_shows,
      (SELECT series.name FROM ppw_show_series series
       WHERE series.world_id=w.world_id AND series.promotion_id=owned.promotion_id
        AND series.active AND series.role='FLAGSHIP' ORDER BY series.series_id LIMIT 1) AS flagship_name,
@@ -977,6 +987,9 @@ export async function readPlayerWorldOverview(
    typeof (s as HomeCompletedShow).showName==="string"&&
    typeof (s as HomeCompletedShow).crowdResponse==="number"&&
    ["REGULAR","PREMIUM"].includes((s as HomeCompletedShow).bookingClass));
+  const upcoming=x.upcoming_shows??[];
+  const next=upcoming[0]??null;
+  const upcomingShows=next?upcoming.filter(s=>s.year===next.year&&s.week===next.week):[];
   const last=recent[0]??null;
   const latestShows=last?recent.filter(s=>s.year===last.year&&s.week===last.week)
    .sort((a,b)=>(a.showDay??7)-(b.showDay??7)||a.showId.localeCompare(b.showId)):[];
@@ -998,13 +1011,9 @@ export async function readPlayerWorldOverview(
      "total" in x.standing&&typeof x.standing.position==="number"&&
      typeof x.standing.total==="number"?
      {position:x.standing.position,total:x.standing.total}:null,
-    nextShow:x.next_show&&typeof x.next_show==="object"&&"year" in x.next_show&&
-     "week" in x.next_show&&"showName" in x.next_show&&"ready" in x.next_show&&
-     "status" in x.next_show&&typeof x.next_show.year==="number"&&
-     typeof x.next_show.week==="number"&&typeof x.next_show.showName==="string"&&
-     typeof x.next_show.ready==="boolean"&&typeof x.next_show.status==="string"?
-     {year:x.next_show.year,week:x.next_show.week,showName:x.next_show.showName,
-      ready:x.next_show.ready,status:x.next_show.status}:null,
+    nextShow:next?{year:next.year,week:next.week,showName:next.showName,
+     ready:next.ready,status:next.status}:null,
+    upcomingShows,
     latestShow:last?{year:last.year,week:last.week,showName:last.showName,
      crowdResponse:last.crowdResponse}:null,
     latestShows,flagshipName:x.flagship_name??null,

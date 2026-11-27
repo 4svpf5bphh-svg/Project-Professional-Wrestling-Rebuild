@@ -17,6 +17,7 @@ import {ANGLE_STORY_GOALS,angleGoalFor,anglesForGoal,firstAngleFor,angleDirectio
 import type {readShowCardEditor,readBookableCardTalent,
  saveShowCardMatches} from "../db/show-card-editor.js";
 import type {markPreparedShowReady} from "../db/ready-prepared-show.js";
+import {createChoiceDialog} from "./choice-dialog.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {createTalentFilterFrame} from "./talent-filter-controls.js";
 import {SEGMENT_BOOKING_RULES} from "../domain/segment-booking.js";
@@ -361,6 +362,18 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  }
  function setMatch(slotId:string,next:EditorMatch){
   matches.set(slotId,next);markDirty();render();
+ }
+ function setStipulation(match:EditorMatch,stipulation:MatchStipulation){
+  if((match.stipulation??"STANDARD")===stipulation)return;
+  const next=changeMatchStipulation(match,stipulation);
+  const changes:string[]=[];
+  if(next.plannedFinish!==match.plannedFinish&&assignedIds(match).length)
+   changes.push("change the finish to "+nice(next.plannedFinish));
+  if(match.interference&&!next.interference)changes.push("remove the run-in");
+  if(next.plannedLengthMinutes!==match.plannedLengthMinutes&&assignedIds(match).length)
+   changes.push("extend the match to "+next.plannedLengthMinutes+" minutes");
+  if(changes.length&&!window.confirm("These match rules will "+changes.join(", ")+". Continue?"))return;
+  setMatch(match.slotId,next);
  }
  function changeSize(match:EditorMatch,count:number,size?:number){
   try{setMatch(match.slotId,resizeMatch(match,count,size));}
@@ -1815,12 +1828,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const winnerPicker=el("fieldset","ppw-winner-picker");
     winnerPicker.append(el("legend","","Choose winner"));
     if(m.teams.length>6){
-     const select=selector(String(m.winnerSide),m.teams.map((side,index)=>[
-      String(index),side.filter((p):p is PersonPick=>p!==null)
-       .map(selectedName).join(" & ")||"Entrant "+(index+1)]),
-      v=>setMatch(slotId,changeWinner(m,Number(v))),!mutable());
-     select.setAttribute("aria-label","Choose winner");
-     winnerPicker.append(select);
+     winnerPicker.append(createChoiceDialog("Choose winner",String(m.winnerSide),
+      m.teams.map((side,index)=>({value:String(index),
+       label:side.filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & ")||
+        "Entrant "+(index+1)})),v=>setMatch(slotId,changeWinner(m,Number(v))),!mutable()));
     }else for(const [sideIndex,side] of m.teams.entries()){
      const names=side.filter((p):p is PersonPick=>p!==null).map(selectedName);
      const label=names.join(" & ")||(m.format==="BATTLE_ROYAL"?
@@ -1853,7 +1864,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Stipulation",selector(m.stipulation??"STANDARD",
      compatibleStipulations(simFormat).map(code=>[
       code,MATCH_STIPULATIONS.find(x=>x.value===code)!.label]),
-     v=>setMatch(slotId,changeMatchStipulation(m,v as MatchStipulation)),!mutable())));
+     v=>setStipulation(m,v as MatchStipulation),!mutable())));
     const stip=m.stipulation??"STANDARD";
     const impact=stip==="STANDARD"?null:(()=>{
      const detail=MATCH_STIPULATIONS.find(x=>x.value===stip)!;
@@ -1867,8 +1878,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     controls.append(field("Finish",selector(m.plannedFinish,
      permittedStipulationFinishes(m.stipulation??"STANDARD",simFormat)
       .map(x=>[x,nice(x)]),
-      v=>edit(m,{plannedFinish:v,cheatingWrestlerId:undefined,
-       finishProp:undefined,refereeSpot:undefined}),!mutable())));
+      v=>{
+       if(v===m.plannedFinish)return;
+       if((m.cheatingWrestlerId||m.finishProp||m.refereeSpot)&&
+        !window.confirm("Changing the finish will clear the scripted cheating, weapon and referee details. Continue?"))return;
+       edit(m,{plannedFinish:v,cheatingWrestlerId:undefined,
+        finishProp:undefined,refereeSpot:undefined});
+      },!mutable())));
     if(m.plannedFinish==="FOREIGN_OBJECT")
      controls.append(field("Weapon used",selector(m.finishProp??"",
       [["","Choose the object"],...FINISH_PROPS.map(x=>[x.value,x.label])],
@@ -1901,8 +1917,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        })
        .map(c=>[c.championshipId,c.name+
         (c.vacant?" · VACANT":c.holderName?" · "+c.holderName:"")] as [string,string])];
-     controls.append(field("Championship",selector(m.championshipId??"",choices,
-      value=>edit(m,{championshipId:value||undefined}),!mutable())));
+     controls.append(createChoiceDialog("Championship",m.championshipId??"",
+      choices.map(([value,label])=>({value,label})),
+      value=>edit(m,{championshipId:value||undefined}),!mutable()));
     }else if(m.championshipId){
      controls.append(el("p","ppw-alert ppw-error",
       "Championships require 2–4 singles wrestlers or teams of two in a tag match. Remove the title before saving."));
@@ -2143,7 +2160,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       const essentials=el("div","ppw-control-grid ppw-guide-essentials");
       const advancedFields=el("div","ppw-control-grid ppw-guide-advanced-fields");
       if(controlGrid)for(const child of [...controlGrid.children]){
-       const label=child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
+       const label=(child as HTMLElement).dataset.choiceLabel??
+        child.querySelector("[aria-label]")?.getAttribute("aria-label")??"";
        if(child.classList.contains("ppw-winner-picker")||
         child.classList.contains("ppw-stipulation-impact")||
         (!m&&child.classList.contains("ppw-field"))||
@@ -2207,7 +2225,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          const selected=(m.stipulation??"STANDARD")===kind;
          const choice=button(spec.label,()=>{
           if(selected)return;
-          setMatch(slotId,changeMatchStipulation(m,kind));
+          setStipulation(m,kind);
           resetGuideScroll=false;
          },!mutable(),"ppw-guide-stipulation-tile");
          choice.setAttribute("aria-pressed",String(selected));
@@ -3213,27 +3231,42 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       measure(b)-measure(a)||(a.name??"").localeCompare(b.name??"");
     });
    sheet.append(el("p","ppw-picker-note",
-    sorted.length+" of "+current.items.length+" loaded · Filters organise "+
-    "this loaded page only. Use search to find someone anywhere on your roster."));
+    sorted.length+" shown · Search your full roster"));
    if(!sorted.length)rows.append(el("p","ppw-muted",current.cursor?
     "No match yet. Load more to search additional wrestlers.":
     "No wrestlers match the current selection."));
+   const unavailableLabels:Record<string,string>={
+    NOT_SIGNED:"No signed agreement",NOT_STARTED:"Agreement starts after this show",
+    EXPIRED:"Agreement ends before this show",NO_DATES:"No contracted dates left",
+    INVALID_CONTRACT:"Contract terms unavailable",INACTIVE:"Wrestler is inactive",
+    EXCLUSIVE_ELSEWHERE:"Exclusive to another promotion"
+   };
+   const otherWorkloads=new Map<string,Set<string>>();
+   for(const booking of view?.otherShowWorkloads??[]){
+    const shows=otherWorkloads.get(booking.personId)??new Set<string>();
+    shows.add(booking.showName);otherWorkloads.set(booking.personId,shows);
+   }
    for(const candidate of sorted){
     const taken=takenIds.has(candidate.personId)&&
      chosen?.personId!==candidate.personId;
     const label=candidate.reason==="INJURED"?
-     "INJURED · "+(candidate.medicalWeeksRemaining??"?")+" WEEKS":
+     candidate.medicalWeeksRemaining==null?"Injured · clearance date unavailable":
+      "Injured · "+candidate.medicalWeeksRemaining+
+       (candidate.medicalWeeksRemaining===1?" week":" weeks")+" to clearance":
      candidate.available?
-     (candidate.remainingDates===null?"UNLIMITED DATES":
-      candidate.remainingDates+" DATES REMAINING"):
-      nice(candidate.reason);
+      (candidate.remainingDates===null?"Unlimited dates":
+       candidate.remainingDates+" dates remaining"):
+      unavailableLabels[candidate.reason]??nice(candidate.reason);
     const entry=el("div","ppw-picker-wrestler");
     entry.append(createWrestlerCard({...candidate,name:candidate.name??candidate.personId,
      status:label},{
-     context:"BOOKING",compact:true,label:taken?
+     context:"BOOKING",compact:true,showPortrait:false,label:taken?
       (current.role==="actors"||current.role==="targets"?"ALREADY IN SCENE":
        current.role==="RUN_IN"?"IN THIS MATCH":"ALREADY BOOKED"):label,
      disabled:!candidate.available||taken,onSelect:()=>chooseTalent(candidate)}));
+    const otherShows=otherWorkloads.get(candidate.personId);
+    if(otherShows?.size)entry.append(el("small","ppw-picker-other-show",
+     "Also on this week’s card · "+[...otherShows].join(", ")));
     if(anglePicker&&candidate.available&&!taken){
      // Scene casting is intentionally allowed after a match. Make that
      // freedom clear before the user selects the performer, without

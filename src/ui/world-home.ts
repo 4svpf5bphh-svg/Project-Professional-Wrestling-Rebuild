@@ -15,7 +15,7 @@ export interface WorldHomePort{
  claimWeeklyKP?():Promise<{awarded:number;reason?:string}>;
  openLegends?():void;openKayfabe?():void;openAchievements?():void;
  planner():void;roster():void;market():void;contracts():void;
- openUnfinishedCard?():void;openUnreadBackstage?():void;
+ openUnfinishedCard?():void;openUpcomingShow?(showId:string):void;openUnreadBackstage?():void;
  openBackstageThread?(personId:string,unread:boolean):void;
  contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;openCompletedShow?(showId:string):void;business():void;staff():void;
@@ -29,8 +29,9 @@ const el=(tag:string,cls="",label="")=>{
  const node=document.createElement(tag);node.className=cls;
  node.textContent=label;return node;
 };
-export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
- let overview:PlayerWorldOverview|null=null,loading=false,error="",loaded=false;
+export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOverview?:PlayerWorldOverview){
+ let overview:PlayerWorldOverview|null=initialOverview??null;
+ let loading=false,error="",loaded=!!initialOverview;
  let progressedFrom:{year:number;week:number}|null=null;
  let expiredOnScreen:string|null=null;
  let claimingKP=false;
@@ -216,6 +217,12 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    world.phase==="UPDATING"?"Preparing results and news · plan your upcoming shows":
    "Your World will update after processing.");
   copy.append(detail);
+  const scheduled=promotion?.upcomingShows??[];
+  if(bookingOpen&&promotion?.attention?.plannedShows&&!promotion.attention.unpreparedShow&&
+   scheduled.length&&scheduled.every(show=>show.year===world.year&&show.week===world.week&&
+    (show.ready||show.status==="SUBMITTED"))){
+   copy.append(el("small","ppw-home-booking-ready","Cards confirmed for this week"));
+  }
   booking.append(el("span","ppw-home-booking-icon","▣"),copy,
    el("span","ppw-home-booking-arrow","→"));
   // The banner is an independent action. Its accessible name must not
@@ -247,38 +254,58 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    }else{
     const standard=el("div","ppw-home-standard-opening");
     standard.append(el("small","","PPW / ON AIR"),
-     el("strong","",name),
-     el("span","","THE NEXT CHAPTER STARTS HERE"));
+     el("strong","",name));
     spotlight.dataset.broadcastPackage="standard";
     spotlight.append(standard);
    }
-   const showControls=el("div","ppw-home-show-controls");
-   const lastShow=control("Last Show","",port.results,"◀");
-   lastShow.classList.add("ppw-home-show-last");
-   lastShow.setAttribute("aria-label",last?
-    "Last show · LATEST CERTIFIED SHOW · "+last.showName:
-    "Last show · RESULTS ARCHIVE");
-   const nextShow=control("Next Show","",
-    next&&!next.ready?(port.openUnfinishedCard??port.planner):port.planner,"▶");
-   nextShow.classList.add("ppw-home-show-next");
-   if(next?.ready)nextShow.dataset.ready="true";
-   if(completed.length>1&&port.openCompletedShow){
-    const recent=el("div","ppw-home-recent-shows");
-    recent.setAttribute("aria-label","Completed shows");
+   const eventRows=(label:string)=>{
+    const section=el("section","ppw-home-event-list");
+    section.setAttribute("aria-label",label);
+    section.append(el("h3","",label));
+    const rows=el("div","ppw-home-recent-shows");
+    section.append(rows);spotlight.append(section);
+    return rows;
+   };
+   const upcoming=promotion.upcomingShows??[];
+   if(upcoming.length){
+    const first=upcoming[0]!;
+    const rows=eventRows("Upcoming · Y"+first.year+" W"+first.week);
+    for(const show of upcoming){
+     const format=show.bookingClass==="PREMIUM"?"PPV":"TV";
+     const status=show.status==="SUBMITTED"?"Submitted":show.ready?"Ready":
+      !show.hasVenue?"Choose venue":bookingOpen?"Edit card":"View card";
+     const action=show.hasVenue&&port.openUpcomingShow?
+      ()=>port.openUpcomingShow!(show.showId):port.calendar;
+     const tile=control(show.showName,format+" · "+status,action,"▶");
+     tile.classList.add("ppw-home-recent-show");
+     tile.dataset.bookingClass=show.bookingClass.toLowerCase();
+     rows.append(tile);
+    }
+   }
+   if(completed.length&&port.openCompletedShow){
+    const first=completed[0]!;
+    const rows=eventRows("Latest results · Y"+first.year+" W"+first.week);
     for(const show of completed){
-     const tile=control(show.showName,
-      (show.bookingClass==="PREMIUM"?"PPV":"TV")+" · Y"+show.year+" W"+show.week,
+     const format=show.bookingClass==="PREMIUM"?"PPV":"TV";
+     const tile=control(show.showName,format+" · "+Math.round(show.crowdResponse)+"/100 crowd",
       ()=>port.openCompletedShow!(show.showId),"◀");
      tile.classList.add("ppw-home-recent-show");
      tile.dataset.bookingClass=show.bookingClass.toLowerCase();
-     tile.setAttribute("aria-label","Read "+show.showName+" · "+(show.bookingClass==="PREMIUM"?"PPV":"TV"));
-     recent.append(tile);
+     tile.setAttribute("aria-label","Read "+show.showName+" · "+format);
+     rows.append(tile);
     }
-    spotlight.append(recent);
-    lastShow.textContent="";lastShow.append(el("span","ppw-home-tile-copy","Results archive"),
-     el("span","ppw-home-arrow","→"));
-    lastShow.setAttribute("aria-label","Results archive");
    }
+   const showControls=el("div","ppw-home-show-controls");
+   const hasDirectResults=completed.length>0&&!!port.openCompletedShow;
+   const lastShow=control(hasDirectResults?"Results archive":"Last Show","",port.results,"◀");
+   lastShow.classList.add("ppw-home-show-last");
+   lastShow.setAttribute("aria-label",hasDirectResults?"Results archive":last?
+    "Last show · LATEST CERTIFIED SHOW · "+last.showName:"Last show · RESULTS ARCHIVE");
+   const nextShow=control(upcoming.length?"Show calendar":"Next Show","",
+    upcoming.length?port.calendar:
+    next&&!next.ready?(port.openUnfinishedCard??port.planner):port.planner,"▶");
+   nextShow.classList.add("ppw-home-show-next");
+   if(next?.ready&&!upcoming.length)nextShow.dataset.ready="true";
    showControls.append(lastShow,nextShow);spotlight.append(showControls);
    dashboard.append(spotlight);
    // The genuine player-private unread count is already in this one overview
@@ -351,15 +378,9 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
    // News tab. Do not add two Home shortcuts pointing to that same screen.
   }
   if(progressedFrom){
-   const completed=el("section","ppw-home-week-complete");
-   completed.append(el("span","ppw-home-brand","WEEK COMPLETED"),
-    el("h3","","The World has moved on"),
-    el("p","", "Year "+progressedFrom.year+" · Week "+progressedFrom.week+
-     " is complete. Your show's broadcast and verified outcomes are ready to read."));
-   completed.append(control("Read completed shows",
-    "See your broadcast reports, title changes and match outcomes.",
-    port.results,"★"));
-   root.append(completed);
+   const status=el("p","ppw-home-week-notice",
+    "Year "+progressedFrom.year+" · Week "+progressedFrom.week+" is complete.");
+   status.setAttribute("role","status");masthead.after(status);
   }
   if(!promotion){
    root.append(el("p","ppw-home-small",
@@ -685,6 +706,6 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort){
   const privateControls=root.querySelector(".ppw-manual-test");
   if(privateControls)root.append(privateControls);
  }
- void load();
+ if(initialOverview)draw();else void load();
  return {refresh:load};
 }

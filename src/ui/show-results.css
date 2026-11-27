@@ -786,3 +786,21 @@ html:has(.ppw-results:is([data-premium-poster="steelworks"],[data-premium-poster
 html:has(.ppw-results[data-premium-poster]),html:has(.ppw-results[data-premium-poster]) body,html:has(.ppw-results[data-premium-poster]) #game{background:var(--ppw-active-event-bg)!important;background-image:none!important}
 #game .ppw-results[data-premium-poster]{background:var(--ppw-ppv-deep)!important;background-image:none!important}
 #game .ppw-results[data-premium-poster] :is(.ppw-result-lineup,.ppw-result-script-sequence,.ppw-breakdown-card,.ppw-result-story,.ppw-results-analysis,.ppw-post-show-road-agent,.ppw-crowd-noise-card,.ppw-media-scrum,.ppw-press-question,.ppw-press-head,.ppw-show-breakdown-toggle){background:var(--ppw-ppv-surface)!important;border-color:var(--ppw-ppv-border);color:#f6faff}
+
+.ppw-results-sections{
+ display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 8px}
+.ppw-results-sections .ppw-results-next{
+ min-height:44px;margin:0;border-radius:8px;padding:5px 7px;
+ font-size:13px;color:#e8f3fc;background:#202b3e;border-color:#657799}
+.ppw-results-sections .ppw-results-next[aria-pressed=true]{
+ background:#dce5ee;color:#172538;border-color:#e8f2fd}
+.ppw-results-premium-intro{
+ position:relative;isolation:isolate;display:grid;align-content:center;
+ min-height:130px;padding:16px;border-radius:8px;overflow:hidden;
+ background:#192335;color:#fff}
+.ppw-results-premium-intro img{
+ position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover}
+.ppw-results-premium-intro::after{
+ content:"";position:absolute;inset:0;z-index:-1;
+ background:linear-gradient(90deg,#07101cf5,#07101c99)}
+.ppw-results-premium-intro :is(h1,.ppw-muted,.ppw-eyebrow){color:#f7f9fc}

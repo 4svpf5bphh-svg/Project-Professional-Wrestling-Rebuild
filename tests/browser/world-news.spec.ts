@@ -189,7 +189,7 @@ test("iPhone World News awards, official and dirt sheets render on demand and ne
  await owned.getByRole("button",{name:"Develop programme"}).click();
  await expect(page).toHaveURL(/#\/programmes$/);
  await expect(page.locator(".ppw-programme-create-fold")).toHaveAttribute("open","");
- await expect(page.getByRole("combobox",{name:"Choose rivalry participant"}).first())
-  .toHaveValue("PERSON:a");
+ await expect(page.getByRole("button",{name:/^Side [AB] participant/}).first())
+  .toContainText("Alice");
  expect(calls).toEqual(["industry","industryNews","programmes"]);
 });

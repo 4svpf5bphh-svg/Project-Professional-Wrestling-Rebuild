@@ -32,7 +32,7 @@ test("World status confirmation updates the promotion banner without a duplicate
  await expect(page.locator(".ppw-home-phase-tag")).toHaveText("CARDS LOCKED");
  await expect(page.locator(".ppw-shell-brand small")).toContainText("Y1 W5");
  await page.getByRole("button",{name:"Check World status"}).click();
- await expect(page.getByRole("heading",{name:"The World has moved on"})).toBeVisible();
+ await expect(page.locator(".ppw-home-week-notice")).toHaveText("Year 1 · Week 5 is complete.");
  await expect(page.locator(".ppw-shell-brand small")).toContainText("Y1 W6");
  expect(reads).toBe(2);
  await expect.poll(()=>vaultChecks).toBe(1);

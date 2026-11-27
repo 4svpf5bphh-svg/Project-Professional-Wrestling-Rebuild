@@ -456,3 +456,8 @@
  #game .ppw-results[data-results-skin="retro-booker-02"] .ppw-result-story{padding:12px 9px}
  #game .ppw-results[data-results-skin="retro-booker-02"] .ppw-result-lineup{gap:5px;padding:8px 4px}
 }
+
+html:has(.ppw-results[data-results-skin="retro-booker-02"]),
+html:has(.ppw-results[data-results-skin="retro-booker-02"]) body,
+html:has(.ppw-results[data-results-skin="retro-booker-02"]) #game{
+ background:#24272c!important;background-image:none!important}

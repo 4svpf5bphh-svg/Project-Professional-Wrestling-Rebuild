@@ -112,7 +112,7 @@ for(const width of [320,390]){
   await expect(notifications).not.toContainText("The agreement expires");
   await expect(notifications.locator(".ppw-home-tile-copy small")).toHaveCount(0);
   await expect(page.locator(".ppw-home-backstage-action")).toBeVisible();
-  expect(calls).toEqual(["overview"]);
+  expect(calls).toEqual([]);
   // Screenshot is captured from the real running PPW browser component.
   // No generated interface art, and all displayed data is fixture-labelled.
   await page.screenshot({path:"test-results/ppw-home-actual-"+width+".png",
@@ -145,5 +145,5 @@ test("clearing the KP broadcast selection restores standard Home show graphics w
  await expect(page.locator(".ppw-home-standard-opening strong")).toHaveText("Ascension");
  await expect(page.locator(".ppw-home-show-spotlight .ppw-tv-frame")).toHaveCount(0);
  await expect(page.locator(".ppw-home-ratings-pending")).toHaveCount(2);
- expect(reads).toBe(1);
+ expect(reads).toBe(0);
 });

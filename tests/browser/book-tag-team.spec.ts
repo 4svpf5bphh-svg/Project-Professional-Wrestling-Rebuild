@@ -193,6 +193,11 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  let dialog=page.getByRole("dialog",{name:"Edit match"});
  await dialog.getByRole("button",{name:"← Change cast"}).click();
  await dialog.getByRole("button",{name:"← Match or scene type"}).click();
+ page.once("dialog",prompt=>prompt.dismiss());
+ await dialog.getByRole("button",{name:"Iron Man Match"}).click();
+ await expect(dialog.getByRole("button",{name:"Iron Man Match"}))
+  .toHaveAttribute("aria-pressed","false");
+ page.once("dialog",prompt=>prompt.accept());
  await dialog.getByRole("button",{name:"Iron Man Match"}).click();
  await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
  await expect(dialog.getByRole("button",{name:"Iron Man Match"}))
@@ -215,6 +220,7 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await dialog.getByRole("button",{name:"← Match or scene type"}).click();
  await expect(dialog.getByRole("button",{name:"Iron Man Match"}))
   .toHaveAttribute("aria-pressed","true");
+ page.once("dialog",prompt=>prompt.accept());
  await dialog.getByRole("button",{name:"Falls Count Anywhere"}).click();
  await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();

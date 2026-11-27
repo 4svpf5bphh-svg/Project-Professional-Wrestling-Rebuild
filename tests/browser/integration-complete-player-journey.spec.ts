@@ -156,7 +156,7 @@ for(const width of [320,390]){
    await dialog.getByRole("button",{name:"← Revise script"}).click();
   await expect(dialog.locator(".ppw-angle-sequence-step")).toHaveCount(3);
   await expect(dialog.getByLabel("Moment 2 action")).toHaveValue("REPLY");
-  expect(calls.filter(x=>x==="overview")).toHaveLength(1);
+  expect(calls.filter(x=>x==="overview")).toHaveLength(0);
   expect(calls.filter(x=>x==="calendar")).toHaveLength(1);
   expect(calls.filter(x=>x==="save")).toHaveLength(1);
   expect(sessionReads).toBe(1);

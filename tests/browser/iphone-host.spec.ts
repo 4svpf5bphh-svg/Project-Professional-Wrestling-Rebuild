@@ -647,6 +647,7 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await run.getByRole("button",{name:"Run-in succeeds"}).click();
  await expect(run.getByRole("button",{name:"Run-in succeeds"}))
   .toHaveAttribute("aria-pressed","true");
+ await focused.getByRole("button",{name:"Foreign Object",exact:true}).click();
  await expect(page.getByLabel("Who uses the foreign object?")).toHaveValue("alice");
  await focused.getByRole("button",{name:"Close card editor"}).click();
  await expect(focused).toHaveCount(0);
@@ -1030,9 +1031,11 @@ test("Programme casting opens the universal wrestler dossier without erasing its
  await expect(page.getByRole("button",{name:"Open Alice's wrestler dossier"})).toBeVisible();
  expect(calls.filter(x=>x==="wrestlerProfile")).toHaveLength(0);
  await page.getByText("+ Start a new rivalry",{exact:true}).click();
- const selectors=page.getByRole("combobox",{name:"Choose rivalry participant"});
- await selectors.nth(0).selectOption("PERSON:alice");
- await selectors.nth(1).selectOption("PERSON:bob");
+ const selectors=page.getByRole("button",{name:/^Side [AB] participant/});
+ await selectors.nth(0).click();
+ await page.getByRole("dialog",{name:"Side A participant 1"}).getByRole("button",{name:"Alice",exact:true}).click();
+ await selectors.nth(1).click();
+ await page.getByRole("dialog",{name:"Side B participant 1"}).getByRole("button",{name:"Bob",exact:true}).click();
  await page.getByRole("button",{name:"View Alice's dossier ↗"}).click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
@@ -1043,8 +1046,8 @@ test("Programme casting opens the universal wrestler dossier without erasing its
  expect(calls.filter(x=>x==="wrestlerCareer")).toHaveLength(0);
  await dialog.getByRole("button",{name:"‹ Back"}).click();
  await expect(dialog).toHaveCount(0);
- await expect(selectors.nth(0)).toHaveValue("PERSON:alice");
- await expect(selectors.nth(1)).toHaveValue("PERSON:bob");
+ await expect(selectors.nth(0)).toContainText("Alice");
+ await expect(selectors.nth(1)).toContainText("Bob");
  expect(calls.filter(x=>x==="programmes")).toHaveLength(1);
 });
 
@@ -1736,11 +1739,10 @@ test("iPhone completes the World Lock to next-week broadcast handoff on explicit
  await expect(page.getByRole("button",{name:"Check World status"})).toBeVisible();
  expect(reads).toBe(1);
  await page.getByRole("button",{name:"Check World status"}).click();
- await expect(page.getByRole("heading",{name:"The World has moved on"})).toBeVisible();
  await expect(page.getByText(/Year 1 · Week 5 is complete/)).toBeVisible();
- await expect(page.getByRole("button",{name:/Read completed shows/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Last show/i})).toBeVisible();
  expect(reads).toBe(2);
- await page.getByRole("button",{name:/Read completed shows/}).click();
+ await page.getByRole("button",{name:/Last show/i}).click();
  await expect(page).toHaveURL(/#\/results$/);
  await expect(page.getByRole("heading",{name:"THE TAPE LIBRARY"})).toBeVisible();
  await expect(page.getByText("Wednesday Wrestling")).toBeVisible();
@@ -2043,9 +2045,11 @@ for(const width of [320,390]){
   });
   await page.goto("/#/programmes");
   await page.getByText("+ Start a new rivalry",{exact:true}).click();
- const selectors=page.getByRole("combobox",{name:"Choose rivalry participant"});
-  await selectors.nth(0).selectOption("PERSON:alice");
-  await selectors.nth(1).selectOption("PERSON:bob");
+ const selectors=page.getByRole("button",{name:/^Side [AB] participant/});
+  await selectors.nth(0).click();
+  await page.getByRole("dialog",{name:"Side A participant 1"}).getByRole("button",{name:"Alice",exact:true}).click();
+  await selectors.nth(1).click();
+  await page.getByRole("dialog",{name:"Side B participant 1"}).getByRole("button",{name:"Bob",exact:true}).click();
   await page.getByRole("button",{name:"View Alice's dossier ↗"}).click();
   const modal=page.getByRole("dialog",{name:"Wrestler dossier"});
   await expect(modal).toBeVisible();

@@ -36,11 +36,13 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
  context:"ROSTER"|"MARKET"|"BOOKING";
  label?:string;onSelect?:()=>void;disabled?:boolean;
  compact?:boolean;
+ showPortrait?:boolean;
 }):HTMLElement{
  const selectable=!!options.onSelect;
  const root=document.createElement(selectable?"button":"div");
  root.className="ppw-wrestler-card ppw-wrestler-"+options.context.toLowerCase()+
   (options.compact?" ppw-wrestler-compact":"")+
+  (options.showPortrait===false?" ppw-wrestler-text-only":"")+
   (options.disabled?" ppw-wrestler-unavailable":"");
  if(selectable){
   const button=root as HTMLButtonElement;button.type="button";
@@ -54,19 +56,21 @@ export function createWrestlerCard(p:WrestlerCardModel,options:{
  if(p.alignment)root.dataset.alignment=p.alignment.toUpperCase();
  if(p.championships?.length){root.dataset.champion="true";root.dataset.titleCount=String(p.championships.length);}
 
- // Keep a genuine, fixed-size art well even with no verified photograph.
-const media=span("ppw-wrestler-media","");
-media.setAttribute("aria-hidden","true");
-media.append(span("ppw-wrestler-media-mark",wrestlerInitials(p.ringName||p.name)));
-const photo=createWrestlerPortrait(p.ringName||p.name,options.compact?150:220,p.personId)??
-  (p.ringName?createWrestlerPortrait(p.name,options.compact?150:220,p.personId):null);
-if(photo){
- root.dataset.hasPhoto="true";
- photo.onerror=()=>{photo.remove();delete root.dataset.hasPhoto;root.dataset.portrait="unavailable";};
- media.append(photo);
-}else root.dataset.portrait="unavailable";
-root.append(media);
-const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
+ // The booking picker prioritises contract status and keeps roster art in the dossier.
+ if(options.showPortrait!==false){
+  const media=span("ppw-wrestler-media","");
+  media.setAttribute("aria-hidden","true");
+  media.append(span("ppw-wrestler-media-mark",wrestlerInitials(p.ringName||p.name)));
+  const photo=createWrestlerPortrait(p.ringName||p.name,options.compact?150:220,p.personId)??
+   (p.ringName?createWrestlerPortrait(p.name,options.compact?150:220,p.personId):null);
+  if(photo){
+   root.dataset.hasPhoto="true";
+   photo.onerror=()=>{photo.remove();delete root.dataset.hasPhoto;root.dataset.portrait="unavailable";};
+   media.append(photo);
+  }else root.dataset.portrait="unavailable";
+  root.append(media);
+ }
+ const copy=document.createElement("span");copy.className="ppw-wrestler-copy";
  const badges=span("ppw-wrestler-badges","");
  const divisionBadge=span("ppw-wrestler-division",p.division==="WOMEN"?
   "WOMEN":p.division==="MEN"?"MEN":"ROSTER");

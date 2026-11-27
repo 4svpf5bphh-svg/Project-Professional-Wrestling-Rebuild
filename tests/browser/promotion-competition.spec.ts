@@ -58,7 +58,7 @@ for(const width of [320,390]){
   await expect(desk.locator(".ppw-ratings-circuit")).toContainText("Regional Stars");
   await expect(desk.locator(".ppw-ratings-war-faceoff")).toContainText("No recent certified TV result");
   await expect(desk.getByText(/No certified TV broadcasts/)).toBeVisible();
-  expect(calls).toEqual(["overview","business"]);
+  expect(calls).toEqual(["business"]);
   const box=await desk.locator(".ppw-ratings-circuit").boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -123,7 +123,7 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-ratings-war-result")).toContainText("has no recent certified TV");
   await war.getByRole("button",{name:"Compare against WWE"}).click();
   await expect(war.locator(".ppw-ratings-war-score[data-side=RIVAL]")).toContainText("WWE");
-  expect(methods).toEqual(["overview","business"]);
+  expect(methods).toEqual(["business"]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

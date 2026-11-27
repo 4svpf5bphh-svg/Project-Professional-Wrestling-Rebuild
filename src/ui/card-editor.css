@@ -1572,3 +1572,7 @@ body>.ppw-card-edit-shade .ppw-field select[aria-label="Storyline (optional)"]{d
 body>.ppw-card-edit-shade input,body>.ppw-card-edit-shade select,
 body>.ppw-card-edit-shade textarea{font-size:16px!important}
 body>.ppw-card-edit-shade .ppw-angle-sequence-note textarea{min-height:52px;line-height:1.4}
+
+.ppw-picker-other-show{
+ display:block;padding:4px 8px;color:#fce2ac;
+ font-size:11px;line-height:1.35;overflow-wrap:anywhere}

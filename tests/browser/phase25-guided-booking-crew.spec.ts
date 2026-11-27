@@ -110,10 +110,9 @@ test("320px: a match moves through format, both sides, outcome and named crew br
  await expect(controlFrame.locator(":scope > .ppw-talent-chip-row")).toBeVisible();
  await expect(picker.locator(".ppw-wrestler-stats")).toHaveCount(0);
  await expect(picker.locator(".ppw-wrestler-finisher")).toHaveCount(0);
- const media=await picker.locator(".ppw-wrestler-card").first()
-  .locator(".ppw-wrestler-media").boundingBox();
- expect(media).not.toBeNull();
- expect(media!.width).toBeGreaterThanOrEqual(70);
+ await expect(picker.locator(".ppw-wrestler-media")).toHaveCount(0);
+ const candidate=await picker.locator(".ppw-wrestler-card").first().boundingBox();
+ expect(candidate?.height).toBeGreaterThanOrEqual(44);
  await picker.getByRole("button",{name:"Heel",exact:true}).click();
  await picker.getByRole("button",{name:"Fatigued 65+"}).click();
  await expect(picker.locator(".ppw-wrestler-card")).toHaveCount(1);
