@@ -142,6 +142,11 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
      (SELECT sum(cash)::text FROM ppw_promotions WHERE world_id=$1) AS cash_total`,
    [world]));
   assert.equal((await planNextWorldResolutionAction(db.pool,world)).action,"PREPARE_AI_AND_STAFF_COMMERCE");
+  const originalVenue=generated.result.generated.find(x=>x.promotionId==="promotion-0")!.venueId;
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_venues(world_id,venue_id,name,status,market_id,capacity,weekly_hire_cost)
+   SELECT world_id,'equivalent-economy','Economy venue','ACTIVE',market_id,capacity,1
+   FROM ppw_venues WHERE world_id=$1 AND venue_id=$2`,[world,originalVenue]));
   const prepared=await prepareGeneratedWorldShowCommerce(db.pool,{
    worldId:world,requestId:"commerce",expectedRevision:5});
   assert.equal(prepared.status,"APPLIED");
@@ -152,14 +157,14 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   await assert.rejects(prepareGeneratedWorldShowCommerce(db.pool,{
    worldId:world,requestId:"second",expectedRevision:6}),/No AI\/staff shows needed/);
   const rows=await withWorldTransaction(db.pool,tx=>tx.query<{
-   draft_id:string;booking_origin:string;market_id:string;venue_market_id:string;
+   draft_id:string;venue_id:string;booking_origin:string;market_id:string;venue_market_id:string;
    ticket_strategy:"ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE";
    tier:"GLOBAL"|"NATIONAL"|"RISING"|"INDEPENDENT";
    event_type:"REGULAR"|"MAJOR";ai_financial_caution:number;
    booking_expected_demand:number;booking_ticket_yield:string;
    booking_snapshot_fingerprint:string;event_importance:number;
   }>(`
-    SELECT d.draft_id,d.booking_origin,d.market_id,v.market_id AS venue_market_id,
+    SELECT d.draft_id,d.venue_id,d.booking_origin,d.market_id,v.market_id AS venue_market_id,
       d.ticket_strategy,p.tier,d.event_type,p.ai_financial_caution,
       d.booking_expected_demand,d.booking_ticket_yield::text,
       d.booking_snapshot_fingerprint,d.event_importance
@@ -168,6 +173,8 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
     JOIN ppw_promotions p ON p.world_id=d.world_id AND p.promotion_id=d.promotion_id
     WHERE d.world_id=$1 ORDER BY d.promotion_id`,[world]));
   assert.equal(rows.length,8);
+  assert.ok(rows.some(row=>row.venue_id==="equivalent-economy"),
+   "A free equivalent arena lowers hire cost before clearance");
   for(const row of rows){
    assert.equal(row.booking_origin,"AI");
    assert.equal(row.market_id,row.venue_market_id);

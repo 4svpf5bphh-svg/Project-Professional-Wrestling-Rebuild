@@ -131,6 +131,13 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
     trace.push(...run.steps.map(s=>s.action));
     diagnostic("resolution-status",{week,status:run.status});
     if(run.status==="PUBLISHED"){published=true;break;}
+    if(run.status==="BLOCKED"){
+     const unfilled=await withWorldTransaction(db.pool,tx=>tx.query(
+      "SELECT payload->'unfilled' AS unfilled FROM ppw_ledger_events "+
+      "WHERE world_id=$1 AND year=$2 AND week=$3 AND event_type='STAFF_FALLBACK_CARDS_CREATED'",
+      [world,calendarYear,calendarWeek]));
+     diagnostic("blocked booking", {week,unfilled:JSON.stringify(unfilled)});
+    }
     assert.equal(run.status,"LIMIT_REACHED",
      "Unexpected blocker in real Week "+week+": "+JSON.stringify(run));
    }
