@@ -432,25 +432,28 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
  // A developmental appearance needs a legal opponent. Fill remaining
  // undercard slots in division-matched pairs, not odd single inclusions.
  const rotationOrder=[...available].sort((a,b)=>
-  (room===Infinity?0:fee(a)-fee(b))||rotationScore(b)-rotationScore(a)||best(a,b));
+  rotationScore(b)-rotationScore(a)||best(a,b));
  const reservePair=(p:AiRosterCandidate)=>{
   if(chosen.length>maxCast-2||chosen.some(x=>x.personId===p.personId))return false;
   const opponent=rotationOrder.find(x=>x.personId!==p.personId&&
    x.bookingDivision===p.bookingDivision&&
-   !chosen.some(c=>c.personId===x.personId));
+   !chosen.some(c=>c.personId===x.personId)&&castCost+fee(p)+fee(x)<=room);
   if(!opponent)return false;
-  const pairCost=fee(p)+fee(opponent);
-  if(castCost+pairCost>room&&chosen.length)return false;
-  castCost+=pairCost;
+  castCost+=fee(p)+fee(opponent);
   chosen.push(p,opponent);
   return true;
  };
- if(room!==Infinity&&!chosen.length){
+ if(room!==Infinity&&!chosen.length&&!rotationOrder.some(p=>reservePair(p))){
+  // Honor the scheduled show with the lowest-cost legal pair when even
+  // two appearances exceed the margin. Featured bouts were reserved above.
   const pairs=[men,women].flatMap(division=>{
-   const pair=rotationOrder.filter(p=>p.bookingDivision===division[0]?.bookingDivision).slice(0,2);
+   const pair=[...division].sort((a,b)=>fee(a)-fee(b)||best(a,b)).slice(0,2);
    return pair.length===2?[pair]:[];
   }).sort((a,b)=>fee(a[0]!)+fee(a[1]!)-fee(b[0]!)-fee(b[1]!));
-  if(pairs[0])reservePair(pairs[0][0]!);
+  if(pairs[0]){
+   chosen.push(...pairs[0]);
+   castCost=pairs[0].reduce((sum,p)=>sum+fee(p),0);
+  }
  }
  if(room===Infinity&&input.strategy?.focus==="BUILD_STARS"){
   const developing=available.filter(p=>p.popularity<60&&p.momentum>=45&&

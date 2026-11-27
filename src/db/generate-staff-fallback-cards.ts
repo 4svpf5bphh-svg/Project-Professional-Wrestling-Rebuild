@@ -26,7 +26,8 @@ type Delegated={
   promotion_name:string;cadence:number;tier:StandingTier;
   contracted_day:number|null;premium_only_week:boolean;
   financial_distress:string|null;media_reach:number|null;
-  financial_caution:number|null;appearance_room:number|null;home_market_id:string|null;prestige:number|null;fan_reputation:number|null;
+  financial_caution:number|null;appearance_room:number|null;prefer_home:boolean|null;
+  home_market_id:string|null;prestige:number|null;fan_reputation:number|null;
 };
 type SignedCandidate={
   promotion_id:string;person_id:string;contract_id:string;
@@ -97,19 +98,11 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
            p.name AS promotion_name,p.event_cadence_weeks AS cadence,p.tier,
            p.financial_distress,p.media_reach,p.home_market_id,p.ai_financial_caution AS financial_caution,
            standing.prestige,standing.fan_reputation,
-           CASE WHEN p.financial_distress IN ('DISTRESSED','CRISIS')
-             OR (p.tier IN ('LOCAL','INDEPENDENT') AND p.last_weekly_net<0)
-           THEN (SELECT greatest(0,e.gate_revenue-e.venue_cost-e.production_cost-e.travel_cost)::float8
-            FROM ppw_show_economics e
-            JOIN ppw_booking_drafts d ON d.world_id=e.world_id AND d.draft_id=e.show_id
-             AND d.booking_class='REGULAR'
-            WHERE e.world_id=p.world_id AND e.promotion_id=p.promotion_id
-             AND (e.year,e.week)<($2,$3)
-             AND (e.year,e.week)>=(
-              greatest(0,(($2-1)*52+$3-14))/52+1,
-              mod(greatest(0,(($2-1)*52+$3-14)),52)+1)
-            ORDER BY e.year DESC,e.week DESC,e.show_id DESC LIMIT 1)
+           CASE WHEN recent.net_result IS NOT NULL
+           THEN greatest(0,recent.gate_revenue-recent.venue_cost-
+            recent.production_cost-recent.travel_cost)::float8
            END AS appearance_room,
+           (p.financial_distress IN ('DISTRESSED','CRISIS') OR recent.net_result<0) AS prefer_home,
            (SELECT d.airing_day FROM ppw_commercial_deals d
              WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
              AND d.kind='BROADCAST' AND d.status='ACTIVE'
@@ -127,6 +120,20 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             AND m.status='ACTIVE'
          LEFT JOIN ppw_staff_continuity_settings s ON s.world_id=a.world_id
             AND s.promotion_id=a.promotion_id
+         LEFT JOIN LATERAL (
+          SELECT e.gate_revenue,e.venue_cost,e.production_cost,e.travel_cost,e.net_result
+          FROM ppw_show_economics e
+          JOIN ppw_booking_drafts d ON d.world_id=e.world_id AND d.draft_id=e.show_id
+           AND d.booking_class='REGULAR'
+          WHERE a.status='AI_MANAGED' AND (p.tier IN ('LOCAL','INDEPENDENT') OR
+             p.financial_distress IN ('DISTRESSED','CRISIS'))
+           AND e.world_id=p.world_id AND e.promotion_id=p.promotion_id
+           AND (e.year,e.week)<($2,$3)
+           AND (e.year,e.week)>=(
+            greatest(0,(($2-1)*52+$3-14))/52+1,
+            mod(greatest(0,(($2-1)*52+$3-14)),52)+1)
+          ORDER BY e.year DESC,e.week DESC,e.show_id DESC LIMIT 1
+         ) recent ON true
          WHERE a.world_id=$1 AND a.year=$2 AND a.week=$3
            AND a.show_id IS NULL AND p.lifecycle='ACTIVE'
            AND (a.status='STAFF_FALLBACK_ELIGIBLE' OR
@@ -211,8 +218,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         [input.worldId,worlds[0]!.show_economics_enabled],
       );
       if(venueRows.length>256)throw new Error("Venue catalogue limit exceeded");
-      const homeVenues=(company:Delegated)=>company.appearance_room==null?undefined:
-        venueRows.filter(v=>v.market_id===company.home_market_id).map(v=>v.venue_id);
+      const homeVenues=(company:Delegated)=>company.prefer_home?
+        venueRows.filter(v=>v.market_id===company.home_market_id).map(v=>v.venue_id):undefined;
       const before=await inspectWeekConflicts(tx,input.worldId);
       const existing=new Map<string,ExistingShowBooking>();
       for(const claim of before.arbitrationClaims){

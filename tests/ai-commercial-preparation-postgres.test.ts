@@ -147,6 +147,16 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
    INSERT INTO ppw_venues(world_id,venue_id,name,status,market_id,capacity,weekly_hire_cost)
    SELECT world_id,'equivalent-economy','Economy venue','ACTIVE',market_id,capacity,1
    FROM ppw_venues WHERE world_id=$1 AND venue_id=$2`,[world,originalVenue]));
+  await withWorldTransaction(db.pool,async tx=>{
+   const smaller=generated.result.generated.find(x=>x.promotionId==="promotion-7")!;
+   await tx.query(`INSERT INTO ppw_venues(world_id,venue_id,name,status,market_id,capacity,weekly_hire_cost)
+    SELECT v.world_id,choice.id,choice.id,'ACTIVE',v.market_id,choice.capacity,choice.cost
+    FROM ppw_venues v CROSS JOIN (VALUES ('costly-arena',10000,1000000),
+     ('small-hall',1500,1)) AS choice(id,capacity,cost)
+    WHERE v.world_id=$1 AND v.venue_id=$2`,[world,smaller.venueId]);
+   await tx.query(`UPDATE ppw_booking_drafts SET venue_id='costly-arena'
+    WHERE world_id=$1 AND draft_id=$2`,[world,smaller.showId]);
+  });
   const prepared=await prepareGeneratedWorldShowCommerce(db.pool,{
    worldId:world,requestId:"commerce",expectedRevision:5});
   assert.equal(prepared.status,"APPLIED");
@@ -158,6 +168,7 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
    worldId:world,requestId:"second",expectedRevision:6}),/No AI\/staff shows needed/);
   const rows=await withWorldTransaction(db.pool,tx=>tx.query<{
    draft_id:string;venue_id:string;booking_origin:string;market_id:string;venue_market_id:string;
+   capacity:number;hire_cost:string;
    ticket_strategy:"ACCESSIBLE"|"STANDARD"|"PREMIUM"|"PRESTIGE";
    tier:"GLOBAL"|"NATIONAL"|"RISING"|"INDEPENDENT";
    event_type:"REGULAR"|"MAJOR";ai_financial_caution:number;
@@ -165,6 +176,7 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
    booking_snapshot_fingerprint:string;event_importance:number;
   }>(`
     SELECT d.draft_id,d.venue_id,d.booking_origin,d.market_id,v.market_id AS venue_market_id,
+      v.capacity,v.weekly_hire_cost::text AS hire_cost,
       d.ticket_strategy,p.tier,d.event_type,p.ai_financial_caution,
       d.booking_expected_demand,d.booking_ticket_yield::text,
       d.booking_snapshot_fingerprint,d.event_importance
@@ -175,6 +187,12 @@ test("Eight AI promotions generate roster-backed original-market shows and froze
   assert.equal(rows.length,8);
   assert.ok(rows.some(row=>row.venue_id==="equivalent-economy"),
    "A free equivalent arena lowers hire cost before clearance");
+  const smallCompany=rows.find(row=>row.draft_id==="ai-week-1-1-promotion-7")!;
+  const sellable=Math.min(10000,Math.round(smallCompany.booking_expected_demand*1.08));
+  assert.ok(smallCompany.capacity<sellable,"The AI accepted an actual capacity trade-off");
+  assert.ok(1000000-Number(smallCompany.hire_cost)>
+   (sellable-smallCompany.capacity)*Number(smallCompany.booking_ticket_yield),
+   "The reduction in hire exceeds even the maximum gate lost");
   for(const row of rows){
    assert.equal(row.booking_origin,"AI");
    assert.equal(row.market_id,row.venue_market_id);

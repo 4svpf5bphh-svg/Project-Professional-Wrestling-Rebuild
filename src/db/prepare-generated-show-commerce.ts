@@ -128,13 +128,28 @@ export async function prepareGeneratedWorldShowCommerce(
       ORDER BY position LIMIT 101`,[input.worldId,d.draft_id]);
     const snapshot=await snapshotPreparedShowDemand(tx,input.worldId,
       d.promotion_id,d.draft_id,slots,"SUBMITTED");
-    // Keep the selected territory and show day. A cheaper free arena is
-    // equivalent for ticket sales if its capacity covers the settlement's
-    // highest possible attendance at the forecast demand.
+    // Keep the territory, day and ticket strategy. For small promotions,
+    // trading capacity for lower hire is worthwhile when the saving beats
+    // even the maximum gate forgone. Larger shows preserve their gate ceiling.
     const booked=d.venue_id===null?undefined:venuesById.get(d.venue_id);
-    const alternative=ai&&booked?venues.find(v=>v.market_id===booked.market_id&&
-     v.cost<booked.cost&&v.capacity>=Math.min(booked.capacity,Math.round(snapshot.expectedDemand*1.08))&&
-     !occupied.has(d.show_day+":"+v.venue_id)):undefined;
+    let alternative:typeof booked;
+    if(ai&&booked){
+     const demandCeiling=Math.round(snapshot.expectedDemand*1.08);
+     const gateCeiling=(capacity:number)=>Math.round(Math.min(capacity,demandCeiling)*snapshot.ticketYield);
+     const bookedGate=gateCeiling(booked.capacity);
+     const small=d.tier==="LOCAL"||d.tier==="INDEPENDENT";
+     let bestSaving=0;
+     for(const venue of venues){
+      if(venue.market_id!==booked.market_id||venue.cost>=booked.cost||
+       occupied.has(d.show_day+":"+venue.venue_id))continue;
+      const lostGate=Math.max(0,bookedGate-gateCeiling(venue.capacity));
+      if(!small&&lostGate>0)continue;
+      const saving=booked.cost-venue.cost-lostGate;
+      if(saving<=bestSaving)continue;
+      bestSaving=saving;
+      alternative=venue;
+     }
+    }
     const venueId=alternative?.venue_id??d.venue_id;
     if(alternative)occupied.add(d.show_day+":"+venueId);
     const fingerprint=preparedDraftFingerprint({

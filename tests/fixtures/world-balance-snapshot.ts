@@ -19,7 +19,10 @@ export async function captureBalanceSnapshot(pool:TransactionPool,world:string,w
      round(avg(e.attendance::numeric/nullif(v.capacity,0)),3) AS occupancy,
      avg(e.tv_household_rating) AS avg_tv,min(e.tv_household_rating) AS min_tv,
      max(e.tv_household_rating) AS max_tv,avg(e.ppv_buys)::bigint AS avg_buys,
-     count(e.ppv_buys) AS ppvs,sum(e.ppv_buys) AS ppv_buys
+     count(e.ppv_buys) AS ppvs,sum(e.ppv_buys) AS ppv_buys,
+     sum(e.gate_revenue) FILTER(WHERE e.ppv_buys IS NOT NULL) AS ppv_gate,
+     sum(e.total_cost) FILTER(WHERE e.ppv_buys IS NOT NULL) AS ppv_cost,
+     count(DISTINCT d.market_id) AS visited_markets
     FROM ppw_show_economics e
     JOIN ppw_booking_drafts d ON (d.world_id,d.draft_id)=(e.world_id,e.show_id)
     LEFT JOIN ppw_venues v ON (v.world_id,v.venue_id)=(d.world_id,d.venue_id)
@@ -54,7 +57,8 @@ export async function captureBalanceSnapshot(pool:TransactionPool,world:string,w
    SELECT p.promotion_id,p.tier,p.lifecycle,p.cash,p.debt,p.financial_distress,
     p.media_reach,s.prestige,m.awareness,m.live_strength,m.loyalty,
     a.shows,a.regular_shows,a.gate,a.event_cost,a.venue_cost,a.production_cost,a.travel_cost,a.appearance,a.attendance,a.occupancy,
-    a.avg_tv,a.min_tv,a.max_tv,a.ppvs,a.avg_buys,a.ppv_buys,l.media,l.sponsor,l.overhead,
+    a.avg_tv,a.min_tv,a.max_tv,a.ppvs,a.avg_buys,a.ppv_buys,a.ppv_gate,a.ppv_cost,a.visited_markets,
+    l.media,l.sponsor,l.overhead,
     l.staff,l.guarantees,l.bonus,l.tv_expiries,l.charged_appearances,l.one_off_cost,l.restructures,l.recoveries,
     (SELECT count(DISTINCT c.person_id) FROM ppw_contracts c
      WHERE c.world_id=$1 AND c.promotion_id=p.promotion_id AND c.status='SIGNED'

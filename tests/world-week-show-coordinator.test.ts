@@ -26,7 +26,7 @@ function fake(options:{phase?:string;duplicate?:boolean;missing?:boolean}={}){
 const scope={worldId:"w",year:1,week:1,resolutionId:"resolution-1"};
 test("missing submitted shows block the week",async()=>{
  const db=fake();
- await assert.rejects(resolveWorldWeekShows(db.pool,scope),/every active promotion/);
+ await assert.rejects(resolveWorldWeekShows(db.pool,scope),/needs a regular show or a scheduled premium-only card/);
 });
 test("duplicate promotion shows fail before any simulation",async()=>{
  const db=fake({duplicate:true});

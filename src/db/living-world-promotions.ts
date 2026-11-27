@@ -193,23 +193,48 @@ export async function settleLivingPromotionSurvival(
  }
  const dormant=changes.filter(x=>x.dormant);
  if(dormant.length){
-  // AI only: no active human controller may lose a company automatically.
-  await tx.query(`UPDATE ppw_promotions p SET lifecycle='DORMANT',
-   weekly_fixed_overhead=0
-   FROM jsonb_to_recordset($2::jsonb) x(promotion_id text)
-   WHERE p.world_id=$1 AND p.promotion_id=x.promotion_id
-    AND p.management_mode='AI' AND p.lifecycle='ACTIVE'
-    AND NOT EXISTS(SELECT 1 FROM ppw_promotion_controls control
-     WHERE control.world_id=p.world_id AND control.promotion_id=p.promotion_id
-      AND control.active)`,[worldId,JSON.stringify(dormant)]);
-  await tx.query(`UPDATE ppw_contracts c SET status='TERMINATED',revision=revision+1
-   WHERE c.world_id=$1 AND c.status='SIGNED'
-    AND c.promotion_id=ANY($2::text[])`,[worldId,dormant.map(x=>x.promotion_id)]);
-  await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+  // Original dormancy pays one week's guarantee on release. The employer
+  // settles its own terms, including contracts that serve an affiliate.
+  const settled=await tx.query<{promotion_id:string}>(`
+   WITH closing AS (
+    SELECT p.promotion_id FROM ppw_promotions p
+    WHERE p.world_id=$1 AND p.promotion_id=ANY($2::text[])
+     AND p.management_mode='AI' AND p.lifecycle='ACTIVE'
+     AND NOT EXISTS(SELECT 1 FROM ppw_promotion_controls control
+      WHERE control.world_id=p.world_id AND control.promotion_id=p.promotion_id
+       AND control.active)
+   ), released AS (
+    UPDATE ppw_contracts c SET status='TERMINATED',revision=revision+1
+    FROM closing p WHERE c.world_id=$1 AND c.promotion_id=p.promotion_id
+     AND c.status='SIGNED' AND c.expires_week_index>=$5
+    RETURNING c.promotion_id,c.contract_id,c.person_id,c.weekly_guarantee
+   ), released_ledger AS (
+    INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+    SELECT $1,$3,$4,'CONTRACT_TERMINATED_DURING_RESTRUCTURING',
+     jsonb_build_object('promotionId',promotion_id,'personId',person_id,
+      'contractId',contract_id,'settlement',weekly_guarantee,'significance','ROUTINE')
+    FROM released
+   ), withdrawn AS (
+    UPDATE ppw_contract_offers o SET status='WITHDRAWN',rejection_reason='promotion dormancy'
+    FROM closing p WHERE o.world_id=$1 AND o.promotion_id=p.promotion_id AND o.status='PENDING'
+   ), bills AS (
+    SELECT promotion_id,sum(weekly_guarantee)::bigint AS amount,count(*) AS releases
+    FROM released GROUP BY promotion_id
+   ), closed AS (
+    UPDATE ppw_promotions p SET lifecycle='DORMANT',weekly_fixed_overhead=0,
+     cash=p.cash-coalesce(bills.amount,0),
+     last_weekly_net=coalesce(p.last_weekly_net,0)-coalesce(bills.amount,0)
+    FROM closing LEFT JOIN bills USING(promotion_id)
+    WHERE p.world_id=$1 AND p.promotion_id=closing.promotion_id
+    RETURNING p.promotion_id,p.cash,coalesce(bills.releases,0) AS releases
+   )
+   INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
    SELECT $1,$3,$4,'PROMOTION_ENTERED_DORMANCY',
-    jsonb_build_object('promotionId',x.promotion_id,'significance','MAJOR')
-   FROM jsonb_to_recordset($2::jsonb) x(promotion_id text)`,
-   [worldId,JSON.stringify(dormant),year,week]);
+    jsonb_build_object('promotionId',promotion_id,'cash',cash,
+     'releasedContracts',releases,'significance','MAJOR') FROM closed
+   RETURNING payload->>'promotionId' AS promotion_id`,
+   [worldId,dormant.map(x=>x.promotion_id),year,week,idx]);
+  if(settled.length!==dormant.length)throw new Error("Dormancy settlement conflicted with promotion control");
  }
  return {evaluated:changes.length,restructured:restructured.length,
   dormant:dormant.length,recovered:recovered.length};
