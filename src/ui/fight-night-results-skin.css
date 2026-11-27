@@ -56,8 +56,8 @@
  background:var(--fn-paper);color:var(--fn-ink);border:1px solid var(--fn-line);
  border-left:4px solid var(--fn-red);border-radius:3px;box-shadow:none;
 }
-#game .ppw-results[data-results-skin="fight-night"] .ppw-final-bell :is(
- .ppw-eyebrow,.ppw-ringside-ai-status){color:var(--fn-red-dark);font-weight:900}
+#game .ppw-results[data-results-skin="fight-night"] .ppw-final-bell .ppw-eyebrow{
+ color:var(--fn-red-dark);font-weight:900}
 #game .ppw-results[data-results-skin="fight-night"] .ppw-final-bell-headline{
  color:var(--fn-ink);font:950 clamp(23px,6vw,30px)/1.15 system-ui;letter-spacing:-.04em;
 }

@@ -17,9 +17,17 @@ for(const width of [320,390]){
     promoterPrestige:{rank:"RISING PROMOTER",earnedCount:4,total:47,prestigeScore:62},
     nextShow:{year:1,week:27,showName:"Ascension",ready:false,status:"DRAFT"},
     latestShow:{year:1,week:25,showName:"Extreme Warfare",crowdResponse:82},
+    upcomingShows:[
+     {showId:"ascension-next",year:1,week:26,showName:"Ascension",bookingClass:"REGULAR",
+      broadcastFormat:"TV",showDay:4,hasVenue:true,ready:false,status:"DRAFT"},
+     {showId:"lottery-next",year:1,week:26,showName:"The Lottery",bookingClass:"PREMIUM",
+      broadcastFormat:"PPV",showDay:6,hasVenue:true,ready:true,status:"DRAFT"}
+    ],
     latestShows:[
-     {showId:"ascension-week25",year:1,week:25,showName:"Ascension",bookingClass:"REGULAR",showDay:4,crowdResponse:72},
-     {showId:"extreme-week25",year:1,week:25,showName:"Extreme Warfare",bookingClass:"PREMIUM",showDay:6,crowdResponse:82}
+     {showId:"ascension-week25",year:1,week:25,showName:"Ascension",bookingClass:"REGULAR",
+      broadcastFormat:"TV",showDay:4,crowdResponse:72},
+     {showId:"extreme-week25",year:1,week:25,showName:"Extreme Warfare",bookingClass:"PREMIUM",
+      broadcastFormat:"PPV",showDay:6,crowdResponse:82}
     ],
     competition:{name:"Revolution Pro",humanManaged:false,tier:"LOCAL",
      provisional:false,reviewedWeekIndex:24,
@@ -66,10 +74,13 @@ for(const width of [320,390]){
   const tv=page.locator(".ppw-home-show-spotlight .ppw-tv-frame");
   await expect(tv).toHaveAttribute("data-broadcast-package","luchafiesta");
   await expect(tv.locator(".ppw-tv-title")).toHaveText("Ascension");
+  await expect(tv.locator(".ppw-tv-red-label")).toHaveText("LIVE BROADCAST");
+  await expect(page.getByRole("button",{name:/Ascension TV · Edit card/})).toBeVisible();
+  await expect(page.getByRole("button",{name:/The Lottery PPV · Ready/})).toBeVisible();
   await expect(page.getByRole("button",{name:"Read Ascension · TV"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Read Extreme Warfare · PPV"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Results archive"})).toBeVisible();
-  await expect(page.getByRole("button",{name:/Next Show/})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Show calendar/})).toBeVisible();
   await expect(page.locator(".ppw-home-show-head")).toHaveCount(0);
   await expect(page.locator(".ppw-home-show-controls .ppw-home-tile-copy small")).toHaveCount(0);
   await expect(page.locator(".ppw-home-certified-score")).toHaveCount(0);
@@ -122,14 +133,20 @@ for(const width of [320,390]){
  });
 }
 
-test("clearing the KP broadcast selection restores standard Home show graphics without extra reads",
+test("Home uses neutral regular-event labels without a television schedule or receipt",
  async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const overview={world:{id:"world",name:"PPW",revision:2,year:1,week:12,day:3,
    phase:"OPEN",nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
   membership:"ACTIVE",promotion:{id:"cwa",name:"CWA",tier:"LOCAL",cash:5000,debt:0,
-   lastWeeklyNet:0,financialDistress:"HEALTHY",broadcastPackageStyle:null,
+   lastWeeklyNet:0,financialDistress:"HEALTHY",
+   broadcastPackageStyle:"LUCHA_FIESTA" as string|null,
    nextShow:{year:1,week:13,showName:"Ascension",ready:false,status:"DRAFT"},
+   flagshipName:"Ascension",
+   upcomingShows:[{showId:"next",year:1,week:13,showName:"Ascension",
+    bookingClass:"REGULAR",showDay:4,hasVenue:true,ready:false,status:"DRAFT"}],
+   latestShows:[{showId:"last",year:1,week:11,showName:"Ascension",
+    bookingClass:"REGULAR",showDay:4,crowdResponse:72}],
    attention:{plannedShows:0,unpreparedShow:true,pendingBackstage:false,
     backstageUnreadCount:0,expiringTalent:false,pendingContractOffers:false}}};
  let reads=0;
@@ -140,8 +157,16 @@ test("clearing the KP broadcast selection restores standard Home show graphics w
   return r.fulfill({json:overview});
  });
  await page.goto("/#/home");
- await expect(page.locator(".ppw-home-show-spotlight"))
+ const spotlight=page.getByRole("region",{name:"Your shows"});
+ await expect(spotlight.locator(".ppw-tv-red-label")).toHaveText("LIVE EVENT");
+ await expect(spotlight).not.toContainText(/TELEVISION|ON AIR/);
+ await expect(spotlight.getByRole("button",{name:/Ascension Regular event · Edit card/})).toBeVisible();
+ await expect(spotlight.getByRole("button",{name:"Read Ascension · Regular event"})).toBeVisible();
+ overview.promotion.broadcastPackageStyle=null;
+ await page.reload();
+ await expect(spotlight)
   .toHaveAttribute("data-broadcast-package","standard");
+ await expect(spotlight.locator(".ppw-home-standard-opening small")).toHaveText("PPW / LIVE EVENTS");
  await expect(page.locator(".ppw-home-standard-opening strong")).toHaveText("Ascension");
  await expect(page.locator(".ppw-home-show-spotlight .ppw-tv-frame")).toHaveCount(0);
  await expect(page.locator(".ppw-home-ratings-pending")).toHaveCount(2);

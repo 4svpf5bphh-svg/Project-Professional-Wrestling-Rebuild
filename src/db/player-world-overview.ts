@@ -7,14 +7,17 @@ import {derivePromoterAchievements,EMPTY_PROMOTER_COUNTERS,type AchievementMetri
 import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
 import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
  from "./promotion-competition.js";
+import type {ShowAudienceReceipt} from "../domain/show-audience.js";
 
 export interface HomeCompletedShow{
  showId:string;year:number;week:number;showName:string;crowdResponse:number;
  bookingClass:"REGULAR"|"PREMIUM";showDay:number|null;
+ broadcastFormat?:ShowAudienceReceipt["format"];
 }
 export interface HomeUpcomingShow{
  showId:string;year:number;week:number;showName:string;ready:boolean;status:string;
  bookingClass:"REGULAR"|"PREMIUM";showDay:number|null;hasVenue:boolean;
+ broadcastFormat?:ShowAudienceReceipt["format"];
 }
 export interface PlayerWorldOverview {
  world:{id:string;name:string;year:number;week:number;day:number;
@@ -944,7 +947,15 @@ export async function readPlayerWorldOverview(
        'showName',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
         THEN 'Premium event' ELSE 'Weekly show' END),
        'bookingClass',d.booking_class,'ready',d.lock_ready_fingerprint IS NOT NULL,
-       'status',d.status,'hasVenue',d.venue_id IS NOT NULL) AS card
+       'status',d.status,'hasVenue',d.venue_id IS NOT NULL) ||
+       CASE WHEN d.booking_class='PREMIUM' THEN '{"broadcastFormat":"PPV"}'::jsonb
+        WHEN EXISTS (
+         SELECT 1 FROM ppw_commercial_deals deal
+         WHERE deal.world_id=d.world_id AND deal.promotion_id=d.promotion_id
+          AND deal.kind='BROADCAST' AND deal.status='ACTIVE'
+          AND (d.year-1)*52+d.week-1 BETWEEN deal.start_week_index AND deal.end_week_index
+          AND deal.airing_day=d.show_day
+        ) THEN '{"broadcastFormat":"TV"}'::jsonb ELSE '{}'::jsonb END AS card
        FROM ppw_booking_drafts d
        WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
         AND (d.year,d.week)>=(w.year,w.week) AND d.status IN ('DRAFT','SUBMITTED')
@@ -960,9 +971,15 @@ export async function readPlayerWorldOverview(
        'showName',coalesce(d.show_name,CASE WHEN d.booking_class='PREMIUM'
         THEN 'Premium event' ELSE 'Weekly show' END),
        'bookingClass',d.booking_class,'showDay',d.show_day,
-       'crowdResponse',c.crowd_response::float8) AS card
+       'crowdResponse',c.crowd_response::float8) ||
+       CASE WHEN audience.audience_format IS NOT NULL
+        THEN jsonb_build_object('broadcastFormat',audience.audience_format)
+        ELSE '{}'::jsonb END AS card
        FROM ppw_completed_shows c JOIN ppw_booking_drafts d
-        ON d.world_id=c.world_id AND d.draft_id=c.show_id
+        ON d.world_id=c.world_id AND d.draft_id=c.show_id AND d.promotion_id=c.promotion_id
+       LEFT JOIN ppw_show_economics audience
+        ON audience.world_id=c.world_id AND audience.show_id=c.show_id
+        AND audience.promotion_id=c.promotion_id
        WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
         AND ((c.year,c.week)<(w.year,w.week) OR w.phase='OPEN')
        ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,c.show_id DESC LIMIT 2

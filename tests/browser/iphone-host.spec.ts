@@ -565,7 +565,7 @@ test("Home contract wire dismisses one resolved offer without suppressing show o
  expect(methods).toEqual(["overview","dismissAttention"]);
 });
 
-test("iPhone booking restores authored run-in, cheating and protected winner without extra reads",async({page})=>{
+test("iPhone finish confirmation preserves the authored match on cancel and clears only finish details on acceptance",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const methods:string[]=[];
  const alice={personId:"alice",contractId:"deal-alice"};
@@ -634,6 +634,8 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
   .filter({hasText:/Foreign object/i}).click();
  await focused.getByRole("button",{name:"Fine-tune match"}).click();
  await focused.getByLabel("Who uses the foreign object?").selectOption("alice");
+ await focused.getByLabel("Weapon used").selectOption("STEEL_CHAIR");
+ await focused.getByLabel("Referee spot").selectOption("REF_BUMP");
  await focused.getByRole("button",{name:"+ Add run-in"}).click();
  await focused.getByRole("button",{name:"Choose run-in wrestler"}).click();
  await expect(page.getByRole("dialog",{name:"Choose wrestler"})).toBeVisible();
@@ -647,18 +649,67 @@ test("iPhone booking restores authored run-in, cheating and protected winner wit
  await run.getByRole("button",{name:"Run-in succeeds"}).click();
  await expect(run.getByRole("button",{name:"Run-in succeeds"}))
   .toHaveAttribute("aria-pressed","true");
- await focused.getByRole("button",{name:"Foreign Object",exact:true}).click();
+ const cleanPin=focused.getByRole("button",{name:"Clean Pin",exact:true});
+ const foreignObject=focused.getByRole("button",{name:"Foreign Object",exact:true});
+ await cleanPin.focus();
+ const scrollPosition=()=>cleanPin.evaluate(button=>{
+  const offsets:number[]=[];
+  for(let node=button.parentElement;node;node=node.parentElement)offsets.push(node.scrollTop);
+  return offsets;
+ });
+ const beforeCancel=await scrollPosition();
+ await page.evaluate(()=>{
+  // The guided finish tile dispatches through the same native selector handler.
+  const dispatch=HTMLSelectElement.prototype.dispatchEvent;
+  HTMLSelectElement.prototype.dispatchEvent=function(event){
+   const result=dispatch.call(this,event);
+   if(event.type==="change"&&this.getAttribute("aria-label")==="Finish"){
+    document.documentElement.dataset.finishAfterChange=this.value;
+    delete (HTMLSelectElement.prototype as Partial<HTMLSelectElement>).dispatchEvent;
+   }
+   return result;
+  };
+ });
+ page.once("dialog",async prompt=>{
+  expect(prompt.message()).toContain("clear the scripted cheating, weapon and referee details");
+  await prompt.dismiss();
+ });
+ await cleanPin.press("Enter");
+ await expect(cleanPin).toBeFocused();
+ expect(await scrollPosition()).toEqual(beforeCancel);
+ await expect(page.locator("html")).toHaveAttribute("data-finish-after-change","FOREIGN_OBJECT");
+ await expect(cleanPin).toHaveAttribute("aria-pressed","false");
+ await expect(foreignObject).toHaveAttribute("aria-pressed","true");
  await expect(page.getByLabel("Who uses the foreign object?")).toHaveValue("alice");
+ await expect(page.getByLabel("Weapon used")).toHaveValue("STEEL_CHAIR");
+ await expect(page.getByLabel("Referee spot")).toHaveValue("REF_BUMP");
+ await expect(run.getByRole("button",{name:"Run-in succeeds"})).toHaveAttribute("aria-pressed","true");
+ await page.screenshot({path:"test-results/presentation-screenshots/m6-finish-cancel-390.png",
+  animations:"disabled"});
  await focused.getByRole("button",{name:"Close card editor"}).click();
  await expect(focused).toHaveCount(0);
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
  expect((saved.interference as {contractId:string}).contractId).toBe("deal-outside");
  expect((saved.interference as {plannedOutcome:string}).plannedOutcome).toBe("SUCCESS");
- expect(saved.cheatingWrestlerId).toBe("alice");
- expect(saved.scriptedWinnerSide).toBe("A");
+ expect(saved).toMatchObject({plannedFinish:"FOREIGN_OBJECT",cheatingWrestlerId:"alice",
+  finishProp:"STEEL_CHAIR",refereeSpot:"REF_BUMP",scriptedWinnerSide:"A",plannedLengthMinutes:18});
+ await page.locator(".ppw-card-bar .ppw-expand").click();
+ await expect(foreignObject).toHaveAttribute("aria-pressed","true");
+ page.once("dialog",prompt=>prompt.accept());
+ await cleanPin.click();
+ await expect(cleanPin).toHaveAttribute("aria-pressed","true");
+ await expect(foreignObject).toHaveAttribute("aria-pressed","false");
+ await expect(focused.getByLabel("Weapon used")).toHaveCount(0);
+ await focused.getByRole("button",{name:"Close card editor"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(saved).toMatchObject({plannedFinish:"CLEAN_PIN",scriptedWinnerSide:"A",
+  plannedLengthMinutes:18,interference:{contractId:"deal-outside",plannedOutcome:"SUCCESS"}});
+ for(const field of ["cheatingWrestlerId","finishProp","refereeSpot"])
+  expect(saved).not.toHaveProperty(field);
  expect(methods.filter(x=>x==="talent")).toHaveLength(1);
- expect(methods.filter(x=>x==="save")).toHaveLength(1);
+ expect(methods.filter(x=>x==="save")).toHaveLength(2);
  expect(methods).not.toContain("wrestlerProfile");
 });
 

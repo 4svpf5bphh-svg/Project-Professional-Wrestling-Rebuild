@@ -1,5 +1,7 @@
 # PPW Milestone 6 verification
 
+See the updated [independent review captures and regression results](review/README.md) for the corrected presentation, booking confirmation and Home event labels.
+
 The application commit is `5edfcc413abd0e18d34502ba2a3ab90c8cdd66a2`. The comparison uses the accepted Milestone 5 commit `354a7147cc1d51fc6ccfc454024067c6ef71afba`. Both builds used their corresponding API code and the same disposable PostgreSQL 16 data. [Milestone 5 review](https://github.com/4svpf5bphh-svg/Project-Professional-Wrestling-Rebuild/pull/144#issuecomment-7228893214)
 
 ## Screens from the running application

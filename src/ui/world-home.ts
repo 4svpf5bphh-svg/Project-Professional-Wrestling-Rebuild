@@ -4,7 +4,7 @@
 import {promotionBrand} from "./broadcast-identity.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {createPromoterPrestigeCrest} from "./promoter-prestige-crest.js";
-import type {PlayerWorldOverview} from "../db/player-world-overview.js";
+import type {HomeCompletedShow,HomeUpcomingShow,PlayerWorldOverview} from "../db/player-world-overview.js";
 export interface WorldHomePort{
  load():Promise<PlayerWorldOverview|null>;
  /** Only enabled for the selected private preview operator. Never on a timer. */
@@ -29,6 +29,9 @@ const el=(tag:string,cls="",label="")=>{
  const node=document.createElement(tag);node.className=cls;
  node.textContent=label;return node;
 };
+function homeEventFormat(show:HomeCompletedShow|HomeUpcomingShow):string{
+ return show.broadcastFormat??(show.bookingClass==="PREMIUM"?"Premium event":"Regular event");
+}
 export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOverview?:PlayerWorldOverview){
  let overview:PlayerWorldOverview|null=initialOverview??null;
  let loading=false,error="",loaded=!!initialOverview;
@@ -239,13 +242,16 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
    dashboard.setAttribute("aria-label","Your show and Backstage");
    const next=promotion.nextShow,last=promotion.latestShow;
    const spotlight=el("section","ppw-home-show-spotlight");
-   spotlight.setAttribute("aria-label","Your current television broadcast package");
+   spotlight.setAttribute("aria-label","Your shows");
    const completed=promotion.latestShows??[];
+   const upcoming=promotion.upcomingShows??[];
    const name=promotion.flagshipName??completed.find(s=>s.bookingClass==="REGULAR")?.showName??
     (completed.length?null:next?.showName??last?.showName)??"Weekly show";
+   const featured=upcoming.find(s=>s.showName===name)??completed.find(s=>s.showName===name);
+   const televised=featured?.broadcastFormat==="TV";
    const frame=createBroadcastPackageFrame({
     style:promotion.broadcastPackageStyle??null,
-    promotion:promotion.name,show:name,kind:"OPEN"
+    promotion:promotion.name,show:name,kind:"OPEN",televised
    });
    if(frame){
     frame.classList.add("ppw-home-broadcast-frame");
@@ -253,7 +259,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
     spotlight.append(frame);
    }else{
     const standard=el("div","ppw-home-standard-opening");
-    standard.append(el("small","","PPW / ON AIR"),
+    standard.append(el("small","",televised?"PPW / ON AIR":"PPW / LIVE EVENTS"),
      el("strong","",name));
     spotlight.dataset.broadcastPackage="standard";
     spotlight.append(standard);
@@ -266,12 +272,11 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
     section.append(rows);spotlight.append(section);
     return rows;
    };
-   const upcoming=promotion.upcomingShows??[];
    if(upcoming.length){
     const first=upcoming[0]!;
     const rows=eventRows("Upcoming · Y"+first.year+" W"+first.week);
     for(const show of upcoming){
-     const format=show.bookingClass==="PREMIUM"?"PPV":"TV";
+     const format=homeEventFormat(show);
      const status=show.status==="SUBMITTED"?"Submitted":show.ready?"Ready":
       !show.hasVenue?"Choose venue":bookingOpen?"Edit card":"View card";
      const action=show.hasVenue&&port.openUpcomingShow?
@@ -286,7 +291,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
     const first=completed[0]!;
     const rows=eventRows("Latest results · Y"+first.year+" W"+first.week);
     for(const show of completed){
-     const format=show.bookingClass==="PREMIUM"?"PPV":"TV";
+     const format=homeEventFormat(show);
      const tile=control(show.showName,format+" · "+Math.round(show.crowdResponse)+"/100 crowd",
       ()=>port.openCompletedShow!(show.showId),"◀");
      tile.classList.add("ppw-home-recent-show");

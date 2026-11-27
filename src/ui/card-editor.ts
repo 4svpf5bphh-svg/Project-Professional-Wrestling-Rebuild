@@ -119,11 +119,14 @@ function option(value:string,label:string,selected=false){
  o.value=value;o.textContent=label;o.selected=selected;return o;
 }
 function selector(value:string,choices:readonly string[][],
- change:(value:string)=>void,disabled=false){
+ change:(value:string)=>void|false,disabled=false){
  const select=document.createElement("select");select.disabled=disabled;
  // The surrounding field supplies the label. Standalone selects are named individually.
  for(const [v,label] of choices)select.append(option(v,label,v===value));
- select.value=value;select.onchange=()=>change(select.value);
+ select.value=value;
+ select.onchange=()=>{
+  if(change(select.value)===false)select.value=value;
+ };
  return select;
 }
 function numberField(value:number,min:number,max:number,
@@ -372,7 +375,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   if(match.interference&&!next.interference)changes.push("remove the run-in");
   if(next.plannedLengthMinutes!==match.plannedLengthMinutes&&assignedIds(match).length)
    changes.push("extend the match to "+next.plannedLengthMinutes+" minutes");
-  if(changes.length&&!window.confirm("These match rules will "+changes.join(", ")+". Continue?"))return;
+  if(changes.length&&!window.confirm("These match rules will "+changes.join(", ")+". Continue?"))
+   return false;
   setMatch(match.slotId,next);
  }
  function changeSize(match:EditorMatch,count:number,size?:number){
@@ -1881,7 +1885,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       v=>{
        if(v===m.plannedFinish)return;
        if((m.cheatingWrestlerId||m.finishProp||m.refereeSpot)&&
-        !window.confirm("Changing the finish will clear the scripted cheating, weapon and referee details. Continue?"))return;
+        !window.confirm("Changing the finish will clear the scripted cheating, weapon and referee details. Continue?"))
+        return false;
        edit(m,{plannedFinish:v,cheatingWrestlerId:undefined,
         finishProp:undefined,refereeSpot:undefined});
       },!mutable())));

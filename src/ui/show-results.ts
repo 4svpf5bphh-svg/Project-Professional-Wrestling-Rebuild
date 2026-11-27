@@ -694,7 +694,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   }
  }else if(show.bookingClass!=="PREMIUM"&&show.broadcastPackage){
   const opening=createBroadcastPackageFrame({style:show.broadcastPackage,kind:"OPEN",
-   promotion:show.promotionName??"PPW",show:show.showName??"Weekly show"});
+   promotion:show.promotionName??"PPW",show:show.showName??"Weekly show",
+   televised:show.audience?.format==="TV"});
   if(opening){
    const wrap=node("section","ppw-tv-opening-wrap");
    wrap.append(opening);televisionOpening=wrap;
@@ -878,13 +879,14 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  }
  const sections=node("nav","ppw-results-sections");
  sections.setAttribute("aria-label","Show report sections");
- const goButton=(label:string,dest:0|1|2)=>{
-  const button=node("button","ppw-results-next",label) as HTMLButtonElement;
+ const goButton=(label:string,dest:1|2,className="ppw-results-next")=>{
+  const button=node("button",className,label) as HTMLButtonElement;
   button.type="button";button.onclick=()=>changePage(dest);return button;
  };
  full.append(goButton("Read Post-show Brief",2));
  after.append(goButton("Back to Full Show",1));
- const fullShowTab=goButton("Full show",1),postShowTab=goButton("Post-show brief",2);
+ const fullShowTab=goButton("Full show",1,"ppw-results-section-tab");
+ const postShowTab=goButton("Post-show brief",2,"ppw-results-section-tab");
  sections.append(fullShowTab,postShowTab);
  root.replaceChildren(sections,full,after);
  changePage=(index:0|1|2)=>{

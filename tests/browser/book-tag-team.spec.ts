@@ -173,14 +173,13 @@ test("iPhone books a complete named trio against another in one certified 3v3 ca
 test("iPhone books an Iron Man match with legal fall finish, minimum airtime and explicit injury warning",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  let revision=4,saved:Record<string,unknown>={...fallback};
+ const writes:Record<string,unknown>[]=[];
  await page.route("**/api/session",r=>r.fulfill({json:session}));
  await page.route("**/api/card",r=>{
   const req=r.request().postDataJSON() as {method:string;matches?:{payload:Record<string,unknown>}[]};
   if(req.method==="save"){
    saved=req.matches![0]!.payload;revision++;
-   expect(saved.stipulation).toBe("IRON_MAN");
-   expect(saved.plannedFinish).toBe("MOST_FALLS");
-   expect(saved.plannedLengthMinutes).toBe(30);
+   writes.push(saved);
   }
   return r.fulfill({json:req.method==="planner"?planner:
    req.method==="load"?{...cardBase,worldRevision:revision,
@@ -213,6 +212,9 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await dialog.getByRole("button",{name:"Close card editor"}).click();
  await page.getByRole("button",{name:/Save card|Save changes/}).click();
  await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(writes).toHaveLength(1);
+ expect(writes[0]).toMatchObject({stipulation:"IRON_MAN",plannedFinish:"MOST_FALLS",
+  plannedLengthMinutes:30});
  await expect(page.locator(".ppw-card-bar strong").first()).toContainText("Iron Man Match");
  await page.locator(".ppw-card-bar .ppw-expand").first().click();
  dialog=page.getByRole("dialog",{name:"Edit match"});
@@ -220,11 +222,31 @@ test("iPhone books an Iron Man match with legal fall finish, minimum airtime and
  await dialog.getByRole("button",{name:"← Match or scene type"}).click();
  await expect(dialog.getByRole("button",{name:"Iron Man Match"}))
   .toHaveAttribute("aria-pressed","true");
+ const falls=dialog.getByRole("button",{name:"Falls Count Anywhere"});
+ await falls.focus();
+ page.once("dialog",prompt=>prompt.dismiss());
+ await falls.press("Enter");
+ await expect(falls).toBeFocused();
+ await expect(falls).toHaveAttribute("aria-pressed","false");
+ await expect(dialog.getByRole("button",{name:"Iron Man Match"}))
+  .toHaveAttribute("aria-pressed","true");
+ await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
+ await expect(dialog.locator('.ppw-guide-finish-tile[aria-pressed="true"]')).toContainText("Most Falls");
+ await expect(dialog.getByLabel("Minutes")).toHaveValue("30");
+ await dialog.getByRole("button",{name:"← Change cast"}).click();
+ await dialog.getByRole("button",{name:"← Match or scene type"}).click();
  page.once("dialog",prompt=>prompt.accept());
- await dialog.getByRole("button",{name:"Falls Count Anywhere"}).click();
+ await falls.click();
  await expect(dialog.locator(".ppw-guide-rules-brief")).toContainText("physical risk");
  await dialog.getByRole("button",{name:"Continue · Select wrestlers"}).click();
  await dialog.getByRole("button",{name:"Next · Script outcome"}).click();
  await expect(dialog.locator('.ppw-guide-finish-tile[aria-pressed="true"]'))
   .toContainText("Clean Pin");
+ await dialog.getByRole("button",{name:"Close card editor"}).click();
+ await page.getByRole("button",{name:/Save card|Save changes/}).click();
+ await expect(page.getByText("Show card saved")).toBeVisible();
+ expect(writes).toHaveLength(2);
+ expect(writes[1]).toMatchObject({stipulation:"FALLS_COUNT_ANYWHERE",plannedFinish:"CLEAN_PIN",
+  plannedLengthMinutes:30});
 });
