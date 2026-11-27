@@ -11,7 +11,7 @@ export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:
  if(!worldId||!Number.isSafeInteger(index)||index<0||week<1||week>52)
   throw Error("Invalid AI contract continuity week");
  const candidates=await tx.query<Candidate>(`
- WITH candidates AS (
+ WITH scored AS (
   SELECT c.contract_id,c.person_id,c.promotion_id,c.family,c.date_entitlement,c.remaining_dates,
    t.career_stage,t.stamina,t.fatigue,t.weekly_service_capacity,
    p.management_mode,p.lifecycle,p.financial_distress,
@@ -19,18 +19,43 @@ export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:
    EXISTS(SELECT 1 FROM ppw_promotion_controls pc
     WHERE pc.world_id=c.world_id AND pc.promotion_id=c.promotion_id
      AND pc.active) AS owner_claimed,
-   ROW_NUMBER() OVER(
-    PARTITION BY c.promotion_id,t.booking_division
-    ORDER BY (COALESCE(t.popularity,50)*4+
-     COALESCE(t.match_craft,50)*3+COALESCE(t.presentation,50)*3-
-     LEAST(120,COALESCE(c.weekly_guarantee,0)::numeric/300)
-    ) DESC,c.person_id,c.contract_id
-   ) AS division_rank
+   affiliate.promotion_id AS affiliate_id,
+   (COALESCE(t.popularity,50)*4+COALESCE(t.match_craft,50)*3+
+    COALESCE(t.presentation,50)*3-
+    LEAST(120,COALESCE(c.weekly_guarantee,0)::numeric/300)) AS retention_score
   FROM ppw_contracts c
   JOIN ppw_promotions p ON p.world_id=c.world_id
    AND p.promotion_id=c.promotion_id
   LEFT JOIN ppw_people t ON t.world_id=c.world_id AND t.person_id=c.person_id
+  LEFT JOIN LATERAL (
+   SELECT a.promotion_id FROM ppw_wrestler_promotion_affiliations a
+   JOIN ppw_promotions child USING(world_id,promotion_id)
+   WHERE a.world_id=c.world_id AND a.person_id=c.person_id
+    AND a.basis='PARENT_COMPANY' AND a.role='PRIMARY'
+    AND child.lifecycle='ACTIVE' AND child.parent_promotion_id=c.promotion_id
+    AND p.management_mode='AI' AND t.status='ACTIVE'
+    AND c.family IN ('EXCLUSIVE','LIMITED_NON_EXCLUSIVE')
+   ORDER BY a.promotion_id LIMIT 1
+  ) affiliate ON true
   WHERE c.world_id=$1 AND c.status='SIGNED' AND c.expires_week_index=$2
+ ), distinct_affiliates AS (
+  SELECT DISTINCT ON (promotion_id,affiliate_id,booking_division,person_id)
+   promotion_id,affiliate_id,booking_division,person_id,contract_id,retention_score
+  FROM scored WHERE affiliate_id IS NOT NULL
+  ORDER BY promotion_id,affiliate_id,booking_division,person_id,retention_score DESC,contract_id
+ ), affiliate_ranked AS (
+  SELECT contract_id,ROW_NUMBER() OVER (
+   PARTITION BY promotion_id,affiliate_id,booking_division
+   ORDER BY retention_score DESC,person_id,contract_id) AS affiliate_rank
+  FROM distinct_affiliates
+ ), candidates AS (
+  -- A same-division pair can keep an already affiliated show bookable.
+  -- Reserve those places within the parent's existing renewal cap.
+  SELECT scored.*,ROW_NUMBER() OVER (
+   PARTITION BY promotion_id,booking_division
+   ORDER BY COALESCE(affiliate_rank<=2,false) DESC,
+    retention_score DESC,person_id,contract_id) AS division_rank
+  FROM scored LEFT JOIN affiliate_ranked USING(contract_id)
  ), decisions AS (
   SELECT e.*,
    (e.management_mode='AI' AND e.lifecycle='ACTIVE' AND
