@@ -75,7 +75,7 @@ export interface WorldNewsStory{
  */
 export interface ConfirmedWorldSigning{
  eventId:string;eventType:"CONTRACT_SIGNED"|"AI_STRATEGIC_TALENT_SIGNED"|"EMERGENCY_TALENT_SIGNED";
- personName:string;promotionId:string;promotionName:string;
+ personName:string;promotionId:string;promotionName:string;headliner?:boolean;
 }
 export function composeConfirmedSigningNews(
  events:readonly ConfirmedWorldSigning[]):WorldNewsStory[]{
@@ -93,7 +93,7 @@ export function composeConfirmedSigningNews(
    showId:"",sourceKind:"EVENT" as const,
    title:e.personName+" signs with "+e.promotionName,
    summary:e.personName+" has agreed a contract with "+e.promotionName+
-    ". The promotion has added to its roster."
+    (e.headliner?". An established headliner joins the roster.":". The promotion has added to its roster.")
   }));
 }
 const significant=new Set(["TURN","ATTACK","POST_MATCH_ASSAULT","DEBUT",
@@ -290,11 +290,16 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
  const title=[...changes].sort((a,b)=>byId(a,b)).find(x=>x.winner_name?.trim());
  if(title){
   const champion=title.winner_name!.trim();
+  const ideas=[
+   "Would the champion ask for a belt-first introduction or keep the same music and walk straight to the ring?",
+   "Could the champion turn the belt reveal into a travelling display, with the fans choosing where it goes next?",
+   "Does the champion need a formal challenge at the start of a show, or would an open invitation land better?"
+  ];
+  const idea=ideas[[...title.show_id].reduce((n,ch)=>n+ch.codePointAt(0)!,0)%ideas.length]!;
   add("DIRT",title,"rumour:title:"+title.show_id+":"+title.slot_id,
-   "How far will "+champion+" take the champion's entrance?",
+   "How far will "+champion+" take the champion's presentation?",
    champion+" took the "+title.title_name+" at "+title.show_name+
-   ". The gossip desk has a theory: the new champion might unveil a velvet rope and a ring announcer who introduces the belt before introducing the wrestler. "+
-   "A competing fan theory has the champion going in the opposite direction and stripping the entrance back to the music. Neither idea has been corroborated.",
+   ". The theory doing the rounds: "+idea+" The gossip desk has not corroborated either idea.",
    "EVENT");
  }else if(hot){
   const cast=storyPeople(hot.story_json).map(id=>names.get(id))
@@ -316,9 +321,7 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
    "rumour:breakout:"+breakout.show_id+":"+breakout.slot_id,
    "Is "+wrestler+" getting a major push? Rival stories emerge after "+breakout.show_name,
    wrestler+" appeared in a standout match at "+breakout.show_name+". "+
-   "One supposed insider says management wants a bigger spotlight for the rising name. "+
-   "Another says that is merely what fans want to believe. The performance was real; "+
-   "the creative discussions have not been independently verified. "+
+   "One fan theory puts the rising name first on the poster. The other would give that performer a few shorter appearances to build familiarity. "+
    "Whether "+breakout.promotion_name+" gives "+wrestler+
    " a bigger opportunity remains a question, not an announced plan.",
    "MATCH");
@@ -541,9 +544,10 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  // One bounded publisher-only read. Other promotions' settled signings
  // are public World news; pending offers and private wages are never shown.
  const signings=await tx.query<{event_id:string;event_type:ConfirmedWorldSigning["eventType"];
-  person_name:string;promotion_id:string;promotion_name:string}>(`
+  person_name:string;promotion_id:string;promotion_name:string;headliner:boolean}>(`
   SELECT e.event_id::text AS event_id,e.event_type,
-    person.name AS person_name,p.promotion_id,p.name AS promotion_name
+    person.name AS person_name,p.promotion_id,p.name AS promotion_name,
+   coalesce(greatest(person.popularity,person.recognition)>=75,false) AND e.event_type<>'EMERGENCY_TALENT_SIGNED' AS headliner
   FROM ppw_ledger_events e
   JOIN ppw_people person ON person.world_id=e.world_id
    AND person.person_id=e.payload->>'personId'
@@ -557,7 +561,7 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
  if(signings.length>32)throw new Error("Certified signing news exceeds bounded World events");
  const publicSignings=composeConfirmedSigningNews(signings.map(e=>({
   eventId:e.event_id,eventType:e.event_type,personName:e.person_name,
-  promotionId:e.promotion_id,promotionName:e.promotion_name
+  promotionId:e.promotion_id,promotionName:e.promotion_name,headliner:e.headliner
  })));
  const programmes=await readCertifiedAiProgrammeNews(tx,worldId,year,week);
  const stories=[...publicSignings,...programmes,...weeklyStories,...pressFollowups,...followups];

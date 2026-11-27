@@ -161,8 +161,14 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
  const check=(copy:RingsideCopy,view=show)=>{
   // The completed match receipt has no recorded kickout, near-fall or move beats.
   const unrecorded=/\b(?:kicks? out|kicked out|kick[- ]?outs?|near[- ]falls?)\b|\b(?:hit|hits|lands?|landed|delivered|connected with) (?:a |the )?(?:suplex|powerbomb|moonsault|ddt|clothesline|chokeslam|dropkick|brainbuster|piledriver)\b/i;
+  const moves=[...new Set(view.entries.flatMap(entry=>(entry.performerIdentities??[])
+   .flatMap(p=>[...p.signatureMoves,...p.finishingMoves])).filter(move=>move.length>=7))];
+  const knownAction=(prose:string)=>moves.some(move=>
+   new RegExp("\\b(?:hit|hits|landed|lands|delivered|used|executed|unleashed|connected with)\\b[^.!?]{0,55}"+
+    escaped(move)+"(?![\\p{L}\\p{N}])","iu").test(prose));
   copy.slots.forEach((slot,i)=>{
-   if(view.entries[i]?.type==="MATCH"&&unrecorded.test(slot.headline+" "+slot.recap))
+   if(view.entries[i]?.type==="MATCH"&&(unrecorded.test(slot.headline+" "+slot.recap)||
+    knownAction(slot.headline+" "+slot.recap)))
     throw new RingsideSlotValidationError(i,"Terra reported an unrecorded match spot");
   });
   if(unrecorded.test(copy.showHeadline+" "+copy.opening+" "+copy.closing))

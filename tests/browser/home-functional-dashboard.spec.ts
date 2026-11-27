@@ -16,7 +16,11 @@ for(const width of [320,390]){
     homeMarketName:"River Market",broadcastPackageStyle:"LUCHA_FIESTA",
     promoterPrestige:{rank:"RISING PROMOTER",earnedCount:4,total:47,prestigeScore:62},
     nextShow:{year:1,week:27,showName:"Ascension",ready:false,status:"DRAFT"},
-    latestShow:{year:1,week:25,showName:"Ascension",crowdResponse:72},
+    latestShow:{year:1,week:25,showName:"Extreme Warfare",crowdResponse:82},
+    latestShows:[
+     {showId:"ascension-week25",year:1,week:25,showName:"Ascension",bookingClass:"REGULAR",showDay:4,crowdResponse:72},
+     {showId:"extreme-week25",year:1,week:25,showName:"Extreme Warfare",bookingClass:"PREMIUM",showDay:6,crowdResponse:82}
+    ],
     competition:{name:"Revolution Pro",humanManaged:false,tier:"LOCAL",
      provisional:false,reviewedWeekIndex:24,
      ownAvgAttendance:350,rivalAvgAttendance:310,targetName:null,
@@ -62,7 +66,9 @@ for(const width of [320,390]){
   const tv=page.locator(".ppw-home-show-spotlight .ppw-tv-frame");
   await expect(tv).toHaveAttribute("data-broadcast-package","luchafiesta");
   await expect(tv.locator(".ppw-tv-title")).toHaveText("Ascension");
-  await expect(page.getByRole("button",{name:/Last [Ss]how/})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Read Ascension · TV"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Read Extreme Warfare · PPV"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Results archive"})).toBeVisible();
   await expect(page.getByRole("button",{name:/Next Show/})).toBeVisible();
   await expect(page.locator(".ppw-home-show-head")).toHaveCount(0);
   await expect(page.locator(".ppw-home-show-controls .ppw-home-tile-copy small")).toHaveCount(0);
@@ -73,6 +79,7 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-home-ratings-score")).toHaveCount(0);
   await expect(war.locator(".ppw-home-ratings-label")).toHaveCount(0);
   await expect(war.locator(".ppw-home-ratings-tv")).toHaveText(["0.10 TV rating","0.10 TV rating"]);
+  await expect(war).not.toContainText("Extreme Warfare");
   await expect(war.locator(".ppw-home-ratings-promotion"))
    .toHaveText(["Chaotic Wrestling Alliance","Revolution Pro"]);
   await expect(page.getByRole("heading",{name:"Notifications"})).toBeVisible();

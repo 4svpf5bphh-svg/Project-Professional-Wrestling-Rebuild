@@ -881,7 +881,9 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      "No new rumours from the locker room this week. The next World Lock may give the wrestling press something to argue about."));
    const editions=new Map<string,typeof published>();
    for(const story of published){const key=story.year+":"+story.week;const items=editions.get(key)??[];items.push(story);editions.set(key,items);}
-   for(const stories of editions.values()){
+   const recentFallback:string[][]=[];
+   for(const stories of [...editions.values()].reverse()){
+    const fallbackThisEdition:string[]=[];
     const usedFanText=new Set<string>();
     const features=weeklyEditorialAnchors(stories,news?.awards??[]);
     const featureIds=new Set(features.map(a=>a.story.id));
@@ -948,10 +950,12 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     const verified=wrestler&&story.editorial?.wrestler?.personId===wrestler.personId?
      {...wrestler,text:story.editorial.wrestler.text}:wrestler;
     const shown=new Set<string>();
-    const fans=weeklyHotTagThread(story,story.editorial,usedFanText).filter(p=>{
+    const fans=weeklyHotTagThread(story,story.editorial,new Set([...recentFallback.flat(),...usedFanText])).filter(p=>{
      const key=p.text.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
      if(usedFanText.has(key)||(p.replyTo&&!shown.has(p.replyTo)))return false;
-     usedFanText.add(key);shown.add(p.handle);return true;
+     usedFanText.add(key);shown.add(p.handle);
+     if(!story.editorial?.fans?.some(Boolean))fallbackThisEdition.push(key);
+     return true;
     });
     const posts=[...(broadcaster?[broadcaster]:[]),
      ...(verified?[verified]:[]),...fans];
@@ -1004,6 +1008,8 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
     }
     if(isFeature)section.append(item);
     }
+    recentFallback.push(fallbackThisEdition.slice(0,24));
+    if(recentFallback.length>12)recentFallback.shift();
    }
    if(official){
     // The pre-existing ledger headlines stay on the official desk; they

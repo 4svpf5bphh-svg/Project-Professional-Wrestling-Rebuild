@@ -7,12 +7,19 @@ import {requestOpenAiEditorialPreview} from "./openai-editorial-preview.js";
 import {estimatedGroqTokens,groqResponseUsage} from "../domain/ai-director.js";
 import {weeklyEditorialAnchors,weeklyEditorialMessages,weeklyEditorialResponseFormat,validateWeeklyEditorialDetailed,weeklyRatingsStory,type WeeklyStory,type WeeklyStoryCopy} from "../domain/weekly-world-editorial.js";
 import {estimateTerraStandardUsd} from "../domain/paid-editorial-cost.js";
+import {weeklyNewsPrioritySql} from "./weekly-news-priority.js";
 import type {VerifiedHotTagAward} from "../domain/hot-tag-wrestler-voice.js";
 type WeeklyInspection={
  model:string;promptBytes:number;instructions:string;context:unknown;
 };
+export function serializeWeeklyInspection(value:unknown):string|null{
+ // PostgreSQL adds spaces between JSONB members. Indented JSON is a
+ // conservative upper bound for the same public snapshot.
+ if(value==null||Buffer.byteLength(JSON.stringify(value,null,1))>12000)return null;
+ return JSON.stringify(value);
+}
 type Scope={worldId:string;year:number;week:number};
-type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;show_id:string|null};
+type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;show_id:string|null;priority:number};
 export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Scope,key:string,transport:typeof fetch=fetch,terraKey?:string,updateToken?:string){
  const {worldId,year,week}=scope,params=[worldId,year,week];
  if(!worldId||worldId.length>200||!Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||(!key&&!terraKey))
@@ -46,14 +53,16 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
   const earliest={year:Math.floor(cutoff/52)+1,week:cutoff%52+1};
   const [rows,awards,ratings,history]=await withSqlClient(pool,async db=>Promise.all([
    db.query<StoryRow>(`
-   SELECT n.story_key,n.desk,n.certainty,n.promotion_id,n.promotion_name,n.title,n.summary,n.source_kind,n.show_id
-   FROM ppw_world_news_items n WHERE n.world_id=$1 AND n.year=$2 AND n.week=$3
-   AND n.desk='OFFICIAL' AND n.certainty='CONFIRMED'
-   ORDER BY CASE WHEN source_kind='TITLE' OR story_key LIKE 'title:%' THEN 0
-    WHEN story_key LIKE 'tournament:%' THEN 1
-    WHEN story_key LIKE 'event:%' THEN 2
-    WHEN story_key LIKE 'programme:official:%' THEN 3
-    WHEN source_kind='ANGLE' THEN 4 WHEN source_kind='MATCH' THEN 5 ELSE 6 END,story_key LIMIT 40`,params),
+   WITH ranked AS (
+    SELECT i.story_key,i.desk,i.certainty,i.promotion_id,i.promotion_name,i.title,i.summary,i.source_kind,i.show_id,
+     (${weeklyNewsPrioritySql}) AS priority
+    FROM ppw_world_news_items i WHERE i.world_id=$1 AND i.year=$2 AND i.week=$3
+   )
+   (SELECT * FROM ranked WHERE desk='OFFICIAL' AND certainty='CONFIRMED'
+    ORDER BY priority DESC,story_key COLLATE "C" LIMIT 40)
+   UNION ALL
+   (SELECT * FROM ranked WHERE desk='DIRT' AND certainty='SPECULATION'
+    ORDER BY priority DESC,story_key COLLATE "C" LIMIT 8)`,params),
    db.query<{kind:"MATCH"|"ANGLE";promotion_id:string;show_id:string;slot_id:string;person_ids:string[];people_names:string[]}>(`
     SELECT kind,promotion_id,show_id,slot_id,person_ids,people_names
     FROM ppw_world_news_awards WHERE world_id=$1 AND year=$2 AND week=$3 ORDER BY kind LIMIT 2`,params),
@@ -81,7 +90,7 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
     LIMIT 18`,[worldId,earliest.year,earliest.week,year,week])
   ]));
   const stories:WeeklyStory[]=rows.map(s=>({id:s.story_key,year,week,desk:s.desk,certainty:s.certainty,
-   promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,showId:s.show_id??undefined}));
+   promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,priority:s.priority,showId:s.show_id??undefined}));
   const publicAwards:VerifiedHotTagAward[]=awards.map(a=>({year,week,kind:a.kind,promotionId:a.promotion_id,
    showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names}));
   ratingStory=weeklyRatingsStory(year,week,ratings.map(r=>({promotionId:r.promotion_id,promotionName:r.promotion_name,rating:r.rating,humanManaged:r.human_managed})));
@@ -125,6 +134,13 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
    // Keep the existing one-dispatch guarantee: Terra can support the public
    // desk only if Groq was not actually called. Both use existing budgets.
    if(!calls&&terraKey&&(!response||!response.ok)){
+    // Dirt enhancement uses Groq's existing allowance. A paced or
+    // unavailable Groq dispatch must not expand the shared Terra workload.
+    if(anchors.some(anchor=>anchor.story.desk==="DIRT")){
+     anchors=anchors.filter(anchor=>anchor.story.desk==="OFFICIAL");
+     body=build();
+     estimate=estimatedGroqTokens(JSON.stringify(body),body.max_completion_tokens);
+    }
     provider="TERRA";
     response=await requestOpenAiEditorialPreview({key:terraKey,enabled:true,pool,body,
      signal:AbortSignal.timeout(25000),transport:measured,feature:"WEEKLY_MEDIA",fence});
@@ -169,9 +185,9 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
  }
  const saved=await withSqlClient(pool,db=>db.query(`
   UPDATE ppw_weekly_world_editorial SET state=$4,copy_json=$5::jsonb,provider_calls=$6,
-   diagnostic=$7,estimated_tokens=$8,input_tokens=$9,output_tokens=$10,rating_story=$11::jsonb,inspection_json=$12::jsonb,completed_at=clock_timestamp()
+   diagnostic=$7,estimated_tokens=$8,input_tokens=$9,output_tokens=$10,rating_story=$11::jsonb,inspection_json=CASE WHEN octet_length(($12::jsonb)::text)<=12000 THEN $12::jsonb END,completed_at=clock_timestamp()
   WHERE world_id=$1 AND year=$2 AND week=$3 AND state='PENDING' RETURNING state`,
-  [...params,state,state==="READY"?JSON.stringify(copy):null,calls,provider==="TERRA"?"TERRA / "+diagnostic:diagnostic,estimate,inputTokens,outputTokens,ratingStory?JSON.stringify(ratingStory):null,inspection?JSON.stringify(inspection):null]));
+  [...params,state,state==="READY"?JSON.stringify(copy):null,calls,provider==="TERRA"?"TERRA / "+diagnostic:diagnostic,estimate,inputTokens,outputTokens,ratingStory?JSON.stringify(ratingStory):null,serializeWeeklyInspection(inspection)]));
  return saved.length?{state,providerCalls:calls,accepted:Object.keys(copy).length}:
   {state:"SKIPPED",providerCalls:calls,accepted:0};
 }

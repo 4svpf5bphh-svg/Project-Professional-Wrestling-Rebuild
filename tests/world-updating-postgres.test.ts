@@ -1,3 +1,4 @@
+import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
@@ -37,7 +38,7 @@ test("World Updating: all human shows are queued, failure is isolated, and concu
  const db=postgresPool(url!,4),worldId="update-"+randomUUID(),scope={worldId,year:1,week:1};
  const owner="owner-"+worldId,rival="rival-"+worldId;
  const read=(sql:string)=>withSqlClient(db.pool,tx=>tx.query(sql,[worldId]));
- const cards=[["tv","home",5,"REGULAR"],["premium","home",7,"PREMIUM"],["rival-tv","rival",6,"REGULAR"],["ai-tv","ai",4,"REGULAR"]] as const;
+ const cards=[["tv","home",5,"REGULAR"],["premium","home",7,"PREMIUM"],["rival-tv","rival",6,"REGULAR"],["rival-premium","rival",7,"PREMIUM"],["ai-tv","ai",4,"REGULAR"]] as const;
  let release=()=>{},started=()=>{};
  const gate=new Promise<void>(resolve=>{release=resolve});
  const entered=new Promise<void>(resolve=>{started=resolve});
@@ -58,7 +59,7 @@ test("World Updating: all human shows are queued, failure is isolated, and concu
    await tx.query("UPDATE ppw_worlds SET year=1,week=2,phase='OPEN' WHERE world_id=$1",[worldId]);
    await startWorldUpdating(tx,scope);
   });
-  assert.deepEqual(await read("SELECT show_id FROM ppw_world_update_jobs WHERE world_id=$1 ORDER BY show_day"),[{show_id:"tv"},{show_id:"rival-tv"},{show_id:"premium"}]);
+  assert.deepEqual(await read("SELECT show_id FROM ppw_world_update_jobs WHERE world_id=$1 ORDER BY show_day,show_id"),[{show_id:"tv"},{show_id:"rival-tv"},{show_id:"premium"},{show_id:"rival-premium"}]);
   const noDispatch:typeof fetch=async()=>{throw Error("Viewer must not dispatch Terra");};
   const viewer={worldId,playerId:owner,promotionId:"home",showId:"tv"};
   assert.deepEqual(await loadRingsideCommentary(db.pool,viewer,"mock",noDispatch,"OPENAI"),{status:"pending"});
@@ -94,12 +95,17 @@ test("World Updating: all human shows are queued, failure is isolated, and concu
   assert.equal(fallback?.status,"LIMIT_REACHED");
   assert.equal(fallback?.editorial?.state,"FALLBACK");
   assert.deepEqual(await read("SELECT state FROM ppw_ringside_reports WHERE world_id=$1"),[{state:"FAILED"}]);
+  assert.equal((await processWorldUpdate(db.pool,scope,deps))?.status,"LIMIT_REACHED");
   assert.equal((await processWorldUpdate(db.pool,scope,deps))?.status,"PUBLISHED");
   assert.equal((await processWorldUpdate(db.pool,scope,deps))?.status,"PUBLISHED");
-  assert.deepEqual(calls,["tv","rival-tv","premium"]);
+  assert.deepEqual(calls,["tv","rival-tv","premium","rival-premium"]);
   assert.equal(publicCalls,1);
   assert.deepEqual(await loadRingsideCommentary(db.pool,{...viewer,showId:"premium"},"mock",noDispatch,"OPENAI"),{status:"unavailable"});
-  assert.deepEqual(await read("SELECT show_id,state FROM ppw_world_update_jobs WHERE world_id=$1 ORDER BY show_day"),[{show_id:"tv",state:"READY"},{show_id:"rival-tv",state:"READY"},{show_id:"premium",state:"FALLBACK"}]);
+  assert.deepEqual(await read("SELECT show_id,state FROM ppw_world_update_jobs WHERE world_id=$1 ORDER BY show_day,show_id"),[{show_id:"tv",state:"READY"},{show_id:"rival-tv",state:"READY"},{show_id:"premium",state:"FALLBACK"},{show_id:"rival-premium",state:"READY"}]);
+  const home=await readPlayerWorldOverview(db.pool,worldId,owner);
+  const away=await readPlayerWorldOverview(db.pool,worldId,rival);
+  assert.deepEqual(home?.promotion?.latestShows?.map(show=>show.showId),["tv","premium"]);
+  assert.deepEqual(away?.promotion?.latestShows?.map(show=>show.showId),["rival-tv","rival-premium"]);
   assert.deepEqual(await read("SELECT year,week,phase FROM ppw_worlds WHERE world_id=$1"),[{year:1,week:2,phase:"OPEN"}]);
  }finally{release();await db.close();}
 });

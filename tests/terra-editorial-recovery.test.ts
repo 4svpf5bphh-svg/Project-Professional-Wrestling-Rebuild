@@ -1,3 +1,5 @@
+import {estimateTerraPreviewMicropounds} from "../src/db/openai-editorial-preview.js";
+import {estimatedGroqTokens} from "../src/domain/ai-director.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import type {CompletedShowView,ShowResultEntry} from "../src/db/show-results-view.js";
@@ -120,6 +122,12 @@ test("Full generation path completes one paid request and exposes correct proven
  const review=await generateGroqReview(show,"fixture",async(_url,init)=>{
   calls++;
   const request=JSON.parse(String(init?.body));
+  const body=String(init?.body);
+  console.log("Terra nine-slot mock reservation",JSON.stringify({
+   bytes:Buffer.byteLength(body),ceiling:request.max_completion_tokens,
+   tokens:estimatedGroqTokens(body,request.max_completion_tokens),
+   micropounds:estimateTerraPreviewMicropounds(body,request.max_completion_tokens)
+  }));
   assert.match(request.messages[0].content,/copy a complete line verbatim/);
   assert.match(request.messages[0].content,/Do not report an unrecorded move/);
   const records=JSON.parse(request.messages[1].content.split("Records:\n").at(-1)!);
@@ -187,4 +195,18 @@ test("W31 natural pinfall wording is locally polished without another request",(
  assert.equal(out.diagnostics.slots[3]?.source,"CLEANED");
  assert.ok(out.diagnostics.slots[3]?.reasons.includes("INTERNAL_LABEL"));
  validateRingsideCopy(out.review,show,{styleWarningOnly:true});
+});
+
+test("a profile move is rejected even when Terra gives it to its actual owner",()=>{
+ const view={...show,entries:show.entries.map((entry,i)=>i!==3?entry:{...entry,
+  performerIdentities:[{personId:"reed",ringName:"Reed",character:"technician",style:null,
+   signatureMoves:[],finishingMoves:["Northbound Driver"],source:"WORLD_RECORD" as const}]
+ })};
+ const raw=draft();
+ raw.slots[3]!.recap="Reed executed the Northbound Driver and secured a clean pinfall.";
+ const final=finalizeTerraEditorial(raw,view);
+ assert.equal(final.diagnostics.slots[3]?.source,"PPW_FALLBACK");
+ assert.ok(final.diagnostics.slots[3]?.reasons.includes("FACTUAL_CONTRADICTION"));
+ assert.doesNotMatch(final.review.slots[3]!.recap,/Northbound Driver/);
+ assert.equal(final.diagnostics.slots[1]?.source,"OPENAI");
 });

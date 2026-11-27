@@ -1,3 +1,4 @@
+import {hotTagNewsCast,hotTagFanTemperament} from "../src/domain/hot-tag-news.js";
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -11,7 +12,7 @@ test("weekly brief includes public anchors and coherent fan replies with stable 
  assert.equal(anchors.length,1);
  assert.doesNotMatch(weeklyEditorialMessages(anchors)[1]!.content,/SPECULATION/);
  const saved=validateWeeklyEditorial(anchors,{s0:copy});
- assert.deepEqual(saved[official.id],copy);
+ assert.deepEqual(saved[official.id],{...copy,fanCast:"ROTATING"});
  const thread=weeklyHotTagThread(official,saved[official.id]);
  assert.equal(thread.length,3);assert.equal(thread[2]!.replyTo,thread[0]!.handle);
  assert.equal(thread[0]!.text,copy.fans[0]);
@@ -96,7 +97,7 @@ test("strict weekly response requires every anchor, with distinct fan fields and
  const result=validateWeeklyEditorialDetailed(weeklyEditorialAnchors([official]),{s0:{
   headline:copy.headline,commentary:copy.commentary,fan1:copy.fans[0],fan2:copy.fans[1],reply:copy.fans[2],wrestler:null
  }});
- assert.deepEqual(result.copy[official.id],copy);
+ assert.deepEqual(result.copy[official.id],{...copy,fanCast:"ROTATING"});
 });
 test("weekly ratings snapshot cannot establish promotion growth",()=>{
  const story=weeklyRatingsStory(1,32,[{promotionId:"a",promotionName:"Crown Wrestling",rating:0.8,humanManaged:true}])!;
@@ -145,13 +146,13 @@ test("title-win discussion reaches the exact match on the correct completed show
  assert.equal(weeklyShowMomentSlot({...s,desk:"DIRT"},"extreme",["main"]),null);
 });
 
- test("championship leads, with a distinct TV angle as the second feature",()=>{
+ test("championship leads, with a worthwhile rumour before the TV angle",()=>{
  const title={...official,id:"title:ppv:m1",sourceKind:"TITLE",humanManaged:true};
  const other={...official,id:"angle:tv:a1",sourceKind:"ANGLE",promotionId:"b",promotionName:"Rival Wrestling",humanManaged:true};
  const wild={...dirt,id:"wild:tv"};
  const routine={...official,id:"signing:routine"};
  const anchors=weeklyEditorialAnchors([routine,dirt,wild,other,title]);
- assert.deepEqual(anchors.map(a=>a.story.id),[title.id,other.id]);
+ assert.deepEqual(anchors.map(a=>a.story.id),[title.id,wild.id]);
  });
  test("recent fan copy is rejected without discarding fresh opinions",()=>{
  const anchors=weeklyEditorialAnchors([official],[],[],[copy.fans[0]!]);
@@ -182,7 +183,7 @@ test("fallback threads keep distinct reactions across an edition without discard
 });
 
 test("a same-show recap, human controls and unconfirmed stories cannot change the public lead",()=>{
- const belt={...official,id:"title:ppv:main",showId:"ppv",sourceKind:"TITLE",promotionId:"ai"};
+ const belt={...official,id:"title:ppv:main",title:"Alice captures the World Crown",showId:"ppv",sourceKind:"TITLE",promotionId:"ai"};
  const recap={...belt,id:"event:ppv",sourceKind:"EVENT"};
  const tv={...belt,id:"angle:tv:turn",showId:"tv",sourceKind:"ANGLE"};
  const hidden={...belt,id:"title:other:main",certainty:"SPECULATION" as const};
@@ -202,4 +203,23 @@ test("an actual concealed finish has more editorial weight than the general even
  const bout={...official,id:"match:ppv:main",showId:"ppv",sourceKind:"MATCH",title:"A foreign object decides Alice Reed vs Bob Ward"};
  const recap={...official,id:"event:ppv",showId:"ppv",sourceKind:"EVENT"};
  assert.deepEqual(weeklyEditorialAnchors([recap,bout]).map(a=>a.story.id),[bout.id]);
+});
+
+test("public headliner signing and exceptional performance outrank a vacant secondary title",()=>{
+ const routine={...official,id:"title:tv:main",title:"Alice captures the Local Cup",sourceKind:"TITLE"};
+ const match={...official,id:"match:ppv:main",title:"A featured bout",summary:"The pair put on a 4.75-star match."};
+ const signing={...official,id:"signing:star",summary:"An established headliner joins the roster."};
+ assert.equal(weeklyEditorialAnchors([routine,match])[0]?.story.id,match.id);
+ assert.equal(weeklyEditorialAnchors([routine,match,signing])[0]?.story.id,signing.id);
+});
+
+test("a rejected parent leaves no fallback reply and accepted voices use the dispatched cast",()=>{
+ const anchors=weeklyEditorialAnchors([official]);
+ const cast=hotTagNewsCast(official,5);
+ const sent=JSON.parse(weeklyEditorialMessages(anchors)[1]!.content)[0];
+ assert.deepEqual(sent.voices,cast.map(x=>hotTagFanTemperament(x.handle)));
+ const partial=validateWeeklyEditorial(anchors,{s0:{...copy,fans:["Invented winner signed last night.",copy.fans[1],copy.fans[2]]}});
+ const visible=weeklyHotTagThread(official,partial[official.id]);
+ assert.deepEqual(visible.map(x=>[x.handle,x.replyTo]),[[cast[1]!.handle,undefined]]);
+ assert.equal(weeklyHotTagThread(official,copy)[0]?.handle,hotTagNewsCast(official,3,true)[0]?.handle);
 });

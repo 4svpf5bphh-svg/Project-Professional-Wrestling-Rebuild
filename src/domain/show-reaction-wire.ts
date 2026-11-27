@@ -97,8 +97,11 @@ function candidate(entry:ShowResultEntry,showId:string):Candidate|null{
    return {...base,voice:"THE TAPE TRADER",mood:"BUZZ",source:"MATCH",priority:82,
     text:pick([
      bout+" was the kind of wrestling worth clearing an evening for. I already want the rematch.",
-     "The little things in "+bout+" were terrific. Wrestling rewards people who actually watch it.",
-    ],key,4)};
+     bout+" held my attention without asking me to remember every week of television. That's a good match to lend someone.",
+     "I'm glad "+bout+" had enough on the page to stand on its own. I would watch it with the sound off and see what still lands.",
+    ],key,4),
+    ...(entry.crowdResponse<70?{reply:{voice:"THE FRONT ROW" as const,
+     text:"I'd still put the crowd back in that test. Good wrestling can leave a room cold and I want to know why this one did."}}:{})};
   if(entry.outcome==="VERBAL_SURRENDER"&&entry.crowdResponse>=65)
    return {...base,voice:"THE FRONT ROW",mood:"BUZZ",source:"FINISH",priority:80,
     text:(winner??"The winner")+" heard those two words: 'I quit'. Nobody had to count three."};

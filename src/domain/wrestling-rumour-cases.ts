@@ -32,12 +32,11 @@ export function rumourFollowup(c:RumourCase,year:number,week:number,evidence:Wor
  const final=c.chapter>0;
  const title=final?"The gossip desk revisits "+evidence.promotionName:
   "A fresh twist for the "+evidence.promotionName+" rumour mill";
- const angle=c.veracity==="SUBSTANTIATED"?
-  "That keeps the old theory in circulation. It still takes a leap to get from the new result to the original rumour.":
-  c.veracity==="DISTORTED"?
-   "The public story is more interesting than the loudest version of the rumour.":
-   final?"The desk is retiring its earlier theory. The latest story stands on its own.":
-    "The desk is revisiting its earlier theory in light of the new result.";
+ // Earlier rows retain their legacy classification. Only the public
+ // development and number of times the desk revisited the story shape copy.
+ const angle=final?
+  "The desk is retiring its earlier theory. The latest story stands on its own.":
+  "The new result gives readers something to discuss. The earlier theory is still speculation.";
  return {key:"followup:"+c.case_key+":"+year+":"+week,desk:"DIRT",
   certainty:"SPECULATION",promotionId:c.promotion_id,promotionName:c.promotion_name,
   showId:evidence.showId,sourceKind:evidence.sourceKind,title,

@@ -31,7 +31,7 @@ export function describeMatchFinish(input:{
   CASKET_CLOSE:"The casket lid was closed on the defeated opponent.",
  };
  const base=(finish==="FOREIGN_OBJECT"&&input.finishProp?
-  "The referee missed the "+finishPropLabel(input.finishProp).toLowerCase()+" strike. The decision stood.":
+  "The "+finishPropLabel(input.finishProp)+" came into play out of the referee’s sight.":
   descriptions[finish]??"The referee brought the match to a close.")+
   (["FOREIGN_OBJECT","PROTECTED_FINISH"].includes(finish)&&
    input.refereeSpot==="REF_BUMP"?" The referee was knocked down before the decision.":"");

@@ -313,7 +313,7 @@ function ringsideRequestPayload(show:CompletedShowView,settings:RingsideSettings
        "not a report about game mechanics. "+ 
        "TERRA EVIDENCE RULE (overrides suggested action and dramatic cues above): the repertoire and director's possible exchanges are style context, not replay evidence. "+
        "Do not report an unrecorded move, counter, tag, kickout, near-fall, referee bump, interference or elimination. "+
-       "Build pace from the certified duration, sides, crowd, stakes and finish. Describe the consequence of the decisive moment and offer a wrestling opinion about why it mattered. "+
+       "Build pace from duration, sides, crowd, stakes and the finish. Start at the bell on a short match, or trace how the length makes the ending hit on a long one. For a team match name the winning team together unless the receipt names the scorer. A recorded run-in gets a cause-and-effect sentence only when the receipt says it affected the result. Use the named object only as recorded; never guess how it was wielded. Show why a clean three-count, a controversial ruling or a stipulation changed the reader's verdict. "+
        "In a weak match, judge the payoff or reaction the facts support. Use the opening to set up the card and the closing to pick its lasting talking point, without replaying the finish. "+
        "Describe a clean pin naturally: 'hooked the leg for three', 'covered him for the win', not 'a separate cover', 'legal cover' or 'the referee counted shoulders'. "+
        "Vary sentence rhythm and finishing language. Let the decisive result supply the excitement. "+

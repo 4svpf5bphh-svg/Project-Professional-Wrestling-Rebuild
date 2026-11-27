@@ -59,10 +59,22 @@ export async function processWorldUpdate(pool:TransactionPool,requested:Scope,de
   const run=runs[0];if(!run)throw Error("Active World update is missing");
   if(run.year!==requested.year||run.week!==requested.week)return {kind:"WAIT"};
   const scope={worldId:requested.worldId,year:run.year,week:run.week},p=[scope.worldId,scope.year,scope.week];
-  const jobs=await tx.query<Job>(`SELECT show_id,promotion_id,player_id,state,
-   greatest(0,ceil(extract(epoch FROM claim_until-clock_timestamp())))::integer AS retry_after
-   FROM ppw_world_update_jobs WHERE world_id=$1 AND year=$2 AND week=$3
-   AND state IN ('WAITING','PROCESSING') ORDER BY show_day,show_id LIMIT 1`,p);
+  // An in-flight lease keeps its place. New claims give each promotion a
+  // turn before second cards, rotating the first turn by certified week.
+  const jobs=await tx.query<Job>(`
+   WITH ranked AS (
+    SELECT show_id,promotion_id,player_id,state,
+     greatest(0,ceil(extract(epoch FROM claim_until-clock_timestamp())))::integer AS retry_after,
+     row_number() OVER (PARTITION BY promotion_id ORDER BY show_day,show_id) AS promotion_turn,
+     dense_rank() OVER (ORDER BY promotion_id) AS promotion_order
+    FROM ppw_world_update_jobs WHERE world_id=$1 AND year=$2 AND week=$3
+   ), queue AS (
+    SELECT ranked.*,max(promotion_order) OVER () AS promotions FROM ranked
+   )
+   SELECT show_id,promotion_id,player_id,state,retry_after FROM queue
+   WHERE state IN ('WAITING','PROCESSING')
+   ORDER BY (state='PROCESSING') DESC,promotion_turn,
+    mod(promotion_order+($2::bigint-1)*52+$3::bigint-2,promotions),show_id LIMIT 1`,p);
   const job=jobs[0],token=randomUUID();
   if(job){
    if(job.state==="PROCESSING"&&job.retry_after>0)return {kind:"WAIT",retryAfterSeconds:job.retry_after};
