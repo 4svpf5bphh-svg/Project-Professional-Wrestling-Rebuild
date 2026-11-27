@@ -20,6 +20,8 @@ export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:
     WHERE pc.world_id=c.world_id AND pc.promotion_id=c.promotion_id
      AND pc.active) AS owner_claimed,
    affiliate.promotion_id AS affiliate_id,
+   COALESCE(c.weekly_guarantee,0)+COALESCE(c.appearance_fee,0)::numeric/
+    greatest(1,coalesce(p.event_cadence_weeks,1)) AS planned_weekly_cost,
    (COALESCE(t.popularity,50)*4+COALESCE(t.match_craft,50)*3+
     COALESCE(t.presentation,50)*3-
     LEAST(120,COALESCE(c.weekly_guarantee,0)::numeric/300)) AS retention_score
@@ -54,6 +56,7 @@ export async function expireAndRetainAiContracts(tx:SqlRows,worldId:string,year:
   SELECT scored.*,ROW_NUMBER() OVER (
    PARTITION BY promotion_id,booking_division
    ORDER BY COALESCE(affiliate_rank<=2,false) DESC,
+    CASE WHEN financial_distress IN ('DISTRESSED','CRISIS') THEN planned_weekly_cost END,
     retention_score DESC,person_id,contract_id) AS division_rank
   FROM scored LEFT JOIN affiliate_ranked USING(contract_id)
  ), decisions AS (

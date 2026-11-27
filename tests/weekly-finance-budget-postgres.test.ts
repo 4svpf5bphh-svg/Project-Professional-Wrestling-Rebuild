@@ -10,7 +10,7 @@ const url=process.env.PPW_NEON_TEST_URL;
 
 /** 643 wrestlers, eight promotions and 100 historical PPW years must not
  * expand the data returned to the weekly finance settlement. A single
- * indexed current-week aggregation is independent of total World age.
+ * indexed four-week aggregation is independent of total World age.
  */
 test("PostgreSQL: 100 years of financial history, current week settles in 3 statements and one result row",{
  skip:!url?"No disposable PostgreSQL":false,

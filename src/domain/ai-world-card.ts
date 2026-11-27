@@ -14,12 +14,13 @@ import {aiTagPairKey,bookAiProgrammeAngle,type AiProgrammeAngle,type AiProgramme
 import type {ProgrammePayoff} from "./programme-finales.js";
 export interface AiRosterCandidate extends StaffWrestlerCandidate{
  momentum:number;popularity:number;recognition:number;presentation:number;matchCraft:number;
- careerStage?:string|null;contractExpires?:number;remainingDates?:number|null;
+ careerStage?:string|null;contractExpires?:number;remainingDates?:number|null;appearanceFee?:number;
 }
 export interface AiCardInput{
  worldId:string;worldSeed:string;year:number;week:number;promotionId:string;showId:string;
  roster:readonly AiRosterCandidate[];bookedShows:readonly ExistingShowBooking[];
- activeVenues:readonly string[];eventType:EventType;
+ preferredVenueIds?:readonly string[];
+ activeVenues:readonly string[];eventType:EventType;appearanceRoom?:number;
  /** Signed weekly programme night (including grandfathered MAJOR-labelled TV).
   * Actual PPVs omit this; the event rating alone never makes TV flexible. */
  contractedDay?:number|null;
@@ -218,7 +219,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   preferredVenueId:null,personIds:[],
   excludedDays:input.excludedDays,
   preferredDays:input.eventType==="MAJOR"?[6,7]:undefined,
-  availableVenueIds:input.activeVenues,bookedShows:input.bookedShows});
+  availableVenueIds:input.activeVenues,preferredVenueIds:input.preferredVenueIds,bookedShows:input.bookedShows});
  const triedDays=new Set<number>();
  for(const schedule of schedules){
   if(triedDays.has(schedule.day))continue;
@@ -420,7 +421,10 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
  const chosen:AiRosterCandidate[]=[];
  if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
  if(tagChoice)for(const id of tagIds)chosen.push(byId.get(id)!);
- if(men.length>=2&&women.length>=2&&available.length>=4){
+ const fee=(p:AiRosterCandidate)=>p.appearanceFee??0;
+ const room=input.appearanceRoom??Infinity;
+ let castCost=chosen.reduce((sum,p)=>sum+fee(p),0);
+ if(room===Infinity&&men.length>=2&&women.length>=2&&available.length>=4){
   for(const p of [...nextDivision(men),...nextDivision(women)]){
    if(chosen.length<maxCast&&!chosen.some(x=>x.personId===p.personId))chosen.push(p);
   }
@@ -428,17 +432,27 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
  // A developmental appearance needs a legal opponent. Fill remaining
  // undercard slots in division-matched pairs, not odd single inclusions.
  const rotationOrder=[...available].sort((a,b)=>
-  rotationScore(b)-rotationScore(a)||best(a,b));
+  (room===Infinity?0:fee(a)-fee(b))||rotationScore(b)-rotationScore(a)||best(a,b));
  const reservePair=(p:AiRosterCandidate)=>{
   if(chosen.length>maxCast-2||chosen.some(x=>x.personId===p.personId))return false;
   const opponent=rotationOrder.find(x=>x.personId!==p.personId&&
    x.bookingDivision===p.bookingDivision&&
    !chosen.some(c=>c.personId===x.personId));
   if(!opponent)return false;
+  const pairCost=fee(p)+fee(opponent);
+  if(castCost+pairCost>room&&chosen.length)return false;
+  castCost+=pairCost;
   chosen.push(p,opponent);
   return true;
  };
- if(input.strategy?.focus==="BUILD_STARS"){
+ if(room!==Infinity&&!chosen.length){
+  const pairs=[men,women].flatMap(division=>{
+   const pair=rotationOrder.filter(p=>p.bookingDivision===division[0]?.bookingDivision).slice(0,2);
+   return pair.length===2?[pair]:[];
+  }).sort((a,b)=>fee(a[0]!)+fee(a[1]!)-fee(b[0]!)-fee(b[1]!));
+  if(pairs[0])reservePair(pairs[0][0]!);
+ }
+ if(room===Infinity&&input.strategy?.focus==="BUILD_STARS"){
   const developing=available.filter(p=>p.popularity<60&&p.momentum>=45&&
    p.matchCraft>=40&&!chosen.some(x=>x.personId===p.personId))
    .sort(best)[0];
@@ -502,7 +516,10 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   while(alternatives.length>=2&&cards.length<singlesLimit){
    const head=alternatives.shift()!;
    const opponent=alternatives.findIndex(p=>canMeet(head,p));
-   if(opponent>=0)cards.push([head,alternatives.splice(opponent,1)[0]!]);
+   if(opponent>=0){
+    const other=alternatives.splice(opponent,1)[0]!;
+    if(room===Infinity||!cards.length&&!tagChoice)cards.push([head,other]);
+   }
   }
  }
  if(!cards.length&&!tagChoice)return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};

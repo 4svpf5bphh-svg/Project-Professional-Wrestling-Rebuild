@@ -450,3 +450,13 @@ test("AI spreads limited contracted dates across the term before filling more un
  }
  assert.ok(appearances>=52,"A smaller card still books multiple matches through the term");
 });
+
+test("a cash-constrained show books an affordable pair before discretionary undercard",()=>{
+ const priced=roster.map((p,i)=>({...p,appearanceFee:i<3?50:1000}));
+ const result=chooseAiWorldCard({...base,roster:priced,appearanceRoom:100});
+ assert.equal(result.status,"READY");
+ if(result.status!=="READY")return;
+ assert.equal(result.matches.length,1);
+ assert.equal(result.matches[0]!.participants.reduce((sum,p)=>
+  sum+priced.find(x=>x.personId===p.personId)!.appearanceFee,0),100);
+});

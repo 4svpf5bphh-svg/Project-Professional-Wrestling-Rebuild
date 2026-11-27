@@ -18,7 +18,7 @@ export async function certifyResolvedWorldWeek(
    const {year,week}=w[0]!;
    const index=(year-1)*52+week-1;
    const report=await inspectWeekConflicts(tx,input.worldId);
-   if(!report.provisionalClear||report.submittedShows<report.activePromotions||
+   if(!report.provisionalClear||
     report.activePromotions<1||report.activePromotions>128)
     throw new Error("Cannot certify unresolved World conflicts or missing shows");
    const rows=await tx.query<{

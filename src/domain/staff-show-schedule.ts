@@ -12,6 +12,7 @@ export interface StaffScheduleInput {
   bookedShows:readonly ExistingShowBooking[];
   excludedDays?:readonly number[];
   preferredDays?:readonly number[];
+  preferredVenueIds?:readonly string[];
 }
 export interface StaffScheduleChoice {day:number;venueId:string}
 
@@ -51,12 +52,14 @@ export function* staffFallbackSchedules(input:StaffScheduleInput):Generator<Staf
   // Premium attractions prefer weekends when there is a safe, free slot.
   // Never veto an available weekday if weekend venues are all occupied.
   const preferred=new Set(input.preferredDays??[]);
+  const preferredVenueIds=new Set(input.preferredVenueIds??[]);
   const candidates=days.flatMap(day=>availableVenues.map(venueId=>{
     const choice={day,venueId};
     return {choice,priority:priority(choice),tier:preferred.has(day)?0:1};
   }));
   candidates.sort((a,b)=>{
-    return a.tier-b.tier||(a.priority<b.priority?-1:a.priority>b.priority?1:
+    return a.tier-b.tier||Number(preferredVenueIds.has(b.choice.venueId))-
+      Number(preferredVenueIds.has(a.choice.venueId))||(a.priority<b.priority?-1:a.priority>b.priority?1:
       a.choice.day-b.choice.day||a.choice.venueId.localeCompare(b.choice.venueId,"en"));
   });
   for(const {choice:candidate} of candidates){

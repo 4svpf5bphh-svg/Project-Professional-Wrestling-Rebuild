@@ -152,7 +152,9 @@ test("AI settles a committed PPV during biweekly TV's off-week and returns to it
     source,exclusive_rights,airing_day,airing_hour)
     VALUES($1,'network','promotion-0','BROADCAST','BROADCAST_GROWTH',25000,30000,70,76,0,25,'AI',true,2,20)`,[world]);
   });
-  for(const week of [2,3]){
+  await query("UPDATE ppw_promotions SET event_cadence_weeks=2 WHERE world_id=$1");
+  for(const week of [2,3,4,5]){
+   if(week===5)await query("UPDATE ppw_contracts SET status='EXPIRED' WHERE world_id=$1 AND promotion_id='promotion-2'");
    const [clock]=await query<{revision:string}>(`UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second'
     WHERE world_id=$1 RETURNING revision::text`);
    assert.equal((await lockWorldWeek(db.pool,{worldId:world,requestId:"lock-"+week,
@@ -167,8 +169,26 @@ test("AI settles a committed PPV during biweekly TV's off-week and returns to it
    assert.equal(shows[0]?.booking_class,"PREMIUM");
    assert.equal(shows[0]?.show_name,"Winter Wrestling");
    assert.equal(shows[0]?.audience_format,"PPV");
-   if(week===3)assert.deepEqual(shows[1],{week:3,booking_class:"REGULAR",show_day:2,
+   if(week>=3)assert.deepEqual(shows[1],{week:3,booking_class:"REGULAR",show_day:2,
     show_name:"Tuesday Grappling",audience_format:"TV"});
+   if(week===4){
+    assert.equal(shows.length,2,"The contracted off-week creates no filler event");
+    assert.deepEqual(await query<{count:number}>(`
+     SELECT count(*)::integer AS count FROM ppw_completed_shows
+      WHERE world_id=$1 AND week=4`),[{count:0}]);
+    assert.deepEqual(await query<{certified_promotions:number}>(`
+     SELECT certified_promotions FROM ppw_week_resolution_seals
+      WHERE world_id=$1 AND week=4`),[{certified_promotions:8}]);
+   }
+   if(week===5){
+    assert.deepEqual(await query<{unavailable:string[]}>(`
+     SELECT result->'unavailableAi' AS unavailable FROM ppw_command_receipts
+     WHERE world_id=$1 AND command_type='GENERATE_WEEK_STAFF_FALLBACK_CARDS'
+      AND (result->>'week')::integer=5`),[{unavailable:["promotion-2"]}]);
+    assert.deepEqual(await query<{certified_promotions:number}>(`
+     SELECT certified_promotions FROM ppw_week_resolution_seals
+      WHERE world_id=$1 AND week=5`),[{certified_promotions:8}]);
+   }
   }
  }finally{await db.close();}
  async function assertPublished(){

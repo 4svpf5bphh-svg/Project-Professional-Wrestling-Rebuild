@@ -1,4 +1,4 @@
-import {premiumOnlyWeekSql} from "./premium-only-week.js";
+import {aiRegularOffWeekSql} from "./premium-only-week.js";
 import type {TransactionPool} from "./transaction.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {chooseEmergencyStaffCard,orderStaffPromotions,type StaffWrestlerCandidate}
@@ -26,14 +26,14 @@ type Delegated={
   promotion_name:string;cadence:number;tier:StandingTier;
   contracted_day:number|null;premium_only_week:boolean;
   financial_distress:string|null;media_reach:number|null;
-  financial_caution:number|null;prestige:number|null;fan_reputation:number|null;
+  financial_caution:number|null;appearance_room:number|null;home_market_id:string|null;prestige:number|null;fan_reputation:number|null;
 };
 type SignedCandidate={
   promotion_id:string;person_id:string;contract_id:string;
   booking_division:"MEN"|"WOMEN";weekly_service_capacity:number|null;
   momentum:number|null;recognition:number|null;popularity:number|null;
   presentation:number|null;match_craft:number|null;
-  remaining_dates:number|null;expires_week_index:number;
+  remaining_dates:number|null;expires_week_index:number;appearance_fee:number;
   person_status:string;career_stage:string|null;
 };
 type Generated={promotionId:string;showId:string;day:number;venueId:string;
@@ -95,15 +95,28 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           s.owner_player_id,s.allow_unfinished_fallback AS delegated,
           m.player_id AS current_controller,p.management_mode,a.status,
            p.name AS promotion_name,p.event_cadence_weeks AS cadence,p.tier,
-           p.financial_distress,p.media_reach,p.ai_financial_caution AS financial_caution,
+           p.financial_distress,p.media_reach,p.home_market_id,p.ai_financial_caution AS financial_caution,
            standing.prestige,standing.fan_reputation,
+           CASE WHEN p.financial_distress IN ('DISTRESSED','CRISIS')
+             OR (p.tier IN ('LOCAL','INDEPENDENT') AND p.last_weekly_net<0)
+           THEN (SELECT greatest(0,e.gate_revenue-e.venue_cost-e.production_cost-e.travel_cost)::float8
+            FROM ppw_show_economics e
+            JOIN ppw_booking_drafts d ON d.world_id=e.world_id AND d.draft_id=e.show_id
+             AND d.booking_class='REGULAR'
+            WHERE e.world_id=p.world_id AND e.promotion_id=p.promotion_id
+             AND (e.year,e.week)<($2,$3)
+             AND (e.year,e.week)>=(
+              greatest(0,(($2-1)*52+$3-14))/52+1,
+              mod(greatest(0,(($2-1)*52+$3-14)),52)+1)
+            ORDER BY e.year DESC,e.week DESC,e.show_id DESC LIMIT 1)
+           END AS appearance_room,
            (SELECT d.airing_day FROM ppw_commercial_deals d
              WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
              AND d.kind='BROADCAST' AND d.status='ACTIVE'
              AND d.start_week_index <= ($2::integer-1)*52+$3::integer-1
              AND d.end_week_index >= ($2::integer-1)*52+$3::integer-1
              ORDER BY d.end_week_index DESC,d.deal_id LIMIT 1) AS contracted_day,
-           (${premiumOnlyWeekSql("p")}) AS premium_only_week
+           (${aiRegularOffWeekSql()}) AS premium_only_week
          FROM ppw_week_continuity_assessments a
          JOIN ppw_promotions p ON p.world_id=a.world_id AND p.promotion_id=a.promotion_id
          LEFT JOIN ppw_promotion_standings standing
@@ -142,7 +155,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         `SELECT booking.promotion_id,c.person_id,c.contract_id,p.booking_division,
                 p.weekly_service_capacity,p.momentum,p.recognition,p.popularity,
                 p.presentation,p.match_craft,c.remaining_dates,c.expires_week_index,
-                p.status AS person_status,p.career_stage
+                p.status AS person_status,p.career_stage,c.appearance_fee::float8
            FROM ppw_promotions booking
            JOIN ppw_contracts c ON c.world_id=booking.world_id
             AND (c.promotion_id=booking.promotion_id OR
@@ -189,15 +202,17 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
            bookingDivision:c.booking_division,weeklyCapacity:c.weekly_service_capacity??7,
            momentum:c.momentum!,recognition:c.recognition!,popularity:c.popularity!,
            presentation:c.presentation!,matchCraft:c.match_craft!,careerStage:c.career_stage,
-           contractExpires:c.expires_week_index,remainingDates:c.remaining_dates});
+           contractExpires:c.expires_week_index,remainingDates:c.remaining_dates,appearanceFee:c.appearance_fee});
           aiRoster.set(c.promotion_id,ranked);
         }
       }
-      const venueRows=await tx.query<{venue_id:string}>(
-        "SELECT venue_id FROM ppw_venues WHERE world_id=$1 AND status='ACTIVE' AND ($2::boolean=false OR (market_id IS NOT NULL AND capacity IS NOT NULL AND weekly_hire_cost IS NOT NULL)) ORDER BY venue_id LIMIT 257",
+      const venueRows=await tx.query<{venue_id:string;market_id:string|null}>(
+        "SELECT venue_id,market_id FROM ppw_venues WHERE world_id=$1 AND status='ACTIVE' AND ($2::boolean=false OR (market_id IS NOT NULL AND capacity IS NOT NULL AND weekly_hire_cost IS NOT NULL)) ORDER BY venue_id LIMIT 257",
         [input.worldId,worlds[0]!.show_economics_enabled],
       );
       if(venueRows.length>256)throw new Error("Venue catalogue limit exceeded");
+      const homeVenues=(company:Delegated)=>company.appearance_room==null?undefined:
+        venueRows.filter(v=>v.market_id===company.home_market_id).map(v=>v.venue_id);
       const before=await inspectWeekConflicts(tx,input.worldId);
       const existing=new Map<string,ExistingShowBooking>();
       for(const claim of before.arbitrationClaims){
@@ -254,6 +269,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         all.filter(x=>x.status==="AI_MANAGED").map(x=>x.promotion_id),weekIndex):null;
       const generated:Generated[]=[];
       const unfilled:Unfilled[]=[];
+      const unavailableAi=new Set<string>();
       const contractBalances=new Map(candidates.map(c=>[c.contract_id,c.remaining_dates]));
       const reservedDates=before.reservedContractDates;
       const hasDate=(p:StaffWrestlerCandidate)=>{
@@ -448,7 +464,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
           unfilled.push({promotionId,reason:"EXISTING_DRAFT_PRESERVED"});continue;
         }
         // The committed PPV can satisfy continuity on a real TV off-week.
-        if(ai&&d.premium_only_week&&duePremium.has(promotionId))continue;
+        if(ai&&d.premium_only_week)continue;
         const showId=(ai?"ai-week-":"staff-fallback-")+year+"-"+week+"-"+promotionId;
         if(ai){
           const profile=profilesByPromotion.get(promotionId);
@@ -515,7 +531,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
              worldId:input.worldId,worldSeed:String(worlds[0]!.seed),year,week,
              promotionId,showId,roster,
              activeVenues:venueRows.map(x=>x.venue_id),bookedShows:booked,
-             eventType,riskTolerance:profile.ai_risk_tolerance!,
+             eventType,appearanceRoom:d.appearance_room??undefined,preferredVenueIds:homeVenues(d),riskTolerance:profile.ai_risk_tolerance!,
              matchQualityPreference:profile.ai_match_quality_preference!,
              starPreference:profile.ai_star_preference!,
              strategy:strategyFor(promotionId),creative,
@@ -530,7 +546,9 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
            });
           });
           if(card.status==="UNFILLED"){
-            unfilled.push({promotionId,reason:card.reason});continue;
+            unfilled.push({promotionId,reason:card.reason});
+            if(card.reason==="NO_ELIGIBLE_PAIR")unavailableAi.add(promotionId);
+            continue;
           }
           const main=card.matches[card.matches.length-1]!;
           generated.push({promotionId,showId,day:card.schedule.day,
@@ -579,7 +597,7 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
         const ppv=duePremium.get(promotionId);
         if(!ppv)continue;
         const profile=profilesByPromotion.get(promotionId);
-        if((!delegations.get(promotionId)!.premium_only_week&&
+        if((!delegations.get(promotionId)!.premium_only_week&&!unavailableAi.has(promotionId)&&
           !generated.some(g=>g.promotionId===promotionId&&g.bookingClass==="REGULAR"))||
           !profile||profile.ai_risk_tolerance===null||
           profile.ai_match_quality_preference===null||profile.ai_star_preference===null)
@@ -620,6 +638,8 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             ...before.arbitrationClaims.filter(x=>x.kind==="VENUE"&&x.promotionId===promotionId).map(x=>x.day),
             ...generated.filter(g=>g.promotionId===promotionId).map(g=>g.day)])],
           activeVenues:venueRows.map(x=>x.venue_id),eventType:"MAJOR",
+          appearanceRoom:delegations.get(promotionId)!.appearance_room??undefined,
+          preferredVenueIds:homeVenues(delegations.get(promotionId)!),
           riskTolerance:profile.ai_risk_tolerance,
           matchQualityPreference:profile.ai_match_quality_preference,
           starPreference:profile.ai_star_preference,
@@ -753,12 +773,13 @@ export async function generateWeekStaffFallbackCards(pool:TransactionPool,input:
             participants:x.matches?
               x.matches.flatMap(m=>m.participants.map(p=>p.personId)):
               x.participants.map(p=>p.personId)})),
-          unfilled,staffAuthored:true,simulationConsequencesPending:true,
+          unfilled,unavailableAi:[...unavailableAi],
+          scheduledOffAi:all.filter(d=>d.premium_only_week).map(d=>d.promotion_id),staffAuthored:true,simulationConsequencesPending:true,
           matchCount:generated.reduce((sum,x)=>sum+(x.matches?.length??1),0),
         })],
       );
       return {year,week,generated:generated.map(x=>({promotionId:x.promotionId,
-        showId:x.showId,day:x.day,venueId:x.venueId,origin:x.origin})),unfilled};
+        showId:x.showId,day:x.day,venueId:x.venueId,origin:x.origin})),unfilled,unavailableAi:[...unavailableAi]};
     },
   });
 }

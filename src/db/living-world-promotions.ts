@@ -280,7 +280,10 @@ export async function settleAnnualPromotionScale(
     event_cadence_weeks=CASE WHEN p.management_mode='AI' AND
      NOT EXISTS(SELECT 1 FROM ppw_promotion_controls c
       WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
-       AND c.active) THEN x.cadence ELSE p.event_cadence_weeks END
+       AND c.active) THEN least(4,x.cadence+CASE WHEN EXISTS (
+      SELECT FROM ppw_promotion_survival s WHERE s.world_id=p.world_id
+       AND s.promotion_id=p.promotion_id AND p.event_cadence_weeks>s.baseline_event_cadence_weeks
+     ) THEN 1 ELSE 0 END) ELSE p.event_cadence_weeks END
    FROM jsonb_to_recordset($2::jsonb) x(
     promotion_id text,to_tier text,cadence integer)
    WHERE p.world_id=$1 AND p.promotion_id=x.promotion_id

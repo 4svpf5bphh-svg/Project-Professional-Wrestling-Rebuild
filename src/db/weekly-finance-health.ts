@@ -2,18 +2,20 @@ import type {SqlRows} from "./world-operations.js";
 
 /** Finalise original PPW finances ONCE, during the World-locked rollover.
  *
- * Only this week's indexed money events are inspected, independent of World
- * age. Reads no historical shows, whole World blobs or per-wrestler rows.
+ * A bounded four-week ledger window measures AI cash runway across its
+ * operating cadence. The displayed weekly net is still the exact current week. Reads no historical shows, whole World blobs or per-wrestler rows.
  * Player-owned queries subsequently read p.last_weekly_net/runway_weeks.
  * World-command rollback/replay makes the changes atomic and exactly once.
  */
 export async function settleWeeklyPromotionHealth(
  tx:SqlRows,worldId:string,year:number,week:number,
 ):Promise<{evaluated:number;distressChanges:number}>{
+ const index=(year-1)*52+week-1;
+ const first=Math.max(0,index-3);
  const rows=await tx.query<{evaluated:number;distress_changes:number}>(`
   WITH weekly_events AS (
    SELECT (payload->>'promotionId')::text AS promotion_id,
-    sum(CASE event_type
+    year,week,sum(CASE event_type
       WHEN 'CONTRACT_SIGNED' THEN -COALESCE((payload->>'signingBonus')::bigint,0)
       WHEN 'CONTRACT_EXTRA_DATES_ACCEPTED' THEN -COALESCE((payload->>'additionalPayment')::bigint,0)
       WHEN 'CONTRACT_APPEARANCE_FEES' THEN -COALESCE((payload->>'amount')::bigint,0)
@@ -26,18 +28,27 @@ export async function settleWeeklyPromotionHealth(
       WHEN 'SHOW_EVENT_ECONOMICS' THEN COALESCE((payload->>'incrementalCash')::bigint,0)
       ELSE 0::bigint END)::bigint AS weekly_net
    FROM ppw_ledger_events
-   WHERE world_id=$1 AND year=$2 AND week=$3
+   WHERE world_id=$1 AND (year,week) BETWEEN ($4::integer,$5::integer) AND ($2::integer,$3::integer)
      AND event_type IN ('CONTRACT_SIGNED','CONTRACT_EXTRA_DATES_ACCEPTED',
       'CONTRACT_APPEARANCE_FEES','CONTRACT_GUARANTEE_PAID',
       'CONTRACT_TERMINATED_DURING_RESTRUCTURING',
       'PROMOTION_RECURRING_FINANCES','SHOW_EVENT_ECONOMICS','STAFF_BUYOUT',
       'COMMERCIAL_PERFORMANCE_BONUS')
-   GROUP BY payload->>'promotionId'
-  ), base AS (
+   GROUP BY payload->>'promotionId',year,week
+  ), operating AS (
+  SELECT promotion_id,
+   COALESCE(sum(weekly_net) FILTER(WHERE year=$2 AND week=$3),0)::bigint AS net,
+   sum(weekly_net)/$6::numeric AS cycle_net
+  FROM weekly_events GROUP BY promotion_id
+ ), base AS (
    SELECT p.promotion_id,p.cash,p.financial_distress AS old_distress,
-    COALESCE(e.weekly_net,0::bigint) AS net
+    COALESCE(e.net,0::bigint) AS net,
+    CASE WHEN p.management_mode='AI' AND NOT EXISTS(
+     SELECT FROM ppw_promotion_controls c WHERE c.world_id=p.world_id
+      AND c.promotion_id=p.promotion_id AND c.active)
+    THEN COALESCE(e.cycle_net,0) ELSE COALESCE(e.net,0) END AS assessment_net
    FROM ppw_promotions p
-   LEFT JOIN weekly_events e ON e.promotion_id=p.promotion_id
+   LEFT JOIN operating e ON e.promotion_id=p.promotion_id
    WHERE p.world_id=$1 AND p.lifecycle NOT IN ('DORMANT','CLOSED')
      AND p.financial_distress IS NOT NULL
      AND p.weekly_media_income IS NOT NULL
@@ -45,15 +56,15 @@ export async function settleWeeklyPromotionHealth(
      AND p.weekly_fixed_overhead IS NOT NULL
   ), computed AS (
    SELECT b.*,
-    CASE WHEN b.net>=0 THEN NULL::double precision
+    CASE WHEN b.assessment_net>=0 THEN NULL::double precision
      WHEN b.cash<=0 THEN 0::double precision
-     ELSE round(b.cash::numeric/abs(b.net)::numeric,1)::double precision
+     ELSE round(b.cash::numeric/abs(b.assessment_net)::numeric,1)::double precision
     END AS runway
    FROM base b
   ), assessed AS (
    SELECT c.*,
     CASE WHEN c.cash<=0 THEN 'CRISIS'
-     WHEN c.net>=0 THEN 'HEALTHY'
+     WHEN c.assessment_net>=0 THEN 'HEALTHY'
      WHEN c.runway>20 THEN 'HEALTHY'
      WHEN c.runway>8 THEN 'WATCH'
      WHEN c.runway>2 THEN 'DISTRESSED'
@@ -76,7 +87,7 @@ export async function settleWeeklyPromotionHealth(
   )
   SELECT (SELECT count(*)::integer FROM updated) AS evaluated,
    (SELECT count(*)::integer FROM changes) AS distress_changes
- `,[worldId,year,week]);
+ `,[worldId,year,week,Math.floor(first/52)+1,first%52+1,index-first+1]);
  if(rows.length!==1)throw new Error("Weekly finance health settlement failed");
  return {evaluated:rows[0]!.evaluated,distressChanges:rows[0]!.distress_changes};
 }

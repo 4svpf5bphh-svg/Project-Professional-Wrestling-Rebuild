@@ -208,7 +208,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // human-controlled companies are never entered into automatic agreements.
  const owners=await tx.query<CommercialEvidence&{
   promotion_id:string;management_mode:string;active_kinds:string[];
-  recentShowDay:number|null;recentTvEpisodes:number;averageTvRating:number|null;
+  canOfferBroadcast:boolean;recentShowDay:number|null;recentTvEpisodes:number;averageTvRating:number|null;
   recentPremiumShows:number;averagePpvBuys:number|null;
   competition:{ownShowCount:number;rivalShowCount:number;
    ownAvgAttendance:number|null;rivalAvgAttendance:number|null;
@@ -238,6 +238,10 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
     AND draft.event_type='REGULAR' AND draft.status='SUBMITTED'
    ORDER BY draft.year DESC,draft.week DESC,draft.draft_id DESC LIMIT 1)
     AS "recentShowDay",
+  (COALESCE(p.event_cadence_weeks,1)=1 OR EXISTS(
+   SELECT FROM ppw_show_series s WHERE s.world_id=p.world_id
+    AND s.promotion_id=p.promotion_id AND s.active AND s.event_type='REGULAR'
+  )) AS "canOfferBroadcast",
   ARRAY(SELECT d.kind FROM ppw_commercial_deals d
    WHERE d.world_id=p.world_id AND d.promotion_id=p.promotion_id
     AND d.status='ACTIVE') AS active_kinds
@@ -287,7 +291,8 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  `,[worldId]);
  const taken=new Set(occupied.map(row=>row.offer_code));
  for(const {promotion:p,offer:choice} of awardAiCommercialPartners(
-  owners.map(o=>({...o,currentWeekIndex:nextWeek})),taken)){
+  owners.map(o=>({...o,currentWeekIndex:nextWeek,
+   active_kinds:o.canOfferBroadcast?o.active_kinds:[...o.active_kinds,"BROADCAST"]})),taken)){
   const kind=choice.kind;
   const baseline=kind==="BROADCAST"?p.weeklyMediaIncome:p.weeklySponsorIncome;
   if(baseline===null)throw new Error("AI commercial offer lacks an income baseline");
