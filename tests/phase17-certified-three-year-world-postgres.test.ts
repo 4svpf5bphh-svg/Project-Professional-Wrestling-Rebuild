@@ -38,7 +38,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
    query(sql,params){
     const meter=activeMeter.session;
     if(!meter)return connection.query(sql,params);
-    if(/\b(?:INSERT INTO|UPDATE\s+ppw_|DELETE FROM)\b/i.test(sql))activeMeter.writes++;
+    if(/\b(?:INSERT INTO|UPDATE|DELETE FROM)\s+ppw_\w+\b/i.test(sql))activeMeter.writes++;
     return meter.execute(()=>connection.query(sql,params));
    },
   };
