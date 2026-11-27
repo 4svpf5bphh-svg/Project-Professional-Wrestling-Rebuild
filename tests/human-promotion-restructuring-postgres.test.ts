@@ -6,6 +6,7 @@ import {withWorldTransaction} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {applyHumanPromotionRestructure,previewHumanPromotionRestructure}
  from "../src/db/human-promotion-restructuring.js";
+import {settleLivingPromotionSurvival} from "../src/db/living-world-promotions.js";
 import {readBusinessWorkspace} from "../src/db/business-workspace.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("two human managers: only the owner can approve reviewed company rescue with real talent consequences",{
@@ -123,6 +124,19 @@ test("two human managers: only the owner can approve reviewed company rescue wit
   assert.ok(desk.rollingFourWeeks.byCategory.some(x=>
    x.category==="RESTRUCTURING_SETTLEMENT"&&x.amount===-18000),
    "Financial desk shows actual signed release settlement");
+  await withWorldTransaction(db.pool,async tx=>{
+   // A controller can inherit the AI management flag. The active claim is
+   // still authoritative when the company becomes healthy.
+   await tx.query(`UPDATE ppw_promotions SET financial_distress='HEALTHY',
+    management_mode='AI' WHERE world_id=$1 AND promotion_id=$2`,[world,pA]);
+   await tx.query(`UPDATE ppw_promotion_survival SET healthy_weeks=4
+    WHERE world_id=$1 AND promotion_id=$2`,[world,pA]);
+   assert.equal((await settleLivingPromotionSurvival(tx,world,1,5)).recovered,0);
+   const [stillRestructured]=await tx.query<{overhead:string;cadence:number}>(`
+    SELECT weekly_fixed_overhead AS overhead,event_cadence_weeks AS cadence
+    FROM ppw_promotions WHERE world_id=$1 AND promotion_id=$2`,[world,pA]);
+   assert.deepEqual(stillRestructured,{overhead:"8400",cadence:2});
+  });
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of ["ppw_ledger_events","ppw_promotion_survival",

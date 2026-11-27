@@ -64,7 +64,7 @@ export async function settleLivingPromotionSurvival(
    idx-p.last_restructure_week_index>=12);
   const ai=p.management_mode==="AI"&&!p.human_controlled;
   const restructure=ai&&due;
-  const recovered=counters.healthyWeeks>=8&&p.restructuring_count>0&&
+  const recovered=ai&&counters.healthyWeeks>=8&&p.restructuring_count>0&&
    Number(p.weekly_fixed_overhead)!==Number(p.baseline_weekly_fixed_overhead);
   // Original has threshold 24 crisis and 12 insufficient staff. Human
   // managers retain their promotions; AI dormancy only after cash exhaustion.
