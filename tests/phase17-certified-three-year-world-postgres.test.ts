@@ -2,12 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
-import {withWorldTransaction} from "../src/db/transaction.js";
+import {type TransactionPool,withWorldTransaction} from "../src/db/transaction.js";
 import {importOriginalGenesis} from "../src/db/import-original-genesis.js";
 import {originalGenesisFixture} from "./fixtures/original-genesis.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
+import {MeasuredQuerySession} from "../src/db/query-meter.js";
+import {captureBalanceSnapshot} from "./fixtures/world-balance-snapshot.js";
 const url=process.env.PPW_NEON_TEST_URL;
+const normalSeed=process.env.PPW_BALANCE_SEED;
 
 // An authentic multi-week World Lock replay, unlike separate financial
 // scenarios: real AI books every card, original result simulation scores
@@ -15,9 +18,31 @@ const url=process.env.PPW_NEON_TEST_URL;
 // fabricated result, receipt, direct payroll fixture or live scheduler.
 test("eight AI promotions sustain a genuine three-year certified World Lock and career market",{
  skip:!url?"Disposable PostgreSQL required":false,timeout:1200000,
-},async()=>{
- const world="phase17-three-year-"+randomUUID(),db=postgresPool(url!,4);
- const weeks=156,started=Date.now();
+},async t=>{
+ const blockedFetch=t.mock.method(globalThis,"fetch",()=>{
+  throw new Error("Certified balance simulations cannot call live providers");
+ });
+ const seed=normalSeed===undefined?null:Number(normalSeed);
+ const weeks=Number(process.env.PPW_BALANCE_WEEKS??156),started=Date.now();
+ assert.ok(seed===null||Number.isSafeInteger(seed)&&seed>=0);
+ assert.ok(seed===null?weeks===156:[13,52,156].includes(weeks));
+ // Some match and booking tie-breaks incorporate World identity.
+ const world=seed===null?"phase17-three-year-"+randomUUID():"milestone5-balance-"+seed;
+ const db=postgresPool(url!,4);
+ let ownsWorld=false;
+ const activeMeter:{session?:MeasuredQuerySession;writes:number}={writes:0};
+ const pool:TransactionPool={async connect(){
+  const connection=await db.pool.connect();
+  return {
+   release:()=>connection.release(),
+   query(sql,params){
+    const meter=activeMeter.session;
+    if(!meter)return connection.query(sql,params);
+    if(/\b(?:INSERT INTO|UPDATE\s+ppw_|DELETE FROM)\b/i.test(sql))activeMeter.writes++;
+    return meter.execute(()=>connection.query(sql,params));
+   },
+  };
+ }};
  // stderr is streamed even if node:test aborts without flushing console.log.
  const diagnostic=(event:string,detail:Record<string,number|string>={})=>
   process.stderr.write("[three-year world] "+JSON.stringify({
@@ -27,7 +52,18 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
   certified:number;matches:number;cash:string;weeklyLedger:number}>=[];
  try{
   diagnostic("seeding genesis");
-  await importOriginalGenesis(db.pool,originalGenesisFixture(world));
+  const fixture=originalGenesisFixture(world);
+  if(seed!==null){
+   fixture.world.seed=seed;
+   fixture.people.forEach((person,index)=>{
+    const age={PROSPECT:20,PRIME:28,VETERAN:38,SPECIAL_ATTRACTION:45}[person.careerStage];
+    person.biologicalAge=age+index%7;
+    person.careerExperience=person.biologicalAge-18;
+    person.developmentAptitude=30+index%61;
+   });
+  }
+  await importOriginalGenesis(db.pool,fixture);
+  ownsWorld=true;
   diagnostic("genesis seeded");
   const population=await withWorldTransaction(db.pool,tx=>tx.query<{
    talent:number;free_agents:number
@@ -38,16 +74,18 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
      "FROM ppw_people p WHERE p.world_id=$1"].join(" "),[world]));
   assert.deepEqual(population,[{talent:643,free_agents:243}],
    "Real Genesis depth matters; an all-contracted synthetic market cannot recruit");
-  // Use the real company identities; the named quarterly premium calendar
+  // Use the real company identities; the named premium calendar
   // belongs to WWE and AEW, not to anonymous Genesis fixture labels.
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query(["UPDATE ppw_promotions SET name=CASE",
     "WHEN promotion_id='promotion-0' THEN 'WWE'",
     "WHEN promotion_id='promotion-1' THEN 'AEW' ELSE name END",
     "WHERE world_id=$1"].join(" "),[world]);
-   await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",
+   if(seed===null)await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",
     [world]);
   });
+  if(seed!==null)console.log("Balance snapshot",JSON.stringify(
+   await captureBalanceSnapshot(db.pool,world,0)));
   for(let week=1;week<=weeks;week++){
    const calendarYear=Math.floor((week-1)/52)+1;
    const calendarWeek=(week-1)%52+1;
@@ -63,7 +101,11 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
     "UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1",
     [world]));
    diagnostic("lock-request",{week});
-   const locked=await lockWorldWeek(db.pool,{
+   if(seed!==null&&[1,13,52,104,156].includes(week)){
+    activeMeter.session=new MeasuredQuerySession("certified-week");
+    activeMeter.writes=0;
+   }
+   const locked=await lockWorldWeek(pool,{
     worldId:world,requestId:"phase13-lock-"+week,
     expectedRevision:Number(state[0]!.revision)});
    assert.equal(locked.status,"APPLIED","Week "+week+" must lock authoritatively");
@@ -72,7 +114,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
    let published=false;
    for(let attempt=0;attempt<4;attempt++){
     diagnostic("resolution-request",{week,attempt});
-    const run=await driveWorldResolution(db.pool,{
+    const run=await driveWorldResolution(pool,{
      worldId:world,resolutionId:"phase13-resolution",maxStages:16,
      manualRecovery:true,
     });
@@ -82,6 +124,13 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
     assert.equal(run.status,"LIMIT_REACHED",
      "Unexpected blocker in real Week "+week+": "+JSON.stringify(run));
    }
+   if(activeMeter.session){
+    console.log("Balance SQL",JSON.stringify({seed,week,...activeMeter.session.sample(),
+     writeStatements:activeMeter.writes}));
+    delete activeMeter.session;
+   }
+   if(seed!==null&&week%13===0)console.log("Balance snapshot",JSON.stringify(
+    await captureBalanceSnapshot(db.pool,world,week)));
    assert.equal(published,true,"World did not publish Week "+week+": "+trace.join(", "));
    for(const step of ["ASSESS_CONTINUITY","FINALIZE_PREPARED_SHOWS","BEGIN_RESOLUTION",
     "GENERATE_STAFF_AND_AI_CARDS","PREPARE_AI_AND_STAFF_COMMERCE",
@@ -148,6 +197,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
   diagnostic("all weeks certified",{weeks});
   assert.equal(snapshots.length,weeks);
   assert.notEqual(snapshots[weeks-1]!.cash,snapshots[0]!.cash);
+  if(weeks<52)return;
   const ppvs=await withWorldTransaction(db.pool,tx=>tx.query<{
    promotion_id:string;name:string|null
   }>(["SELECT promotion_id,show_name AS name FROM ppw_booking_drafts",
@@ -168,7 +218,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
      "GROUP BY d.promotion_id ORDER BY d.promotion_id"].join(" "),[world]));
   assert.equal(usage.length,8);
   assert.ok(usage.every(x=>x.unique_talent>=10),
-   "Every AI company must involve real roster depth across the quarter");
+   "Every AI company must involve real roster depth across the first year");
   const companies=await withWorldTransaction(db.pool,tx=>tx.query<{
    promotion_id:string;name:string;tier:string;lifecycle:string;
    cash:string;debt:string;financial_distress:string|null;
@@ -178,7 +228,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
    "p.cash::text,p.debt::text,p.financial_distress,",
    "(SELECT count(*)::integer FROM ppw_contracts c WHERE c.world_id=p.world_id",
    "AND c.promotion_id=p.promotion_id AND c.status='SIGNED'",
-   "AND c.expires_week_index>=155) AS active_contracts,",
+   "AND c.expires_week_index>=$2) AS active_contracts,",
    "(SELECT count(*)::integer FROM ppw_contracts c WHERE c.world_id=p.world_id",
    "AND c.promotion_id=p.promotion_id) AS total_contracts,",
    "(SELECT count(*)::integer FROM ppw_completed_shows x",
@@ -187,8 +237,8 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
    "FROM ppw_promotions p WHERE p.world_id=$1 ORDER BY p.promotion_id"
   ].join(" "),[world]));
   assert.equal(companies.length,8,"All AI companies must retain identity");
-  assert.ok(companies.every(p=>p.completed_shows>=156),
-   "Each rival must remain active for the full first World year");
+  assert.ok(companies.every(p=>p.completed_shows>=weeks),
+   "Each rival must remain active throughout the replay");
   console.log("Phase 17 three-year company survival:",JSON.stringify(companies));
   console.log("Phase 17 three-year World Lock diagnostics:",
    JSON.stringify(snapshots));
@@ -197,7 +247,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
   // Topological world-scoped deletion keeps this disposable fixture isolated
   // from other test Worlds, even as new World-bound PPW tables are introduced.
   try{
-   await withWorldTransaction(db.pool,async tx=>{
+   if(ownsWorld)await withWorldTransaction(db.pool,async tx=>{
     const names=await tx.query<{name:string;parent:string|null}>([
      "SELECT child.relname AS name,parent.relname AS parent",
      "FROM pg_class child JOIN pg_namespace ns ON ns.oid=child.relnamespace",
@@ -225,7 +275,11 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
     for(const name of order.reverse())await tx.query(
      "DELETE FROM "+name+" WHERE world_id=$1",[world]);
    });
-  }finally{await db.close();diagnostic("disposable cleanup finished");}
+  }finally{
+   await db.close();
+   diagnostic("disposable cleanup finished");
+   assert.equal(blockedFetch.mock.callCount(),0);
+  }
  }
 });
 

@@ -66,14 +66,17 @@ test("regional network targets match achievable certified TV ratings without rel
  const at=(tier:BroadcastNetworkTerms["tier"],offerCode:string,rating:number)=>
   assessBroadcastNetwork({...deal,tier,offerCode,airingDay:5},
    [ep(15,rating)],15)!;
- const local=at("LOCAL","BROADCAST_STABLE",audience("LOCAL",20));
+ const local=at("LOCAL","BROADCAST_STABLE",audience("LOCAL",40));
+ const lowReach=at("LOCAL","BROADCAST_STABLE",audience("LOCAL",20));
  const indie=at("INDEPENDENT","BROADCAST_INDIE",audience("INDEPENDENT",35));
- const rising=at("RISING","BROADCAST_GROWTH",audience("RISING",35));
- assert.equal(local.rating,.1);
- assert.equal(indie.rating,.1);
- assert.equal(rising.rating,.3);
+ const rising=at("RISING","BROADCAST_GROWTH",audience("RISING",45));
+ assert.equal(local.rating,.07);
+ assert.equal(lowReach.rating,.05);
+ assert.equal(lowReach.status,"BELOW_TARGET");
+ assert.equal(indie.rating,.12);
+ assert.ok(rising.rating!>=.28&&rising.rating!<.34);
  assert.equal(local.status,"ON_TARGET");
- assert.equal(indie.status,"WATCH");
+ assert.equal(indie.status,"ON_TARGET");
  assert.equal(rising.status,"WATCH");
  assert.equal(local.bonusEligible,true);
  assert.equal(indie.bonusEligible,true);

@@ -899,7 +899,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
       (typeof episode.ratingsWarChange==="number"&&episode.ratingsWarChange!==0?
        " · WAR "+(episode.ratingsWarChange>0?"+":"")+episode.ratingsWarChange.toFixed(1):"")));
     const numbers=el("div","ppw-ratings-war-rival-number");
-    numbers.append(el("b","",episode.householdRating.toFixed(1)),
+    numbers.append(el("b","",formatTvRating(episode.householdRating)),
      el("small","",episode.estimatedViewers===null?
       "Household rating":episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
     row.append(description,numbers);

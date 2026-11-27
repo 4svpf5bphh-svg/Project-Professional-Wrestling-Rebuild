@@ -27,7 +27,9 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  // Staff commitments observe existing fatigue recovery and creative updates.
  await settleBackstageStaffPromises(tx,worldId,weekIndex);
  await settleStaffDisagreements(tx,worldId,weekIndex);
- const withheld=networks.filter(n=>!n.review.bonusEligible).map(n=>n.dealId);
+ const broadcastBonuses=networks.filter(n=>n.review.bonusEligible&&n.review.showId)
+  .map(n=>({deal_id:n.dealId,show_id:n.review.showId,
+   rating:n.review.rating,target:n.review.target}));
  // A successful broadcast carries recognition to previously visited
  // away markets, but never fabricates an international audience in an unknown
  // region. A current certified show with real crowd response is required.
@@ -73,7 +75,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
  const bonuses=await tx.query<{promotion_id:string;amount:string}>(`
  WITH certified AS (
   SELECT s.promotion_id,max(s.crowd_response) AS crowd,
-   max(CASE WHEN e.audience_format='TV'
+   max(CASE WHEN e.audience_format='TV' AND b.booking_class='REGULAR'
     THEN e.tv_household_rating END) AS tv_rating,
    bool_or(EXISTS(
     SELECT 1 FROM ppw_completed_show_matches result
@@ -91,32 +93,21 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   WHERE s.world_id=$1 AND s.year=$2 AND s.week=$3
   GROUP BY s.promotion_id
  ), eligible AS (
-  SELECT d.world_id,d.deal_id,d.promotion_id,c.crowd,
+  SELECT d.world_id,d.deal_id,d.promotion_id,
+   CASE WHEN d.kind='BROADCAST' THEN episode.crowd_response ELSE c.crowd END AS crowd,
    round(d.agreed_income*least(.18,(CASE
     WHEN d.offer_code='SPONSOR_LOCAL' AND c.hardcore THEN .05
-    WHEN d.offer_code='BROADCAST_GROWTH' AND c.crowd>=70 THEN .04
-    WHEN d.offer_code='BROADCAST_INDIE' AND c.crowd>=66 THEN .04
-    WHEN d.offer_code='BROADCAST_TV' AND c.crowd>=76 THEN .03
-    WHEN d.offer_code='BROADCAST_GLOBAL' AND c.crowd>=82 THEN .04
+    WHEN d.offer_code='BROADCAST_GROWTH' AND episode.crowd_response>=70 THEN .04
+    WHEN d.offer_code='BROADCAST_INDIE' AND episode.crowd_response>=66 THEN .04
+    WHEN d.offer_code='BROADCAST_TV' AND episode.crowd_response>=76 THEN .03
+    WHEN d.offer_code='BROADCAST_GLOBAL' AND episode.crowd_response>=82 THEN .04
     WHEN d.offer_code='SPONSOR_PARTNER' AND c.crowd>=73 THEN .06
     WHEN d.offer_code='SPONSOR_FOOD' AND c.crowd>=72 THEN .04
     WHEN d.offer_code='SPONSOR_TECH' AND c.crowd>=76 THEN .05
     WHEN d.offer_code='SPONSOR_LUXURY' AND c.crowd>=82 THEN .06
     ELSE 0 END)+
-    CASE WHEN d.kind='BROADCAST' AND c.tv_rating IS NOT NULL THEN
-      least(.12,greatest(0,
-       c.tv_rating/(
-        (CASE p.tier
-         WHEN 'GLOBAL' THEN 3.1 WHEN 'NATIONAL' THEN 1.35
-         WHEN 'RISING' THEN .38 WHEN 'INDEPENDENT' THEN .14
-         ELSE .10 END) *
-        (CASE d.offer_code
-         WHEN 'BROADCAST_GLOBAL' THEN 1.45
-         WHEN 'BROADCAST_TV' THEN 1.25
-         WHEN 'BROADCAST_GROWTH' THEN .9
-         WHEN 'BROADCAST_ARCHIVE' THEN .8
-         WHEN 'BROADCAST_INDIE' THEN .75
-         ELSE .7 END)) - 1)*.07)
+    CASE WHEN d.kind='BROADCAST' AND network.rating IS NOT NULL THEN
+      least(.12,greatest(0,(network.rating/network.target-1)*.07))
      WHEN d.kind='SPONSOR' AND c.tv_rating IS NOT NULL AND
       d.offer_code IN ('SPONSOR_TECH','SPONSOR_LUXURY') AND
       c.tv_rating >= (CASE p.tier
@@ -128,9 +119,15 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   JOIN certified c ON c.promotion_id=d.promotion_id
   JOIN ppw_promotions p ON p.world_id=d.world_id
    AND p.promotion_id=d.promotion_id
+  LEFT JOIN jsonb_to_recordset($5::jsonb) AS network(
+   deal_id text,show_id text,rating numeric,target numeric)
+   ON network.deal_id=d.deal_id AND d.kind='BROADCAST'
+  LEFT JOIN ppw_completed_shows episode ON episode.world_id=d.world_id
+   AND episode.show_id=network.show_id AND episode.promotion_id=d.promotion_id
+   AND episode.year=$2 AND episode.week=$3
   WHERE d.world_id=$1 AND d.status='ACTIVE'
    AND d.start_week_index<=$4 AND d.end_week_index>=$4
-   AND (d.kind<>'BROADCAST' OR NOT(d.deal_id=ANY($5::text[])))
+   AND (d.kind<>'BROADCAST' OR episode.show_id IS NOT NULL)
  ), earned AS (
   INSERT INTO ppw_commercial_bonus_receipts(
    world_id,deal_id,promotion_id,year,week,amount,crowd_response)
@@ -152,7 +149,7 @@ export async function settleCommercialWorldWeek(tx:SqlRows,worldId:string,
   FROM earned RETURNING event_id
  )
  SELECT promotion_id,amount FROM paid
- `,[worldId,year,week,weekIndex,withheld]);
+ `,[worldId,year,week,weekIndex,JSON.stringify(broadcastBonuses)]);
  // Publish partner voices and head-to-head winners as genuine World news.
  // World News has already been published in the very same locked Week
  // transaction. A direct isolated settlement with no news seal stays safe.

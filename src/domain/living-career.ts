@@ -17,15 +17,18 @@ export interface CareerChange {
 }
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const round2=(v:number)=>Math.round(v*100)/100;
+// Weekly age and wear effects can be smaller than half a hundredth.
+// Keep those changes across matches and weekly settlements.
+const roundSkill=(v:number)=>Math.round(v*10000)/10000;
 const stageFactor:Record<CareerStage,number>={
  PROSPECT:1.35,PRIME:.75,VETERAN:.28,SPECIAL_ATTRACTION:.12,
 };
 const develop=(value:number,growth:number)=>
- round2(clamp(value+growth*Math.max(.05,(100-value)/100),1,99));
+ roundSkill(clamp(value+growth*Math.max(.05,(100-value)/100),1,99));
 const WEEKS_PER_YEAR=52;
 const CAREER_TIME_FACTOR=.14;
 const RETIREMENT_AGE=42;
-/** One application for an already-certified World week, identical to original ordering:
+/** One application for an already-certified World week, preserving the original ordering:
  * skill improvement -> age/wear decline -> stage transition -> retirement chance.
  */
 export function originalCareerWeek(
@@ -54,8 +57,8 @@ export function originalCareerWeek(
   const wearPressure=Math.max(0,p.wear-58)/42;
   const decline=biologicalWeek*(agePressure+wearPressure*.75);
   if(decline>0){
-   p.skills.stamina=round2(clamp(p.skills.stamina-decline*2.4,10,99));
-   p.skills.inRingQuality=round2(clamp(p.skills.inRingQuality-decline*.7,10,99));
+   p.skills.stamina=roundSkill(clamp(p.skills.stamina-decline*2.4,10,99));
+   p.skills.inRingQuality=roundSkill(clamp(p.skills.inRingQuality-decline*.7,10,99));
    p.skills.matchCraft=develop(p.skills.matchCraft,decline*.25);
   }
   if(p.careerStage==="PROSPECT"&&(p.biologicalAge>=25||p.careerExperience>=45))

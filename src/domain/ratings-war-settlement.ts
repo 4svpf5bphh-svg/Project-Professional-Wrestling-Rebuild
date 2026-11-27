@@ -13,7 +13,8 @@ export interface RatingsWarResult{
  baseRating:number;baseViewers:number;
  opponents:number;change:number;
 }
-const units=(rating:number)=>Math.round(rating*10);
+const units=(rating:number)=>Math.round(rating*100);
+const centsPerTransfer=10;
 const safe=(x:number)=>Number.isFinite(x);
 const byId=(a:{promotionId:string;showId:string},b:{promotionId:string;showId:string})=>
  a.promotionId.localeCompare(b.promotionId)||a.showId.localeCompare(b.showId);
@@ -35,7 +36,7 @@ export function projectRatingsWarWeek(episodes:readonly RatingsWarEpisode[]):Rat
    seen.has(e.promotionId)||!Number.isSafeInteger(e.day)||e.day<1||e.day>7||
    (e.hour!==null&&(!Number.isSafeInteger(e.hour)||e.hour<0||e.hour>23))||
    !safe(e.householdRating)||e.householdRating<0||e.householdRating>10||
-   Math.abs(e.householdRating*10-units(e.householdRating))>0.000001||
+   Math.abs(e.householdRating*100-units(e.householdRating))>0.000001||
    !Number.isSafeInteger(e.estimatedViewers)||e.estimatedViewers<0||
    !safe(e.crowdResponse)||e.crowdResponse<0||e.crowdResponse>100)
    throw new Error("Invalid certified Ratings War episode");
@@ -59,7 +60,7 @@ export function projectRatingsWarWeek(episodes:readonly RatingsWarEpisode[]):Rat
   const pairs:{first:RatingsWarEpisode;second:RatingsWarEpisode;diff:number}[]=[];
   for(let i=0;i<slot.length;i++)for(let j=i+1;j<slot.length;j++){
    const a=slot[i]!,b=slot[j]!;
-   const score=(e:RatingsWarEpisode)=>units(e.householdRating)*4+
+   const score=(e:RatingsWarEpisode)=>units(e.householdRating)*.4+
     Math.round((e.crowdResponse-65)/5);
    pairs.push({first:a,second:b,diff:score(a)-score(b)});
   }
@@ -70,8 +71,8 @@ export function projectRatingsWarWeek(episodes:readonly RatingsWarEpisode[]):Rat
    if(Math.abs(pair.diff)<4)continue;
    const winning=map.get((pair.diff>0?pair.first:pair.second).promotionId)!;
    const losing=map.get((pair.diff>0?pair.second:pair.first).promotionId)!;
-   const loseBudget=Math.max(0,Math.floor(losing.raw*.2))-losing.losses;
-   const gainBudget=Math.max(0,Math.floor(winning.raw*.2))-winning.gains;
+   const loseBudget=Math.max(0,Math.floor(losing.raw*.2/centsPerTransfer))-losing.losses;
+   const gainBudget=Math.max(0,Math.floor(winning.raw*.2/centsPerTransfer))-winning.gains;
    const transfer=Math.min(3,Math.max(1,Math.ceil(Math.abs(pair.diff)/16)),
     loseBudget,gainBudget);
    if(transfer<=0)continue;
@@ -81,13 +82,13 @@ export function projectRatingsWarWeek(episodes:readonly RatingsWarEpisode[]):Rat
  }
  return ordered.map(e=>{
   const result=map.get(e.promotionId)!;
-  const adjusted=result.raw+result.delta;
+  const adjusted=result.raw+result.delta*centsPerTransfer;
   // Preserve the baseline show's existing TV-household-to-viewer model,
   // rather than inventing new viewers from the rounded displayed rating.
   const viewers=result.raw===0?e.estimatedViewers:
    Math.round((e.estimatedViewers*adjusted/result.raw)/1000)*1000;
   return {showId:e.showId,promotionId:e.promotionId,
-   householdRating:adjusted/10,estimatedViewers:viewers,
+   householdRating:adjusted/100,estimatedViewers:viewers,
    baseRating:e.householdRating,baseViewers:e.estimatedViewers,
    opponents:result.opponents,change:result.delta/10};
  });

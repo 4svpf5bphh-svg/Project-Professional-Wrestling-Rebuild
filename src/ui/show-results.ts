@@ -1,3 +1,4 @@
+import {formatTvRating} from "../domain/commercial-offers.js";
 import {activateWorkspaceRoot} from "./workspace-root.js";
 /** PPW Ringside: a results broadcast, not a spreadsheet of resolution receipts.
  * Player-authored finishes remain sovereign; editorial copy is derived from
@@ -208,7 +209,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    return item;
   };
   if(report.format==="TV"&&report.householdRating!==null){
-   metrics.append(metric("TV RATING",report.householdRating.toFixed(1)));
+   metrics.append(metric("TV RATING",formatTvRating(report.householdRating)));
    if(report.estimatedViewers!==null){
     const viewers=metric("EST. VIEWERS",new Intl.NumberFormat("en-GB",{
      notation:"compact",maximumFractionDigits:1
@@ -524,7 +525,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   fact("TELEVISION AUDIENCE",
    show.audience.estimatedViewers.toLocaleString("en-GB")+" viewers",
    show.audience.householdRating===null?"Certified broadcast estimate":
-    show.audience.householdRating.toFixed(1)+" household rating");
+    formatTvRating(show.audience.householdRating)+" household rating");
  if(show.audience?.format==="PPV"&&show.audience.ppvBuys!==null)
   fact("PAY-PER-VIEW BUYS",
    show.audience.ppvBuys.toLocaleString("en-GB"),

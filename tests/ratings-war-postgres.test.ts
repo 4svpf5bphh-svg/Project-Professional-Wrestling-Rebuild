@@ -18,7 +18,7 @@ test("Ratings War settles all certified programmes atomically, keeps PPVs and re
    const episodes=[
     {show:"war-main",promotion:"promotion-0",day:2,crowd:88,rating:3.2,viewers:5392000},
     {show:"war-rival",promotion:"promotion-1",day:2,crowd:64,rating:2.5,viewers:4213000},
-    {show:"war-other-day",promotion:"promotion-2",day:3,crowd:90,rating:2.7,viewers:4550000}
+    {show:"war-other-day",promotion:"promotion-2",day:3,crowd:90,rating:.07,viewers:118000}
    ];
    for(const x of episodes){
     await tx.query(`INSERT INTO ppw_booking_drafts
@@ -75,7 +75,7 @@ test("Ratings War settles all certified programmes atomically, keeps PPVs and re
   assert.ok(Number(byId.get("war-rival")!.tv_household_rating)<2.5);
   assert.equal(byId.get("war-main")!.ratings_war_opponents,1);
   assert.equal(byId.get("war-other-day")!.ratings_war_opponents,0);
-  assert.equal(Number(byId.get("war-other-day")!.tv_household_rating),2.7);
+  assert.equal(Number(byId.get("war-other-day")!.tv_household_rating),.07);
   assert.equal(Number(byId.get("war-main")!.ratings_war_base_rating),3.2);
   assert.equal(Number(byId.get("war-rival")!.ratings_war_base_rating),2.5);
   assert.equal(byId.get("war-ppv")!.ratings_war_base_rating,null);
