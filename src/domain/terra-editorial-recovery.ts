@@ -14,7 +14,7 @@ const quoteKey=(line:string)=>line.normalize("NFKC").toLowerCase()
  .replace(/[’‘ʼ]/g,"'").replace(/[–—]/g,"-")
  .replace(/[^\p{L}\p{N}']+/gu," ").trim();
 const quotePattern=/[“"]([^”"\r\n]{1,500})[”"]|(?<![\p{L}\p{N}])‘((?:[^‘’\r\n]|’(?=[\p{L}\p{N}])){1,500})’(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])'((?:[^'\r\n]|'(?=[\p{L}\p{N}])){1,500})'(?![\p{L}\p{N}])/gu;
-const escaped=(s:string)=>s.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&");
+const escaped=(s:string)=>s.replace(/[/\\^$*+?.()|[\]{}]/g,"\\$&");
 const alias=(name:string)=>[...new Set([name,name.split(/\s+/).at(-1)??name])].filter(x=>x.length>=2);
 const speech="(?:said|says|shouted|declared|announced|replied|warned|demanded|promised|asked|told|added|claimed|snarled|yelled)";
 function nearbySpeakers(text:string,at:number,length:number,names:string[]):string[]{
@@ -160,11 +160,11 @@ export function finalizeTerraEditorial(input:RingsideCopy,show:CompletedShowView
  // trigger another billable request. The Groq pipeline retains its own rules.
  const check=(copy:RingsideCopy,view=show)=>{
   // The completed match receipt has no recorded kickout, near-fall or move beats.
-  const unrecorded=/\b(?:kicks? out|kicked out|kick[- ]?outs?|near[- ]falls?)\b|\b(?:hit|hits|lands?|landed|delivered|connected with) (?:a |the )?(?:suplex|powerbomb|moonsault|ddt|clothesline|chokeslam|dropkick|brainbuster|piledriver)\b/i;
+  const unrecorded=/\b(?:kicks? out|kicked out|kick[- ]?outs?|near[- ]falls?|(?:legal|hot|blind) tag (?:sparked|changed|started)|tagged (?:in|out))\b|\b(?:hit|hits|lands?|landed|delivered|connected with) (?:a |the )?(?:suplex|powerbomb|moonsault|ddt|clothesline|chokeslam|dropkick|brainbuster|piledriver)\b/i;
   const moves=[...new Set(view.entries.flatMap(entry=>(entry.performerIdentities??[])
    .flatMap(p=>[...p.signatureMoves,...p.finishingMoves])).filter(move=>move.length>=7))];
   const knownAction=(prose:string)=>moves.some(move=>
-   new RegExp("\\b(?:hit|hits|landed|lands|delivered|used|executed|unleashed|connected with)\\b[^.!?]{0,55}"+
+   new RegExp("\\b(?:hit|hits|landed|lands|nailed|delivered|used|executed|unleashed|connected with)\\b[^.!?]{0,55}"+
     escaped(move)+"(?![\\p{L}\\p{N}])","iu").test(prose));
   copy.slots.forEach((slot,i)=>{
    if(view.entries[i]?.type==="MATCH"&&(unrecorded.test(slot.headline+" "+slot.recap)||

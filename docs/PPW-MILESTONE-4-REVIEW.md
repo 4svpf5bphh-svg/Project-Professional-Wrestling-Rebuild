@@ -13,7 +13,7 @@ Production baseline `27a45cc055596e8c6dc8fb6a5ebe66661604280a`. The draft is for
 
 ## Offline editorial comparison
 
-Eight chronological synthetic weeks used the same paired TV and PPV fixtures on the baseline and this branch. These are deterministic outputs and request estimates. No provider supplied any copy for the comparison.
+Eight chronological synthetic weeks used the same paired TV and PPV fixtures on the production baseline and the initial reviewed candidate at `9489cc78`. These are deterministic outputs and request estimates. No provider supplied any copy for the comparison.
 
 | Measure | Baseline | Milestone 4 |
 | --- | ---: | ---: |
