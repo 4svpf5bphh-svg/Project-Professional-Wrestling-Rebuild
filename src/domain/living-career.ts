@@ -120,13 +120,14 @@ export function originalAnnualTier(tier:PromotionTier,score:number):PromotionTie
 export function sustainableAnnualTier(
  tier:PromotionTier,score:number,
  distress:"HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS",
- completedShows:number,
+ completedShows:number,expansionScore=score,
 ):PromotionTier{
  if(!Number.isSafeInteger(completedShows)||completedShows<0)
   throw new Error("Invalid annual certified show count");
  const proposed=originalAnnualTier(tier,score);
  return ORDER.indexOf(proposed)>ORDER.indexOf(tier)&&
-  (distress!=="HEALTHY"||completedShows===0)?tier:proposed;
+  (distress!=="HEALTHY"||completedShows===0||
+   originalAnnualTier(tier,expansionScore)!==proposed)?tier:proposed;
 }
 
 /** Original processWrestlerMoraleForWeek, averaging every relevant contract.
@@ -155,7 +156,8 @@ export function originalWeeklyMorale(input:{
 export const ORIGINAL_ROSTER_TARGET={GLOBAL:46,NATIONAL:36,RISING:29,
  INDEPENDENT:24,LOCAL:16} as const;
 export function originalPromotionScaleScore(input:{
- localMarkets:readonly {liveStrength:number;awareness:number;loyalty:number}[];
+ localMarkets:readonly {liveStrength:number;awareness:number;loyalty:number;
+  certifiedShow?:boolean}[];
  mediaReach:number;showPerformance:number;financialDistress:
  "HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS"
 }):number{
@@ -164,7 +166,8 @@ export function originalPromotionScaleScore(input:{
  const core=local.slice(0,5);
  const strength=core.length?core.reduce((a,b)=>a+b,0)/core.length:0;
  const breadth=input.localMarkets.length?input.localMarkets.filter(s=>
-  s.awareness>=25&&s.liveStrength>=20).length/input.localMarkets.length*100:0;
+  s.certifiedShow!==false&&s.awareness>=25&&s.liveStrength>=20
+ ).length/input.localMarkets.length*100:0;
  const finances={HEALTHY:80,WATCH:60,DISTRESSED:38,CRISIS:15};
  return Math.round(clamp(strength*.32+breadth*.16+input.mediaReach*.2+
   input.showPerformance*.22+finances[input.financialDistress]*.1,0,100)*10)/10;

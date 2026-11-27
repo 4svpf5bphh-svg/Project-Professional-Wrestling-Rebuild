@@ -74,3 +74,13 @@ test("small weekly age effects accumulate over five years for an established vet
  assert.equal(career.popularity,veteran.popularity);
  assert.equal(career.recognition,veteran.recognition);
 });
+
+test("annual expansion earns its territorial breadth from certified markets",()=>{
+ const market={liveStrength:53,awareness:61,loyalty:51};
+ const evidence={mediaReach:76,showPerformance:51,financialDistress:"HEALTHY" as const};
+ const estimate=(visits:number)=>originalPromotionScaleScore({...evidence,
+  localMarkets:Array.from({length:4},(_,index)=>({...market,certifiedShow:index<visits}))});
+ assert.equal(sustainableAnnualTier("NATIONAL",estimate(4),"HEALTHY",52,estimate(1)),"NATIONAL");
+ assert.equal(sustainableAnnualTier("GLOBAL",estimate(4),"HEALTHY",52,estimate(0)),"GLOBAL");
+ assert.equal(sustainableAnnualTier("NATIONAL",estimate(4),"HEALTHY",52),"GLOBAL");
+});

@@ -216,7 +216,7 @@ export async function settleLivingPromotionSurvival(
 }
 type AnnualRow={promotion_id:string;tier:PromotionTier;financial_distress:Distress;
  media_reach:number;markets:unknown;show_performance:string|number|null;
- completed:number};
+ completed:number;certified_markets:string[]|null};
 export async function settleAnnualPromotionScale(
  tx:SqlRows,worldId:string,year:number,week:number){
  if(week!==52)return {evaluated:0,changed:0};
@@ -224,24 +224,28 @@ export async function settleAnnualPromotionScale(
  const rows=await tx.query<AnnualRow>(`
  WITH locals AS (
   SELECT s.promotion_id,jsonb_agg(jsonb_build_object(
-   'liveStrength',s.live_strength,'awareness',s.awareness,
+   'marketId',s.market_id,'liveStrength',s.live_strength,'awareness',s.awareness,
    'loyalty',s.loyalty) ORDER BY s.market_id) AS markets
   FROM ppw_promotion_market_states s WHERE s.world_id=$1
   GROUP BY s.promotion_id
  ), events AS (
   SELECT completed.promotion_id,count(*)::integer AS completed,
+   array_agg(DISTINCT booked.market_id) FILTER(WHERE booked.market_id IS NOT NULL) AS certified_markets,
    avg(completed.crowd_response*.55+
     least(100,greatest(0,eco.attendance::double precision/
      greatest(1,eco.expected_demand)*75))*.45) AS show_performance
   FROM ppw_completed_shows completed
   JOIN ppw_show_economics eco ON eco.world_id=completed.world_id
    AND eco.show_id=completed.show_id
+  LEFT JOIN ppw_booking_drafts booked ON booked.world_id=completed.world_id
+   AND booked.promotion_id=completed.promotion_id AND booked.draft_id=completed.show_id
+   AND booked.status='SUBMITTED'
   WHERE completed.world_id=$1 AND (completed.year,completed.week)
    BETWEEN ($2::integer,1) AND ($2::integer,52)
   GROUP BY completed.promotion_id
  )
  SELECT p.promotion_id,p.tier,p.financial_distress,p.media_reach,
-  locals.markets,events.show_performance,coalesce(events.completed,0) AS completed
+  locals.markets,events.show_performance,events.certified_markets,coalesce(events.completed,0) AS completed
  FROM ppw_promotions p LEFT JOIN locals ON locals.promotion_id=p.promotion_id
  LEFT JOIN events ON events.promotion_id=p.promotion_id
  WHERE p.world_id=$1 AND p.lifecycle NOT IN ('DORMANT','CLOSED')
@@ -250,17 +254,22 @@ export async function settleAnnualPromotionScale(
  const eligible=rows.flatMap(x=>{
   if(!x.financial_distress||x.media_reach===null||!x.markets||
    (x.completed>0&&x.show_performance===null))return [];
-  const local=x.markets as {liveStrength:number;awareness:number;loyalty:number}[];
+  const local=x.markets as {marketId:string;liveStrength:number;awareness:number;loyalty:number}[];
   if(!Array.isArray(local)||local.length>128||
    !local.every(m=>[m.liveStrength,m.awareness,m.loyalty].every(Number.isFinite)))
    throw new Error("Annual company lacks verified local market evidence");
   const performance=x.completed>0?Number(x.show_performance):45;
-  const score=originalPromotionScaleScore({localMarkets:local,
-   showPerformance:performance,mediaReach:x.media_reach,
-   financialDistress:x.financial_distress});
-  const next=sustainableAnnualTier(x.tier,score,x.financial_distress,x.completed);
+  const evidence={localMarkets:local,showPerformance:performance,
+   mediaReach:x.media_reach,financialDistress:x.financial_distress};
+  const score=originalPromotionScaleScore(evidence);
+  // Preserve existing retention rules. An expansion bid only gets breadth
+  // credit for territories that hosted a certified show this season.
+  const markets=new Set(x.certified_markets??[]);
+  const expansionScore=originalPromotionScaleScore({...evidence,
+   localMarkets:local.map(m=>({...m,certifiedShow:markets.has(m.marketId)}))});
+  const next=sustainableAnnualTier(x.tier,score,x.financial_distress,x.completed,expansionScore);
   return [{promotion_id:x.promotion_id,from_tier:x.tier,to_tier:next,
-   score,cadence:{GLOBAL:1,NATIONAL:1,RISING:2,INDEPENDENT:2,LOCAL:3}[next]}];
+   score,expansionScore,cadence:{GLOBAL:1,NATIONAL:1,RISING:2,INDEPENDENT:2,LOCAL:3}[next]}];
  });
  const changed=eligible.filter(x=>x.from_tier!==x.to_tier);
  if(changed.length){
@@ -285,10 +294,10 @@ export async function settleAnnualPromotionScale(
    INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
    SELECT $1,$3,$4,'PROMOTION_TIER_CHANGED',
     jsonb_build_object('promotionId',x.promotion_id,'fromTier',x.from_tier,
-     'toTier',x.to_tier,'scaleScore',x.score,
+     'toTier',x.to_tier,'scaleScore',x.score,'expansionScore',x."expansionScore",
      'normalCadenceWeeks',x.cadence,'significance','NOTABLE')
    FROM jsonb_to_recordset($2::jsonb) x(promotion_id text,from_tier text,
-    to_tier text,score double precision,cadence integer)`,
+    to_tier text,score double precision,"expansionScore" double precision,cadence integer)`,
    [worldId,JSON.stringify(changed),year,week]);
  }
  return {evaluated:eligible.length,changed:changed.length};

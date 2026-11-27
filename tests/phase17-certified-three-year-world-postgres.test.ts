@@ -235,7 +235,7 @@ test("eight AI promotions sustain a genuine three-year certified World Lock and 
    "WHERE x.world_id=p.world_id AND x.promotion_id=p.promotion_id)",
    "AS completed_shows",
    "FROM ppw_promotions p WHERE p.world_id=$1 ORDER BY p.promotion_id"
-  ].join(" "),[world]));
+  ].join(" "),[world,weeks-1]));
   assert.equal(companies.length,8,"All AI companies must retain identity");
   assert.ok(companies.every(p=>p.completed_shows>=weeks),
    "Each rival must remain active throughout the replay");
