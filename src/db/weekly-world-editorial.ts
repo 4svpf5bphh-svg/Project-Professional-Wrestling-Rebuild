@@ -19,7 +19,7 @@ export function serializeWeeklyInspection(value:unknown):string|null{
  return JSON.stringify(value);
 }
 type Scope={worldId:string;year:number;week:number};
-type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;show_id:string|null;priority:number};
+type StoryRow={story_key:string;desk:"OFFICIAL"|"DIRT";certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;promotion_name:string;title:string;summary:string;source_kind:string;show_id:string|null;show_name:string|null;priority:number};
 export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Scope,key:string,transport:typeof fetch=fetch,terraKey?:string,updateToken?:string){
  const {worldId,year,week}=scope,params=[worldId,year,week];
  if(!worldId||worldId.length>200||!Number.isSafeInteger(year)||year<1||!Number.isSafeInteger(week)||week<1||week>52||(!key&&!terraKey))
@@ -54,9 +54,12 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
   const [rows,awards,ratings,history]=await withSqlClient(pool,async db=>Promise.all([
    db.query<StoryRow>(`
    WITH ranked AS (
-    SELECT i.story_key,i.desk,i.certainty,i.promotion_id,i.promotion_name,i.title,i.summary,i.source_kind,i.show_id,
+    SELECT i.story_key,i.desk,i.certainty,i.promotion_id,i.promotion_name,i.title,i.summary,i.source_kind,i.show_id,d.show_name,
      (${weeklyNewsPrioritySql}) AS priority
-    FROM ppw_world_news_items i WHERE i.world_id=$1 AND i.year=$2 AND i.week=$3
+    FROM ppw_world_news_items i
+    LEFT JOIN ppw_booking_drafts d ON d.world_id=i.world_id AND d.draft_id=i.show_id
+     AND d.promotion_id=i.promotion_id AND d.status='SUBMITTED'
+    WHERE i.world_id=$1 AND i.year=$2 AND i.week=$3
    )
    (SELECT * FROM ranked WHERE desk='OFFICIAL' AND certainty='CONFIRMED'
     ORDER BY priority DESC,story_key COLLATE "C" LIMIT 40)
@@ -90,7 +93,7 @@ export async function publishWeeklyWorldEditorial(pool:TransactionPool,scope:Sco
     LIMIT 18`,[worldId,earliest.year,earliest.week,year,week])
   ]));
   const stories:WeeklyStory[]=rows.map(s=>({id:s.story_key,year,week,desk:s.desk,certainty:s.certainty,
-   promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,priority:s.priority,showId:s.show_id??undefined}));
+   promotionId:s.promotion_id,promotionName:s.promotion_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,priority:s.priority,showId:s.show_id??undefined,showName:s.show_name}));
   const publicAwards:VerifiedHotTagAward[]=awards.map(a=>({year,week,kind:a.kind,promotionId:a.promotion_id,
    showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names}));
   ratingStory=weeklyRatingsStory(year,week,ratings.map(r=>({promotionId:r.promotion_id,promotionName:r.promotion_name,rating:r.rating,humanManaged:r.human_managed})));

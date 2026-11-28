@@ -206,7 +206,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   title.append(node("span","ppw-result-audience-label","BROADCAST PERFORMANCE"),
    node("span","ppw-audience-format",report.format==="TV"?
     typeof report.ratingsWarChange==="number"&&report.ratingsWarChange!==0?
-     "TV WAR "+(report.ratingsWarChange>0?"+":"")+report.ratingsWarChange.toFixed(1):
+     "TV WAR "+(report.ratingsWarChange>0?"+":"")+report.ratingsWarChange.toFixed(2).replace(/0$/,""):
      "TELEVISION":"PAY-PER-VIEW"));
   const metrics=node("div","ppw-audience-metrics");
   const metric=(caption:string,value:string)=>{

@@ -225,50 +225,74 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    ORDER BY is_home DESC,s.live_strength DESC,s.market_id LIMIT 41`,
    [worldId,promotionId]);
   if(territories.length>40)throw new Error("Territory reporting limit reached");
-  // Bounded certified broadcaster comparison; one episode per rival, five-week window.
+  // Pick the latest certified regular TV episode, then read at most six
+  // episodes per displayed broadcaster from the same bounded archive.
   const competitorBroadcasts=await tx.query<{
    promotion_id:string;promotion_name:string;show_name:string|null;
    show_day:number|null;year:number;week:number;household_rating:string;
    estimated_viewers:string|null;network_offer_code:string|null;
    human_managed:boolean;ratings_war_base_rating:string|null;
    ratings_war_opponents:number|null;airing_hour:number|null;
+   history:{showId:string;showName:string;year:number;week:number;
+    householdRating:number;estimatedViewers:number|null}[];
   }>(`
-   SELECT recent.*,
-    EXISTS(SELECT 1 FROM ppw_promotion_controls controller
-     WHERE controller.world_id=$1 AND controller.promotion_id=recent.promotion_id
-      AND controller.active) AS human_managed
-   FROM (
-    SELECT DISTINCT ON (e.promotion_id) e.promotion_id,p.name AS promotion_name,
-     d.show_name,d.show_day,e.year,e.week,
-     e.tv_household_rating::text AS household_rating,
-     e.estimated_viewers::text AS estimated_viewers,
-     e.ratings_war_base_rating::text,e.ratings_war_opponents,
-     coalesce((SELECT agreement.airing_hour FROM ppw_commercial_deals agreement
-      WHERE agreement.world_id=e.world_id AND agreement.promotion_id=e.promotion_id
-       AND agreement.kind='BROADCAST'
-       AND agreement.start_week_index <= (e.year-1)*52+e.week-1
-       AND agreement.end_week_index >= (e.year-1)*52+e.week-1
-       AND (agreement.airing_day IS NULL OR agreement.airing_day=d.show_day)
-       AND agreement.airing_hour IS NOT NULL
-      ORDER BY agreement.start_week_index DESC LIMIT 1),20)::integer AS airing_hour,
-     (SELECT agreement.offer_code FROM ppw_commercial_deals agreement
-      WHERE agreement.world_id=e.world_id AND agreement.promotion_id=e.promotion_id
-       AND agreement.kind='BROADCAST'
-       AND agreement.start_week_index <= (e.year-1)*52+e.week-1
-       AND agreement.end_week_index >= (e.year-1)*52+e.week-1
-      ORDER BY agreement.start_week_index DESC LIMIT 1) AS network_offer_code
+   WITH episodes AS MATERIALIZED (
+    SELECT e.world_id,e.show_id,e.promotion_id,d.show_name,d.show_day,e.year,e.week,
+     e.tv_household_rating AS household_rating,e.estimated_viewers,
+     e.ratings_war_base_rating,e.ratings_war_opponents,
+     (e.year-1)*52+e.week-1 AS week_index
     FROM ppw_show_economics e
-    JOIN ppw_promotions p ON p.world_id=e.world_id
-     AND p.promotion_id=e.promotion_id AND p.lifecycle='ACTIVE'
     JOIN ppw_booking_drafts d ON d.world_id=e.world_id AND d.draft_id=e.show_id
-     AND d.status='SUBMITTED' AND d.booking_class='REGULAR'
+     AND d.promotion_id=e.promotion_id AND d.status='SUBMITTED' AND d.booking_class='REGULAR'
     JOIN ppw_completed_shows certified ON certified.world_id=e.world_id
      AND certified.show_id=e.show_id AND certified.promotion_id=e.promotion_id
+     AND (certified.year,certified.week)=(e.year,e.week)
     WHERE e.world_id=$1 AND e.audience_format='TV' AND e.tv_household_rating IS NOT NULL
-     AND ${weekDateRangeSql("e","$2-5","$2")}
-    ORDER BY e.promotion_id,e.year DESC,e.week DESC,e.show_id DESC LIMIT 36
-   ) recent ORDER BY recent.household_rating::numeric DESC,recent.promotion_name LIMIT 20`,
-   [worldId,(w.year-1)*52+w.week-1]);
+     AND ${weekDateRangeSql("e","greatest(0,$2-25)","$2")}
+   ), histories AS (
+    SELECT e.*,row_number() OVER (PARTITION BY e.promotion_id
+     ORDER BY e.year DESC,e.week DESC,e.show_day DESC NULLS LAST,e.show_id DESC) AS episode_number
+    FROM episodes e
+   ), recent AS (
+    SELECT h.*,p.name AS promotion_name
+    FROM histories h JOIN ppw_promotions p ON p.world_id=h.world_id
+     AND p.promotion_id=h.promotion_id AND p.lifecycle='ACTIVE'
+    WHERE h.episode_number=1 AND (h.week_index >= $2-5 OR h.promotion_id=$3 OR h.promotion_id=$4)
+    ORDER BY (h.promotion_id=$3) DESC,(h.promotion_id=$4) DESC,
+     h.household_rating DESC,p.name,h.promotion_id LIMIT 20
+   ), grouped_history AS (
+    SELECT h.promotion_id,jsonb_agg(jsonb_build_object(
+     'showId',h.show_id,'showName',coalesce(h.show_name,'Weekly show'),'year',h.year,'week',h.week,
+     'householdRating',h.household_rating,'estimatedViewers',h.estimated_viewers)
+     ORDER BY h.episode_number) AS history
+    FROM histories h JOIN recent r USING(promotion_id)
+    WHERE h.episode_number<=6 GROUP BY h.promotion_id
+   )
+   SELECT recent.*,agreement.offer_code AS network_offer_code,
+    CASE WHEN coalesce(slot.old_day,agreement.airing_day) IS NOT NULL
+     AND coalesce(slot.old_day,agreement.airing_day)<>recent.show_day THEN NULL
+     ELSE coalesce(agreement.airing_hour,20) END AS airing_hour,
+    history.history,EXISTS(SELECT 1 FROM ppw_promotion_controls controller
+     WHERE controller.world_id=$1 AND controller.promotion_id=recent.promotion_id
+      AND controller.active) AS human_managed
+   FROM recent
+   JOIN grouped_history history USING(promotion_id)
+   LEFT JOIN LATERAL (
+    SELECT d.deal_id,d.offer_code,d.airing_day,d.airing_hour FROM ppw_commercial_deals d
+    WHERE d.world_id=recent.world_id AND d.promotion_id=recent.promotion_id AND d.kind='BROADCAST'
+     AND recent.week_index BETWEEN d.start_week_index AND d.end_week_index
+    ORDER BY d.start_week_index DESC,d.deal_id DESC LIMIT 1
+   ) agreement ON true
+   LEFT JOIN LATERAL (
+    SELECT (change.payload->>'oldDay')::integer AS old_day FROM ppw_ledger_events change
+    WHERE change.world_id=recent.world_id AND change.event_type='BROADCAST_SLOT_CHANGED'
+     AND change.payload->>'dealId'=agreement.deal_id
+     AND (change.payload->>'effectiveWeekIndex')::integer>recent.week_index
+    ORDER BY change.year DESC,change.week DESC LIMIT 1
+   ) slot ON true
+   ORDER BY (recent.week_index >= $2-5) DESC,recent.household_rating DESC,
+    recent.promotion_name,recent.promotion_id`,
+   [worldId,(w.year-1)*52+w.week-1,promotionId,w.cp?.promotionId??null]);
   const number=(v:string|null)=>v===null?null:Number(v);
   const weeklyMedia=number(w.weekly_media_income);
   const weeklySponsor=number(w.weekly_sponsor_income);
@@ -385,8 +409,9 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
     networkOfferCode:e.network_offer_code,isYours:e.promotion_id===promotionId,
     humanManaged:e.human_managed,airingHour:e.airing_hour,
     ratingsWarChange:e.ratings_war_base_rating===null?null:
-     Math.round((Number(e.household_rating)-Number(e.ratings_war_base_rating))*10)/10,
-    ratingsWarOpponents:e.ratings_war_opponents
+     Math.round((Number(e.household_rating)-Number(e.ratings_war_base_rating))*100)/100,
+    ratingsWarOpponents:e.ratings_war_opponents,history:e.history,
+    isRecent:(e.year-1)*52+e.week-1>=now-5
    })),
    rollingFourWeeks:{income:earned,spending:spent,net:earned-spent,
     byCategory:activity},
@@ -403,7 +428,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
      householdRating:s.tv_household_rating===null?null:Number(s.tv_household_rating),
      estimatedViewers:s.estimated_viewers===null?null:Number(s.estimated_viewers),
      ratingsWarChange:s.ratings_war_base_rating===null?null:
-      Math.round((Number(s.tv_household_rating)-Number(s.ratings_war_base_rating))*10)/10,
+      Math.round((Number(s.tv_household_rating)-Number(s.ratings_war_base_rating))*100)/100,
      ratingsWarOpponents:s.ratings_war_opponents,
      ppvBuys:null}:
      s.audience_format==="PPV"?{format:"PPV" as const,

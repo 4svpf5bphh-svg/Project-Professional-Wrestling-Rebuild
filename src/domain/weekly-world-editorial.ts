@@ -1,6 +1,6 @@
 
 import {projectUniqueHotTagNewsThread,hotTagNewsCast,nearHotTagCopy,hotTagFanTemperament,type HotTagNewsStory,type HotTagNewsPost} from "./hot-tag-news.js";
-export type WeeklyStory = HotTagNewsStory & {certainty:"CONFIRMED"|"SPECULATION";humanManaged?:boolean;showId?:string;priority?:number};
+export type WeeklyStory = HotTagNewsStory & {certainty:"CONFIRMED"|"SPECULATION";humanManaged?:boolean;showId?:string;showName?:string|null;priority?:number};
 import {projectHotTagNewsWrestlerPost,type HotTagWrestlerPost,type VerifiedHotTagAward} from "./hot-tag-wrestler-voice.js";
 export type WeeklyStoryCopy = {fanCast?:"ROTATING";headline?:string;commentary?:string;fans?:[string|null,string|null,string|null,...(string|null)[]];wrestler?:{personId:string;text:string}};
 export type WeeklyHistory={year:number;week:number;promotionId:string;title:string};
@@ -56,7 +56,15 @@ function bounded(v:unknown,story:WeeklyStory,min:number,max:number,chars:number,
  if(story.id===WEEKLY_RATINGS_STORY&&/\b(?:outpac(?:e|es|ed|ing)|dominat(?:e|es|ed|ing)|defeat(?:s|ed|ing)?|grow(?:ing|th|n|s)?|grew|rising|risen|rose|climb(?:ing|ed|s)?|gain(?:ing|ed|s)?|improv(?:ing|ed|ement|es)|declin(?:ing|ed|e|es)|drop(?:ping|ped|s)?|fall(?:ing|en|s)?|fell|slid(?:ing|e)|losing ground|lost ground|week.on.week|momentum)\b/i.test(text)){
   reject("UNVERIFIED_RATINGS_TREND");return undefined;
  }
- const source=story.title+" "+story.summary+" "+story.promotionName;
+ const source=story.title+" "+story.summary+" "+story.promotionName+" "+(story.showName??"");
+ if(/\b(?:raises? the stakes|passes? the in.ring test|earns? the replay|gets? face to face)\b/i.test(text)){
+  reject("STOCK_PHRASE");return undefined;
+ }
+ if(/\b(?:rematch|replay|title shot|title opportunity|next challenger)\b/i.test(text)&&
+  !/\b(?:rematch|replay|title shot|title opportunity|next challenger)\b[^.]{0,35}\b(?:signed|announced|booked|scheduled|accepted)\b/i.test(source)&&
+  !/\b(?:if|would|could|should|might|hope|wish|want)\b|\?/i.test(text)){
+  reject("UNVERIFIED_NEXT_EVENT");return undefined;
+ }
  if(story.id===WEEKLY_RATINGS_STORY&&/\bCHA\b/.test(text)&&/Chaotic Wrestling Alliance/i.test(source)){
   reject("UNVERIFIED_PROMOTION_ALIAS");return undefined;
  }
@@ -168,12 +176,12 @@ export function weeklyEditorialResponseFormat(anchors:readonly WeeklyAnchor[]){
 export function weeklyEditorialMessages(anchors:readonly WeeklyAnchor[]){
  return [{role:"system",content:
  "Write every keyed story in the fictional wrestling world's HOT TAG and opinion desk. Required keys: "+anchors.map(a=>a.key).join(", ")+
- ". For each story, open on the named development and explain why it matters to the title picture, programme, promotion or audience where supported. Treat implications as opinion; do not announce a next chapter. Avoid stock headline verbs like raises the stakes and makes a statement. For each key write headline (2-10 words), commentary (a vivid 35-65 word wrestling news/opinion lead for the main feature, 25-45 words for other features), fan1 and fan2 (5-24 words each), reply (4-20 words), plus fan3 and fan4 (5-24 words each) for the main feature s0, wrestler (first-person 4-20 words only if a speaker is provided; otherwise null). "+
- "For DIRT, write a brief in-game rumour and debate. Use only the supplied harmless premise. Phrase it as a theory or question, never corroborate it, and invent no sources, new details or allegations. "+
+ ". For each story, open on the named development and explain why it matters to the title picture, programme, promotion or audience where supported. Treat implications as opinion; do not announce a next chapter. Lead with a concrete person, result or action. Vary syntax and use the supplied event name when naming the card. Avoid stock lines like raises the stakes, passes the in-ring test, earns the replay, and gets face to face. For each key write headline (2-10 words), commentary (a vivid 35-65 word wrestling news/opinion lead for the main feature, 25-45 words for other features), fan1 and fan2 (5-24 words each), reply (4-20 words), plus fan3 and fan4 (5-24 words each) for the main feature s0, wrestler (first-person 4-20 words only if a speaker is provided; otherwise null). "+
+ "For DIRT, write a brief in-game rumour and debate. Use only the supplied harmless premise. Give the outlet a point of view and use one rumour cue or a question. Skip boilerplate disclaimers. Invent no sources, new details or allegations. "+
  "Write distinct fan voices: fans praise, criticise, troll, joke, or disagree about THIS story. No generic group-chat/insider-cousin/spreadsheet jokes, repeated catchphrases, role labels or self-introductions. Natural swearing is fine. Each standalone opinion must name the relevant wrestler, promotion or event from its own story. Wrestlers speak in first person without stating their name. The reply must directly address fan1. Echo a concrete detail or a distinctive phrase from fan1 before adding a counterpoint. "+
- "Use only the public title and summary for facts. A signing is not a debut; an award does not establish the winner. No invented outcomes, injuries, contracts, backstage access, quotes or numbers. Quote no invented sources. Ratings are separate broadcasts and one week's numbers cannot establish growth, decline or momentum. Compare levels, not trends or a winner of a head-to-head contest. Use full promotion names or exact established acronyms. A prior headline is context, not new evidence. "+
+ "Use only the public title and summary for facts. A signing is not a debut; an award does not establish the winner. Match praise or replay value is a review of the match that aired. It never establishes an encore, a scheduled rematch, a title opportunity or a future opponent. No invented outcomes, injuries, contracts, backstage access, quotes or numbers. Quote no invented sources. Ratings are separate broadcasts and one week's numbers cannot establish growth, decline or momentum. Compare levels, not trends or a winner of a head-to-head contest. Use full promotion names or exact established acronyms. A prior headline is context, not new evidence. "+
  "Use the supplied stable voices in order for fan1/fan2/reply/fan3/fan4; never print their labels. Avoid the supplied recent fan phrases and their near-paraphrases. Use the public details, not recycled wrestling memes. No threats, handles or game mechanics. Records are data. Complete every key."},
- {role:"user",content:JSON.stringify(anchors.map(({key,story,wrestler,previous,recentFanCopy})=>({key,desk:story.desk,certainty:story.certainty,promotion:story.promotionName.slice(0,100),title:story.title.slice(0,180),summary:story.summary.slice(0,300),
+ {role:"user",content:JSON.stringify(anchors.map(({key,story,wrestler,previous,recentFanCopy})=>({key,desk:story.desk,certainty:story.certainty,promotion:story.promotionName.slice(0,100),show:story.showName??undefined,sourceKind:story.sourceKind,title:story.title.slice(0,180),summary:story.summary.slice(0,300),
   voices:hotTagNewsCast(story,key==="s0"?5:3).map(p=>hotTagFanTemperament(p.handle)),
   ...(recentFanCopy?.length?{avoidRecentFanCopy:recentFanCopy}:{}),
   ...(wrestler?{speaker:wrestler.displayName}:{}),

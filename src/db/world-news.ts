@@ -205,29 +205,30 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
     ".",
    "TITLE");
  }
- const angleHeadlines:Record<string,(person:string,show:string)=>string>={
-  TURN:(p,s)=>p+" takes a different tack at "+s,
-  ATTACK:(p,s)=>p+" sparks trouble at "+s,
-  POST_MATCH_ASSAULT:(p,s)=>p+" strikes after the bell at "+s,
-  DEBUT:(p,s)=>p+" arrives at "+s,
-  STABLE_EXIT:(p,s)=>p+" parts company at "+s,
-  STABLE_INVITATION:(p,s)=>p+" gets a faction invitation at "+s,
-  RESCUE:(p,s)=>p+" makes the save at "+s,
-  CONFRONTATION:(p,s)=>p+" gets face to face at "+s,
-  CHALLENGE:(p,s)=>p+" issues a challenge at "+s
- };
  for(const s of [...angles].filter(x=>x.authored_outcome==="HAPPENS"&&
   significant.has(x.kind)).sort((a,b)=>impact(a.kind)-impact(b.kind)||
    Number(b.angle_crowd)-Number(a.angle_crowd)||byId(a,b)).slice(0,5)){
   const cast=storyPeople(s.story_json).map(id=>names.get(id)).filter(
    (x):x is string=>!!x).slice(0,4);
-  const lead=cast[0]??"A familiar face",reaction=Number(s.angle_crowd);
+  const [lead,other]=cast;
+  const pair=other?lead+" and "+other:lead;
+  const headlines:Record<string,string>=lead?{
+   TURN:lead+" switches sides",
+   ATTACK:other?pair+" caught up in an on-air attack":lead+" involved in an on-air attack",
+   POST_MATCH_ASSAULT:lead+" in the middle of a post-match assault",
+   DEBUT:lead+" debuts",
+   STABLE_EXIT:lead+" walks away from the faction",
+   STABLE_INVITATION:lead+" involved in a faction invitation",
+   RESCUE:lead+" involved in a ringside save",
+   CONFRONTATION:other?pair+" square off":lead+" involved in a confrontation",
+   CHALLENGE:other?pair+" share the ring for a challenge":lead+" involved in an on-air challenge"
+  }:{};
+  const reaction=Number(s.angle_crowd);
   add("OFFICIAL",s,"angle:"+s.show_id+":"+s.slot_id,
-   (angleHeadlines[s.kind]??((p,t)=>p+" makes headlines at "+t))(lead,s.show_name),
-   "The "+name(s.kind).toLowerCase()+" happened on "+s.promotion_name+
-   "'s "+s.show_name+(cast.length>1?", with "+cast.slice(1).join(", ")+" also involved":"")+
-   ". "+(reaction>=80?"The crowd gave it plenty back. Now that's how you get people talking.":
-    "The bell may have moved on, but that on-screen moment is part of the story now."),
+   (headlines[s.kind]??name(s.kind))+" at "+s.show_name,
+   (cast.length?cast.join(", ")+" featured in the "+name(s.kind).toLowerCase():
+    "The "+name(s.kind).toLowerCase()+" played out")+" on "+s.promotion_name+
+   "'s "+s.show_name+"."+ (reaction>=80?" The segment drew a strong crowd reaction.":""),
    "ANGLE");
  }
  for(const s of [...bouts].filter(x=>x.actual_finish==="FOREIGN_OBJECT"||
@@ -246,14 +247,16 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   const matchTitle=prop?"A foreign object decides "+opposition:
    dq?opposition+" ends in disqualification":
    prospect?prospect+" in the spotlight at "+s.show_name:
-   opposition+" earns the replay at "+s.show_name;
+   champion?champion+" wins a "+Number(s.rating_stars).toFixed(2)+"-star bout at "+s.show_name:
+   opposition+" delivers at "+s.show_name;
   const matchResult=prop?
    (champion?champion+" took the decision with a foreign object at "+s.show_name:
     "A foreign object decided "+opposition+" at "+s.show_name)+". The result stood.":
    dq?(champion?champion+" took the decision by disqualification":"The bout ended in disqualification")+
     " at "+s.show_name+".":
    opposition+" delivered a "+Number(s.rating_stars).toFixed(2)+"-star match at "+s.show_name+
-    (prospect?", with prospect "+prospect+" sharing the spotlight.":".");
+    (prospect?", with prospect "+prospect+" sharing the spotlight.":".")+
+    (!prop&&!dq&&champion?" "+champion+" won the match.":"");
   add("OFFICIAL",s,"match:"+s.show_id+":"+s.slot_id,matchTitle,matchResult,"MATCH");
  }
  for(const s of shows.filter(s=>s.booking_class==="PREMIUM")
@@ -297,9 +300,8 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   ];
   const idea=ideas[[...title.show_id].reduce((n,ch)=>n+ch.codePointAt(0)!,0)%ideas.length]!;
   add("DIRT",title,"rumour:title:"+title.show_id+":"+title.slot_id,
-   "How far will "+champion+" take the champion's presentation?",
-   champion+" took the "+title.title_name+" at "+title.show_name+
-   ". The theory doing the rounds: "+idea+" The gossip desk has not corroborated either idea.",
+   "What will "+champion+" do with the "+title.title_name+" spotlight?",
+   champion+" left "+title.show_name+" with the "+title.title_name+". The desk theory: "+idea,
    "EVENT");
  }else if(hot){
   const cast=storyPeople(hot.story_json).map(id=>names.get(id))
@@ -307,11 +309,13 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   const star=cast[0]??"a wrestler";
   const other=cast[1]??"another member of the roster";
   add("DIRT",hot,"rumour:angle:"+hot.show_id+":"+hot.slot_id,
-   star+" and "+other+" have the theory merchants working overtime",
-   star+" and "+other+" shared an on-screen incident at "+hot.show_name+
-   ". One reading has this turning into a rivalry fought entirely through interruptions. "+
-   "Another has them teaming up against a common enemy before anyone gets a clean microphone. "+
-   "Both are theories about what the audience saw. No backstage version of events has been established.",
+   hot.kind==="STABLE_EXIT"?"Who gets the last word after "+hot.show_name+"?":
+    hot.kind==="TURN"?"Who backs "+star+" after "+hot.show_name+"?":
+     star+" and "+other+" have plenty left to say",
+   star+" and "+other+" shared a "+name(hot.kind).toLowerCase()+" scene at "+hot.show_name+". "+
+   (hot.kind==="STABLE_EXIT"?"The fun theory is that the faction gives the departing member's spot to the last person they would want there.":
+    hot.kind==="TURN"?"If the turn sticks, every old ally on that entrance ramp becomes a potential problem.":
+     "Our theory? Give them one microphone between them and see who gets to finish a sentence."),
    "ANGLE");
  }else if(breakout){
   const participantId=participants(breakout.payload).find(id=>
@@ -319,11 +323,10 @@ export function composeWorldNews(bouts:readonly Bout[],angles:readonly Angle[],
   const wrestler=participantId?names.get(participantId):undefined;
   if(wrestler)add("DIRT",breakout,
    "rumour:breakout:"+breakout.show_id+":"+breakout.slot_id,
-   "Is "+wrestler+" getting a major push? Rival stories emerge after "+breakout.show_name,
-   wrestler+" appeared in a standout match at "+breakout.show_name+". "+
-   "One fan theory puts the rising name first on the poster. The other would give that performer a few shorter appearances to build familiarity. "+
-   "Whether "+breakout.promotion_name+" gives "+wrestler+
-   " a bigger opportunity remains a question, not an announced plan.",
+   "How soon does "+wrestler+" get the big slot?",
+   wrestler+" made the most of a standout match at "+breakout.show_name+". "+
+   "The theory dividing our office is whether "+breakout.promotion_name+
+   " should put that name on the poster now or let the crowd ask for it a little louder.",
    "MATCH");
  }else if(rough){
   add("DIRT",rough,"rumour:creative:"+rough.show_id,
