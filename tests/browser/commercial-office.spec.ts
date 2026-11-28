@@ -2,7 +2,7 @@ import {test,expect} from "@playwright/test";
 
 test("320px Business commercial agreements are optional, readable and consented once",async({page})=>{
  await page.setViewportSize({width:320,height:720});
- let revision=5,signed=false;
+ let revision=5,signed=false,airingDay=5;
  const methods:string[]=[];
  const offer={
   code:"BROADCAST_GROWTH",kind:"BROADCAST",name:"Audience-first streaming",
@@ -20,6 +20,18 @@ test("320px Business commercial agreements are optional, readable and consented 
  await page.route("**/api/card",route=>{
   const data=route.request().postDataJSON() as Record<string,unknown>;
   methods.push(data.method as string);
+  if(data.method==="requestBroadcastDay"){
+   expect(data.dealId).toBe("broadcast-1");
+   expect(data.expectedRevision).toBe(revision);
+   expect(data.requestId).toMatch(/^[0-9a-f-]{36}$/);
+   expect(data.playerId).toBeUndefined();
+   expect(route.request().headers()["x-ppw-csrf"]).toBe("opaque");
+   if(airingDay!==5)return route.fulfill({status:403,json:{}});
+   expect(data.requestedDay).toBe(4);
+   airingDay=4;revision++;
+   return route.fulfill({json:{status:"APPLIED",revision,result:{
+    networkResponse:"Your network approved Thursday as your new recurring TV day."}}});
+  }
   if(data.method==="signCommercial"){
    expect(data.offerCode).toBe("BROADCAST_GROWTH");
    expect(data.expectedRevision).toBe(5);
@@ -41,7 +53,7 @@ test("320px Business commercial agreements are optional, readable and consented 
    commercialAgreements:signed?[{dealId:"broadcast-1",kind:"BROADCAST",
     offerCode:"BROADCAST_GROWTH",weeklyIncome:312000,baselineIncome:300000,
     reachIncrease:15,startWeekIndex:4,endWeekIndex:29,source:"HUMAN",
-    airingDay:5,airingHour:20,
+    airingDay,airingHour:20,
     networkReview:{dealId:"broadcast-1",offerCode:"BROADCAST_GROWTH",
      reviewWeekIndex:4,target:0.11,rating:0.0,showId:"tv-4",
      status:"BELOW_TARGET",missedConsecutively:3,previousMisses:2,
@@ -73,6 +85,23 @@ test("320px Business commercial agreements are optional, readable and consented 
  await expect(page.locator(".ppw-commercial-slot")).toContainText("Friday at 20:00");
  await expect(page.getByRole("button",{name:"Sign VibeFlix"})).toHaveCount(0);
  expect(methods).toEqual(["business","signCommercial","business"]);
+ await page.getByRole("button",{name:"Request a different broadcast day"}).click();
+ await page.getByRole("button",{name:"Thursday",exact:true}).click();
+ page.once("dialog",dialog=>void dialog.dismiss());
+ await page.getByRole("button",{name:"Ask the network"}).click();
+ expect(methods).toEqual(["business","signCommercial","business"]);
+ page.once("dialog",dialog=>void dialog.accept());
+ await page.getByRole("button",{name:"Ask the network"}).click();
+ await expect(page.getByText("Your network approved Thursday as your new recurring TV day.")).toBeVisible();
+ await expect(page.locator(".ppw-commercial-slot")).toContainText("Thursday at 20:00");
+ expect(methods).toEqual(["business","signCommercial","business","requestBroadcastDay","business"]);
+ await page.getByRole("button",{name:"Request a different broadcast day"}).click();
+ await page.getByRole("button",{name:"Friday",exact:true}).click();
+ page.once("dialog",dialog=>void dialog.accept());
+ await page.getByRole("button",{name:"Ask the network"}).click();
+ await expect(page.getByText(/session cannot perform this action/i)).toBeVisible();
+ await expect(page.locator(".ppw-commercial-slot")).toContainText("Thursday at 20:00");
+ expect(methods.filter(method=>method==="requestBroadcastDay")).toHaveLength(2);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
