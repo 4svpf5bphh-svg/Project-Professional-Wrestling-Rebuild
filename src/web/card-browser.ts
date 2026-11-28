@@ -55,7 +55,7 @@ type Scope=CardSessionScope;
 // The Results → Ratings War handoff is a one-use local navigation context.
 // No completed-show ID or private user detail is placed into the URL.
 type ResultsRatingsOrigin={worldId:string;promotionId:string;showId:string;
- onBack?:()=>void};
+ onBack?:()=>void;historyRoute?:boolean};
 let pendingResultsRatingsOrigin:ResultsRatingsOrigin|null=null;
 // Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
 let pendingProgrammeFocusPersonId:string|null=null;
@@ -428,7 +428,7 @@ function contractPort(call:ReturnType<typeof createCardClient>,
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId)};
 }
 function industryPort(root:HTMLElement,scope:Scope,
- call:ReturnType<typeof createCardClient>):IndustryHubPort{
+ call:ReturnType<typeof createCardClient>,openResults?:(showId:string)=>void):IndustryHubPort{
  return {
   load:()=>call("industry"),
   news:()=>call("industryNews"),
@@ -448,15 +448,16 @@ function industryPort(root:HTMLElement,scope:Scope,
   openMarket:()=>mountTalentMarketPage(root,scope),
   openPlanner:()=>mountPlannerPage(root,scope,
    ()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
-  openOwnResults:showId=>{void mountResultsPage(root,{...scope,showId},
-   ()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),"industry");},
+  openOwnResults:openResults??(showId=>{void mountResultsPage(root,{...scope,showId},
+   ()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),"industry");}),
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>{window.location.hash=hostSectionHash("home");}
  };
 }
-export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:LegendsVaultView){
+export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:LegendsVaultView,
+ openResults?:(showId:string)=>void){
  const call=createCardClient(scope);
- return mountIndustryWorldHub(root,industryPort(root,scope,call),initialLegends);
+ return mountIndustryWorldHub(root,industryPort(root,scope,call,openResults),initialLegends);
 }
 /** Account-only card binder: one lazy Vault query, no extra World scan. */
 export function mountCollectionPage(root:HTMLElement,scope:Scope){
@@ -618,8 +619,8 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
  const returning=isRatings&&origin?.worldId===scope.worldId&&
   origin.promotionId===scope.promotionId?origin:null;
  const goBack=returning?()=>{
-  // Replace the deep-link route with its normal Results entry. The content
-  // is restored to the exact certified show; no new World mutation occurs.
+  if(returning.historyRoute){window.history.back();return;}
+  // Embedders can open a report inside an existing workspace.
   window.history.replaceState(null,"","#/results");
   void mountResultsPage(root,{...scope,showId:returning.showId},
    returning.onBack??(()=>void mountResultsArchivePage(root,scope)),"results");
@@ -829,7 +830,7 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
   openRatings:()=>{
    if(scope.showId)pendingResultsRatingsOrigin={
     worldId:scope.worldId,promotionId:scope.promotionId,
-    showId:scope.showId,onBack};
+    showId:scope.showId,onBack,historyRoute:!!navigation?.openShow};
    window.location.hash="#/business/ratings";
   },
   openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
@@ -934,13 +935,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  };
 }
 export function mountProgrammePage(root:HTMLElement,scope:Scope,
- focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string){
+ focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string,
+ navigation?:{openShow(showId:string):void;openArchive():void}){
  const call=createCardClient(scope);
- const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
-  ()=>mountProgrammePage(root,scope,focusPersonId));};
+ const showResult=navigation?.openShow??((showId:string)=>{void mountResultsPage(root,{...scope,showId},
+  ()=>mountProgrammePage(root,scope,focusPersonId));});
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
-  ()=>{void mountResultsArchivePage(root,scope,
-   ()=>mountProgrammePage(root,scope,focusPersonId));}),
+  navigation?.openArchive??(()=>{void mountResultsArchivePage(root,scope,
+   ()=>mountProgrammePage(root,scope,focusPersonId));})),
   undefined,focusPersonId,focusOpponentId,focusProgrammeId);
 }
 

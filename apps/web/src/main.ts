@@ -124,7 +124,11 @@ function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:str
   section==="backstage"&&focus==="UNREAD"?backstageUnreadHash:
   hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
- else if(pendingBackstageThread)renderSection(true);
+ else if(section==="results"&&session?.overview.promotion&&
+  readResultsHistory(history.state,session.worldId,session.overview.promotion.id)){
+  history.pushState(null,"",target);
+  renderSection(true);
+ }else if(pendingBackstageThread)renderSection(true);
  else{
   renderNavigation(section);
   if(wasDrawerOpen)game.querySelector<HTMLElement>(".ppw-workspace")?.focus({preventScroll:true});
@@ -464,7 +468,7 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
   case "hall-of-fame":
   case "annual-awards":
   case "world-moments":
-   mountIndustryPage(view,scope,pendingLegends??undefined);
+   mountIndustryPage(view,scope,pendingLegends??undefined,openResults);
    pendingLegends=null;break;
    case "collection":mountCollectionPage(view,scope);break;
    case "achievements":mountAchievementsPage(view,scope,()=>openSection("home"),()=>openSection("kayfabe"));break;
@@ -485,7 +489,8 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
    const storyFocus=consumeBackstageStoryFocus(scope.worldId,scope.promotionId);
    mountProgrammePage(view,scope,
     pitchFocus?.personId??dossierFocus??undefined,pitchFocus?.opponentId,
-    storyFocus?.programmeId);
+    storyFocus?.programmeId,
+    {openShow:openResults,openArchive:()=>openSection("results")});
    break;
   }
   case "championships":void mountChampionshipsPage(view,scope,back,"MINE");break;
