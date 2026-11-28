@@ -183,7 +183,7 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-ratings-war-faceoff")).toContainText("Rival Wrestling");
   await expect(war.locator(".ppw-ratings-war-result")).toContainText(
    "Rival Wrestling leads by 0.4 rating points.");
-  await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(1);
+  await expect(war.getByRole("table",{name:"CWA certified TV audience history"}).getByRole("row")).toHaveCount(2);
   await page.goto("/#/commercials");
   await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Ratings war"})).toHaveCount(0);

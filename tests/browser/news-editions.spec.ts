@@ -95,7 +95,7 @@ for(const width of [320,390]){
     await expect(article).toContainText("Winter Crown");
    }else{
     await expect(news.getByText("Could the new champion face a colder reception after Winter Crown?")).toBeVisible();
-    await expect(news.locator(".ppw-news-lead .ppw-hot-tag-thread")).toBeVisible();
+    await expect(news.locator(".ppw-news-edition-current .ppw-news-lead .ppw-hot-tag-thread")).toBeVisible();
    }
    await expect(news.getByText(/View confirmed facts|View source report/)).toHaveCount(0);
    await page.screenshot({path:info.outputPath((desk==="Official News"?"official-news-":"dirt-sheets-")+width+".png")});

@@ -122,7 +122,7 @@ export function weeklyDisplayHeadline(story:Pick<WeeklyStory,"title"|"summary"|"
  const confrontation=title.match(/^(.+?) gets face to face at (.+)$/i);
  if(confrontation)return confrontation[1]+" involved in a confrontation at "+confrontation[2];
  const match=title.match(/^(.+?) passes the in-ring test$/i);
- if(match)return match[1]+" wrestles on "+(showName??promotionName);
+ if(match)return match[1]+(showName?" wrestles at "+showName:" wrestles on the "+promotionName+" card");
  const angle=title.match(/^(.+?) raises? the stakes$/i);
  if(angle)return (showName??promotionName)+" features "+angle[1];
  return title;
@@ -133,7 +133,7 @@ export function weeklyStoryPriority(story:Pick<WeeklyStory,"id"|"sourceKind"|"ti
  if(story.desk==="DIRT")return story.id.startsWith("followup:")?30:story.id.startsWith("wild:")?25:20;
  if(story.id.startsWith("signing:")&&story.summary?.includes("An established headliner joins the roster."))return 96;
  if(story.sourceKind==="TITLE"||story.id.startsWith("title:"))
-  return /\bworld\b/i.test(story.title.split(" at ")[0]!)&&!story.summary?.includes("title was vacant")?100:83;
+  return story.summary?.includes("title was vacant")?83:/\bworld\b/i.test(story.title.split(" at ")[0]!)?100:95;
  if(story.id.startsWith("tournament:"))return 94;
  if(story.id.startsWith("match:")&&story.title.startsWith("A foreign object decides "))return 89;
  if(story.id.startsWith("event:"))return 88;

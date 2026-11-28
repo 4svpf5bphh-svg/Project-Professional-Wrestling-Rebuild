@@ -130,7 +130,7 @@ test("Talent Manager direct Backstage authorisation prepares genuine proposals, 
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:followup!.id}),
    {readCount:1});
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
-   ?.promotion?.attention.backstageUnreadCount,0);
+   ?.promotion?.attention.backstageUnreadCount??0,0);
 
   // Regression for a genuine multi-manager control handover. A former
   // controller's TV/show fallback permission is NEVER silently inherited

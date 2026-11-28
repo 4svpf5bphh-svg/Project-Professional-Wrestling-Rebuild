@@ -190,9 +190,9 @@ test("named contract alerts give the right negotiation and expiry routes without
   expiringTalent:true,pendingContractOffers:false,
   contractAlerts:[
    {contractId:"unused",personId:"ada",name:"Ada",kind:"DATES_EXHAUSTED",
-    weeksRemaining:25,waiting:true},
+    weeksRemaining:26,waiting:true},
    {contractId:"soon",personId:"bert",name:"Bert",kind:"EXPIRING",
-    weeksRemaining:1,waiting:false}]
+    weeksRemaining:2,waiting:false}]
  }}};
  const contracts={year:1,week:5,worldRevision:4,canEdit:true,currentWeekIndex:4,
   roster:[],requests:[],renewals:[],offers:[],
@@ -206,9 +206,9 @@ test("named contract alerts give the right negotiation and expiry routes without
  });
  await page.goto("/#/home");
  await expect(page.getByRole("button",{name:/Ada has a negotiation pending/})).toHaveCount(0);
- await expect(page.getByRole("button",{name:/Bert's contract expires in 1 week/})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Bert's contract expires after 2 weeks/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
- await page.getByRole("button",{name:/Bert's contract expires in 1 week/}).click();
+ await page.getByRole("button",{name:/Bert's contract expires after 2 weeks/}).click();
   await expect(page).toHaveURL(/#\/contracts\/expiring$/);
  await expect(page.getByRole("button",{name:"Expiring soon"})).toHaveAttribute("aria-pressed","true");
  expect(calls).toEqual(["overview","contracts"]);

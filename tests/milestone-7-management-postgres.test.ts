@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {postgresPool} from "../src/db/postgres.js";
-import {withWorldTransaction} from "../src/db/transaction.js";
+import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
 import {recordWeekContinuity} from "../src/db/week-continuity.js";
@@ -21,6 +21,17 @@ import {worldStaff} from "../src/domain/world-staff.js";
 import {offerUtility,type OfferTerms,type PersonEconomics} from "../src/domain/contract-economics.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
+
+function measure(pool:TransactionPool,sample:MeasuredQuerySession,includes?:string):TransactionPool{
+ return {async connect(){
+  const client=await pool.connect();
+  return {release:()=>client.release(),
+   query:<T extends Record<string,unknown>>(sql:string,params:readonly unknown[])=>
+    includes&&!sql.includes(includes)?client.query<T>(sql,params):
+     sample.execute(()=>client.query<T>(sql,params))};
+ }};
+}
+
 
 test("Milestone 7 World Lock reconciles delegated renewal outcomes and existing availability",{
  skip:!url?"No disposable PostgreSQL":false
@@ -80,7 +91,10 @@ test("Milestone 7 World Lock reconciles delegated renewal outcomes and existing 
    contractId:"personal-contract",requestId:"personal",expectedRevision:revision}) as {revision:number}).revision;
   await withWorldTransaction(db.pool,tx=>tx.query("UPDATE ppw_worlds SET next_lock_at=clock_timestamp() WHERE world_id=$1",[worldId]));
   const locked=await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:revision});
-  const continuity=await recordWeekContinuity(db.pool,{worldId,requestId:"continuity",expectedRevision:locked.revision});
+  const lockWork=new MeasuredQuerySession("World Lock delegation query and batch");
+  const continuity=await recordWeekContinuity(measure(db.pool,lockWork,"ppw_delegated_contract_renewals"),
+   {worldId,requestId:"continuity",expectedRevision:locked.revision});
+  t.diagnostic(JSON.stringify(lockWork.assertBudget({maxQueries:3,maxResultBytes:16000})));
   assert.equal(continuity.status,"APPLIED");
   assert.equal((await recordWeekContinuity(db.pool,{worldId,requestId:"continuity",expectedRevision:locked.revision})).status,"REPLAYED");
   const meter=new MeasuredQuerySession("World Lock with no outstanding delegation");
@@ -195,7 +209,10 @@ test("Milestone 7 names creative issues and keeps one certified, private promise
      ($1,'ask-promo',$2,'champion','CREATIVE',6,'champion-deal',NULL),
      ($1,'conversation-only',$2,'decline','MORALE',6,'decline-deal',NULL)`,[worldId,promotionId]);
   });
-  const mail=await readMail();
+  const staffRead=new MeasuredQuerySession("Private Backstage mail with creative advice");
+  const mail=await withWorldTransaction(db.pool,tx=>readWorldMail(
+   {query:(sql,params)=>staffRead.execute(()=>tx.query(sql,params))},scope));
+  t.diagnostic(JSON.stringify(staffRead.assertBudget({maxQueries:1,maxResultBytes:16000})));
   const repeat=mail.find(x=>x.adviceProgrammeId==="repeat");
   assert.match(repeat?.subject??"",/Alix Vale.*Eli Crown/);
   assert.match(repeat?.body??"",/Harbour TV.*challenge.*Harbour Lights/);
@@ -212,7 +229,9 @@ test("Milestone 7 names creative issues and keeps one certified, private promise
     decision,expectedRevision:revision});
    assert.equal(response.status,"APPLIED");revision=response.revision;
   }
-  const initial=await book("OUTSTANDING");
+  const promiseRead=new MeasuredQuerySession("Private outstanding promises page");
+  const initial=await readBackstagePromiseBook(measure(db.pool,promiseRead),{...scope,view:"OUTSTANDING"});
+  t.diagnostic(JSON.stringify(promiseRead.assertBudget({maxQueries:1,maxResultBytes:16000})));
   assert.equal(initial.entries.length,3);
   assert.deepEqual(initial.entries.map(x=>x.due),[8,8,10]);
   assert.ok(initial.entries.every(x=>x.status==="OUTSTANDING"));
@@ -238,7 +257,7 @@ test("Milestone 7 names creative issues and keeps one certified, private promise
    await tx.query("UPDATE ppw_worlds SET week=11 WHERE world_id=$1",[worldId]);
   });
   t.diagnostic(JSON.stringify(meter.assertBudget({maxQueries:4,maxResultBytes:1000})));
-  assert.ok((await readMail()).every(x=>x.id!==repeat!.id));
+  assert.ok((await readMail()).every(x=>x.adviceProgrammeId!=="repeat"));
   const history=await book("HISTORY");
   assert.deepEqual(new Map(history.entries.map(x=>[x.personId,x.status])),
    new Map([["worker","BROKEN"],["champion","BROKEN"],["challenger","FULFILLED"]]));
