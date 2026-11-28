@@ -8,7 +8,7 @@ import {TERRA_PREVIEW_TIMEOUT_MS,TERRA_DAILY_PREVIEW_ATTEMPTS,TERRA_DAILY_TOKEN_
 import {sameShowComparisons,type SameShowProviderResult}
  from "../domain/ai-lab-head-to-head.js";
 type ActionPlan={
- year:number;week:number;action:string;blockers:string[];
+ year:number;week:number;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
   cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number;editorialProgress?:{total:number;completed:number;fallbacks:number;state:"WAITING"|"PROCESSING"|"RECOVERY_AVAILABLE"}};
 };

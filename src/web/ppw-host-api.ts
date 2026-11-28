@@ -189,8 +189,10 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(post&&!csrf(req,user))return json(403,{error:"Invalid admin session"});
   if(path==="/api/admin"&&get&&routeUrl.searchParams.get("worldPlan")==="1"){
    if(!normalOperator)return json(403,{error:"World readiness requires the designated World operator"});
-   try{return json(200,{plan:await planNextWorldResolutionAction(pool,cfg.worldId)});}
-   catch{return json(503,{error:"World readiness is unavailable. Try again."});}
+   try{
+    const {year,week,blockers,ready}=await planNextWorldResolutionAction(pool,cfg.worldId);
+    return json(200,{plan:{year,week,blockers,ready}});
+   }catch{return json(503,{error:"World readiness is unavailable. Try again."});}
   }
   if(path==="/api/admin"&&get&&routeUrl.searchParams.get("aiLab")){
    const view=routeUrl.searchParams.get("aiLab");
