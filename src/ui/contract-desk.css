@@ -250,3 +250,8 @@
 .ppw-contract-exclusive-minimum[data-shortfall="true"]{border-color:#edb659;background:#3c2c32}
 .ppw-contract-exclusive-minimum small{font-size:12px;line-height:1.45}
 .ppw-contract-exclusive-minimum button{justify-self:start;min-height:42px}
+
+.ppw-contract-delegation{display:grid;gap:8px;margin:12px 0;padding:10px;border:1px solid #405779;border-radius:9px}
+.ppw-contract-delegation h4,.ppw-contract-delegation p{margin:0}
+.ppw-contract-strategies summary{padding:8px 0;cursor:pointer}
+.ppw-contract-strategies[open]{display:grid;gap:8px}

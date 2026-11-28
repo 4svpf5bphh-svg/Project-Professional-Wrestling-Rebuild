@@ -313,7 +313,7 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
    "AND requested.attention_id='renewal-result:'||renewal.proposal_id",
    "AND renewal.status IN ('ACCEPTED','ACTIVATED','REJECTED')",
    "AND renewal.proposal_id NOT LIKE 'accepted:%'",
-   "AND renewal.created_week_index BETWEEN",
+   "AND coalesce(renewal.resolved_week_index,renewal.created_week_index) BETWEEN",
    "greatest(0,(w.year-1)*52+w.week-4) AND (w.year-1)*52+w.week-1)",
    "OR EXISTS (SELECT 1 FROM ppw_ledger_events event",
    "WHERE event.world_id=w.world_id",

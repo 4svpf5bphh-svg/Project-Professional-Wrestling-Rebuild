@@ -19,9 +19,17 @@ export async function withdrawRenewal(pool:TransactionPool,input:{
     [input.worldId,input.promotionId,input.playerId]);
    if(owners.length!==1)throw new Error("Promotion access denied");
    const changed=await tx.query<{proposal_id:string}>(`
-    UPDATE ppw_contract_renewal_proposals SET status='WITHDRAWN'
-    WHERE world_id=$1 AND promotion_id=$2 AND proposal_id=$3 AND status='PENDING'
-    RETURNING proposal_id`,[input.worldId,input.promotionId,input.proposalId]);
+    WITH removed AS (
+     UPDATE ppw_contract_renewal_proposals SET status='WITHDRAWN'
+     WHERE world_id=$1 AND promotion_id=$2 AND proposal_id=$3 AND status='PENDING'
+     RETURNING proposal_id
+    ), cancelled AS (
+     UPDATE ppw_delegated_contract_renewals SET status='WITHDRAWN'
+     WHERE world_id=$1 AND promotion_id=$2 AND request_id=$3 AND owner_player_id=$4 AND status='QUEUED'
+     RETURNING request_id AS proposal_id
+    )
+    SELECT proposal_id FROM removed UNION ALL SELECT proposal_id FROM cancelled`,
+    [input.worldId,input.promotionId,input.proposalId,input.playerId]);
    if(changed.length!==1)throw new Error("Pending renewal not found");
    return {proposalId:input.proposalId,status:"WITHDRAWN" as const};
   },

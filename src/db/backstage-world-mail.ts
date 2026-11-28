@@ -1,4 +1,5 @@
-import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
+import {creativeAdviceEvidenceSql,creativeAdviceSourcesSql} from "./creative-staff-advice.js";
+import {staffPressureSql,staffPressureEvidenceSql} from "./staff-pressure-sql.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 /** Private PPW communications from certified World events and employed staff.
  * Only real World evidence may appear; no random text per page view, Groq call, or
@@ -21,7 +22,7 @@ export type WorldMailAction="COMMERCIALS"|"CONTRACTS"|"PROGRAMMES"|"STAFF"|"MARK
 export interface WorldMail{
  id:string;kind:WorldMailKind;sender:string;subject:string;body:string;
  action:WorldMailAction;createdWeekIndex:number;read:boolean;
- canRespond?:boolean;contentConcern?:boolean;storyChapter?:boolean;
+ canRespond?:boolean;contentConcern?:boolean;storyChapter?:boolean;adviceProgrammeId?:string;
  storyProgrammeId?:string;storySource?:{
   sourceShowId:string;sourceSlotId:string;sourceWeekIndex:number;
   crowdResponse:number;programmeFormat:"SOLO"|"RELATIONSHIP"|"FACTION"};
@@ -52,7 +53,7 @@ interface MailRow extends Record<string,unknown>{
  story_show_id?:string|null;story_slot_id?:string|null;
  story_week_index?:number|null;story_crowd_response?:number|null;
  story_format?:"SOLO"|"RELATIONSHIP"|"FACTION"|null;
- can_story_follow_up?:boolean;story_follow_up_choice?:string|null;
+ advice_programme_id?:string|null;can_story_follow_up?:boolean;story_follow_up_choice?:string|null;
  can_reply:boolean;content_concern:boolean;can_staff_reply:boolean;
  staff_reply_decision:string|null;staff_reply_status:string|null;
  staff_reply_due_week_index:number|null;
@@ -164,52 +165,56 @@ WITH owner AS MATERIALIZED (
   AND r.status IN ('KEPT','BROKEN','EXCUSED')
   AND r.settled_week_index BETWEEN greatest(0,o.now-12) AND o.now
  ORDER BY r.settled_week_index DESC,r.mail_id DESC LIMIT 2
-), pressure AS (
- SELECT o.now,o.seed,
-  (SELECT count(*)::integer FROM ppw_contracts c
-    WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED'
-     AND c.start_week_index<=o.now
-     AND c.expires_week_index BETWEEN o.now AND o.now+3
-     AND c.family<>'ONE_OFF' AND NOT EXISTS (${agreedNextTermSql("c")})) AS due,
-  (SELECT count(DISTINCT c.person_id)::integer
-    FROM ppw_contracts c JOIN ppw_people p
-     ON p.world_id=c.world_id AND p.person_id=c.person_id
-    WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED'
-     AND c.start_week_index<=o.now AND c.expires_week_index>=o.now
-     AND p.status IN ('ACTIVE','INJURED') AND p.fatigue>=70) AS tired,
-  (SELECT count(*)::integer FROM ppw_programmes p
-    WHERE p.world_id=$1 AND p.promotion_id=$2 AND p.status='ACTIVE'
-     AND p.repetition>=3) AS stale
+), creative_advice AS MATERIALIZED (
+ SELECT e.staff_id,${creativeAdviceEvidenceSql("e","advice")} AS evidence,advice.*
  FROM owner o
+ JOIN ppw_staff_employments e ON e.world_id=$1 AND e.promotion_id=$2 AND e.role='CREATIVE'
+  AND e.status='ACTIVE' AND o.now BETWEEN e.start_week_index AND e.expires_week_index
+ JOIN LATERAL (${creativeAdviceSourcesSql("e.world_id","e.promotion_id","o.now")}) advice ON true
+), creative_mail AS (
+ SELECT 'STAFF'::text AS kind,a.evidence,a.staff_id AS sender_key,
+  'Creative · '||a.cast_names AS subject,
+  (CASE WHEN a.show_name IS NOT NULL AND a.kind='MATCH' AND a.winner_side IS NOT NULL
+    THEN coalesce(CASE a.winner_side WHEN 'A' THEN a.side_a ELSE a.side_b END,'One side')||' took the last decision at '||a.show_name||'. '
+   WHEN a.show_name IS NOT NULL AND a.kind='SEGMENT'
+    THEN a.cast_names||' were last on screen together at '||a.show_name||'. '
+   WHEN a.show_name IS NOT NULL THEN 'The latest match at '||a.show_name||' left the issue open. '
+   ELSE 'I''d give '||a.cast_names||' a clear next chapter. ' END)||
+   (CASE a.issue
+    WHEN 'AVAILABILITY' THEN a.unavailable||' can''t work the target date under the current roster and contract situation. Give the available side a short solo interview and hold the confrontation until the roster can deliver it.'
+    WHEN 'TITLE_CHANGE' THEN a.champion||' has just taken '||a.title_name||
+     '. Open with a championship celebration and let the other side interrupt with a challenge. The audience can see who wants the belt before you settle any title match.'
+    WHEN 'TENSION' THEN 'The last scene put pressure on their alliance. Give the aggrieved side a specific choice on air. If you want the split, make their response the betrayal the crowd has been waiting for.'
+    WHEN 'PAYOFF' THEN 'The audience is still with this. Give them a decisive finish and let the winner move on to a new issue.'
+    WHEN 'STALLED' THEN 'The programme has gone quiet. Give the available cast a short confrontation that spells out what they want, then decide whether it has earned a payoff.'
+    ELSE CASE WHEN a.kind='MATCH' AND a.winner_side IS NOT NULL
+     THEN coalesce(CASE a.winner_side WHEN 'A' THEN a.side_b ELSE a.side_a END,'The other side')||
+      ' needs an answer to that result. Use a short challenge before committing another match. If they meet again, give the stipulation a reason to matter.'
+     WHEN a.programme_format IN ('SOLO','RELATIONSHIP','FACTION')
+     THEN 'The same beat is wearing out. Put a choice or a visible consequence on screen so the next scene changes how the cast relates.'
+     ELSE 'Another straight rematch will cover the same ground. Give the two sides a different question to settle, or use the next meeting to finish the rivalry.' END
+   END)||
+   CASE WHEN a.upcoming IS NULL OR a.issue='AVAILABILITY' THEN ''
+    ELSE ' Give that beat room at '||a.upcoming||'.' END AS body,
+  'PROGRAMMES'::text AS action,a.created_week AS created_week_index,
+  NULL::text AS target_person_id,NULL::text AS sender_name
+ FROM creative_advice a
 ), staff AS (
  SELECT 'STAFF'::text AS kind,
-  'staff:'||e.employment_id||':'||e.role||':'||floor(p.now/4)::integer AS evidence,
-  e.staff_id AS sender_key,
-  CASE e.role
-   WHEN 'TALENT_MANAGER' THEN 'Contract renewals need a look'
-   WHEN 'MEDICAL' THEN 'The roster needs a breather'
-   ELSE 'Our rivalries are running in circles'
-  END AS subject,
-  CASE e.role
-   WHEN 'TALENT_MANAGER' THEN p.due||' signed '||
-   (CASE WHEN p.due=1 THEN 'contract expires' ELSE 'contracts expire' END)||
-   ' in the next four weeks. With your permission I can prepare unchanged renewal offers at World Lock. The wrestlers still decide whether to agree.'
-   WHEN 'MEDICAL' THEN p.tired||' contracted '||
-   (CASE WHEN p.tired=1 THEN 'wrestler has' ELSE 'wrestlers have' END)||
-   ' fatigue at 70 or above. I''d check the upcoming workload before another long match.'
-   ELSE p.stale||' active '||
-    (CASE WHEN p.stale=1 THEN 'programme has' ELSE 'programmes have' END)||
-    ' repeated without moving the story forward. Let''s book a proper next chapter.'
-  END AS body,
-  CASE e.role WHEN 'TALENT_MANAGER' THEN 'CONTRACTS'
-   WHEN 'MEDICAL' THEN 'STAFF' ELSE 'PROGRAMMES' END AS action,
-  greatest(e.start_week_index,(p.now/4)*4) AS created_week_index,
-  NULL::text AS target_person_id,NULL::text AS sender_name
- FROM ppw_staff_employments e JOIN pressure p ON true
- WHERE e.world_id=$1 AND e.promotion_id=$2 AND e.status='ACTIVE'
-  AND ((e.role='TALENT_MANAGER' AND p.due>0)
-   OR (e.role='MEDICAL' AND p.tired>0)
-   OR (e.role='CREATIVE' AND p.stale>0))
+  ${staffPressureEvidenceSql("e","pressure")} AS evidence,e.staff_id AS sender_key,
+  CASE e.role WHEN 'TALENT_MANAGER' THEN 'Contract renewals need a look'
+   ELSE 'The roster needs a breather' END AS subject,
+  CASE e.role WHEN 'TALENT_MANAGER' THEN 'I''d start with '||pressure.names||
+   '. There '||(CASE WHEN pressure.issue_count=1 THEN 'is one deal' ELSE 'are '||pressure.issue_count||' deals' END)||
+   ' approaching the end of term. Tell me which one to work on in Contracts and how much room I have on terms. The wrestlers still decide.'
+   ELSE pressure.names||(CASE WHEN pressure.issue_count=1 THEN ' is' ELSE ' and the rest of the group are' END)||
+   ' carrying heavy fatigue. I''d lighten their next card before we ask for another long match.' END AS body,
+  CASE e.role WHEN 'TALENT_MANAGER' THEN 'CONTRACTS' ELSE 'STAFF' END AS action,
+  o.now AS created_week_index,NULL::text AS target_person_id,NULL::text AS sender_name
+ FROM owner o JOIN ppw_staff_employments e ON e.world_id=$1 AND e.promotion_id=$2 AND e.status='ACTIVE'
+ JOIN LATERAL (${staffPressureSql("e","o.now","$3")}) pressure ON true
+ WHERE o.now BETWEEN e.start_week_index AND e.expires_week_index
+  AND e.role IN ('TALENT_MANAGER','MEDICAL')
  ORDER BY e.role,e.employment_id LIMIT 8
 ), staff_followup AS (
  /* A new inbound staff check-in after a genuine manager commitment.
@@ -606,6 +611,7 @@ WITH owner AS MATERIALIZED (
 ), ${STORY_REACTION_CTES}, message AS (
  SELECT * FROM network UNION ALL SELECT * FROM content_notice
  UNION ALL SELECT * FROM network_followup UNION ALL SELECT * FROM staff
+ UNION ALL SELECT * FROM creative_mail
  UNION ALL SELECT * FROM staff_followup
  UNION ALL SELECT * FROM staff_disagreement UNION ALL SELECT * FROM staff_disagreement_answered
  UNION ALL SELECT * FROM staff_dispute_followup
@@ -625,6 +631,7 @@ WITH owner AS MATERIALIZED (
 )
 SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
  c.created_week_index,c.seed,c.target_person_id,c.sender_name,
+ advice.programme_id AS advice_programme_id,
  (receipt.attention_id IS NOT NULL) AS read,
  (c.evidence LIKE 'story-scene:%' OR c.evidence LIKE 'story-staff:%') AS story_chapter,
  story.programme_id AS story_programme_id,story.show_id AS story_show_id,
@@ -662,6 +669,7 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
   AND agent_reply.mail_id IS NULL) AS can_free_agent_reply,
  (c.kind='STAFF' AND c.action IN ('STAFF','PROGRAMMES','CONTRACTS')
   AND c.evidence LIKE 'staff:%'
+  AND (advice.programme_id IS NULL OR advice.issue='REPEAT')
   AND staff_reply.mail_id IS NULL
   AND NOT EXISTS (
    SELECT 1 FROM ppw_backstage_staff_replies pending
@@ -676,11 +684,6 @@ SELECT c.id,c.kind,c.sender_key,c.subject,c.body,c.action,
     AND NOT EXISTS(SELECT 1 FROM ppw_staff_continuity_settings consent
       WHERE consent.world_id=$1 AND consent.promotion_id=$2
        AND consent.owner_player_id=$3 AND consent.auto_renew_same_terms=true)
-    AND EXISTS(SELECT 1 FROM ppw_contracts contract
-      WHERE contract.world_id=$1 AND contract.promotion_id=$2
-       AND contract.status='SIGNED' AND contract.family<>'ONE_OFF'
-       AND contract.start_week_index<=owner_now.now
-       AND contract.expires_week_index BETWEEN owner_now.now AND owner_now.now+4)
   ))) AS can_staff_reply,
  (c.evidence LIKE 'network-content:%') AS content_concern,
  (c.kind='NETWORK' AND reply.mail_id IS NULL AND
@@ -733,9 +736,11 @@ LEFT JOIN LATERAL (
    s.show_id||':'||s.slot_id||':'||c.sender_key
  LIMIT 1
 ) story ON c.evidence LIKE 'story-%'
+LEFT JOIN creative_advice advice ON advice.evidence=c.evidence
 LEFT JOIN ppw_player_attention_dismissals receipt ON receipt.world_id=$1
  AND receipt.promotion_id=$2 AND receipt.player_id=$3
  AND receipt.attention_id=c.id
+WHERE (c.evidence NOT LIKE 'staff:%' OR staff_reply.status IS DISTINCT FROM 'ACKNOWLEDGED')
 ORDER BY c.created_week_index DESC,c.id DESC LIMIT 20
 `;
 function decode(rows:readonly MailRow[]):WorldMail[]{
@@ -810,6 +815,7 @@ function decode(rows:readonly MailRow[]):WorldMail[]{
     staffAlertVoice(staffProfiles.get(r.sender_key)!,r.subject,r.body):r.body,
    action:r.action,
    createdWeekIndex:r.created_week_index,read:r.read===true,
+   ...(r.advice_programme_id?{adviceProgrammeId:r.advice_programme_id}:{}),
     ...(r.story_chapter===true?{
      storyChapter:true,storyProgrammeId:r.story_programme_id!,
      storySource:{sourceShowId:r.story_show_id!,sourceSlotId:r.story_slot_id!,

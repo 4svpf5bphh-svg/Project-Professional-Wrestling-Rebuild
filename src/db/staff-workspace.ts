@@ -107,6 +107,8 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
         AND bid.source_contract_id=c.contract_id AND bid.status='PENDING')
        AND NOT EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals bid WHERE bid.world_id=c.world_id
         AND bid.contract_id=c.contract_id AND bid.status='PENDING')
+       AND NOT EXISTS(SELECT 1 FROM ppw_delegated_contract_renewals task WHERE task.world_id=c.world_id
+        AND task.contract_id=c.contract_id AND task.owner_player_id=$2 AND task.status='QUEUED')
       ORDER BY c.expires_week_index,c.contract_id LIMIT 5
      ) due),'[]'::jsonb) AS contracts_due,
     (SELECT count(*)::integer FROM ppw_programmes programme
@@ -393,10 +395,6 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    department:voice("CREATIVE","Creative desk"),target:"programmes",
    message:observations.priority
   });
-  if(current.repeated_programmes>0)notices.push({department:voice("CREATIVE","Creative desk"),target:"programmes",
-   message:current.repeated_programmes+" active programme"+
-    (current.repeated_programmes===1?" has":"s have")+
-    " repeated recent beats. Review the direction."});
   if(current.medical_risks>0)notices.push({
    department:voice("MEDICAL","Medical desk"),target:"roster",
    message:current.medical_risks+" contracted wrestler"+

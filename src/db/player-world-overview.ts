@@ -1,3 +1,5 @@
+import {staffPressureSql,staffPressureEvidenceSql} from "./staff-pressure-sql.js";
+import {creativeAdviceSourcesSql,creativeAdviceEvidenceSql} from "./creative-staff-advice.js";
 import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 import {withSqlClient} from "./postgres.js";
@@ -42,7 +44,7 @@ export interface PlayerWorldOverview {
    backstageUnreadCount?:number;
    pendingContractOffers:boolean;plannedShows:number;
    backstageRequests?:{personId:string;name:string;kind:string}[];
-   offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED";renewal?:boolean;startWeekIndex?:number|null}[];
+   offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED";renewal?:boolean;startWeekIndex?:number|null;counteroffer?:boolean}[];
    dateDecisions?:{id:string;contractId:string;personId:string;name:string;
     status:"ACCEPTED"|"REJECTED";additionalDates:number;
     additionalPayment:number;year:number;week:number}[];
@@ -271,34 +273,28 @@ export async function readPlayerWorldOverview(
          AND receipt.attention_id='backstage-world:'||md5(
           'staff-followup:'||followup.mail_id||':'||followup.status)))
       +(SELECT count(*)::integer FROM ppw_staff_employments e
+       JOIN LATERAL (${staffPressureSql("e","((w.year-1)*52+w.week-1)","$2")}) pressure ON true
+       CROSS JOIN LATERAL (SELECT 'backstage-world:'||md5(${staffPressureEvidenceSql("e","pressure")}) AS id) source
        WHERE e.world_id=w.world_id AND e.promotion_id=owned.promotion_id
-        AND e.status='ACTIVE' AND (
-         (e.role='TALENT_MANAGER' AND EXISTS(
-          SELECT 1 FROM ppw_contracts c
-          WHERE c.world_id=e.world_id AND c.promotion_id=e.promotion_id
-           AND c.status='SIGNED'
-           AND c.start_week_index<=(w.year-1)*52+w.week-1
-           AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
-             AND (w.year-1)*52+w.week+2
-           AND c.family<>'ONE_OFF' AND NOT EXISTS (${agreedNextTermSql("c")})))
-         OR (e.role='MEDICAL' AND EXISTS(
-          SELECT 1 FROM ppw_contracts c JOIN ppw_people p
-           ON p.world_id=c.world_id AND p.person_id=c.person_id
-          WHERE c.world_id=e.world_id AND c.promotion_id=e.promotion_id
-           AND c.status='SIGNED'
-           AND c.start_week_index<=(w.year-1)*52+w.week-1
-           AND c.expires_week_index>=(w.year-1)*52+w.week-1
-           AND p.status IN ('ACTIVE','INJURED') AND p.fatigue>=70))
-         OR (e.role='CREATIVE' AND EXISTS(
-          SELECT 1 FROM ppw_programmes p
-          WHERE p.world_id=e.world_id AND p.promotion_id=e.promotion_id
-           AND p.status='ACTIVE' AND p.repetition>=3)))
-        AND NOT EXISTS(
-         SELECT 1 FROM ppw_player_attention_dismissals r
-         WHERE r.world_id=e.world_id AND r.promotion_id=e.promotion_id
-          AND r.player_id=$2 AND r.attention_id='backstage-world:'||md5(
-           'staff:'||e.employment_id||':'||e.role||':'||
-           floor(((w.year-1)*52+w.week-1)/4)::integer)))
+        AND e.status='ACTIVE' AND e.role IN ('TALENT_MANAGER','MEDICAL')
+        AND (w.year-1)*52+w.week-1 BETWEEN e.start_week_index AND e.expires_week_index
+        AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals receipt
+         WHERE receipt.world_id=e.world_id AND receipt.promotion_id=e.promotion_id
+          AND receipt.player_id=$2 AND receipt.attention_id=source.id)
+        AND NOT EXISTS(SELECT 1 FROM ppw_backstage_staff_replies reply
+         WHERE reply.world_id=e.world_id AND reply.promotion_id=e.promotion_id AND reply.player_id=$2
+          AND reply.mail_id=source.id AND reply.status='ACKNOWLEDGED'))
+      +(SELECT count(*)::integer FROM ppw_staff_employments e
+       JOIN LATERAL (${creativeAdviceSourcesSql("e.world_id","e.promotion_id","((w.year-1)*52+w.week-1)")}) advice ON true
+       CROSS JOIN LATERAL (SELECT 'backstage-world:'||md5(${creativeAdviceEvidenceSql("e","advice")}) AS id) source
+       WHERE e.world_id=w.world_id AND e.promotion_id=owned.promotion_id AND e.role='CREATIVE' AND e.status='ACTIVE'
+        AND (w.year-1)*52+w.week-1 BETWEEN e.start_week_index AND e.expires_week_index
+        AND NOT EXISTS(SELECT 1 FROM ppw_player_attention_dismissals receipt
+         WHERE receipt.world_id=e.world_id AND receipt.promotion_id=e.promotion_id AND receipt.player_id=$2
+          AND receipt.attention_id=source.id)
+        AND NOT EXISTS(SELECT 1 FROM ppw_backstage_staff_replies reply
+         WHERE reply.world_id=e.world_id AND reply.promotion_id=e.promotion_id AND reply.player_id=$2
+          AND reply.mail_id=source.id AND reply.status='ACKNOWLEDGED'))
       +(SELECT count(*)::integer FROM ppw_staff_employments e
        JOIN LATERAL(SELECT p.person_id FROM ppw_people p
         WHERE p.world_id=e.world_id AND p.status='ACTIVE'
@@ -553,22 +549,26 @@ export async function readPlayerWorldOverview(
         AND c.status='SIGNED'
         AND c.start_week_index<=(w.year-1)*52+w.week-1
         AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
-         AND (w.year-1)*52+w.week+1
+         AND (w.year-1)*52+w.week+2
         AND NOT EXISTS (${agreedNextTermSql("c")})
         LIMIT 1) AS expiring_talent,
      EXISTS (SELECT 1 FROM ppw_contract_offers o
        WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
-        AND o.status='PENDING' LIMIT 1) AS pending_contract_offers,
+        AND o.status='PENDING' LIMIT 1) OR EXISTS (
+       SELECT 1 FROM ppw_delegated_contract_renewals task
+       WHERE task.world_id=w.world_id AND task.promotion_id=owned.promotion_id AND task.owner_player_id=$2
+        AND task.status='QUEUED') AS pending_contract_offers,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'id',recent.id,'personId',recent.person_id,
        'name',person.name,'status',recent.status,'renewal',recent.renewal,
-       'startWeekIndex',recent.start_week_index)
+       'startWeekIndex',recent.start_week_index,'counteroffer',recent.counteroffer)
        ORDER BY recent.notice_week DESC,recent.id DESC),'[]'::jsonb)
       FROM (
        SELECT result.* FROM (
         SELECT 'offer-result:'||o.offer_id AS id,o.person_id,o.status,
          o.submitted_week_index AS notice_week,o.source_contract_id IS NOT NULL AS renewal,
-         CASE WHEN o.source_contract_id IS NOT NULL THEN (o.terms->>'startWeekIndex')::integer END AS start_week_index
+         CASE WHEN o.source_contract_id IS NOT NULL THEN (o.terms->>'startWeekIndex')::integer END AS start_week_index,
+         o.counter_terms IS NOT NULL AS counteroffer
         FROM ppw_contract_offers o
         WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
          AND o.status IN ('ACCEPTED','REJECTED')
@@ -576,13 +576,13 @@ export async function readPlayerWorldOverview(
         UNION ALL
         SELECT 'renewal-result:'||r.proposal_id,r.person_id,
          CASE WHEN r.status='ACTIVATED' THEN 'ACCEPTED' ELSE r.status END,
-         r.created_week_index,true,
-         CASE WHEN r.status='ACTIVATED' THEN c.start_week_index ELSE c.expires_week_index+1 END
+         coalesce(r.resolved_week_index,r.created_week_index),true,
+         CASE WHEN r.status='ACTIVATED' THEN c.start_week_index ELSE c.expires_week_index+1 END,false
         FROM ppw_contract_renewal_proposals r JOIN ppw_contracts c USING(world_id,contract_id)
         WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
          AND r.status IN ('ACCEPTED','ACTIVATED','REJECTED')
          AND r.proposal_id NOT LIKE 'accepted:%'
-         AND r.created_week_index BETWEEN greatest(0,(w.year-1)*52+w.week-4) AND (w.year-1)*52+w.week-1
+         AND coalesce(r.resolved_week_index,r.created_week_index) BETWEEN greatest(0,(w.year-1)*52+w.week-4) AND (w.year-1)*52+w.week-1
        ) result
        WHERE NOT EXISTS (SELECT 1 FROM ppw_player_attention_dismissals dismissal
         WHERE dismissal.world_id=w.world_id AND dismissal.player_id=$2 AND dismissal.promotion_id=owned.promotion_id
@@ -722,6 +722,9 @@ export async function readPlayerWorldOverview(
          OR EXISTS(SELECT 1 FROM ppw_contract_date_requests dates
           WHERE dates.world_id=c.world_id AND dates.promotion_id=c.promotion_id
            AND dates.contract_id=c.contract_id AND dates.status='PENDING')
+         OR (NOT (c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0) AND EXISTS (
+          SELECT 1 FROM ppw_delegated_contract_renewals task WHERE task.world_id=c.world_id
+           AND task.contract_id=c.contract_id AND task.owner_player_id=$2 AND task.status='QUEUED'))
         THEN true ELSE false END AS waiting,
         CASE WHEN c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0
          THEN 0 ELSE 1 END AS priority
@@ -734,7 +737,7 @@ export async function readPlayerWorldOverview(
         AND c.expires_week_index>=((w.year-1)*52+w.week-1)
         AND ((c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0 AND
           (replacement.start_week_index IS NULL OR replacement.start_week_index>(w.year-1)*52+w.week-1))
-         OR (c.expires_week_index<=((w.year-1)*52+w.week+1)
+         OR (c.expires_week_index<=((w.year-1)*52+w.week+2)
           AND replacement.start_week_index IS NULL))
        ORDER BY priority,c.expires_week_index,c.contract_id LIMIT 5
       ) relevant
@@ -1043,7 +1046,7 @@ export async function readPlayerWorldOverview(
        typeof request.kind==="string"):[],
      offerResults:Array.isArray(x.offer_results)?
       x.offer_results.filter((news):news is {
-       id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED";renewal?:boolean;startWeekIndex?:number|null
+       id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED";renewal?:boolean;startWeekIndex?:number|null;counteroffer?:boolean
       }=>news!==null&&typeof news==="object"&&
        typeof news.id==="string"&&typeof news.personId==="string"&&
        typeof news.name==="string"&&

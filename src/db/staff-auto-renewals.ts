@@ -1,3 +1,4 @@
+import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
 /** Opted-in Talent Manager: one deterministic, low-transfer proposal batch at
  * weekly World Lock. Does not sign, extend, debit or reset any wrestler deal.
  * The existing wrestler-led renewal resolver independently decides acceptance.
@@ -56,9 +57,16 @@ export async function prepareDelegatedSameTermsRenewals(tx:SqlRows,
    AND c.family<>'ONE_OFF'
    AND c.start_week_index <= $2
    AND c.expires_week_index BETWEEN $2::integer AND $2::integer+2
+   AND NOT EXISTS (${agreedNextTermSql("c")})
+   AND NOT EXISTS(SELECT 1 FROM ppw_contract_offers bid WHERE bid.world_id=c.world_id
+    AND bid.promotion_id=c.promotion_id AND bid.person_id=c.person_id AND bid.status='PENDING')
+   AND NOT EXISTS(SELECT 1 FROM ppw_delegated_contract_renewals task WHERE task.world_id=c.world_id
+    AND task.contract_id=c.contract_id AND task.source_start_week_index=c.start_week_index
+    AND task.owner_player_id=owner.player_id AND task.status<>'WITHDRAWN')
    AND NOT EXISTS(
     SELECT 1 FROM ppw_contract_renewal_proposals prior
-    WHERE prior.world_id=c.world_id AND prior.contract_id=c.contract_id)
+    WHERE prior.world_id=c.world_id AND prior.contract_id=c.contract_id
+     AND (prior.status='PENDING' OR prior.created_week_index>=c.start_week_index))
   ORDER BY c.expires_week_index,c.promotion_id,c.contract_id LIMIT 1025
  `,[worldId,currentWeekIndex]);
  if(due.length>1024)throw new Error("Talent Manager weekly proposal capacity exceeded; no renewals omitted");

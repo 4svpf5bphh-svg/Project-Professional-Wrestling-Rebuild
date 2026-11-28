@@ -1,3 +1,4 @@
+import {readRenewalDelegation} from "../domain/delegated-renewal.js";
 import type {WorldApiContext} from "../api/world-service.js";
 import {readStaffConsultation} from "../db/staff-consultation.js";
 import {BACKSTAGE_LABELS,type BackstageDecision}
@@ -12,7 +13,7 @@ import {calendarAsActor,upsertCalendarAsActor,archiveCalendarAsActor,
  staffWorkspaceAsActor,promotionRecordBookAsActor,setStaffContinuityAsActor,setGorillaPolicyAsActor,gorillaWorkspaceAsActor,saveGorillaShowAsActor,hireTalentManagerAsActor,releaseTalentManagerAsActor,hireStaffAsActor,releaseStaffAsActor,renewStaffAsActor,industryWorldAsActor,industryFeaturedAsActor,industryNewsAsActor,worldHeritageAsActor,legendsVaultAsActor,legendRevealSeenAsActor,olderWorldMomentsAsActor,kayfabeWorkspaceAsActor,achievementsWorkspaceAsActor,claimKayfabeWeekAsActor,kayfabeActionAsActor,worldTalentRankingsAsActor,worldCareerSearchAsActor,
  submitContractOfferAsActor,requestAdditionalDatesAsActor,cancelDateRequestAsActor,
  proposeRenewalAsActor,withdrawRenewalAsActor,withdrawContractOfferAsActor,
- portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,chooseBackstageStoryFollowUpAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,respondStaffDisagreementAsActor,respondBackstageFreeAgentAsActor,respondPartnerMediationAsActor,backstageArchiveAsActor,
+ backstagePromisesAsActor,portablePersonaAsActor,requestPersonaAsActor,backstageDecisionAsActor,markBackstageReadAsActor,markBackstageWorldMailReadAsActor,chooseBackstageStoryFollowUpAsActor,replyToBroadcasterAsActor,respondBackstageStaffAsActor,respondStaffDisagreementAsActor,respondBackstageFreeAgentAsActor,respondPartnerMediationAsActor,backstageArchiveAsActor,
  tagTeamWorkspaceAsActor,createTagTeamAsActor,nameTagTeamAsActor,createTrioAsActor,
  workingConnectionsAsActor,stableChoicesAsActor,stableWorkspaceAsActor,createStableAsActor,addStableMemberAsActor,
  removeStableMemberAsActor,disbandStableAsActor,
@@ -108,6 +109,11 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
  if(method==="programmes")return programmeWorkspaceAsActor(context,worldId,promotionId);
  if(method==="stables")return stableWorkspaceAsActor(context,worldId,promotionId);
  if(method==="tagTeams")return tagTeamWorkspaceAsActor(context,worldId,promotionId);
+ if(method==="backstagePromises"){
+  if(p.view!=="OUTSTANDING"&&p.view!=="HISTORY")throw new Error("Invalid Backstage Promises view");
+  return backstagePromisesAsActor(context,worldId,promotionId,p.view,
+   p.cursor as import("../db/backstage-promise-book.js").PromiseBookCursor|undefined);
+ }
  if(method==="persona"||method==="backstage"){
   if(p.personId!==undefined&&typeof p.personId!=="string")
    throw new Error("Invalid wrestler");
@@ -401,7 +407,8 @@ export async function dispatchCardRpc(context:WorldApiContext,method:string,inpu
    expectedRevision,dateRequestId:id("dateRequestId")});
  if(method==="renewContract")
   return proposeRenewalAsActor(context,{worldId,promotionId,requestId,
-   expectedRevision,contractId:id("contractId")});
+   expectedRevision,contractId:id("contractId"),
+   ...(p.delegation===undefined?{}:{delegation:readRenewalDelegation(p.delegation)})});
  if(method==="withdrawContractRenewal")
   return withdrawRenewalAsActor(context,{worldId,promotionId,requestId,
    expectedRevision,proposalId:id("proposalId")});

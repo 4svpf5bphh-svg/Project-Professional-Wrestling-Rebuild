@@ -56,7 +56,7 @@ for(const width of [320,390]){
   const card=page.locator(".ppw-contract-card");
   await expect(card).toHaveCount(1);
   await expect(card.locator("summary")).toContainText("EXPIRING");
-  await card.locator("summary").click();
+  await card.locator(":scope > summary").click();
   await card.getByRole("button",{name:"Negotiate a new package"}).click();
   await expect(card).toHaveAttribute("open","");
   await expect(card.locator(".ppw-contract-renegotiate")).toBeVisible();
@@ -126,7 +126,7 @@ for(const width of [320,390]){
   });
   await page.goto("/#/contracts");
   const card=page.locator(".ppw-contract-card").first();
-  await card.locator("summary").click();
+  await card.locator(":scope > summary").click();
   await card.getByRole("button",{name:"Negotiate a new package"}).click();
   const type=card.getByLabel("New contract type for Matt Riddle");
   await expect(type).toHaveValue("LIMITED_NON_EXCLUSIVE");
@@ -187,7 +187,7 @@ for(const width of [320,390]){
   });
   await page.goto("/#/contracts");
   const card=page.locator(".ppw-contract-card").first();
-  await card.locator("summary").click();
+  await card.locator(":scope > summary").click();
   await card.getByRole("button",{name:"Negotiate a new package"}).click();
   await card.getByLabel("New contract type for Matt Riddle")
    .selectOption("LIMITED_NON_EXCLUSIVE");
@@ -240,7 +240,7 @@ for(const width of [320,390]){
   });
   await page.goto("/#/contracts");
   const card=page.locator(".ppw-contract-card").first();
-  await card.locator("summary").click();
+  await card.locator(":scope > summary").click();
   await card.getByRole("button",{name:"Negotiate a new package"}).click();
   await expect(card.locator(".ppw-contract-manager-recommendation"))
    .toContainText("52 weeks, 24 dates");
@@ -258,3 +258,44 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+test("390px Talent Manager delegation shows the timing and posts only the authorised terms",async({page},info)=>{
+ const submissions:Record<string,unknown>[]=[];
+ let queued=false;
+ const roster=[{personId:"bayne",contractId:"bayne-term",name:"Megan Bayne",family:"EXCLUSIVE",
+  status:"SIGNED",remainingDates:null,startWeekIndex:0,expiresWeekIndex:25,weeksRemaining:7,
+  dateEntitlement:26,weeklyGuarantee:3500,appearanceFee:0,signingBonus:0,roleExpectation:"FEATURED",
+  creativeControl:"NONE",needsAttention:true,expiringSoon:true,renewalEligible:true,
+  reason:null,renewalArranged:false,estimatedWeeklyValue:5700,careerStage:"PRIME"}];
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const data=r.request().postDataJSON() as Record<string,unknown>;
+  if(data.method==="contracts")return r.fulfill({json:{year:1,week:20,currentWeekIndex:19,worldRevision:8,
+   canEdit:true,hasTalentManager:true,talentManager:{name:"Rowan Shaw",staffId:"manager",insight:80},
+   talentBudget:{cash:2500000,currentGuarantees:3500},roster:roster.map(entry=>({...entry,
+    renewalEligible:!queued,delegatedRenewalQueued:queued})),requests:[],renewals:[],offers:[],
+   delegations:queued?[{request_id:"delegated",contract_id:"bayne-term",person_name:"Megan Bayne",
+    status:"QUEUED",strategy:"PRIORITY_RETENTION"}]:[],
+   resolvedOffers:[],dateDecisions:[],summary:{signed:1,expiringSoon:1,noDates:0,
+    pendingNegotiations:0,pendingRenewals:0,pendingOffers:0,weeklyGuarantees:3500}}});
+  if(data.method==="renewContract"){
+   submissions.push(data);queued=true;
+   return r.fulfill({json:{status:"APPLIED",result:{status:"QUEUED"}}});
+  }
+  throw Error("Unexpected "+String(data.method));
+ });
+ await page.goto("/#/contracts");
+ const card=page.locator(".ppw-contract-card");
+ await card.locator(":scope > summary").click();
+ await expect(card.getByRole("button",{name:"Ask Talent Manager to renew on existing terms"})).toBeVisible();
+ await expect(card.getByText(/prepares the offer at World Lock/)).toBeVisible();
+ await card.getByText("Choose a negotiation strategy").click();
+ await card.getByLabel("Strategy").selectOption("PRIORITY_RETENTION");
+ await card.getByLabel("Maximum weekly guarantee").fill("4500");
+ await card.locator(".ppw-contract-delegation").screenshot({path:info.outputPath("talent-manager-390.png")});
+ await card.getByRole("button",{name:"Queue Talent Manager negotiation"}).click();
+ await expect(card.locator(":scope > summary")).toContainText("QUEUED FOR WORLD LOCK");
+ expect(submissions).toHaveLength(1);
+ expect(submissions[0]?.delegation).toMatchObject({strategy:"PRIORITY_RETENTION",maxWeeklyGuarantee:4500,maxAppearanceFee:0});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});

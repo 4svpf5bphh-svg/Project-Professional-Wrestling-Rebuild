@@ -2,13 +2,13 @@
  * draft card and certified settlement. Drafts never satisfy a promise and
  * medical interruptions never masquerade as a broken word.
  */
-export type BookingPromiseDecision="PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED";
+export type BookingPromiseDecision="PROMISE_APPEARANCE"|"PROMISE_SEGMENT"|"PROMISE_FEATURED"|"PROMISE_TITLE_MATCH";
 export interface UpcomingPromiseBooking{
  showName:string;year:number;week:number;status:string;kind:string;
 }
 export interface PromiseEvidence{
  decision:string|null;status:string;dueWeekIndex:number|null;
- assessmentReason:string|null;trustDelta:number;
+ assessmentReason:string|null;trustDelta:number;relevantTitle?:string|null;
  plannedBooking?:UpcomingPromiseBooking|null;
 }
 export interface PromiseChapter{
@@ -21,13 +21,13 @@ const name=(decision:BookingPromiseDecision)=>decision==="PROMISE_SEGMENT"?
  "Promo/angle":decision==="PROMISE_FEATURED"?"Featured match":"Match";
 const isBookingPromise=(value:string|null):value is BookingPromiseDecision=>
  value==="PROMISE_APPEARANCE"||value==="PROMISE_SEGMENT"||
- value==="PROMISE_FEATURED";
+ value==="PROMISE_FEATURED"||value==="PROMISE_TITLE_MATCH";
 export function describeBookingCommitment(input:PromiseEvidence,
  currentWeekIndex:number):PromiseChapter|null{
  if(!isBookingPromise(input.decision))return null;
  const due=input.dueWeekIndex!==null&&Number.isSafeInteger(input.dueWeekIndex)&&
   input.dueWeekIndex>=0?" · due "+when(input.dueWeekIndex):"";
- const kind=name(input.decision);
+ const kind=input.decision==="PROMISE_TITLE_MATCH"?input.relevantTitle??"Title match":name(input.decision);
  const countdown=input.dueWeekIndex!==null&&Number.isSafeInteger(currentWeekIndex)&&
   currentWeekIndex>=0?" · "+Math.max(0,input.dueWeekIndex-currentWeekIndex)+
   " weeks remaining":"";
@@ -50,6 +50,7 @@ export function describeBookingCommitment(input:PromiseEvidence,
    "Other certified bookings used the available dates or weekly capacity. No trust penalty.":
    input.assessmentReason==="CONTRACT_UNAVAILABLE"?
    "Valid contracted appearances were unavailable. No trust penalty.":
+   input.assessmentReason==="TITLE_UNAVAILABLE"?"The championship ceased to be eligible. No trust penalty.":
    "Circumstances prevented the booking. No trust penalty.",
   canReviewBooking:false};
  if(input.status!=="PROMISED")return null;

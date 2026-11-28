@@ -110,9 +110,9 @@ export async function resolveRenewal(pool:TransactionPool,input:RenewalDecision,
      }
     }
    }
-   await tx.query(`UPDATE ppw_contract_renewal_proposals SET status=$3
+   await tx.query(`UPDATE ppw_contract_renewal_proposals SET status=$3,resolved_week_index=$4
     WHERE world_id=$1 AND proposal_id=$2 AND status='PENDING'`,
-    [input.worldId,input.proposalId,decision]);
+    [input.worldId,input.proposalId,decision,current]);
    return {proposalId:input.proposalId,contractId:proposal.contract_id,decision};
   }});
 }

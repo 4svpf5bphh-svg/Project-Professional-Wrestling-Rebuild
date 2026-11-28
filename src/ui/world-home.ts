@@ -494,13 +494,14 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
     const entry=el("article","ppw-home-wire-item");
     entry.append(el("span","ppw-home-wire-status "+(item.status==="ACCEPTED"?
      "ppw-home-wire-accepted":"ppw-home-wire-declined"),
-      item.status==="ACCEPTED"?"ACCEPTED":"DECLINED"),
+      item.status==="ACCEPTED"?"ACCEPTED":item.counteroffer?"COUNTEROFFER":"DECLINED"),
      el("strong","",item.name+(item.status==="ACCEPTED"?
-      (item.renewal?" agreed to renew":" has signed"):" declined the offer")),
+      (item.renewal?" agreed to renew":" has signed"):item.counteroffer?" proposed different terms":" declined the offer")),
      el("p","",item.status==="ACCEPTED"?
       item.renewal&&item.startWeekIndex!=null?
        "The new terms start in Year "+(Math.floor(item.startWeekIndex/52)+1)+" Week "+(item.startWeekIndex%52+1)+".":
        "The terms have been agreed. Review your current contracts and upcoming dates.":
+      item.counteroffer?"Open Contracts to review the wrestler’s proposed terms.":
       "The agreement did not go ahead. You can review the terms before approaching them again."));
     const actions=el("div","ppw-home-wire-actions");
     const open=el("button","ppw-home-wire-button","Open Contracts") as HTMLButtonElement;

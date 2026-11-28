@@ -1,3 +1,4 @@
+import {titlePromiseTargetSql} from "./backstage-promise-sql.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 /** Private wrestler correspondence, generated only at World publication. */
 import type {SqlRows} from "./world-operations.js";
@@ -20,9 +21,10 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
   execute:async tx=>{
    const found=await tx.query<{person_id:string;related_person_id:string|null;
     kind:BackstageKind;year:number;week:number;morale:number|null;
-    source_contract_id:string|null;expires_week_index:number|null}>([
+    source_contract_id:string|null;expires_week_index:number|null;promised_title:string|null}>([
     "SELECT r.person_id,r.related_person_id,r.kind,w.year,w.week,p.morale,",
-    "r.source_contract_id,cdeal.expires_week_index",
+    "r.source_contract_id,cdeal.expires_week_index,",
+    `CASE WHEN $5='PROMISE_TITLE_MATCH' THEN (${titlePromiseTargetSql("r")}) END AS promised_title`,
     "FROM ppw_backstage_requests r JOIN ppw_worlds w ON w.world_id=r.world_id",
     "JOIN ppw_people p ON p.world_id=r.world_id AND p.person_id=r.person_id",
     "JOIN ppw_promotion_controls c ON c.world_id=r.world_id",
@@ -49,6 +51,8 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
    if(found.length!==1)throw new Error("Wrestler request unavailable or already answered");
    const r=found[0]!,effect=backstageDecisionEffect(r.kind,i.decision);
    const weekIndex=(r.year-1)*52+r.week-1;
+   if(i.decision==="PROMISE_TITLE_MATCH"&&!r.promised_title)
+    throw new Error("This championship opportunity is no longer available");
    let deadline:null|number=null;
    let promiseContract:string|null=null;
    if(effect.promise){
@@ -66,7 +70,7 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
     ].join(" "),[i.worldId,i.promotionId,r.person_id,weekIndex,r.source_contract_id]);
     if(eligible.length!==1)
      throw new Error("Cannot promise a booking without remaining contracted dates and a future week");
-    deadline=Math.min(weekIndex+(i.decision==="PROMISE_FEATURED"?4:2),
+    deadline=Math.min(weekIndex+(i.decision==="PROMISE_FEATURED"||i.decision==="PROMISE_TITLE_MATCH"?4:2),
      eligible[0]!.expires_week_index);
     promiseContract=eligible[0]!.contract_id;
    }
@@ -95,11 +99,11 @@ export async function decideBackstageRequest(pool:TransactionPool,i:BackstageDec
    const changed=await tx.query<{request_id:string}>([
     "UPDATE ppw_backstage_requests SET status=$4,decision=$5,",
     "responded_week_index=$6,due_week_index=$7,",
-    "source_contract_id=coalesce(source_contract_id,$8)",
+    "source_contract_id=coalesce(source_contract_id,$8),promised_championship_id=$9",
     "WHERE world_id=$1 AND request_id=$2 AND promotion_id=$3 AND status='PENDING'",
     "RETURNING request_id"
    ].join(" "),[i.worldId,i.conversationId,i.promotionId,
-    effect.status,i.decision,weekIndex,deadline,effect.promise?promiseContract:null]);
+    effect.status,i.decision,weekIndex,deadline,effect.promise?promiseContract:null,r.promised_title]);
    if(changed.length!==1)throw new Error("Backstage request changed");
    // No instant morale/chemistry reward for selecting a reply. Only a
    // verified broken promise can affect promotion-scoped trust later.
@@ -126,6 +130,9 @@ export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekInde
   "WITH promises AS (",
   "SELECT r.request_id,r.promotion_id,r.person_id,r.decision,r.responded_week_index,",
   "r.due_week_index,r.source_contract_id,r.promised_role,",
+  "r.decision<>'PROMISE_TITLE_MATCH' OR EXISTS(SELECT 1 FROM ppw_championships title",
+  "WHERE title.world_id=r.world_id AND title.promotion_id=r.promotion_id",
+  "AND title.championship_id=r.promised_championship_id AND title.status='ACTIVE') AS title_available,",
   "EXISTS(SELECT 1 FROM ppw_completed_shows sh",
   "JOIN ppw_card_slots s ON s.world_id=sh.world_id AND s.draft_id=sh.show_id",
   "LEFT JOIN ppw_completed_show_matches match ON match.world_id=sh.world_id",
@@ -147,6 +154,11 @@ export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekInde
   "WHERE other.world_id=sh.world_id AND other.show_id=sh.show_id",
   "AND other.position>match.position)",
   "<=CASE WHEN r.promised_role='MAIN_EVENT' THEN 0 ELSE 1 END",
+  "WHEN r.decision='PROMISE_TITLE_MATCH' THEN s.kind='MATCH' AND EXISTS(",
+  "SELECT 1 FROM ppw_championship_contests contest",
+  "WHERE contest.world_id=r.world_id AND contest.promotion_id=r.promotion_id",
+  "AND contest.championship_id=r.promised_championship_id",
+  "AND contest.show_id=sh.show_id AND contest.slot_id=s.slot_id)",
   "ELSE s.kind='MATCH' AND match.match_id IS NOT NULL END",
   ") AS fulfilled,",
   "windows.had_show,windows.had_deal,windows.had_nonmedical_slot,windows.external_date,",
@@ -191,7 +203,7 @@ export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekInde
   `AND ${weekDateRangeSql("used","(sh.year-1)*52+sh.week-1","least($2,r.due_week_index)")}`,
   "AND slot.payload->'participants' @> jsonb_build_array(",
   "jsonb_build_object('personId',r.person_id,'contractId',c.contract_id))))) AS has_deal,",
-  "r.decision IN ('PROMISE_APPEARANCE','PROMISE_FEATURED')",
+  "r.decision IN ('PROMISE_APPEARANCE','PROMISE_FEATURED','PROMISE_TITLE_MATCH')",
   "AND EXISTS(SELECT 1 FROM ppw_medical_absences injury",
   "WHERE injury.world_id=r.world_id AND injury.person_id=r.person_id",
   "AND injury.injured_week_index<(sh.year-1)*52+sh.week-1",
@@ -211,15 +223,16 @@ export async function settleBackstagePromises(tx:SqlRows,worldId:string,weekInde
   "), settled AS (",
   "UPDATE ppw_backstage_requests r SET",
   "status=CASE WHEN p.fulfilled THEN 'FULFILLED'",
-  "WHEN p.first_opportunity IS NULL THEN 'EXCUSED' ELSE 'BROKEN' END,",
+  "WHEN NOT p.title_available OR p.first_opportunity IS NULL THEN 'EXCUSED' ELSE 'BROKEN' END,",
   "assessment_reason=CASE WHEN p.fulfilled THEN 'VERIFIED_BOOKING'",
+  "WHEN NOT p.title_available THEN 'TITLE_UNAVAILABLE'",
   "WHEN p.first_opportunity IS NOT NULL THEN 'UNFULFILLED_COMMITMENT'",
   "WHEN NOT p.had_show THEN 'NO_COMPLETED_SHOW'",
   "WHEN NOT p.had_deal AND p.external_date THEN 'EXTERNAL_BOOKING_UNAVAILABLE'",
   "WHEN NOT p.had_deal THEN 'CONTRACT_UNAVAILABLE'",
   "WHEN NOT p.had_nonmedical_slot THEN 'MEDICAL_UNAVAILABLE'",
   "ELSE 'EXTERNAL_BOOKING_UNAVAILABLE' END,",
-  "trust_delta=CASE WHEN NOT p.fulfilled AND p.first_opportunity IS NOT NULL THEN -3 ELSE 0 END,",
+  "trust_delta=CASE WHEN NOT p.fulfilled AND p.title_available AND p.first_opportunity IS NOT NULL THEN -3 ELSE 0 END,",
   "settled_week_index=$2,first_opportunity_week_index=p.first_opportunity,read_week_index=NULL",
   "FROM promises p WHERE r.world_id=$1 AND r.request_id=p.request_id",
   "AND (p.fulfilled OR r.due_week_index<=$2)",

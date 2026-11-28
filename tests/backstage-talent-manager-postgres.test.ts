@@ -126,11 +126,11 @@ test("Talent Manager direct Backstage authorisation prepares genuine proposals, 
   assert.equal(followup?.action,"CONTRACTS");
   assert.equal(followup?.read,false);
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
-   ?.promotion?.attention.backstageUnreadCount,2);
+   ?.promotion?.attention.backstageUnreadCount,1);
   assert.deepEqual(await markWorldMailRead(db.pool,{...scope,mailId:followup!.id}),
    {readCount:1});
   assert.equal((await readPlayerWorldOverview(db.pool,worldId,playerId))
-   ?.promotion?.attention.backstageUnreadCount,1);
+   ?.promotion?.attention.backstageUnreadCount,0);
 
   // Regression for a genuine multi-manager control handover. A former
   // controller's TV/show fallback permission is NEVER silently inherited
@@ -149,6 +149,7 @@ test("Talent Manager direct Backstage authorisation prepares genuine proposals, 
     "permitted_venue_ids=ARRAY['old-booker-venue']::text[]",
     "WHERE world_id=$1 AND promotion_id=$2"
    ].join(" "),[worldId,promotionId,former]);
+   await tx.query("UPDATE ppw_contract_renewal_proposals SET status='REJECTED' WHERE world_id=$1 AND contract_id=$2",[worldId,contractId]);
    await tx.query("UPDATE ppw_worlds SET week=13 WHERE world_id=$1",[worldId]);
   });
   const newLetter=(await withWorldTransaction(db.pool,tx=>readWorldMail(tx,scope)))
