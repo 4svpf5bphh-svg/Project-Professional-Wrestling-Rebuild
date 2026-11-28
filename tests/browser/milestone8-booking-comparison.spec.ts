@@ -59,8 +59,11 @@ test("identical three-match weekly cards through authenticated baseline and Mile
  const db=postgresPool(url);
  const observations=[];
  try{
-  // Alternate the order to limit warm-process and resource contention bias.
-  for(const variant of ["baseline","candidate","candidate","baseline","baseline","candidate"] as const){
+  // Each revision caches its hosted configuration per process. Run repeated
+  // pairs with Playwright --repeat-each so each sample gets fresh API modules.
+  const order=testInfo.repeatEachIndex%2===0?["baseline","candidate"] as const:
+   ["candidate","baseline"] as const;
+  for(const variant of order){
    const worldId="m8-booking-comparison-"+randomUUID();
    await seedMilestone8World(db.pool,worldId);
    const host=await startMilestone8Host(resolve(variant==="baseline"?baselineRoot!:candidateRoot),url,worldId);
@@ -97,10 +100,9 @@ test("identical three-match weekly cards through authenticated baseline and Mile
    }finally{await context.close();await host.close();}
   }
  }finally{await db.close();}
- const baseline=observations.filter(sample=>sample.variant==="baseline");
- const candidate=observations.filter(sample=>sample.variant==="candidate");
- expect(Math.max(...candidate.map(sample=>sample.taps))).toBeLessThanOrEqual(
-  Math.min(...baseline.map(sample=>sample.taps))*.7);
+ const baseline=observations.find(sample=>sample.variant==="baseline")!;
+ const candidate=observations.find(sample=>sample.variant==="candidate")!;
+ expect(candidate.taps).toBeLessThanOrEqual(baseline.taps*.7);
  console.log("Milestone 8 booking comparison",JSON.stringify(observations));
  await testInfo.attach("Booking comparison",{body:JSON.stringify(observations,null,2),contentType:"application/json"});
 });

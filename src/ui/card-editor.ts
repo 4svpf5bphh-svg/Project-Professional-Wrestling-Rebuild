@@ -2278,6 +2278,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       angleCastStageReadiness(segment!):readiness;
      const guide=el("section","ppw-guide-booking");
      guide.dataset.step=stage;
+     if(quick)guide.dataset.quick="true";
      const stepIndex=stage==="SETUP"?1:stage==="CAST"?2:stage==="OUTCOME"?3:4;
      guide.append(el("span","ppw-eyebrow",quick?"QUICK SINGLES":
       "STEP "+stepIndex+" OF 4 · "+(stage==="SETUP"?"SETUP":
@@ -2625,7 +2626,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         }
         direction.append(choices);
         const finish=essentials.querySelector<HTMLSelectElement>('select[aria-label="Finish"]');
-        if(finish){
+        if(finish&&quick){
+         const choice=createChoiceDialog("Finish",m.plannedFinish,
+          [...finish.options].map(option=>({value:option.value,label:option.textContent??option.value})),
+          value=>{
+           finish.value=value;
+           finish.dispatchEvent(new Event("change",{bubbles:true}));
+          },!mutable());
+         finish.closest(".ppw-field")?.replaceWith(choice);
+        }else if(finish){
          const parent=finish.closest(".ppw-field");
          const panel=el("section","ppw-guide-finish");
          panel.append(el("strong","ppw-guide-section-label","Finish"));
