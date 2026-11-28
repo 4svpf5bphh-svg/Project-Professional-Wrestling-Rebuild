@@ -31,14 +31,11 @@ import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
 import {mountAdminCentre} from "../../../src/ui/admin-centre.js";
 import "../admin-centre.css";
 import "../ppw-brand.css";
+import type {PlayerWorldOverview} from "../../../src/db/player-world-overview.js";
 
 type SessionView={
  worldId:string;playerId:string;ownerName?:string|null;csrfToken:string;
- overview:{
-  world:{revision:number;name:string;year:number;week:number};
-  membership:"ACTIVE"|"INACTIVE"|"NONE";
-  promotion:null|{id:string;name:string};
- };
+ overview:PlayerWorldOverview;
  canManualAdvance?:boolean;canAiBenchmark?:boolean;
  unseenLegendReveal?:boolean;
  availablePromotions:{id:string;name:string;tier:string;
@@ -276,7 +273,7 @@ async function offerUnseenLegendReveals(scope:CardSessionScope,view:HTMLElement)
   // authenticated sign-in retries it without a provider call or timer.
  }
 }
-function renderSection(moveFocus=false){
+function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
  if(!session?.overview?.promotion)return;
  document.documentElement.dataset.ppwPromotion=promotionBrand(session.overview.promotion.name).key;
  const section=readHostSection(location.hash);
@@ -352,7 +349,7 @@ function renderSection(moveFocus=false){
    if(!confirmLeavingBooking("results"))return;
    history.pushState(resultsHistoryState(scope.worldId,scope.promotionId,showId),"",hostSectionHash("results"));
    renderSection(true);
-  });break;
+  },openBooking,initialOverview);break;
   case "planner":{
    const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
    mountPlannerPage(view,scope,back,
@@ -529,7 +526,11 @@ async function loadSession(){
    if(location.hash!==legendsVaultHash)location.hash=legendsVaultHash;
    else renderSection();
   }else{
-   renderSection();
+   // This response already contains the current owner-scoped Home projection.
+   // Reuse it once and let subsequent navigation read current game state.
+   const overview=session.overview;
+   renderSection(false,overview.world.id===session.worldId&&
+    !!overview.promotion.attention?overview:undefined);
    presentOpening();
   }
  }catch(e){

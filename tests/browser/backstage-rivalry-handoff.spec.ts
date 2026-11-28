@@ -77,10 +77,10 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"Programmes"})).toBeVisible();
   const create=page.locator(".ppw-programme-create-fold");
   await expect(create).toHaveAttribute("open","");
-  const sides=create.getByRole("combobox",{name:"Choose rivalry participant"});
+  const sides=create.getByRole("button",{name:/^Side [AB] participant/});
   await expect(sides).toHaveCount(2);
-  await expect(sides.nth(0)).toHaveValue("PERSON:joe");
-  await expect(sides.nth(1)).toHaveValue("PERSON:riddle");
+  await expect(sides.nth(0)).toContainText("Samoa Joe");
+  await expect(sides.nth(1)).toContainText("Matt Riddle");
   expect(calls.filter(c=>c==="startProgramme")).toHaveLength(0);
   expect(calls.filter(c=>c==="programmes")).toHaveLength(1);
   expect(calls.filter(c=>c==="backstage")).toHaveLength(2);

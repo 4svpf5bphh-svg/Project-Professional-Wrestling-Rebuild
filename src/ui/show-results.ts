@@ -28,6 +28,7 @@ import "./results-skin-contrast.css";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {createAnimatedEventPoster} from "./animated-event-poster.js";
 import {eventPosterByStyle} from "../domain/event-poster-skins.js";
+import {eventArtworkSource} from "./event-artwork.js";
 import {showCrowdFlow} from "../domain/show-crowd-flow.js";
 import {replayVerifiedMatchFinish} from "../domain/show-finish-replay.js";
 import {shortResultColour} from "../domain/show-result-colour.js";
@@ -149,7 +150,12 @@ export async function mountShowResults(root:HTMLElement,port:{
    }else markRingsideFallback(root,show);
   }).catch(()=>markRingsideFallback(root,show));
   else markRingsideFallback(root,show);
- }catch(e){showError(root,e);}
+ }catch(e){
+  showError(root,e);
+  const retry=node("button","ppw-results-next","Retry results") as HTMLButtonElement;
+  retry.type="button";retry.onclick=()=>void mountShowResults(root,port);
+  root.append(retry);
+ }
 }
 export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openNext?:(section:NextStepDestination)=>void,openPress?:()=>void,
@@ -157,8 +163,8 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  openProgrammes?:(personId:string)=>void):void{
  root.classList.remove("ppw-editorial-ready");
  const poster=show.bookingClass==="PREMIUM"?eventPosterByStyle(show.eventPosterStyle):null;
- const effectiveSkin=poster?null:show.resultsSkin;
- if(poster)root.dataset.premiumPoster=poster.style.toLowerCase().replaceAll("_","-");
+ const effectiveSkin=show.resultsSkin;
+ if(poster&&!effectiveSkin)root.dataset.premiumPoster=poster.style.toLowerCase().replaceAll("_","-");
  else delete root.dataset.premiumPoster;
  if(effectiveSkin==="TERRITORY_TV")root.dataset.resultsSkin="territory-tv";
  else if(effectiveSkin==="FIGHT_NIGHT")root.dataset.resultsSkin="fight-night";
@@ -686,9 +692,10 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
    const wrap=node("section","ppw-results-event-poster");
    wrap.append(opening);premiumOpening=wrap;
   }
- }else if(show.broadcastPackage){
+ }else if(show.bookingClass!=="PREMIUM"&&show.broadcastPackage){
   const opening=createBroadcastPackageFrame({style:show.broadcastPackage,kind:"OPEN",
-   promotion:show.promotionName??"PPW",show:show.showName??"Weekly show"});
+   promotion:show.promotionName??"PPW",show:show.showName??"Weekly show",
+   televised:show.audience?.format==="TV"});
   if(opening){
    const wrap=node("section","ppw-tv-opening-wrap");
    wrap.append(opening);televisionOpening=wrap;
@@ -706,7 +713,13 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  else if(televisionOpening)full.append(televisionOpening);
  else{
   const identity=node("header","ppw-results-show-intro");
-  identity.append(node("span","ppw-eyebrow","PPW / RINGSIDE"),
+  if(show.bookingClass==="PREMIUM"){
+   identity.classList.add("ppw-results-premium-intro");
+   const art=document.createElement("img");
+   art.src=eventArtworkSource(show.showName??"",show.promotionName??"",true);
+   art.alt="";art.decoding="async";identity.append(art);
+  }
+  identity.append(node("span","ppw-eyebrow",show.bookingClass==="PREMIUM"?"PPV / RINGSIDE":"PPW / RINGSIDE"),
    node("h1","",show.showName??"The completed show"),
    node("p","ppw-muted","Year "+show.year+" · Week "+show.week));
   full.append(identity);
@@ -864,17 +877,23 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
   action.type="button";action.onclick=openPress;
   press.append(action);after.append(press);
  }
- const pages=[full,after];
- const goButton=(label:string,dest:0|1|2)=>{
-  const button=node("button","ppw-results-next",label) as HTMLButtonElement;
+ const sections=node("nav","ppw-results-sections");
+ sections.setAttribute("aria-label","Show report sections");
+ const goButton=(label:string,dest:1|2,className="ppw-results-next")=>{
+  const button=node("button",className,label) as HTMLButtonElement;
   button.type="button";button.onclick=()=>changePage(dest);return button;
  };
  full.append(goButton("Read Post-show Brief",2));
  after.append(goButton("Back to Full Show",1));
- root.replaceChildren(...pages);
+ const fullShowTab=goButton("Full show",1,"ppw-results-section-tab");
+ const postShowTab=goButton("Post-show brief",2,"ppw-results-section-tab");
+ sections.append(fullShowTab,postShowTab);
+ root.replaceChildren(sections,full,after);
  changePage=(index:0|1|2)=>{
   full.hidden=index!==1;
   after.hidden=index!==2;
+  fullShowTab.setAttribute("aria-pressed",String(index===1));
+  postShowTab.setAttribute("aria-pressed",String(index===2));
   // Images for the compact rundown are not fetched while headlines or
   // HOT TAG are on screen. Source links select the narrative first.
   if(index===1)setBreakdown(compactFullShow);

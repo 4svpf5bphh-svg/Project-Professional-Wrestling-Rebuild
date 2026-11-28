@@ -515,3 +515,14 @@
  font-size:13px;line-height:1.4;font-weight:750}
 .ppw-ratings-circuit-target{color:#a7e8da;font-size:11px;
  font-weight:800;letter-spacing:.025em}
+
+.ppw-finance-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ppw-finance-heading h2{margin:0}
+.ppw-finance-health{
+ padding:5px 8px;border:1px solid #6c9d94;border-radius:6px;
+ color:#bceee1;font-size:11px;font-weight:800;white-space:nowrap}
+.ppw-finance-health:is([data-health=watch],[data-health=distressed],[data-health=crisis]){
+ border-color:#d39a6a;color:#ffcf9e}
+.ppw-finance-group-label{margin:3px 0 0;font-size:13px;color:#e0edf6}
+.ppw-finance-settled .ppw-finance-snapshot-tile{border-color:#777489}
+@media(min-width:550px){.ppw-finance-snapshot{grid-template-columns:repeat(3,minmax(0,1fr))}}

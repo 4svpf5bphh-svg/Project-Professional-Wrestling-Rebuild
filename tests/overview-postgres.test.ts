@@ -153,12 +153,13 @@ test("a premium-only booking never conceals the mandatory weekly-show reminder",
  skip:!url?"No disposable PostgreSQL":false
 },async()=>{
  const id=randomUUID(),worldId="premium-home-"+id,playerId="premium-manager-"+id;
- const promotionId="company-"+id,db=postgresPool(url!,2);
+ const promotionId="company-"+id,rivalId="rival-"+id,db=postgresPool(url!,2);
  try{
   await withWorldTransaction(db.pool,async tx=>{
    await createWorld(tx,{id:worldId,name:"One weekly plus premium",seed:22,
     rulesetVersion:"test"});
    await addPromotion(tx,worldId,{id:promotionId,name:"Independent",tier:"LOCAL"});
+   await addPromotion(tx,worldId,{id:rivalId,name:"Rival",tier:"LOCAL"});
   });
   await joinWorld(db.pool,{worldId,playerId,requestId:"join-"+id,expectedRevision:0});
   await submitPromotionClaim(db.pool,{worldId,playerId,promotionId,
@@ -174,11 +175,68 @@ test("a premium-only booking never conceals the mandatory weekly-show reminder",
   await withWorldTransaction(db.pool,tx=>tx.query(
    "INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,booking_class)"+
    " VALUES($1,'weekly-draft',$2,1,1,'REGULAR')",[worldId,promotionId]));
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_booking_drafts SET show_day=4 WHERE world_id=$1",[worldId]);
+   await tx.query(`INSERT INTO ppw_commercial_deals(world_id,deal_id,promotion_id,kind,
+    offer_code,baseline_income,agreed_income,start_week_index,end_week_index,source,airing_day,airing_hour)
+    VALUES($1,'owner-tv',$2,'BROADCAST','owner-network',0,0,1,12,'HUMAN',4,20),
+     ($1,'rival-tv',$3,'BROADCAST','rival-network',0,0,0,12,'HUMAN',4,20)`,
+    [worldId,promotionId,rivalId]);
+  });
   const together=await readPlayerWorldOverview(db.pool,worldId,playerId);
   assert.equal(together?.promotion?.attention.plannedShows,1,
    "The required normal show is now planned; optional premium must not count twice");
+  assert.deepEqual(together?.promotion?.upcomingShows?.map(show=>[
+   show.showId,show.bookingClass,show.hasVenue,show.broadcastFormat]),
+   [["premium-draft","PREMIUM",false,"PPV"],["weekly-draft","REGULAR",false,undefined]]);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_commercial_deals SET start_week_index=0,airing_day=5"+
+   " WHERE world_id=$1 AND deal_id='owner-tv'",[worldId]));
+  const offSlot=await readPlayerWorldOverview(db.pool,worldId,playerId);
+  assert.equal(offSlot?.promotion?.upcomingShows?.find(s=>s.showId==="weekly-draft")?.broadcastFormat,
+   undefined);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_commercial_deals SET airing_day=4 WHERE world_id=$1 AND deal_id='owner-tv'",
+   [worldId]));
+  const withTelevision=await readPlayerWorldOverview(db.pool,worldId,playerId);
+  assert.deepEqual(withTelevision?.promotion?.upcomingShows?.map(s=>s.broadcastFormat),["PPV","TV"]);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,
+    booking_class,status,show_name,show_day)
+    VALUES($1,'club-show',$2,1,1,'REGULAR','SUBMITTED','Club Show',2),
+     ($1,'rival-show',$3,1,1,'REGULAR','SUBMITTED','Rival Show',6)`,[worldId,promotionId,rivalId]);
+   await tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,
+    resolution_id,crowd_response,receipt_json,receipt_digest)
+    VALUES($1,$2,'club-show',1,1,'club-resolution',74,'{}',repeat('a',64)),
+     ($1,$3,'rival-show',1,1,'rival-resolution',90,'{}',repeat('b',64))`,
+    [worldId,promotionId,rivalId]);
+  });
+  const legacy=await readPlayerWorldOverview(db.pool,worldId,playerId);
+  assert.deepEqual(legacy?.promotion?.latestShows?.map(s=>[s.showName,s.broadcastFormat]),
+   [["Club Show",undefined]],"A completed show without an audience receipt stays neutral");
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_booking_drafts SET show_day=6 WHERE world_id=$1 AND draft_id='premium-draft'",
+    [worldId]);
+   await tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,
+    resolution_id,crowd_response,receipt_json,receipt_digest)
+    VALUES($1,$2,'weekly-draft',1,1,'weekly-resolution',82,'{}',repeat('c',64)),
+     ($1,$2,'premium-draft',1,1,'premium-resolution',88,'{}',repeat('d',64))`,[worldId,promotionId]);
+   await tx.query(`INSERT INTO ppw_show_economics(world_id,show_id,promotion_id,year,week,
+    attendance,expected_demand,gate_revenue,venue_cost,production_cost,travel_cost,
+    appearance_fees,total_cost,net_result,incremental_cash,audience_format,tv_household_rating,
+    estimated_viewers,ppv_buys)
+    VALUES($1,'weekly-draft',$2,1,1,200,300,2000,0,0,0,0,0,2000,2000,'TV',.1,100000,NULL),
+     ($1,'premium-draft',$2,1,1,200,300,2000,0,0,0,0,0,2000,2000,'PPV',NULL,NULL,700)`,
+    [worldId,promotionId]);
+  });
+  const certified=await readPlayerWorldOverview(db.pool,worldId,playerId);
+  assert.deepEqual(certified?.promotion?.latestShows?.map(s=>[s.showId,s.broadcastFormat]),
+   [["weekly-draft","TV"],["premium-draft","PPV"]]);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("DELETE FROM ppw_show_economics WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_commercial_deals WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_booking_drafts WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_command_receipts WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_promotion_controls WHERE world_id=$1",[worldId]);

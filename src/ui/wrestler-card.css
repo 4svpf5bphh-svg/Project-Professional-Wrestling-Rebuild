@@ -144,3 +144,11 @@
  padding:3px 7px;border:1px solid #75b994;border-radius:6px;
  color:#b4ffe1;background:#214b46;font-weight:850;font-size:10px;
  font-variant-numeric:tabular-nums}
+
+.ppw-wrestler-card.ppw-wrestler-text-only{
+ grid-template-columns:minmax(0,1fr);min-height:56px;
+ gap:0;padding:8px 10px;border-radius:9px}
+.ppw-wrestler-text-only .ppw-wrestler-copy{grid-column:1}
+.ppw-wrestler-text-only .ppw-wrestler-name{font-size:15px}
+.ppw-wrestler-text-only .ppw-wrestler-badges{gap:4px}
+.ppw-wrestler-text-only.ppw-wrestler-unavailable{opacity:.79}

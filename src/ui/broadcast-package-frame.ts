@@ -5,7 +5,7 @@ import "./broadcast-packages.css";
 export interface BroadcastPackageFrameInput{
  style:string|null|undefined;kind:"OPEN"|"MATCH"|"SEGMENT";
  promotion:string;show:string;sideA?:string;sideB?:string;
- segmentPerson?:string;segmentLabel?:string;compact?:boolean;
+ segmentPerson?:string;segmentLabel?:string;compact?:boolean;televised?:boolean;
 }
 const el=(tag:string,cls:string,content="")=>{
  const x=document.createElement(tag);x.className=cls;x.textContent=content;return x;
@@ -13,6 +13,7 @@ const el=(tag:string,cls:string,content="")=>{
 export function createBroadcastPackageFrame(input:BroadcastPackageFrameInput):HTMLElement|null{
  const style=broadcastPackageClass(input.style);
  if(style==="standard")return null;
+ const televised=input.televised??true;
  const frame=el("section","ppw-tv-frame");
  frame.dataset.broadcastPackage=style;
  frame.dataset.kind=input.kind.toLowerCase();
@@ -24,10 +25,10 @@ export function createBroadcastPackageFrame(input:BroadcastPackageFrameInput):HT
  const motion=el("div","ppw-tv-motion");motion.setAttribute("aria-hidden","true");
  const top=el("div","ppw-tv-top");
  top.append(el("strong","ppw-tv-promotion",input.promotion),
-  el("span","ppw-tv-broadcast-label","PPW TELEVISION"));
+  el("span","ppw-tv-broadcast-label",televised?"PPW TELEVISION":"PPW EVENTS"));
  const centre=el("div","ppw-tv-centre");
  if(input.kind==="OPEN"){
-  centre.append(el("span","ppw-tv-red-label","LIVE BROADCAST"),
+  centre.append(el("span","ppw-tv-red-label",televised?"LIVE BROADCAST":"LIVE EVENT"),
    el("strong","ppw-tv-title",input.show),
    el("span","ppw-tv-caption","THE NEXT CHAPTER STARTS HERE"));
  }else if(input.kind==="MATCH"){
@@ -44,7 +45,7 @@ export function createBroadcastPackageFrame(input:BroadcastPackageFrameInput):HT
   centre.append(lower);
  }
  const footer=el("div","ppw-tv-footer");
- footer.append(el("span","",input.show),el("span","","PPW / ON AIR"));
+ footer.append(el("span","",input.show),el("span","",televised?"PPW / ON AIR":"PPW / LIVE EVENTS"));
  frame.append(motion,top,centre,footer);
  return frame;
 }

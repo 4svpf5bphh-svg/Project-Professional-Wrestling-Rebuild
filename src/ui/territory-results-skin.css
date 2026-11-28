@@ -50,8 +50,7 @@
  color:var(--tt-ink);background:var(--tt-paper);border:2px solid var(--tt-line);
  border-radius:8px;box-shadow:0 4px 0 #4a354b40;
 }
-#game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell .ppw-eyebrow,
-#game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell .ppw-ringside-ai-status{
+#game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell .ppw-eyebrow{
  color:var(--tt-red-dark);font-weight:900;
 }
 #game .ppw-results[data-results-skin="territory-tv"] .ppw-final-bell-headline{
