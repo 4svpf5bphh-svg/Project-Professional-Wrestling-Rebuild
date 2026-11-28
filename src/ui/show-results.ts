@@ -4,7 +4,7 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
  * Player-authored finishes remain sovereign; editorial copy is derived from
  * verified scores, written stories and the original locked card.
  */
-import type {CompletedShowView,ShowResultEntry} from "../db/show-results-view.js";
+import type {CompletedShowView,CompletedWeekShow,ShowResultEntry} from "../db/show-results-view.js";
 import {projectShowBreakdown} from "./show-breakdown.js";
 import {segmentTemperature} from "../domain/segment-temperature.js";
 import {programmeManagementNote}
@@ -64,9 +64,7 @@ function control(label:string,css:string,action:()=>void){
  button.type="button";button.className=css;button.textContent=label;
  button.onclick=action;return button;
 }
-export type ResultWeekShow={showId:string;year:number;week:number;showName:string;
- bookingClass?:"REGULAR"|"PREMIUM";broadcastFormat?:"TV"|"PPV"};
-export type ResultsNavigation={weekShows?:readonly ResultWeekShow[];openShow?:(showId:string)=>void};
+export type ResultsNavigation={weekShows?:readonly CompletedWeekShow[];openShow?:(showId:string)=>void};
 function showError(root:HTMLElement,e:unknown){
  root.replaceChildren(node("p","ppw-alert ppw-error",
   e instanceof Error?e.message:"Unable to load show results"));
@@ -875,7 +873,7 @@ export function renderBroadcast(root:HTMLElement,show:CompletedShowView,
  const fullShowTab=goButton("Full show",1,"ppw-results-section-tab");
  const postShowTab=goButton("After the Bell",2,"ppw-results-section-tab");
  sections.append(fullShowTab,postShowTab);
- const related=navigation?.weekShows?.filter(item=>item.year===show.year&&item.week===show.week)??[];
+ const related=(show.weekShows??navigation?.weekShows)?.filter(item=>item.year===show.year&&item.week===show.week)??[];
  const shows=node("nav","ppw-ringside-week");shows.setAttribute("aria-label","Certified shows this week");
  if(navigation?.openShow&&related.length>1){
   for(const item of related){

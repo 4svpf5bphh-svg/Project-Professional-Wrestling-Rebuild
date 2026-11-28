@@ -173,7 +173,7 @@ test("iPhone standalone keeps the five-tab dock and More reachable",async({page}
  await menu.click();
  const drawer=page.getByRole("dialog",{name:"More"});
  await expect(drawer).toBeVisible();
- const drawerBox=await drawer.boundingBox();
+ const drawerBox=await page.locator("#navigation").boundingBox();
  expect(drawerBox).not.toBeNull();
  expect(drawerBox!.y+drawerBox!.height).toBeLessThanOrEqual(buttonBox!.y+3);
  expect(drawerBox!.y+drawerBox!.height).toBeLessThanOrEqual(844);

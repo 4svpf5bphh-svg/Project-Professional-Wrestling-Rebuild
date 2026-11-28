@@ -587,7 +587,7 @@ async function loadSession(){
    // Reuse it once and let subsequent navigation read current game state.
    const overview=session.overview;
    renderSection(false,overview.world.id===session.worldId&&
-    !!overview.promotion.attention?overview:undefined);
+    !!overview.promotion?.attention?overview:undefined);
    presentOpening();
   }
  }catch(e){

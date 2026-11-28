@@ -60,6 +60,10 @@ export interface ShowResultEntry{
  /** Programme history as it stood when this broadcast occurred. */
  programmeChapters?:VerifiedProgrammeBroadcast[];
 }
+export interface CompletedWeekShow{
+ showId:string;year:number;week:number;showName:string;
+ bookingClass?:"REGULAR"|"PREMIUM";broadcastFormat?:"TV"|"PPV";
+}
 export interface CompletedShowView {
  showId:string;year:number;week:number;crowdResponse:number;
  showName?:string;bookingClass?:"REGULAR"|"PREMIUM";
@@ -68,6 +72,7 @@ export interface CompletedShowView {
  /** Owned named PPV branding takes precedence over account-wide Results Skin. */
  eventPosterStyle?:string|null;
  matchCount:number;angleCount:number;entries:ShowResultEntry[];staffReport?:RoadAgentReport|null;
+ weekShows?:CompletedWeekShow[];
  /** One saved event-time 20B bundle; never triggers generation when read. */
  shortform?:PostShowVoiceCopy|null;
  /** The same public thread as World News, attached only to an exact show slot. */
@@ -104,6 +109,7 @@ export async function readCompletedShowView(
     appearance_fees:string|null;total_cost:string|null;
     net_result:string|null;incremental_cash:string|null;
     shortform_json:unknown|null;shortform_state:string|null;
+    week_shows:CompletedWeekShow[]|null;
     weekly_threads:{story:WeeklyStory;copy:unknown}[]|null}>(`
    SELECT c.receipt_json,d.show_name,d.booking_class,skin.style AS results_skin,
     series_art.style AS event_poster_style,
@@ -119,7 +125,25 @@ export async function readCompletedShowView(
     gorilla.log_json AS gorilla_log,
     voices.copy_json AS shortform_json,
     voices.state AS shortform_state,
-    public_threads.threads AS weekly_threads FROM ppw_completed_shows c
+    public_threads.threads AS weekly_threads,
+    ${publishedOnly?`(SELECT jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+     'showId',sibling.show_id,'year',c.year,'week',c.week,
+     'showName',coalesce(sibling.show_name,CASE WHEN sibling.booking_class='PREMIUM'
+      THEN 'Premium event' ELSE 'Weekly show' END),
+     'bookingClass',sibling.booking_class,'broadcastFormat',sibling.audience_format))
+     ORDER BY sibling.show_day NULLS LAST,sibling.show_id)
+     FROM (
+      SELECT own.show_id,draft.show_name,draft.booking_class,draft.show_day,commercial.audience_format
+      FROM ppw_completed_shows own
+      JOIN ppw_booking_drafts draft ON draft.world_id=own.world_id
+       AND draft.promotion_id=own.promotion_id AND draft.draft_id=own.show_id
+      LEFT JOIN ppw_show_economics commercial ON commercial.world_id=own.world_id
+       AND commercial.promotion_id=own.promotion_id AND commercial.show_id=own.show_id
+      WHERE own.world_id=c.world_id AND own.promotion_id=c.promotion_id
+       AND own.year=c.year AND own.week=c.week
+      ORDER BY draft.show_day NULLS LAST,own.show_id LIMIT 12
+     ) sibling)`:"NULL"} AS week_shows
+   FROM ppw_completed_shows c
    LEFT JOIN LATERAL (
     SELECT jsonb_agg(jsonb_build_object('story',jsonb_build_object(
      'id',s.story_key,'year',s.year,'week',s.week,'desk',s.desk,'certainty',s.certainty,
@@ -484,6 +508,7 @@ export async function readCompletedShowView(
    },
    matchCount:receipt.matches.length,
    angleCount:receipt.segments.length,entries,staffReport:rows[0]!.staff_report,
+   ...((rows[0]!.week_shows?.length??0)>1?{weekShows:rows[0]!.week_shows!}:{}),
    gorillaLog:rows[0]!.gorilla_log,
    resultsSkin:rows[0]!.results_skin==="TERRITORY_TV"||rows[0]!.results_skin==="FIGHT_NIGHT"||rows[0]!.results_skin==="UNDERGROUND_ZINE"||rows[0]!.results_skin==="RETRO_BOOKER_02"?rows[0]!.results_skin:null};
   const accepted=readPostShowVoiceCopy(show,rows[0]!.shortform_json);

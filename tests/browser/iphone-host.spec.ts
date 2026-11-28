@@ -136,7 +136,7 @@ test("iPhone signs in and opens every department through a single drawer",async(
  await expect(nav).toBeHidden();
  await expect(menu).toHaveAttribute("aria-expanded","false");
  await page.getByRole("button",{name:"More",exact:true}).click();
- await nav.getByRole("link",{name:/Contracts/}).click();
+ await nav.getByRole("link",{name:"Contract Desk"}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
  await page.getByRole("link",{name:"Book",exact:true}).click();
  await expect(page).toHaveURL(/#\/planner$/);
@@ -848,7 +848,7 @@ test("small iPhones have four direct links and More at the bottom",async({page})
  await expect(page.getByRole("heading",{name:"Finances"})).toBeVisible();
  await page.getByRole("button",{name:"More",exact:true}).click();
  expect(await overflow()).toBeLessThanOrEqual(1);
- await nav.getByRole("link",{name:/Contracts/}).click();
+ await nav.getByRole("link",{name:"Contract Desk"}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
  await expect(nav).toBeHidden();
  await page.setViewportSize({width:390,height:844});
