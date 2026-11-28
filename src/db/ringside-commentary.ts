@@ -814,7 +814,8 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  // expansion, roster fetch, model call, or polling.
  const current=await withSqlClient(pool,async db=>db.query<CacheRow>(`
   SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts,r.claim_until,j.state AS update_state,
-   ((c.year,c.week)>=(w.year,w.week) AND w.phase<>'OPEN') AS locked_current
+   ((c.year,c.week)>(w.year,w.week) OR ((c.year,c.week)=(w.year,w.week)
+    AND w.phase<>'OPEN')) AS locked_current
   FROM ppw_completed_shows c
   JOIN ppw_worlds w ON w.world_id=c.world_id
   LEFT JOIN ppw_world_update_jobs j ON j.world_id=c.world_id AND j.year=c.year AND j.week=c.week AND j.show_id=c.show_id
@@ -843,13 +844,13 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
    RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION]));
  if(!current.length)throw new Error("Completed show unavailable to this controller");
  const saved=current[0];
+ if(mode!=="UPDATE"&&saved?.locked_current)return {status:"pending"};
  if(saved?.state==="READY"){
   // A database cache entry remains untrusted; validate its bounded shape
   // without loading five extra tables on every reviewed show reopen.
   try{return {status:"ready",review:validateCachedRingsideCopy(saved.report_json)};}
   catch{return {status:"unavailable"};}
  }
- if(mode!=="UPDATE"&&saved?.locked_current)return {status:"pending"};
  if(mode==="VIEWER"&&saved?.update_state)return {status:["WAITING","PROCESSING"].includes(saved.update_state)?"pending":"unavailable"};
  if(mode==="ADMIN_RETRY"&&saved?.update_state&&["WAITING","PROCESSING"].includes(saved.update_state))
   return {status:"pending"};

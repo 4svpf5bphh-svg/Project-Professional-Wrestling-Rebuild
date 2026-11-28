@@ -46,7 +46,8 @@ export function postShowHandoff(show:CompletedShowView):PostShowHandoff{
  const title=titleEntry?.fallout?.title;
  if(title)priorities.push({key:"title",eyebrow:"TITLE HISTORY",
   headline:"A new champion was crowned",
-  detail:title.winnerName+" won "+title.name+" on this show. Review who holds it now before planning a defence.",
+  detail:title.winnerName+" won "+title.name+(title.priorHolderName?" from "+title.priorHolderName:"")+
+   ". Review who holds it now before planning a defence.",
   destination:"championships",action:"View championships",
   evidenceSlotId:titleEntry?.slotId,
   personId:recordedPerson(titleEntry,title.winnerName),

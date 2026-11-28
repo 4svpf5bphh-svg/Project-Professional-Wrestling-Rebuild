@@ -56,6 +56,12 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
    ["MAIN_EVENT","BIG_PICTURE","NEXT_CHAPTER"]);
   assert.ok(initial.questions.every(q=>q.answerIndex===null));
   assert.match(initial.questions[0]!.question,/Starlight PPV/);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET phase='RESOLVING' WHERE world_id=$1",[worldId]));
+  await assert.rejects(readPremiumScrum(db.pool,scope),/Completed show unavailable/);
+  await assert.rejects(dismissPremiumScrum(db.pool,scope),/Completed show unavailable/);
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "UPDATE ppw_worlds SET week=2,phase='OPEN' WHERE world_id=$1",[worldId]));
   await withWorldTransaction(db.pool,tx=>tx.query("INSERT INTO ppw_ringside_reports(world_id,promotion_id,show_id,prompt_version,receipt_digest,model,state,claim_token,claim_until,report_json) VALUES($1,'crown','ppv-one','test-press',repeat('a',64),'gpt-6.1-terra','READY','fixture',now(),$2::jsonb)",
    [worldId,JSON.stringify({pressQuestions:{MAIN_EVENT:"How will you build on that main event finish?",BIG_PICTURE:"Did a wrestler win the championship?",NEXT_CHAPTER:"What direction should fans expect next?"}})]));
   const rewritten=await readPremiumScrum(db.pool,scope);
@@ -125,6 +131,7 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
   const silentReceipt={...receipt,showId:"ppv-two",week:2,
    resolutionId:"ppv-two-result"};
   await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=3 WHERE world_id=$1",[worldId]);
    await tx.query("INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,2)",[worldId]);
    await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,booking_class,show_name) VALUES($1,'ppv-two','crown',1,2,'SUBMITTED','PREMIUM','Second PPV')",[worldId]);
    await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,'ppv-two','main',0,'MATCH',$2::jsonb)",[worldId,JSON.stringify(card)]);
@@ -163,6 +170,7 @@ test("certified PPV scrum records first owner response once, preserves outcomes 
   const racedReceipt={...receipt,showId:"ppv-three",week:3,
    resolutionId:"ppv-three-result"};
   await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("UPDATE ppw_worlds SET week=4 WHERE world_id=$1",[worldId]);
    await tx.query("INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,3)",[worldId]);
    await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,booking_class,show_name) VALUES($1,'ppv-three','crown',1,3,'SUBMITTED','PREMIUM','Third PPV')",[worldId]);
    await tx.query("INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload) VALUES($1,'ppv-three','main',0,'MATCH',$2::jsonb)",[worldId,JSON.stringify(card)]);
