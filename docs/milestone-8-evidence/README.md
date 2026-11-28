@@ -13,13 +13,13 @@ The [four-week browser journey](four-weeks-430.mp4) uses a 430px Chromium touch 
 | Quick booking and the confirmed running order | [Outcome entry](candidate-quick-booking.webp) · [Run sheet](candidate-run-sheet.webp) |
 | Advanced booking | [Steel Cage match](candidate-advanced-editing.webp) |
 | Showtime | [World readiness](candidate-week-1-readiness.webp) |
-| Certified result and continuity | [Ringside](candidate-certified-premium-result.webp) · [After the Bell](candidate-after-the-bell.webp) · [Week 2 Home](candidate-next-week-home.webp) |
+| Certified result and continuity | [PPV Ringside](candidate-certified-premium-result.webp) · [TV Ringside and title change](candidate-certified-tv.webp) · [After the Bell](candidate-after-the-bell.webp) · [Week 2 Home](candidate-next-week-home.webp) |
 | Wrestler profile | [Samoa Joe dossier](candidate-wrestler-dossier.webp) |
 | Desktop and cosmetics | [Desktop Office](candidate-desktop-office.webp) · [Retro Booker ’02 and Inferno](candidate-cosmetic-skin.webp) |
 
 Two separately migrated databases began with World ID `m8-branch-comparison`, seed `8213`, the same cards, contracts, programme and initial championship lineage. In one, Will Ospreay won the Week 2 title match and defended in Week 4. In the other, Samoa Joe retained and completed two defences. Both produced four seals, four Crown events in weeks 1, 2, 2 and 4, and certified programme chapters in weeks 2 and 4. Alex Shelley’s existing appearance promise closed as fulfilled on Week 1 certification. A separate 320px journey signed in a new player, joined, claimed Crown Wrestling, booked, manually advanced and reached the new week. The 13-week PostgreSQL regression certified eight simulated promotions.
 
-A separate commercial fixture enabled the existing market and show economics before Week 1. The operator certified Ascension and The Lottery in the same Week 2. Ascension recorded a 0.11 TV household rating, 185,000 estimated viewers and $110,400 net. The Lottery recorded 510 estimated PPV buys and $101,400 net. The cosmetic follow-up bought and applied Retro Booker ’02 on the certified PPV and checked the wallet across reload. [Commercial PPV](candidate-certified-premium-result.webp) · [After the Bell](candidate-after-the-bell.webp) · [Selected skin and event poster](candidate-cosmetic-skin.webp)
+A separate commercial fixture enabled the existing market and show economics before Week 1. The operator certified Ascension and The Lottery in the same Week 2. Ascension recorded a 0.11 TV household rating, 185,000 estimated viewers and $110,400 net. The Lottery recorded 510 estimated PPV buys and $101,400 net. The cosmetic follow-up bought and applied Retro Booker ’02 on the certified PPV and checked the wallet across reload. It opened the certified TV report from the PPV, returned through the same-week link and verified the Inferno poster under the applied skin. [Commercial PPV](candidate-certified-premium-result.webp) · [After the Bell](candidate-after-the-bell.webp) · [Selected skin and event poster](candidate-cosmetic-skin.webp)
 
 ## Scenario coverage
 
