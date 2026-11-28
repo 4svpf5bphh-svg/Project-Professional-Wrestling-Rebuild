@@ -544,8 +544,8 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
   publishedStories:weeklyStories
  });
  const followups=await continueWorldRumours(tx,worldId,year,week,weeklyStories);
- // One bounded publisher-only read. Other promotions' settled signings
- // are public World news; pending offers and private wages are never shown.
+ // The edition curates a bounded selection of public signings. All settled
+ // signings remain in the ledger, including on weeks with large renewal queues.
  const signings=await tx.query<{event_id:string;event_type:ConfirmedWorldSigning["eventType"];
   person_name:string;promotion_id:string;promotion_name:string;headliner:boolean}>(`
   SELECT e.event_id::text AS event_id,e.event_type,
@@ -559,9 +559,8 @@ export async function publishCertifiedWorldNews(tx:SqlRows,worldId:string,year:n
   WHERE e.world_id=$1 AND e.year=$2 AND e.week=$3
    AND e.event_type IN ('CONTRACT_SIGNED','AI_STRATEGIC_TALENT_SIGNED',
     'EMERGENCY_TALENT_SIGNED')
-  ORDER BY person.popularity DESC NULLS LAST,e.event_id ASC LIMIT 33`,
+  ORDER BY person.popularity DESC NULLS LAST,e.event_id ASC LIMIT 32`,
   [worldId,year,week]);
- if(signings.length>32)throw new Error("Certified signing news exceeds bounded World events");
  const publicSignings=composeConfirmedSigningNews(signings.map(e=>({
   eventId:e.event_id,eventType:e.event_type,personName:e.person_name,
   promotionId:e.promotion_id,promotionName:e.promotion_name,headliner:e.headliner

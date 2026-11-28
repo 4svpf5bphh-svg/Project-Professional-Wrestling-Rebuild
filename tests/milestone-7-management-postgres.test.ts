@@ -5,6 +5,7 @@ import {postgresPool} from "../src/db/postgres.js";
 import {withWorldTransaction,type TransactionPool} from "../src/db/transaction.js";
 import {createWorld,addPromotion} from "../src/db/world-operations.js";
 import {lockWorldWeek} from "../src/db/world-lock.js";
+import {driveWorldResolution,planNextWorldResolutionAction} from "../src/db/world-resolution-pipeline.js";
 import {recordWeekContinuity} from "../src/db/week-continuity.js";
 import {dispatchCardRpc} from "../src/web/card-rpc.js";
 import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
@@ -274,6 +275,237 @@ test("Milestone 7 names creative issues and keeps one certified, private promise
     "ppw_people","ppw_promotion_controls","ppw_memberships","ppw_ledger_events","ppw_promotions","ppw_worlds"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[[playerId,rival]]);
+  }).finally(()=>db.close());
+ }
+});
+
+test("World Lock drains 210 admitted tasks across three owners and resumes settlement exactly once",{
+ skip:!url?"No disposable PostgreSQL":false,
+},async t=>{
+ const worldId="milestone7-large-"+randomUUID(),resolutionId="large-delegation";
+ const db=postgresPool(url!,4);
+ const promotions=["company-a","company-b","company-c"];
+ const owners=promotions.map((_,i)=>worldId+"-owner-"+i);
+ const options={worldId,resolutionId};
+ const read=<T extends Record<string,unknown>>(sql:string)=>
+  withWorldTransaction(db.pool,tx=>tx.query<T>(sql,[worldId]));
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Multiple Talent Managers",seed:7,rulesetVersion:"test"});
+   await tx.query(`UPDATE ppw_worlds SET week=4,injury_rate_multiplier=0,offer_acceptance_threshold=0
+    WHERE world_id=$1`,[worldId]);
+   for(const [i,promotion] of promotions.entries()){
+    await addPromotion(tx,worldId,{id:promotion,name:promotion,tier:"INDEPENDENT"});
+    await tx.query("UPDATE ppw_promotions SET cash=9000000,media_reach=70 WHERE world_id=$1 AND promotion_id=$2",[worldId,promotion]);
+    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[owners[i]]);
+    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,owners[i]]);
+    await tx.query("INSERT INTO ppw_promotion_controls(world_id,promotion_id,player_id) VALUES($1,$2,$3)",[worldId,promotion,owners[i]]);
+    await tx.query(`INSERT INTO ppw_staff_employments(world_id,employment_id,staff_id,promotion_id,role,status,
+     weekly_salary,start_week_index,expires_week_index,term_weeks,morale)
+     VALUES($1,$2,$3,$2,'TALENT_MANAGER','ACTIVE',500,0,51,52,70)`,
+     [worldId,promotion,worldStaff(7)[i]!.staffId]);
+    await tx.query(`INSERT INTO ppw_people(world_id,person_id,name,status,career_stage,booking_division,
+     recognition,popularity,in_ring_quality,match_craft,presentation,stamina,safety,fatigue,wear,
+     momentum,default_alignment,morale,contract_priorities)
+     SELECT $1,$2||'-'||lpad(n::text,2,'0'),$2||' talent '||n,'ACTIVE','PRIME','MEN',
+      65,65,80,80,75,85,95,5,5,70,'FACE',80,
+      '{"money":100,"role":0,"schedule":0,"loyalty":0,"exposure":0,"prestige":0}'
+     FROM generate_series(0,69) n`,[worldId,promotion]);
+    await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,
+     start_week_index,expires_week_index,remaining_dates,date_entitlement,weekly_guarantee,appearance_fee,role_expectation,creative_control)
+     SELECT $1,person_id||'-term',person_id,$2,'LIMITED_NON_EXCLUSIVE','SIGNED',0,3,3,4,6000,3000,'FEATURED','NONE'
+     FROM ppw_people WHERE world_id=$1 AND starts_with(person_id,$2||'-')`,[worldId,promotion]);
+    await tx.query(`INSERT INTO ppw_delegated_contract_renewals(world_id,request_id,promotion_id,owner_player_id,
+     contract_id,source_start_week_index,created_week_index,strategy,max_weekly_guarantee,max_appearance_fee)
+     SELECT $1,person_id||'-job',$2,$3,contract_id,0,3,'EXISTING_TERMS',6000,3000
+     FROM ppw_contracts WHERE world_id=$1 AND promotion_id=$2 AND person_id<>$4`,
+     [worldId,promotion,owners[i],"company-c-69"]);
+    await tx.query("INSERT INTO ppw_venues(world_id,venue_id,name) VALUES($1,$2,$2)",[worldId,promotion]);
+    await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,event_importance)
+     VALUES($1,$2,$2,1,4,'SUBMITTED',$3,$2,60)`,[worldId,promotion,i+2]);
+    const [a,b]=[promotion+"-00",promotion+"-01"];
+    await tx.query(`INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
+     VALUES($1,$2,'main',0,'MATCH',$3)`,[worldId,promotion,JSON.stringify({
+      matchType:"SINGLES",participants:[{personId:a,contractId:a+"-term"},{personId:b,contractId:b+"-term"}],
+      scriptedWinner:b,intent:"TECHNICAL",plannedLengthMinutes:15,plannedFinish:"SUBMISSION",
+     })]);
+   }
+   // Promotion C can renew 69 contracts. Its 70th arrives on the second
+   // preparation page, where the reservations from page one still apply.
+   await tx.query(`INSERT INTO ppw_promotion_spending_plans VALUES($1,'company-c',414000,3000,0)`,[worldId]);
+  });
+  const last={worldId,promotionId:"company-c",contractId:"company-c-69-term",
+   requestId:"company-c-69-job",expectedRevision:0,
+   delegation:{strategy:"EXISTING_TERMS",maxWeeklyGuarantee:6000,maxAppearanceFee:3000}};
+  const actor={pool:db.pool,actor:{playerId:owners[2]!}};
+  await assert.rejects(readContractDesk(db.pool,worldId,owners[0]!,"company-c"),/denied/);
+  const admitted=await dispatchCardRpc(actor,"renewContract",last) as {status:string;revision:number};
+  assert.equal(admitted.status,"APPLIED");
+  assert.equal((await dispatchCardRpc(actor,"renewContract",last) as {status:string}).status,"REPLAYED");
+  await read("UPDATE ppw_worlds SET next_lock_at=clock_timestamp()-interval '1 second' WHERE world_id=$1");
+  const locked=await lockWorldWeek(db.pool,{worldId,requestId:"lock",expectedRevision:admitted.revision});
+  assert.equal(locked.status,"APPLIED");
+  const measured=new MeasuredQuerySession("Delegation pages and scoped wage evidence");
+  const continuityInput={worldId,requestId:"continuity",expectedRevision:locked.revision};
+  assert.equal((await recordWeekContinuity(measure(db.pool,measured,"ppw_delegated_contract_renewals"),continuityInput)).status,"APPLIED");
+  t.diagnostic(JSON.stringify(measured.assertBudget({maxQueries:5,maxResultBytes:195000})));
+  assert.equal((await recordWeekContinuity(db.pool,continuityInput)).status,"REPLAYED");
+  assert.deepEqual(await read(`SELECT promotion_id,status,count(*)::integer AS count
+   FROM ppw_delegated_contract_renewals WHERE world_id=$1 GROUP BY promotion_id,status ORDER BY promotion_id,status`),[
+   {promotion_id:"company-a",status:"SUBMITTED",count:70},{promotion_id:"company-b",status:"SUBMITTED",count:70},
+   {promotion_id:"company-c",status:"SUBMITTED",count:69},{promotion_id:"company-c",status:"UNABLE",count:1},
+  ]);
+  const prepared=await driveWorldResolution(db.pool,{...options,maxStages:6});
+  assert.equal(prepared.status,"LIMIT_REACHED");
+  assert.equal((await planNextWorldResolutionAction(db.pool,worldId)).action,"RESOLVE_CONTRACTS");
+  const interrupted=await driveWorldResolution(db.pool,{...options,maxStages:1});
+  assert.deepEqual(interrupted.steps,[{action:"RESOLVE_CONTRACTS",status:"EXECUTED"}]);
+  assert.deepEqual(await read(`SELECT count(*)::integer AS pending FROM ppw_contract_offers WHERE world_id=$1 AND status='PENDING'`),[{pending:9}]);
+  const resumed=await driveWorldResolution(db.pool,{...options,maxStages:1});
+  assert.deepEqual(resumed.steps,[{action:"RESOLVE_CONTRACTS",status:"EXECUTED"}]);
+  const receiptScope={worldId,resolutionId,year:1,week:4};
+  assert.equal((await settlePendingWorldContracts(db.pool,receiptScope)).answered,0);
+  const published=await driveWorldResolution(db.pool,{...options,maxStages:1});
+  assert.equal(published.status,"PUBLISHED");
+  assert.deepEqual(await read("SELECT week,phase FROM ppw_worlds WHERE world_id=$1"),[{week:5,phase:"OPEN"}]);
+  assert.deepEqual(await read(`SELECT count(*)::integer AS count,status FROM ppw_contract_offers WHERE world_id=$1 GROUP BY status`),
+   [{count:209,status:"ACCEPTED"}]);
+  assert.deepEqual(await read(`SELECT count(*)::integer AS count FROM ppw_contract_renewal_proposals
+   WHERE world_id=$1 AND proposal_id LIKE 'accepted:%'`),[{count:209}]);
+  assert.deepEqual(await read(`SELECT count(*)::integer AS count FROM ppw_command_receipts
+   WHERE world_id=$1 AND command_type='RESOLVE_PERSON_OFFERS'`),[{count:209}]);
+  assert.deepEqual(await read(`SELECT count(*)::integer AS count FROM ppw_completed_shows WHERE world_id=$1`),[{count:3}]);
+  assert.deepEqual(await read(`SELECT count(*)::integer AS count FROM ppw_ledger_events
+   WHERE world_id=$1 AND event_type='CONTRACT_SIGNED'`),[{count:209}]);
+  assert.deepEqual(await read(`SELECT count(*)::integer AS count FROM ppw_world_news_items
+   WHERE world_id=$1 AND story_key LIKE 'signing:%'`),[{count:8}]);
+  assert.equal((await driveWorldResolution(db.pool,{...options,maxStages:1})).status,"BLOCKED");
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of [
+    "ppw_world_moments","ppw_world_news_items","ppw_world_news_awards","ppw_world_news_weeks",
+    "ppw_wrestler_relationship_changes","ppw_tag_working_pair_appearances","ppw_wrestler_relationships",
+    "ppw_completed_match_evidence","ppw_individual_field_career_effects","ppw_tag_match_career_effects",
+    "ppw_completed_show_matches","ppw_completed_shows","ppw_show_resolutions","ppw_week_resolution_seals",
+    "ppw_week_resource_clearances","ppw_week_prepared_finalizations","ppw_week_continuity_assessments",
+    "ppw_week_logistics_authorizations","ppw_ledger_events","ppw_command_receipts","ppw_card_slots",
+    "ppw_booking_drafts","ppw_backstage_requests","ppw_delegated_contract_renewals","ppw_contract_offers","ppw_contract_renewal_proposals",
+    "ppw_promotion_spending_plans","ppw_staff_employments","ppw_contracts","ppw_people","ppw_venues",
+    "ppw_promotion_controls","ppw_memberships","ppw_promotions","ppw_worlds",
+   ])await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[owners]);
+  }).finally(()=>db.close());
+ }
+});
+
+test("Delegated financial authority checks simultaneous wages across the full proposed term",{
+ skip:!url?"No disposable PostgreSQL":false,
+},async t=>{
+ const worldId="milestone7-finance-"+randomUUID();
+ const db=postgresPool(url!,3);
+ const cases=[
+  ["staggered",200,50,0],["late-signed",200,50,0],["late-pending",200,50,0],
+  ["alternatives",200,50,0],["after-term",100,50,0],["weekly-authority",200,50,0],
+  ["fee-authority",200,50,0],["show-limit",200,39,0],["cash-reserve",500,100,800],
+  ["staggered-queue",200,50,0],
+ ] as const;
+ const owner=(promotion:string)=>worldId+"-"+promotion;
+ const terms=(startWeekIndex:number,weeklyGuarantee:number,termWeeks=4):OfferTerms=>({
+  family:"LIMITED_NON_EXCLUSIVE",startWeekIndex,weeklyGuarantee,termWeeks,
+  dateEntitlement:1,appearanceFee:40,signingBonus:0,roleExpectation:"FEATURED",creativeControl:"NONE",
+ });
+ try{
+  await withWorldTransaction(db.pool,async tx=>{
+   await createWorld(tx,{id:worldId,name:"Delegated financial authority",seed:7,rulesetVersion:"test"});
+   await tx.query("UPDATE ppw_worlds SET week=11 WHERE world_id=$1",[worldId]);
+   const addPerson=(person:string)=>tx.query(`INSERT INTO ppw_people(world_id,person_id,name,status,
+    recognition,popularity,in_ring_quality,match_craft,presentation,stamina,fatigue,career_stage,morale,contract_priorities)
+    VALUES($1,$2,$2,'ACTIVE',80,80,80,80,80,80,0,'PRIME',80,
+     '{"money":100,"role":0,"schedule":0,"loyalty":0,"exposure":0,"prestige":0}')`,[worldId,person]);
+   const addWage=(promotion:string,person:string,start:number,end:number,wage:number)=>tx.query(`INSERT INTO ppw_contracts(
+    world_id,contract_id,person_id,promotion_id,family,status,start_week_index,expires_week_index,
+    remaining_dates,date_entitlement,weekly_guarantee,appearance_fee,role_expectation,creative_control)
+    VALUES($1,$2,$2,$3,'LIMITED_NON_EXCLUSIVE','SIGNED',$4,$5,1,1,$6,40,'FEATURED','NONE')`,
+    [worldId,person,promotion,start,end,wage]);
+   const addProposal=(promotion:string,source:string,status:string,quote:OfferTerms)=>tx.query(`
+    INSERT INTO ppw_contract_renewal_proposals(world_id,proposal_id,contract_id,promotion_id,person_id,
+     status,created_week_index,proposed_terms) VALUES($1,$2||'-proposal',$2,$3,$2,$4,10,$5)`,
+    [worldId,source,promotion,status,JSON.stringify(quote)]);
+   const addBid=(promotion:string,person:string,source:string|null,status:string,quote:OfferTerms)=>tx.query(`
+    INSERT INTO ppw_contract_offers(world_id,offer_id,person_id,promotion_id,source_contract_id,submitted_week_index,status,terms)
+     VALUES($1,$2||'-bid',$2,$3,$4,10,$5,$6)`,[worldId,person,promotion,source,status,JSON.stringify(quote)]);
+   const queue=async(promotion:string,id:string,priority=false,start=7,end=10)=>{
+    await addPerson(id);
+    await addWage(promotion,id,start,end,100);
+    await tx.query(`INSERT INTO ppw_delegated_contract_renewals(world_id,request_id,promotion_id,owner_player_id,
+     contract_id,source_start_week_index,created_week_index,strategy,max_weekly_guarantee,max_appearance_fee)
+     VALUES($1,$2,$3,$4,$2,$5,10,$6,$7,$8)`,[worldId,id,promotion,owner(promotion),start,
+     priority?"PRIORITY_RETENTION":"EXISTING_TERMS",
+     priority?200:promotion==="weekly-authority"?99:100,
+     priority?100:promotion==="fee-authority"?39:40]);
+   };
+   for(const [promotion,wage,show,reserve] of cases){
+    await addPromotion(tx,worldId,{id:promotion,name:promotion,tier:"INDEPENDENT"});
+    await tx.query("UPDATE ppw_promotions SET cash=1000 WHERE world_id=$1 AND promotion_id=$2",[worldId,promotion]);
+    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[owner(promotion)]);
+    await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[worldId,owner(promotion)]);
+    await tx.query("INSERT INTO ppw_promotion_controls(world_id,promotion_id,player_id) VALUES($1,$2,$3)",
+     [worldId,promotion,owner(promotion)]);
+    await tx.query(`INSERT INTO ppw_staff_employments(world_id,employment_id,staff_id,promotion_id,role,status,
+     weekly_salary,start_week_index,expires_week_index,term_weeks,morale)
+     VALUES($1,$2,$3,$2,'TALENT_MANAGER','ACTIVE',500,0,51,52,70)`,
+     [worldId,promotion,worldStaff(7)[cases.findIndex(x=>x[0]===promotion)]!.staffId]);
+    await tx.query("INSERT INTO ppw_promotion_spending_plans VALUES($1,$2,$3,$4,$5)",[worldId,promotion,wage,show,reserve]);
+    await queue(promotion,promotion+"-a",promotion==="cash-reserve");
+   }
+   await queue("cash-reserve","cash-reserve-b",true);
+   await queue("staggered-queue","staggered-queue-b",false,2,14);
+   await addPerson("early");
+   await addWage("staggered","early",11,12,100);
+   await addProposal("staggered","early","ACTIVATED",terms(11,100,2));
+
+   await addPerson("later-renewal");
+   await addWage("staggered","later-renewal",9,12,0);
+   await addProposal("staggered","later-renewal","ACCEPTED",terms(13,100));
+   await addBid("staggered","later-renewal","later-renewal","ACCEPTED",terms(13,100));
+
+   await addPerson("later-signed");
+   await addWage("late-signed","later-signed",14,17,101);
+   await addPerson("later-hire");
+   await addBid("late-pending","later-hire",null,"PENDING",terms(13,101));
+
+   await addPerson("choice");
+   await addWage("alternatives","choice",9,12,0);
+   await addProposal("alternatives","choice","PENDING",terms(13,80));
+   await addBid("alternatives","choice","choice","PENDING",terms(13,100));
+
+   await addPerson("after-end");
+   await addWage("after-term","after-end",15,18,200);
+  });
+  const meter=new MeasuredQuerySession("Capped delegation wages across ten promotions");
+  await withWorldTransaction(db.pool,async tx=>{
+   assert.deepEqual(await prepareDelegatedContractRenewals({query:(sql,args)=>meter.execute(()=>tx.query(sql,args))},worldId,10),
+    {queued:12,submitted:6});
+   assert.deepEqual(await tx.query(`SELECT request_id,status FROM ppw_delegated_contract_renewals
+    WHERE world_id=$1 AND status='SUBMITTED' ORDER BY request_id`,[worldId]),[
+    {request_id:"after-term-a",status:"SUBMITTED"},{request_id:"alternatives-a",status:"SUBMITTED"},
+    {request_id:"cash-reserve-a",status:"SUBMITTED"},{request_id:"staggered-a",status:"SUBMITTED"},
+    {request_id:"staggered-queue-a",status:"SUBMITTED"},{request_id:"staggered-queue-b",status:"SUBMITTED"},
+   ]);
+   assert.deepEqual(await tx.query(`SELECT (terms->>'startWeekIndex')::integer AS first,
+    (terms->>'startWeekIndex')::integer+(terms->>'termWeeks')::integer-1 AS last
+    FROM ppw_contract_offers WHERE world_id=$1 AND promotion_id='staggered-queue' ORDER BY offer_id`,[worldId]),
+    [{first:11,last:14},{first:15,last:27}]);
+   assert.deepEqual(await prepareDelegatedContractRenewals(tx,worldId,10),{queued:0,submitted:0});
+  });
+  t.diagnostic(JSON.stringify(meter.assertBudget({maxQueries:3,maxResultBytes:13500})));
+ }finally{
+  await withWorldTransaction(db.pool,async tx=>{
+   for(const table of ["ppw_delegated_contract_renewals","ppw_contract_offers","ppw_contract_renewal_proposals",
+    "ppw_promotion_spending_plans","ppw_staff_employments","ppw_contracts","ppw_people","ppw_promotion_controls",
+    "ppw_memberships","ppw_promotions","ppw_worlds"])
+    await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[worldId]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=ANY($1::text[])",[cases.map(([id])=>owner(id))]);
   }).finally(()=>db.close());
  }
 });

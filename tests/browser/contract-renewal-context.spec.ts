@@ -259,7 +259,9 @@ for(const width of [320,390]){
  });
 }
 
-test("390px Talent Manager delegation shows the timing and posts only the authorised terms",async({page},info)=>{
+for(const width of [320,390])test(`${width}px Talent Manager delegation uses labelled strategy options and posts the authorised terms`,
+ async({page},info)=>{
+ await page.setViewportSize({width,height:844});
  const submissions:Record<string,unknown>[]=[];
  let queued=false;
  const roster=[{personId:"bayne",contractId:"bayne-term",name:"Megan Bayne",family:"EXCLUSIVE",
@@ -290,9 +292,14 @@ test("390px Talent Manager delegation shows the timing and posts only the author
  await expect(card.getByRole("button",{name:"Ask Talent Manager to renew on existing terms"})).toBeVisible();
  await expect(card.getByText(/prepares the offer at World Lock/)).toBeVisible();
  await card.getByText("Choose a negotiation strategy").click();
- await card.getByLabel("Strategy").selectOption("PRIORITY_RETENTION");
+ const strategies=card.getByRole("group",{name:"Strategy"});
+ await expect(strategies.getByRole("radio",{name:"Balanced negotiation"})).toBeChecked();
+ await expect(strategies.getByRole("radio")).toHaveCount(3);
+ await strategies.getByRole("radio",{name:"Balanced negotiation"}).press("ArrowLeft");
+ await expect(strategies.getByRole("radio",{name:"Priority retention"})).toBeChecked();
+ await expect(card.getByText("The manager can improve terms up to your limits.")).toBeVisible();
  await card.getByLabel("Maximum weekly guarantee").fill("4500");
- await card.locator(".ppw-contract-delegation").screenshot({path:info.outputPath("talent-manager-390.png")});
+ await card.locator(".ppw-contract-delegation").screenshot({path:info.outputPath(`talent-manager-${width}.png`)});
  await card.getByRole("button",{name:"Queue Talent Manager negotiation"}).click();
  await expect(card.locator(":scope > summary")).toContainText("QUEUED FOR WORLD LOCK");
  expect(submissions).toHaveLength(1);

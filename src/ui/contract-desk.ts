@@ -501,20 +501,23 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       const plan=renewalPlans.get(c.contractId)??{strategy:"BALANCED",maxWeeklyGuarantee:c.weeklyGuarantee,
        maxAppearanceFee:c.appearanceFee};
       renewalPlans.set(c.contractId,plan);
-      const strategyLabel=el("label","ppw-contract-field","Strategy");
-      const strategy=document.createElement("select");
-      for(const key of ["PRIORITY_RETENTION","BALANCED","REDUCE_COSTS"] as const){
-       const choice=el("option","",strategyNames[key]) as HTMLOptionElement;
-       choice.value=key;strategy.append(choice);
-      }
+      const strategies=document.createElement("fieldset");
+      strategies.className="ppw-contract-strategy-options";
+      strategies.append(el("legend","","Strategy"));
       const explanation=el("p","ppw-muted");
       const notes={EXISTING_TERMS:"",PRIORITY_RETENTION:"The manager can improve terms up to your limits.",
        BALANCED:"The offer reflects market value, roster position and leverage.",
        REDUCE_COSTS:"The manager tries a lower offer. The wrestler may decline."};
-      strategy.value=plan.strategy;
-      strategy.onchange=()=>{plan.strategy=strategy.value as RenewalStrategy;explanation.textContent=notes[plan.strategy];};
+      for(const key of ["PRIORITY_RETENTION","BALANCED","REDUCE_COSTS"] as const){
+       const option=el("label","ppw-contract-strategy-option");
+       const radio=document.createElement("input");radio.type="radio";
+       radio.name="renewal-strategy-"+c.contractId;radio.value=key;radio.checked=plan.strategy===key;
+       radio.disabled=!editable();
+       radio.onchange=()=>{plan.strategy=key;explanation.textContent=notes[key];};
+       option.append(radio,el("span","",strategyNames[key]));strategies.append(option);
+      }
       explanation.textContent=notes[plan.strategy];
-      strategyLabel.append(strategy);panel.append(strategyLabel,explanation);
+      panel.append(strategies,explanation);
       for(const [label,key] of [["Maximum weekly guarantee","maxWeeklyGuarantee"],
        ["Maximum fee per appearance","maxAppearanceFee"]] as const){
        const field=el("label","ppw-contract-field",label);

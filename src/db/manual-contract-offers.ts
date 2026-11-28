@@ -155,7 +155,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
     annual.world_id=o.world_id AND annual.promotion_id=o.promotion_id
     AND annual.person_id=o.person_id
    WHERE o.world_id=$1 AND o.person_id=$2 AND o.status='PENDING'
-     AND o.submitted_week_index<=$3 ORDER BY o.offer_id LIMIT 100`,[input.worldId,input.personId,current]);
+     AND o.submitted_week_index<=$3 ORDER BY o.offer_id`,[input.worldId,input.personId,current]);
   if(!bids.length)return {personId:input.personId,accepted:0,rejected:0};
   const people=await tx.query<ProfileRow>(peopleSql,[input.worldId,input.personId]);
   if(people.length!==1)throw new Error("Wrestler not found");

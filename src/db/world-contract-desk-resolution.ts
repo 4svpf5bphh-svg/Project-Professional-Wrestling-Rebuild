@@ -10,6 +10,8 @@ import {resolvePersonContractOffers} from "./manual-contract-offers.js";
 import {resolveRenewal} from "./resolve-contract-renewal.js";
 import {resolveDateRequest} from "./contract-date-decisions.js";
 
+const batchSize=200;
+
 export interface ContractDeskSettlementInput {
  worldId:string;year:number;week:number;resolutionId:string;
 }
@@ -31,17 +33,15 @@ export async function settlePendingWorldContracts(pool:TransactionPool,input:Con
   const people=await tx.query<{person_id:string}>(`
    SELECT DISTINCT person_id FROM ppw_contract_offers
    WHERE world_id=$1 AND status='PENDING' AND submitted_week_index<=$2
-   ORDER BY person_id LIMIT 201`,[input.worldId,current]);
+   ORDER BY person_id LIMIT $3`,[input.worldId,current,batchSize]);
   const renewals=await tx.query<{proposal_id:string;promotion_id:string}>(`
    SELECT proposal_id,promotion_id FROM ppw_contract_renewal_proposals
    WHERE world_id=$1 AND status='PENDING' AND created_week_index<=$2
-   ORDER BY proposal_id LIMIT 201`,[input.worldId,current]);
+   ORDER BY proposal_id LIMIT $3`,[input.worldId,current,batchSize]);
   const dates=await tx.query<{request_id:string;promotion_id:string}>(`
    SELECT request_id,promotion_id FROM ppw_contract_date_requests
    WHERE world_id=$1 AND status='PENDING' AND created_week_index<=$2
-   ORDER BY request_id LIMIT 201`,[input.worldId,current]);
-  if(people.length>200||renewals.length>200||dates.length>200)
-   throw new Error("Contract settlement work exceeds bounded weekly capacity");
+   ORDER BY request_id LIMIT $3`,[input.worldId,current,batchSize]);
   const revision=Number(world[0]!.revision);
   if(!Number.isSafeInteger(revision))throw new Error("Invalid World revision");
   return {revision,people,renewals,dates};
@@ -83,17 +83,18 @@ export async function settlePendingWorldContracts(pool:TransactionPool,input:Con
    if(result.result.decision==="ACCEPTED")accepted++;else rejected++;
   }
  }
- // Catch any offers arriving while commands ran, or incomplete work. The
- // World is RESOLVING so players cannot submit new ones during this stage.
- const pending=await withWorldTransaction(pool,async tx=>{
-  const results=await tx.query<{count:number}>(`
-   SELECT (
-     (SELECT count(*) FROM ppw_contract_offers WHERE world_id=$1 AND status='PENDING')
-     +(SELECT count(*) FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND status='PENDING')
-     +(SELECT count(*) FROM ppw_contract_date_requests WHERE world_id=$1 AND status='PENDING')
-   )::integer AS count`,[input.worldId]);
-  return results[0]!.count;
- });
- if(pending!==0)throw new Error("Pending contract negotiations remain unresolved");
+ // A full page leaves the rest for the next visit to RESOLVE_CONTRACTS.
+ // With no processable IDs, pending work would otherwise loop indefinitely.
+ if(!answered){
+  const pending=await withWorldTransaction(pool,async tx=>{
+   const results=await tx.query<{outstanding:boolean}>(`
+    SELECT (EXISTS(SELECT 1 FROM ppw_contract_offers WHERE world_id=$1 AND status='PENDING')
+     OR EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals WHERE world_id=$1 AND status='PENDING')
+     OR EXISTS(SELECT 1 FROM ppw_contract_date_requests WHERE world_id=$1 AND status='PENDING')
+    ) AS outstanding`,[input.worldId]);
+   return results[0]!.outstanding;
+  });
+  if(pending)throw new Error("Pending contract negotiations remain unresolved");
+ }
  return {answered,accepted,rejected,revision};
 }

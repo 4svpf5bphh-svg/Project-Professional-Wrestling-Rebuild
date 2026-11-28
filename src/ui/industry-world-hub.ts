@@ -905,11 +905,15 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      const wrestler=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
      const broadcaster=projectHotTagBroadcasterPost(story);
      const item=isFeature?el("article","ppw-news-story"):document.createElement("details");
+     const commentary=story.editorial?.commentary;
+     const editorialOpinion=official&&commentary?.trim()&&commentary.trim()!==story.summary.trim()
+      ?el("p","ppw-news-editorial",commentary):null;
+     editorialOpinion?.prepend(el("strong","ppw-news-opinion-label","Editorial opinion"));
      if(!isFeature){
       if(!digest){digest=el("section","ppw-news-digest");digest.dataset.newsYear=String(story.year);digest.dataset.newsWeek=String(story.week);digest.append(el("h3","ppw-news-eyebrow","ELSEWHERE THIS WEEK"));section.append(digest);}
       const brief=item;brief.className="ppw-news-brief";
       brief.append(el("summary","ppw-news-story-title",weeklyDisplayHeadline(story)),el("p","",story.summary),el("small","ppw-industry-muted",[story.promotionName,story.showName].filter(Boolean).join(" · ")));
-      if(story.editorial?.commentary)brief.append(el("p","ppw-news-editorial",story.editorial.commentary));
+      if(editorialOpinion)brief.append(editorialOpinion);
       if(story.id.startsWith("press:")&&story.promotionId===view.ownPromotionId&&port.openOwnResults)brief.append(btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId)));
       if(story.id.startsWith("programme:official:")){
        const open=programmeResultButton(story,true);
@@ -933,9 +937,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       item.append(el("span","ppw-news-desk",official?"OFFICIAL NEWS":
        wild?"IN-GAME GOSSIP":"IN-GAME RUMOUR"),
        el("strong","ppw-news-story-title",story.editorial?.headline??weeklyDisplayHeadline(story)),
-       el("p","",story.editorial?.commentary??story.summary),
-       el("small","ppw-industry-muted",[story.promotionName,story.showName,
-        "Year "+story.year,"Week "+story.week].filter(Boolean).join(" · ")));
+       el("p","",official?story.summary:commentary??story.summary));
+      if(editorialOpinion)item.append(editorialOpinion);
+      item.append(el("small","ppw-industry-muted",[story.promotionName,story.showName,
+       "Year "+story.year,"Week "+story.week].filter(Boolean).join(" · ")));
 
      }
     // The same HOT TAG identities used for show-result reactions now have
