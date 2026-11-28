@@ -20,7 +20,7 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
    FROM ppw_worlds w
    LEFT JOIN LATERAL (
     SELECT year,week FROM ppw_world_news_weeks y
-    WHERE y.world_id=w.world_id
+    WHERE y.world_id=w.world_id AND (y.year,y.week)<=(w.year,w.week)
     ORDER BY year DESC,week DESC LIMIT 1
    ) latest ON true
    JOIN ppw_promotion_controls c ON c.world_id=w.world_id

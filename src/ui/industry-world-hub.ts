@@ -8,7 +8,7 @@ import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {certifiedCareerMoment} from "../domain/certified-career-moments.js";
 import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagBroadcasterPost,dirtSheetByline} from "../domain/hot-tag-news.js";
-import {weeklyHotTagThread,weeklyEditorialAnchors,weeklyStoryPriority} from "../domain/weekly-world-editorial.js";
+import {weeklyHotTagThread,weeklyEditorialAnchors,weeklyStoryPriority,weeklyDisplayHeadline} from "../domain/weekly-world-editorial.js";
 import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js";
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
@@ -178,7 +178,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   if(!open)return null;
   if(!compact)return btn("Read Results",open);
   const link=el("a","ppw-news-results-link","Read results") as HTMLAnchorElement;
-  link.href="#/news";
+  link.href=story.promotionId===view?.ownPromotionId?"#/results":"#/broadcasts";
   link.onclick=event=>{event.preventDefault();open();};
   return link;
  }
@@ -908,7 +908,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      if(!isFeature){
       if(!digest){digest=el("section","ppw-news-digest");digest.dataset.newsYear=String(story.year);digest.dataset.newsWeek=String(story.week);digest.append(el("h3","ppw-news-eyebrow","ELSEWHERE THIS WEEK"));section.append(digest);}
       const brief=item;brief.className="ppw-news-brief";
-      brief.append(el("summary","ppw-news-story-title",story.title),el("p","",story.summary),el("small","ppw-industry-muted",[story.promotionName,story.showName].filter(Boolean).join(" · ")));
+      brief.append(el("summary","ppw-news-story-title",weeklyDisplayHeadline(story)),el("p","",story.summary),el("small","ppw-industry-muted",[story.promotionName,story.showName].filter(Boolean).join(" · ")));
       if(story.editorial?.commentary)brief.append(el("p","ppw-news-editorial",story.editorial.commentary));
       if(story.id.startsWith("press:")&&story.promotionId===view.ownPromotionId&&port.openOwnResults)brief.append(btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId)));
       if(story.id.startsWith("programme:official:")){
@@ -932,7 +932,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
       }
       item.append(el("span","ppw-news-desk",official?"OFFICIAL NEWS":
        wild?"IN-GAME GOSSIP":"IN-GAME RUMOUR"),
-       el("strong","ppw-news-story-title",story.editorial?.headline??story.title),
+       el("strong","ppw-news-story-title",story.editorial?.headline??weeklyDisplayHeadline(story)),
        el("p","",story.editorial?.commentary??story.summary),
        el("small","ppw-industry-muted",[story.promotionName,story.showName,
         "Year "+story.year,"Week "+story.week].filter(Boolean).join(" · ")));

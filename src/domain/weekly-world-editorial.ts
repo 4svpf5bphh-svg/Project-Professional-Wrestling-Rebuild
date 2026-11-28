@@ -114,6 +114,19 @@ export function validateWeeklyStoryCopy(story:WeeklyStory,value:unknown,speaker?
   ...(speaker&&publicSpeech?{wrestler:{personId:speaker.personId,text:publicSpeech}}:{})};
  return Object.keys(copy).length?copy:null;
 }
+/** Display archived fallback copy with the facts that were already published. */
+export function weeklyDisplayHeadline(story:Pick<WeeklyStory,"title"|"summary"|"showName"|"promotionName">){
+ const {title,showName,promotionName}=story;
+ const replay=title.match(/^(.+?) earns the replay at (.+)$/i);
+ if(replay)return replay[1]+" stands out at "+replay[2];
+ const confrontation=title.match(/^(.+?) gets face to face at (.+)$/i);
+ if(confrontation)return confrontation[1]+" involved in a confrontation at "+confrontation[2];
+ const match=title.match(/^(.+?) passes the in-ring test$/i);
+ if(match)return match[1]+" wrestles on "+(showName??promotionName);
+ const angle=title.match(/^(.+?) raises? the stakes$/i);
+ if(angle)return (showName??promotionName)+" features "+angle[1];
+ return title;
+}
 /** Public editorial significance, never unpublished booking or private contracts. */
 export function weeklyStoryPriority(story:Pick<WeeklyStory,"id"|"sourceKind"|"title">&Partial<Pick<WeeklyStory,"summary"|"priority"|"desk">>):number{
  if(story.priority!==undefined)return story.priority;
