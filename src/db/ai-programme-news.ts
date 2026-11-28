@@ -114,18 +114,22 @@ function composeChapter(c: PublicChapter): WorldNewsStory {
    " made the title pursuit public.");
  } else if (c.purpose === "BUILD_ANTICIPATION") {
   headline = c.promotion_name + " puts the spotlight on " + c.on_air.join(" and ");
-  summary = "A broadcast video revisited the stakes of " + format + " and built anticipation for the next encounter.";
+  summary = "A video on " + event + " retraced " + format + " for the audience.";
  } else if (c.week_index === c.started_week_index) {
   headline = (c.on_air[0] ?? first) +
    (c.on_air.length > 1 ? " and " + c.on_air.slice(1).join(" and ") + " open " : " opens ") + format;
   summary = "An opening scene on " + event + " gave the promotion's audience its first look at the story.";
  } else if (c.kind === "MATCH") {
-  headline = first + (c.winner_side === "A" ? " passes the in-ring test" : " hits resistance in the ring");
-  summary = "A match on " + event + " moved " + format + " forward.";
+  headline = result ? result + " takes the decision at " + event : cast + " meet at " + event;
+  summary = (result ? result + " won the bout at " : "The bout took place at ") + event + " during " + format + ".";
  } else {
-  headline = c.on_air.length > 1 ? c.on_air.join(" and ") + " raise the stakes" :
-   (c.on_air[0] ?? first) + " raises the stakes";
-  summary = "The latest scene on " + event + " advanced " + format + ".";
+  const performers = c.on_air.join(" and ") || cast;
+  headline = c.purpose === "TEASE_BETRAYAL" ? "Cracks show between " + performers :
+   performers + " feature in " + format + " at " + event;
+  summary = c.purpose === "TEASE_BETRAYAL" ?
+   "The scene at " + event + " put the partnership under strain on screen." :
+   performers + " appeared in the latest " + format + " scene at " + event + ".";
+
  }
  return { key: "programme:official:" + c.programme_id, desk: "OFFICIAL", certainty: "CONFIRMED",
   promotionId: c.promotion_id, promotionName: c.promotion_name, showId: c.show_id,

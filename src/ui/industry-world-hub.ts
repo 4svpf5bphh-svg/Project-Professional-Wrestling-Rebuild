@@ -8,7 +8,7 @@ import type {readWorldHeritage,WorldMomentCursor} from "../db/world-honours.js";
 import {createWrestlerPortrait} from "./wrestler-portrait.js";
 import {certifiedCareerMoment} from "../domain/certified-career-moments.js";
 import {HOT_TAG_NAME,HOT_TAG_TAGLINE,projectHotTagBroadcasterPost,dirtSheetByline} from "../domain/hot-tag-news.js";
-import {weeklyHotTagThread,weeklyEditorialAnchors,weeklyStoryPriority} from "../domain/weekly-world-editorial.js";
+import {weeklyHotTagThread,weeklyEditorialAnchors,weeklyStoryPriority,weeklyDisplayHeadline} from "../domain/weekly-world-editorial.js";
 import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js";
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
@@ -170,11 +170,17 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   catch(e){watchError=e instanceof Error?e.message:"Completed results unavailable";}
   finally{watching=false;render();}
  }
- function programmeResultButton(story: {promotionId:string;showId:string}) {
+ function programmeResultButton(story: {promotionId:string;showId:string},compact=false) {
   if(!story.showId)return null;
-  if(story.promotionId===view?.ownPromotionId)
-   return port.openOwnResults?btn("Read Results",()=>port.openOwnResults?.(story.showId)):null;
-  return port.publicResults?btn("Read Results",()=>void readRivalResult(story.promotionId,story.showId)):null;
+  const open=story.promotionId===view?.ownPromotionId?
+   (port.openOwnResults?()=>port.openOwnResults?.(story.showId):null):
+   (port.publicResults?()=>void readRivalResult(story.promotionId,story.showId):null);
+  if(!open)return null;
+  if(!compact)return btn("Read Results",open);
+  const link=el("a","ppw-news-results-link","Read results") as HTMLAnchorElement;
+  link.href=story.promotionId===view?.ownPromotionId?"#/results":"#/broadcasts";
+  link.onclick=event=>{event.preventDefault();open();};
+  return link;
  }
  function renderPublicShow(){
   activateWorkspaceRoot(root,"ppw-industry");
@@ -899,14 +905,18 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      const wrestler=projectHotTagNewsWrestlerPost(story,news?.awards??[]);
      const broadcaster=projectHotTagBroadcasterPost(story);
      const item=isFeature?el("article","ppw-news-story"):document.createElement("details");
+     const commentary=story.editorial?.commentary;
+     const editorialOpinion=official&&commentary?.trim()&&commentary.trim()!==story.summary.trim()
+      ?el("p","ppw-news-editorial",commentary):null;
+     editorialOpinion?.prepend(el("strong","ppw-news-opinion-label","Editorial opinion"));
      if(!isFeature){
       if(!digest){digest=el("section","ppw-news-digest");digest.dataset.newsYear=String(story.year);digest.dataset.newsWeek=String(story.week);digest.append(el("h3","ppw-news-eyebrow","ELSEWHERE THIS WEEK"));section.append(digest);}
       const brief=item;brief.className="ppw-news-brief";
-      brief.append(el("summary","ppw-news-story-title",story.title),el("p","",story.summary),el("small","ppw-industry-muted",story.promotionName));
-      if(story.editorial?.commentary)brief.append(el("p","ppw-news-editorial",story.editorial.commentary));
+      brief.append(el("summary","ppw-news-story-title",weeklyDisplayHeadline(story)),el("p","",story.summary),el("small","ppw-industry-muted",[story.promotionName,story.showName].filter(Boolean).join(" · ")));
+      if(editorialOpinion)brief.append(editorialOpinion);
       if(story.id.startsWith("press:")&&story.promotionId===view.ownPromotionId&&port.openOwnResults)brief.append(btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId)));
       if(story.id.startsWith("programme:official:")){
-       const open=programmeResultButton(story);
+       const open=programmeResultButton(story,true);
        if(open)brief.append(open);
       }
       digest.append(brief);
@@ -924,21 +934,14 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
        item.append(el("div","ppw-dirt-outlet",byline.name),
         el("span","ppw-dirt-byline",byline.byline+" · INSIDE REPORT"));
       }
-      item.append(el("span","ppw-news-desk",official?(story.editorial?.commentary?"EDITORIAL / CONFIRMED SOURCE":"CONFIRMED / OFFICIAL"):
+      item.append(el("span","ppw-news-desk",official?"OFFICIAL NEWS":
        wild?"IN-GAME GOSSIP":"IN-GAME RUMOUR"),
-       el("strong","ppw-news-story-title",story.editorial?.headline??story.title),
-       el("p","",story.editorial?.commentary??story.summary),
-       el("small","ppw-industry-muted",story.promotionName+
-        " · Year "+story.year+" · Week "+story.week));
-      if(story.editorial?.commentary){
-       // Groq writes the reader-facing lead. Keep the actual public record
-       // readily accessible and separate from opinion, not a duplicated article.
-       const facts=document.createElement("details");
-       facts.className="ppw-news-editorial";
-       facts.append(el("summary","ppw-industry-muted",official?"Editorial opinion · View confirmed facts":"Rumour discussion · View source report"),
-        el("strong","ppw-news-story-title",story.title),el("p","",story.summary));
-       item.append(facts);
-      }
+       el("strong","ppw-news-story-title",story.editorial?.headline??weeklyDisplayHeadline(story)),
+       el("p","",official?story.summary:commentary??story.summary));
+      if(editorialOpinion)item.append(editorialOpinion);
+      item.append(el("small","ppw-industry-muted",[story.promotionName,story.showName,
+       "Year "+story.year,"Week "+story.week].filter(Boolean).join(" · ")));
+
      }
     // The same HOT TAG identities used for show-result reactions now have
     // persistent-looking, locally projected threads under published stories.
@@ -998,8 +1001,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      }
      card.append(copy);content.append(card);
     }
-    thread.append(content);
-    item.append(thread);
+    if(posts.length){
+     thread.append(content);
+     item.append(thread);
+    }
     if(isFeature&&official&&story.id.startsWith("press:")&&
       story.promotionId===view.ownPromotionId&&port.openOwnResults){
      const open=btn("Read the completed PPV",()=>port.openOwnResults?.(story.showId));

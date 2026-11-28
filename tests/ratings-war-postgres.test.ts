@@ -1,3 +1,6 @@
+import {projectShowAudience} from "../src/domain/show-audience.js";
+import {readBusinessWorkspace} from "../src/db/business-workspace.js";
+import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
@@ -84,6 +87,45 @@ test("Ratings War settles all certified programmes atomically, keeps PPVs and re
   const twice=await withWorldTransaction(db.pool,tx=>settleRatingsWarWorldWeek(tx,world,1,1));
   assert.deepEqual(twice,once);
   assert.deepEqual(await inspect(),rows,"Reruns never re-transfer the same viewers");
+  const owner=world+"-owner";
+  const projected=[];
+  for(const [i,reach] of [36,37,40,45,51].entries()){
+   const week=i+2,episode="small-"+week;
+   const audience=projectShowAudience({tier:"INDEPENDENT",eventType:"REGULAR",mediaReach:reach,
+    awareness:35+i,liveStrength:34,loyalty:42,wrestlingInterest:50,expectedDemand:1300,averageMatchRating:2.5+i/10});
+   projected.push(audience);
+   await withWorldTransaction(db.pool,async tx=>{
+    await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,booking_class,show_day,show_name,event_type)
+     VALUES($1,$2,'promotion-2',1,$3,'SUBMITTED','REGULAR',3,'Coastal Wrestling TV','REGULAR')`,[world,episode,week]);
+    await tx.query(`INSERT INTO ppw_completed_shows(world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
+     VALUES($1,'promotion-2',$2,1,$3,'audience-receipt',72,'{}',repeat('a',64))`,[world,episode,week]);
+    await tx.query(`INSERT INTO ppw_show_economics(world_id,show_id,promotion_id,year,week,attendance,expected_demand,
+     gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,total_cost,net_result,incremental_cash,
+     audience_format,tv_household_rating,estimated_viewers)
+     VALUES($1,$2,'promotion-2',1,$3,1000,1300,100000,10000,10000,0,10000,30000,70000,70000,'TV',$4,$5)`,
+      [world,episode,week,audience.householdRating,audience.estimatedViewers]);
+    await settleRatingsWarWorldWeek(tx,world,1,week);
+   });
+  }
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[owner]);
+   await tx.query("INSERT INTO ppw_memberships(world_id,player_id,status) VALUES($1,$2,'ACTIVE')",[world,owner]);
+   await tx.query("INSERT INTO ppw_promotion_controls(world_id,promotion_id,player_id) VALUES($1,'promotion-2',$2)",[world,owner]);
+   await tx.query("UPDATE ppw_worlds SET week=7 WHERE world_id=$1",[world]);
+  });
+  const business=await readBusinessWorkspace(db.pool,{worldId:world,playerId:owner,promotionId:"promotion-2"});
+  const small=business.competitorBroadcasts.find(x=>x.isYours)!;
+  assert.equal(small.showName,"Coastal Wrestling TV");
+  assert.equal(small.history.length,6);
+  assert.equal(business.competitorBroadcasts.some(x=>x.promotionId==="promotion-3"),false);
+  assert.deepEqual(small.history.slice(0,5).map(x=>x.householdRating),projected.map(x=>x.householdRating).reverse());
+  assert.deepEqual(small.history.slice(0,5).map(x=>x.estimatedViewers),projected.map(x=>x.estimatedViewers).reverse());
+  assert.ok(small.history.some((x,i)=>i>0&&x.householdRating===small.history[i-1]!.householdRating&&
+   x.estimatedViewers!==small.history[i-1]!.estimatedViewers),"Stored viewers can move when the stored decimal rating is equal");
+  assert.ok(projected.at(-1)!.estimatedViewers!>projected[0]!.estimatedViewers!);
+  const home=await readPlayerWorldOverview(db.pool,world,owner);
+  assert.equal(home?.promotion?.competition?.ownLatestShow?.tvRating,projected.at(-1)!.householdRating);
+
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of ["ppw_commercial_bonus_receipts","ppw_commercial_deals",
@@ -96,6 +138,7 @@ test("Ratings War settles all certified programmes atomically, keeps PPVs and re
     "ppw_promotions","ppw_markets"])
     await tx.query("DELETE FROM "+name+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_worlds WHERE world_id=$1",[world]);
+   await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[world+"-owner"]);
   }).finally(()=>db.close());
  }
 });

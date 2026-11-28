@@ -13,7 +13,7 @@ type ProfileRow={
 };
 type ContractRow={contract_id:string;person_id:string;promotion_id:string;family:ExistingCommitment["family"];
  status:string;remaining_dates:number|null;start_week_index:number;expires_week_index:number;is_renewal:boolean};
-type PendingRow={offer_id:string;person_id:string;promotion_id:string;source_contract_id:string|null;
+type PendingRow={delegated:boolean;offer_id:string;person_id:string;promotion_id:string;source_contract_id:string|null;
  submitted_week_index:number;terms:OfferTerms;tier:string;media_reach:number|null;
  has_history:boolean;backstage_trust:number;};
 function profile(row:ProfileRow):PersonEconomics{
@@ -74,13 +74,17 @@ export async function submitManualContractOffer(pool:TransactionPool,input:Manua
     WHERE world_id=$1 AND contract_id=$2 AND status IN ('ACCEPTED','PENDING') LIMIT 1`,
     [input.worldId,source]);
    if(accepted.length)throw new Error("Renewal already arranged");
-  } else if(input.terms.startWeekIndex!==current)
+  }
+  if(!source&&input.terms.startWeekIndex!==current)
    throw new Error("Recruitment offer must start in the current week");
   const reason=canAcceptTerms(p,{...input.terms,startWeekIndex:Math.max(input.terms.startWeekIndex,current+1)},signed.map(commitment),current);
   if(reason)throw new Error(reason);
   const pending=await tx.query<{offer_id:string}>(`SELECT offer_id FROM ppw_contract_offers
-   WHERE world_id=$1 AND person_id=$2 AND promotion_id=$3 AND status='PENDING' LIMIT 1`,
-   [input.worldId,input.personId,input.promotionId]);
+   WHERE world_id=$1 AND person_id=$2 AND promotion_id=$3 AND status='PENDING'
+   UNION ALL SELECT q.request_id FROM ppw_delegated_contract_renewals q
+    JOIN ppw_contracts c USING(world_id,contract_id)
+   WHERE q.world_id=$1 AND c.person_id=$2 AND q.promotion_id=$3 AND q.owner_player_id=$4
+    AND q.status='QUEUED' LIMIT 1`,[input.worldId,input.personId,input.promotionId,input.playerId]);
   if(pending.length)throw new Error("An offer to this wrestler is already pending");
   await tx.query(`INSERT INTO ppw_contract_offers
    (world_id,offer_id,person_id,promotion_id,source_contract_id,submitted_week_index,terms)
@@ -135,6 +139,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
   const current=(clock[0]!.year-1)*52+clock[0]!.week-1;
   const bids=await tx.query<PendingRow>(`SELECT o.offer_id,o.person_id,o.promotion_id,o.source_contract_id,
    o.submitted_week_index,o.terms,p.tier,p.media_reach,
+   q.request_id IS NOT NULL AS delegated,
    CASE WHEN annual.trust IS NULL THEN coalesce(backstage.trust,50)
     ELSE round(((coalesce(backstage.trust,50)+annual.trust)/2)::numeric,1)::double precision
    END AS backstage_trust,
@@ -142,6 +147,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
     AND h.person_id=o.person_id AND h.promotion_id=o.promotion_id) AS has_history
    FROM ppw_contract_offers o JOIN ppw_promotions p ON p.world_id=o.world_id
     AND p.promotion_id=o.promotion_id
+   LEFT JOIN ppw_delegated_contract_renewals q ON q.world_id=o.world_id AND q.request_id=o.offer_id
    LEFT JOIN ppw_backstage_promotion_trust backstage ON
     backstage.world_id=o.world_id AND backstage.promotion_id=o.promotion_id
     AND backstage.person_id=o.person_id
@@ -149,7 +155,7 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
     annual.world_id=o.world_id AND annual.promotion_id=o.promotion_id
     AND annual.person_id=o.person_id
    WHERE o.world_id=$1 AND o.person_id=$2 AND o.status='PENDING'
-     AND o.submitted_week_index<=$3 ORDER BY o.offer_id LIMIT 100`,[input.worldId,input.personId,current]);
+     AND o.submitted_week_index<=$3 ORDER BY o.offer_id`,[input.worldId,input.personId,current]);
   if(!bids.length)return {personId:input.personId,accepted:0,rejected:0};
   const people=await tx.query<ProfileRow>(peopleSql,[input.worldId,input.personId]);
   if(people.length!==1)throw new Error("Wrestler not found");
@@ -159,16 +165,16 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
   const rated=bids.map(b=>{
    validateOfferTerms(b.terms,b.submitted_week_index);
    if(b.media_reach===null)throw new Error("Original promotion media reach not imported");
-   const score=offerUtility(p,b.terms,{tier:b.tier,mediaReach:b.media_reach,
-    hasPriorRelationship:b.has_history,trust:b.backstage_trust,
-    seed:String(clock[0]!.seed),offerId:b.offer_id});
-   // Original renewal resistance penalises low morale/trust near acceptance threshold.
+   const mediaReach=b.media_reach;
    const penalty=b.source_contract_id?Math.round(
     Math.max(0,55-(p.morale+b.backstage_trust)/2)*.2*10)/10:0;
-   return {...b,score:Math.round((score-penalty)*10)/10};
+   const scoreTerms=(terms:OfferTerms)=>Math.round((offerUtility(p,terms,{tier:b.tier,mediaReach,
+    hasPriorRelationship:b.has_history,trust:b.backstage_trust,
+    seed:String(clock[0]!.seed),offerId:b.offer_id})-penalty)*10)/10;
+   return {...b,score:scoreTerms(b.terms),scoreTerms};
   }).sort((a,b)=>b.score-a.score||a.offer_id.localeCompare(b.offer_id));
   const threshold=clock[0]!.offer_acceptance_threshold;
-  const decisions:{id:string;status:"ACCEPTED"|"REJECTED";score:number;reason:string|null}[]=[];
+  const decisions:{id:string;status:"ACCEPTED"|"REJECTED";score:number;reason:string|null;counter?:OfferTerms}[]=[];
   const contractsToSign:{id:string;promotion:string;person:string;terms:OfferTerms}[]=[];
   const renewals:{source:string;promotion:string;person:string;offerId:string;terms:OfferTerms}[]=[];
   const charges=new Map<string,number>();
@@ -197,10 +203,24 @@ export async function resolvePersonContractOffers(pool:TransactionPool,input:Res
   // as in original resolveContractOffers.
   for(const b of rated.filter(x=>x.terms.family==="EXCLUSIVE"))tryBid(b);
   for(const b of rated.filter(x=>x.terms.family!=="EXCLUSIVE"))tryBid(b);
+  // Counter terms are presented for manual review. They never extend the
+  // delegation or reserve a slot over a competing accepted offer.
+  const ratedById=new Map(rated.map(b=>[b.offer_id,b]));
+  for(const decision of decisions){
+   const bid=ratedById.get(decision.id)!;
+   if(!bid.delegated||decision.reason!=="offer utility below acceptance threshold")continue;
+   const source=existing.find(c=>c.contract_id===bid.source_contract_id&&!c.is_renewal);
+   if(!source||source.status!=="SIGNED"||source.expires_week_index<current||
+    bid.terms.startWeekIndex!==source.expires_week_index+1||people[0]!.status==="RETIRED")continue;
+   const counter={...bid.terms};
+   if(counter.family==="EXCLUSIVE")counter.weeklyGuarantee=Math.min(1_000_000_000,Math.ceil(Math.max(1,counter.weeklyGuarantee)*1.18));
+   else counter.appearanceFee=Math.min(1_000_000_000,Math.ceil(Math.max(1,counter.appearanceFee)*1.18));
+   if(!canAcceptTerms(p,counter,signed,current)&&bid.scoreTerms(counter)>=threshold)decision.counter=counter;
+  }
   // One batched mutation per table, independent of historical roster size.
   await tx.query(`UPDATE ppw_contract_offers o SET status=d.status,resolved_utility=d.score,
-    rejection_reason=d.reason FROM jsonb_to_recordset($2::jsonb)
-    AS d(id text,status text,score double precision,reason text)
+    rejection_reason=d.reason,counter_terms=d.counter FROM jsonb_to_recordset($2::jsonb)
+    AS d(id text,status text,score double precision,reason text,counter jsonb)
     WHERE o.world_id=$1 AND o.offer_id=d.id AND o.status='PENDING'`,
     [input.worldId,JSON.stringify(decisions)]);
   if(contractsToSign.length)await tx.query(`INSERT INTO ppw_contracts

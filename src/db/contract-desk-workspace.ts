@@ -1,3 +1,6 @@
+import type {RenewalStrategy} from "../domain/delegated-renewal.js";
+import type {OfferTerms} from "../domain/contract-economics.js";
+import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
@@ -73,7 +76,7 @@ export async function readContractDesk(
    career_stage:string|null;in_ring_quality:number|null;match_craft:number|null;
    presentation:number|null;stamina:number|null;fatigue:number|null;weekly_service_capacity:number|null;
    other_commitments:CompactSignedCommitment[]|null;
-   backstage_contract_request_id:string|null;renewal_secured:boolean;
+   backstage_contract_request_id:string|null;next_term_start:number|null;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
      c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
@@ -83,13 +86,7 @@ export async function readContractDesk(
      (SELECT jsonb_agg(jsonb_build_array(other.family='EXCLUSIVE',other.remaining_dates,other.start_week_index,other.expires_week_index))
       FROM ppw_signed_service_windows other WHERE other.world_id=c.world_id AND other.person_id=c.person_id
        AND other.contract_id<>c.contract_id AND other.status='SIGNED' AND other.expires_week_index>=$3) AS other_commitments,
-     EXISTS(SELECT 1 FROM ppw_contract_offers accepted
-      WHERE accepted.world_id=c.world_id AND accepted.promotion_id=c.promotion_id
-       AND accepted.person_id=c.person_id
-       AND accepted.source_contract_id=c.contract_id
-       AND accepted.status='ACCEPTED'
-       AND (accepted.terms->>'startWeekIndex')::integer
-           BETWEEN $3 AND c.expires_week_index+2) AS renewal_secured,
+     (${agreedNextTermSql("c")}) AS next_term_start,
      (SELECT request_id FROM ppw_backstage_requests r
       WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
         AND r.person_id=c.person_id AND r.kind='CONTRACT'
@@ -120,7 +117,9 @@ export async function readContractDesk(
    status:"ACCEPTED"|"REJECTED";additional_dates:number;
    additional_payment:string|number};
   // Both short histories share the fourth bounded read: no sixth Neon query.
-  const [deskHistory]=await tx.query<{renewals:RenewalRow[];
+  type DelegationRow={request_id:string;contract_id:string;person_name:string;strategy:RenewalStrategy;
+   status:"QUEUED"|"UNABLE";created_week_index:number};
+  const [deskHistory]=await tx.query<{renewals:RenewalRow[];delegations:DelegationRow[];
    date_decisions:DateDecisionRow[]}>(`
    SELECT coalesce((SELECT jsonb_agg(to_jsonb(r)
     ORDER BY r.created_week_index,r.proposal_id)
@@ -130,6 +129,13 @@ export async function readContractDesk(
      WHERE world_id=$1 AND promotion_id=$2 AND status IN ('PENDING','ACCEPTED')
      ORDER BY created_week_index,proposal_id LIMIT 200) r),
     '[]'::jsonb) AS renewals,
+    coalesce((SELECT jsonb_agg(to_jsonb(q) ORDER BY q.created_week_index DESC,q.request_id)
+     FROM (SELECT d.request_id,d.contract_id,p.name AS person_name,d.strategy,d.status,d.created_week_index
+      FROM ppw_delegated_contract_renewals d JOIN ppw_contracts c USING(world_id,contract_id)
+      JOIN ppw_people p ON p.world_id=c.world_id AND p.person_id=c.person_id
+      WHERE d.world_id=$1 AND d.promotion_id=$2 AND d.owner_player_id=$4
+       AND (d.status='QUEUED' OR (d.status='UNABLE' AND d.created_week_index BETWEEN greatest(0,$3-12) AND $3))
+      ORDER BY d.created_week_index DESC,d.request_id LIMIT 200) q),'[]'::jsonb) AS delegations,
     coalesce((SELECT jsonb_agg(to_jsonb(d) ORDER BY d.event_id DESC)
       FROM (SELECT e.event_id,e.year,e.week,
     e.payload->>'contractId' AS contract_id,
@@ -145,8 +151,10 @@ export async function readContractDesk(
     AND ${weekDateRangeSql("e","greatest(0,$3-25)","$3")}
    ORDER BY e.event_id DESC LIMIT 20) d),
       '[]'::jsonb) AS date_decisions`,
-    [worldId,promotionId,currentWeekIndex]);
+    [worldId,promotionId,currentWeekIndex,playerId]);
   const renewalRecords=deskHistory?.renewals??[];
+  const delegations=deskHistory?.delegations??[];
+  const queuedRenewals=new Set(delegations.filter(item=>item.status==="QUEUED").map(item=>item.contract_id));
    const renewals=renewalRecords.filter(r=>r.status==='PENDING');
    const arrangedIds=new Set(renewalRecords.filter(r=>r.status==='ACCEPTED').map(r=>r.contract_id));
   const dateDecisions=deskHistory?.date_decisions??[];
@@ -154,11 +162,12 @@ export async function readContractDesk(
   // contract news to lead into a meaningful detail view without extra reads.
   const offers=await tx.query<{offer_id:string;person_id:string;person_name:string;
    source_contract_id:string|null;terms:unknown;submitted_week_index:number;
-   status:"PENDING"|"ACCEPTED"|"REJECTED";rejection_reason:string|null}>(`
+   status:"PENDING"|"ACCEPTED"|"REJECTED";rejection_reason:string|null;counter_terms:OfferTerms|null;strategy:RenewalStrategy|null}>(`
    SELECT o.offer_id,o.person_id,p.name AS person_name,o.source_contract_id,
-    o.terms,o.submitted_week_index,o.status,o.rejection_reason
+    o.terms,o.submitted_week_index,o.status,o.rejection_reason,o.counter_terms,q.strategy
    FROM ppw_contract_offers o JOIN ppw_people p
     ON p.world_id=o.world_id AND p.person_id=o.person_id
+   LEFT JOIN ppw_delegated_contract_renewals q ON q.world_id=o.world_id AND q.request_id=o.offer_id
    WHERE o.world_id=$1 AND o.promotion_id=$2
     AND (o.status='PENDING' OR
      (o.status IN ('ACCEPTED','REJECTED') AND o.submitted_week_index
@@ -180,8 +189,8 @@ export async function readContractDesk(
    // A signed next term removes expiry work; an outstanding offer removes
    // the duplicate "renew now" alarm but cannot pretend a contract is signed.
    const pendingTerms=awaitingRenewalOfferIds.has(c.contract_id)||
-    awaitingSameTermsIds.has(c.contract_id);
-   return c.renewal_secured?{...entry,expiringSoon:false,
+    awaitingSameTermsIds.has(c.contract_id)||queuedRenewals.has(c.contract_id);
+   return c.next_term_start!==null?{...entry,expiringSoon:false,
     needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:
     pendingTerms?{...entry,expiringSoon:false,
      needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:entry;
@@ -274,17 +283,18 @@ export async function readContractDesk(
     pendingNegotiation:pendingIds.has(c.contractId),
     pendingRenewal:renewalIds.has(c.contractId),
     pendingRenewalOffer:awaitingRenewalOfferIds.has(c.contractId),
-    renewalArranged:arrangedIds.has(c.contractId)||cost.renewal_secured,
+    renewalArranged:arrangedIds.has(c.contractId)||cost.next_term_start!==null,
+    nextTermStart:cost.next_term_start,delegatedRenewalQueued:queuedRenewals.has(c.contractId),
     backstageContractConversationId:cost.backstage_contract_request_id};}),
    requests:requests.map(q=>({...q,additional_payment:Number(q.additional_payment)})),
-   renewals,offers:pendingOffers,
+   renewals,offers:pendingOffers,delegations,
    dateDecisions:dateDecisions.map(d=>({id:"contract-dates:"+d.event_id,
     contractId:d.contract_id,personId:d.person_id,name:d.name,status:d.status,
     additionalDates:d.additional_dates,additionalPayment:Number(d.additional_payment),
     year:d.year,week:d.week})),
    resolvedOffers:decidedOffers.map(o=>({offerId:o.offer_id,
     personId:o.person_id,name:o.person_name,status:o.status,
-    sourceContractId:o.source_contract_id,
+    sourceContractId:o.source_contract_id,strategy:o.strategy,counterTerms:o.counter_terms,
     submittedWeekIndex:o.submitted_week_index,
     // Never surface database rejection codes as wrestler dialogue.
     reason:o.rejection_reason==="existing exclusive contract blocks outside work"||

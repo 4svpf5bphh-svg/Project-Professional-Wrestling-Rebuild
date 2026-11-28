@@ -206,7 +206,7 @@ test("an actual concealed finish has more editorial weight than the general even
 });
 
 test("public headliner signing and exceptional performance outrank a vacant secondary title",()=>{
- const routine={...official,id:"title:tv:main",title:"Alice captures the Local Cup",sourceKind:"TITLE"};
+ const routine={...official,id:"title:tv:main",title:"Alice captures the Local Cup",summary:"The title was vacant heading into the contest.",sourceKind:"TITLE"};
  const match={...official,id:"match:ppv:main",title:"A featured bout",summary:"The pair put on a 4.75-star match."};
  const signing={...official,id:"signing:star",summary:"An established headliner joins the roster."};
  assert.equal(weeklyEditorialAnchors([routine,match])[0]?.story.id,match.id);

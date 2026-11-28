@@ -20,7 +20,7 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
    FROM ppw_worlds w
    LEFT JOIN LATERAL (
     SELECT year,week FROM ppw_world_news_weeks y
-    WHERE y.world_id=w.world_id
+    WHERE y.world_id=w.world_id AND (y.year,y.week)<=(w.year,w.week)
     ORDER BY year DESC,week DESC LIMIT 1
    ) latest ON true
    JOIN ppw_promotion_controls c ON c.world_id=w.world_id
@@ -49,20 +49,22 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
     ORDER BY year DESC,week DESC,kind DESC LIMIT 26`,params),
    tx.query<{year:number;week:number;story_key:string;desk:"OFFICIAL"|"DIRT";
     certainty:"CONFIRMED"|"SPECULATION";promotion_id:string;
-    promotion_name:string;show_id:string;title:string;summary:string;
+    promotion_name:string;show_id:string;show_name:string|null;title:string;summary:string;
     source_kind:string;editorial:unknown;priority:number}>(`
     SELECT * FROM (
     SELECT i.year,i.week,i.story_key,i.desk,i.certainty,i.promotion_id,i.promotion_name,
-     coalesce(i.show_id,'') AS show_id,i.title,i.summary,i.source_kind,
+     coalesce(i.show_id,'') AS show_id,d.show_name,i.title,i.summary,i.source_kind,
      b.copy_json->i.story_key AS editorial,(${weeklyNewsPrioritySql}) AS priority
     FROM ppw_world_news_items i
     LEFT JOIN ppw_weekly_world_editorial b ON b.world_id=i.world_id
      AND b.year=i.year AND b.week=i.week AND b.state='READY'
+    LEFT JOIN ppw_booking_drafts d ON d.world_id=i.world_id AND d.draft_id=i.show_id
+     AND d.promotion_id=i.promotion_id AND d.status='SUBMITTED'
     WHERE i.world_id=$1 AND (i.year,i.week)>=($2::integer,$3::integer)
      AND (i.year,i.week)<=($4::integer,$5::integer)
     UNION ALL
     SELECT b.year,b.week,b.rating_story->>'id','OFFICIAL','CONFIRMED',
-     b.rating_story->>'promotionId',b.rating_story->>'promotionName','',
+     b.rating_story->>'promotionId',b.rating_story->>'promotionName','',NULL::text,
      b.rating_story->>'title',b.rating_story->>'summary','RATINGS',
      b.copy_json->(b.rating_story->>'id'),10
     FROM ppw_weekly_world_editorial b WHERE b.world_id=$1 AND b.rating_story IS NOT NULL
@@ -134,7 +136,7 @@ export async function readIndustryWorldNews(pool:TransactionPool,input:{
   })),stories:items.map(s=>{
    const story={year:s.year,week:s.week,id:s.story_key,desk:s.desk,certainty:s.certainty,
     promotionId:s.promotion_id,promotionName:s.promotion_name,
-    showId:s.show_id,title:s.title,summary:s.summary,sourceKind:s.source_kind,priority:s.priority};
+    showId:s.show_id,showName:s.show_name,title:s.title,summary:s.summary,sourceKind:s.source_kind,priority:s.priority};
    const speaker=projectHotTagNewsWrestlerPost(story,awards.map(a=>({year:a.year,week:a.week,kind:a.kind,
     promotionId:a.promotion_id,showId:a.show_id,slotId:a.slot_id,personIds:a.person_ids,peopleNames:a.people_names})));
    const copy=validateWeeklyStoryCopy(story,s.editorial,speaker);

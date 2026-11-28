@@ -1,3 +1,4 @@
+import {plannedPromiseBookingSql,titlePromiseTargetSql} from "./backstage-promise-sql.js";
 import {managementProgrammeSql} from "./backstage-management-programme.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 /** Roster-scoped, read-only wrestler-owned personas. The 643-roster guide is
@@ -163,7 +164,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    observed_absent_weeks:number|null;observed_losses:number|null;
    relevant_title:string|null;career_stage_at_request:string|null;
    active_programme_id:string|null;settled_week_index:number|null;management_context:BackstageManagementContext|null;
-   promise_available_through:number|null;partner_available:boolean;
+   promise_available_through:number|null;partner_available:boolean;title_promise_available:boolean;
    planned_show_name:string|null;planned_show_year:number|null;
    planned_show_week:number|null;planned_show_status:string|null;
    planned_slot_kind:string|null}>([
@@ -194,31 +195,15 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
    "AND person.status='ACTIVE' AND partner.start_week_index<=$4 AND partner.expires_week_index>=$4",
    "AND (partner.family='EXCLUSIVE' OR partner.remaining_dates IS NULL OR partner.remaining_dates>0))",
    "ELSE false END AS partner_available,",
+   `CASE WHEN r.kind='TITLE_AMBITION' AND r.status='PENDING'
+    THEN EXISTS(${titlePromiseTargetSql("r")}) ELSE false END AS title_promise_available,`,
    "booked.show_name AS planned_show_name,booked.year AS planned_show_year,",
    "booked.week AS planned_show_week,booked.status AS planned_show_status,",
    "booked.kind AS planned_slot_kind",
    "FROM ppw_backstage_requests r",
    // Only this selected wrestler's open private commitments, not an inbox
    // query per contact. A draft card never counts as a kept promise.
-   "LEFT JOIN LATERAL (SELECT d.show_name,d.year,d.week,d.status,s.kind",
-   "FROM ppw_booking_drafts d JOIN ppw_card_slots s ON s.world_id=d.world_id",
-   "AND s.draft_id=d.draft_id",
-   "WHERE r.status='PROMISED' AND d.world_id=r.world_id",
-   "AND d.promotion_id=r.promotion_id AND d.status IN ('DRAFT','SUBMITTED')",
-   `AND ${weekDateRangeSql("d","greatest($4,r.responded_week_index)","r.due_week_index")}`,
-   "AND s.payload->'participants' @>",
-   "jsonb_build_array(CASE WHEN r.decision='PROMISE_FEATURED' THEN",
-   "jsonb_build_object('personId',r.person_id,'contractId',r.source_contract_id)",
-   "ELSE jsonb_build_object('personId',r.person_id) END)",
-   "AND ((r.decision='PROMISE_SEGMENT' AND s.kind='SEGMENT'",
-   "AND coalesce(s.payload->>'outcome','HAPPENS')='HAPPENS')",
-   "OR (r.decision IN ('PROMISE_APPEARANCE','PROMISE_FEATURED')",
-   "AND s.kind='MATCH'))",
-   "AND (r.decision<>'PROMISE_FEATURED' OR (SELECT count(*)",
-   "FROM ppw_card_slots later WHERE later.world_id=s.world_id",
-   "AND later.draft_id=s.draft_id AND later.kind='MATCH' AND later.position>s.position)",
-   "<=CASE WHEN r.promised_role='MAIN_EVENT' THEN 0 ELSE 1 END)",
-   "ORDER BY d.year,d.week,d.draft_id,s.position LIMIT 1) booked ON TRUE",
+   `LEFT JOIN LATERAL (${plannedPromiseBookingSql("r","$4")}) booked ON TRUE`,
    "WHERE r.world_id=$1 AND r.promotion_id=$2",
    "AND r.person_id=$3 ORDER BY r.created_week_index DESC,r.request_id DESC LIMIT 30"
   ].join(" "),[s.worldId,s.promotionId,selected,now]);
@@ -314,6 +299,7 @@ export async function readPortablePersonaWorkspace(pool:TransactionPool,s:Person
     careerStageAtRequest:x.career_stage_at_request,
     managementContext:x.management_context,activeProgrammeId:x.active_programme_id,settledWeekIndex:x.settled_week_index,
     promiseAvailableThrough:x.promise_available_through,partnerAvailable:x.partner_available,
+    titlePromiseAvailable:x.title_promise_available,
    })),
    history:history.slice(0,50).map(x=>({
     revision:x.revision,persona:validatePortablePersona(x.previous_persona,wrestler.name),

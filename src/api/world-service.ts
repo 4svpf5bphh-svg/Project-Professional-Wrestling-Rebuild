@@ -1,3 +1,4 @@
+import {readBackstagePromiseBook,type PromiseBookCursor,type PromiseBookView} from "../db/backstage-promise-book.js";
 import {readTournamentWorkspace,createTournament,cancelTournament,type CreateTournamentInput,type CancelTournamentInput}
  from "../db/tournament-workspace.js";
 import {readPromotionCalendar,upsertPromotionSeries,archivePromotionSeries,
@@ -65,6 +66,7 @@ import {readKayfabeWorkspace,readPromoterAchievementWorkspace,claimKayfabeWeek,a
 import {readPromotionRecordBook} from "../db/promotion-record-book.js";
 import {requestAdditionalDates,readPendingDateRequests,cancelDateRequest} from "../db/contract-date-requests.js";
 import {withdrawRenewal} from "../db/withdraw-contract-renewal.js";
+import type {RenewalDelegation} from "../domain/delegated-renewal.js";
 import {proposeSameTermsRenewal} from "../db/contract-renewals.js";
 import {readContractDesk} from "../db/contract-desk-workspace.js";
 import {readBusinessWorkspace} from "../db/business-workspace.js";
@@ -443,7 +445,7 @@ export async function cancelDateRequestAsActor(
 
 export async function proposeRenewalAsActor(
  context:WorldApiContext,
- input:WorldMutationInput & {promotionId:string;contractId:string},
+ input:WorldMutationInput & {promotionId:string;contractId:string;delegation?:RenewalDelegation},
 ){
  validate(context.actor.playerId,"actor");validateMutation(input);
  validate(input.promotionId,"promotion");validate(input.contractId,"contract");
@@ -783,6 +785,10 @@ export async function portablePersonaAsActor(context:WorldApiContext,
  if(personId!==undefined)validate(personId,"wrestler");
  return readPortablePersonaWorkspace(context.pool,{
   worldId,promotionId,playerId:context.actor.playerId,personId,inboxOnly});
+}
+export async function backstagePromisesAsActor(context:WorldApiContext,worldId:string,promotionId:string,
+ view:PromiseBookView,cursor?:PromiseBookCursor){
+ return readBackstagePromiseBook(context.pool,{worldId,promotionId,playerId:context.actor.playerId,view,cursor});
 }
 export async function requestPersonaAsActor(context:WorldApiContext,
  input:Omit<PersonaChangeInput,"playerId">){

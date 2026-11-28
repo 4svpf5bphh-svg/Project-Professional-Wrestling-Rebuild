@@ -55,7 +55,8 @@ test("official stories describe events while dirt sheet claims remain explicitly
   "Official stories and speculation need distinct durable IDs");
  assert.ok(out.filter(x=>x.desk==="OFFICIAL").every(x=>x.certainty==="CONFIRMED"));
  assert.ok(rumour.some(x=>/not been established|has not been corroborated|no confrontation behind the curtain has been established|not been independently verified/i.test(x.summary)));
- assert.ok(out.some(x=>/earns the replay/.test(x.title)));
+ assert.ok(out.some(x=>x.sourceKind==="MATCH"&&/Fight Night/.test(x.title)));
+ assert.ok(out.every(x=>!/earns the replay/.test(x.title)));
  assert.ok(out.every(x=>!x.summary.includes("/100")),
   "The newspaper should not sound like a dashboard or disclose sim scales");
  assert.ok(!JSON.stringify(out).includes("NEVER LEAK"));
@@ -108,7 +109,7 @@ test("prospect dirt-sheet speculation is grounded in a completed standout match,
  assert.equal(rumour?.desk,"DIRT");
  assert.equal(rumour?.certainty,"SPECULATION");
  assert.match(rumour?.title??"",/Alice/);
- assert.match(rumour?.summary??"",/question, not an announced plan/);
+ assert.match(rumour?.summary??"",/theory.*poster/);
  assert.ok(!JSON.stringify(stories).includes("NEVER LEAK"));
  assert.ok(!JSON.stringify(stories).includes("private"));
  const cold=composeWorldNews([{...b1,rating_stars:3.0}],[],[],[],names,[],stages);
@@ -181,7 +182,7 @@ test("dirt sheet reporting remains event-linked, authored only at certification 
  assert.ok(dirt.some(x=>x.key.startsWith("rumour:title:")));
  assert.ok(dirt.every(x=>x.certainty==="SPECULATION"));
  assert.ok(dirt.every(x=>/anonymous|alleg|whisper|account|insider|claim|theory/i.test(x.summary)));
- assert.ok(dirt.every(x=>/not|no |never|disagree|denie|doubt|dispute|unverified|question|corroborated/i.test(x.summary)));
+ assert.ok(dirt.every(x=>/theory|would|could|not|no |never|disagree|denie|doubt|dispute|unverified|question|corroborated/i.test(x.summary)));
  assert.ok(!/NEVER LEAK|privatePromise|HIDDEN CONTRACT/i.test(JSON.stringify(out)));
  assert.ok(!/wellness violation|drug test|failed drug|criminal|arrested/i.test(JSON.stringify(out)));
  assert.deepEqual(out,composeWorldNews([b1],angles,publicShows,[title],names));

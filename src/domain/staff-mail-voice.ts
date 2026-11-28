@@ -4,11 +4,10 @@
  */
 import type {WorldStaffMember} from "./world-staff.js";
 type Temperament=WorldStaffMember["personality"];
-type Specialism="TALENT_MANAGER"|"MEDICAL"|"CREATIVE";
+type Specialism="TALENT_MANAGER"|"MEDICAL";
 const ALERTS:Record<Specialism,string>={
  TALENT_MANAGER:"Contract renewals need a look",
- MEDICAL:"The roster needs a breather",
- CREATIVE:"Our rivalries are running in circles"
+ MEDICAL:"The roster needs a breather"
 };
 const proposals:Record<Specialism,Record<Temperament,string>>={
  TALENT_MANAGER:{
@@ -24,19 +23,18 @@ const proposals:Record<Specialism,Record<Temperament,string>>={
   AMBITIOUS:"Save the demanding bout for someone whose recorded condition actually supports it.",
   LOYAL:"We need these wrestlers healthy beyond one show. Ask for less from them now.",
   ECCENTRIC:"An interview can keep someone visible without booking another physical beating. It still needs your approval."
- },
- CREATIVE:{
-  FRANK:"Stop replaying the same scene. Pick a real next beat or finish the story on air.",
-  PATIENT:"I'd let the last chapter breathe, then change one meaningful element next time.",
-  AMBITIOUS:"The next major show deserves a genuine escalation, not just another match with the same stakes.",
-  LOYAL:"Keep faith with the cast and the audience. A follow-up should earn their investment.",
-  ECCENTRIC:"What if the next development changed the character's motivation instead of adding another fight?"
  }
 };
 export function staffAlertVoice(member:Pick<WorldStaffMember,"role"|"personality">,
  subject:string,verifiedBody:string):string{
  const role=member.role;
- if(role!=="TALENT_MANAGER"&&role!=="MEDICAL"&&role!=="CREATIVE")
+ if(role==="CREATIVE"&&subject.startsWith("Creative · ")){
+  const opener={FRANK:"Here's what I'd change. ",PATIENT:"We can give this a little room. ",
+   AMBITIOUS:"There's a bigger moment here. ",LOYAL:"Let's give this cast something they can use. ",
+   ECCENTRIC:"I've been turning this one over. "};
+  return opener[member.personality]+verifiedBody;
+ }
+ if(role!=="TALENT_MANAGER"&&role!=="MEDICAL")
   return verifiedBody;
  // Only genuine, unresolved specialist alerts use a voiced suggestion.
  // Follow-ups, completed commitments and personal disputes retain their

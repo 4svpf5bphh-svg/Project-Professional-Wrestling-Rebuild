@@ -460,7 +460,7 @@ export async function readCompletedShowView(
     estimatedViewers:rows[0]!.estimated_viewers===null?null:Number(rows[0]!.estimated_viewers),
     ratingsWarChange:rows[0]!.ratings_war_base_rating===null?null:
      Math.round((Number(rows[0]!.tv_household_rating)-
-      Number(rows[0]!.ratings_war_base_rating))*10)/10,
+      Number(rows[0]!.ratings_war_base_rating))*100)/100,
     ratingsWarOpponents:rows[0]!.ratings_war_opponents,
     ppvBuys:null}:
     rows[0]!.audience_format==="PPV"?{format:"PPV",

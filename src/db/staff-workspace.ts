@@ -1,3 +1,4 @@
+import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
 import {managementProgrammeSql} from "./backstage-management-programme.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 import {contextualConsultationOptions} from "../domain/staff-consultation.js";
@@ -92,7 +93,7 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
       AND e.promotion_id=$3 AND e.status='ACTIVE'),'[]'::jsonb) AS employments,
     COALESCE((SELECT jsonb_agg(to_jsonb(due)) FROM
      (SELECT c.contract_id AS "contractId",person.name AS "personName",
-      c.expires_week_index-((w.year-1)*52+w.week-1) AS "weeksRemaining"
+      c.expires_week_index-((w.year-1)*52+w.week-1)+1 AS "weeksRemaining"
       FROM ppw_contracts c JOIN ppw_people person
        ON person.world_id=c.world_id AND person.person_id=c.person_id
       WHERE c.world_id=w.world_id AND c.promotion_id=$3
@@ -101,16 +102,13 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
         AND (w.year-1)*52+w.week+11
        AND c.start_week_index<=clock.week_index
        AND c.family<>'ONE_OFF'
-       AND NOT EXISTS(SELECT 1 FROM ppw_signed_service_windows next_term
-        WHERE next_term.world_id=c.world_id AND next_term.promotion_id=c.promotion_id
-         AND next_term.person_id=c.person_id AND next_term.expires_week_index>c.expires_week_index
-         AND next_term.start_week_index<=c.expires_week_index+1
-         AND next_term.family<>'ONE_OFF'
-         AND ((next_term.family='EXCLUSIVE' AND next_term.remaining_dates IS NULL) OR next_term.remaining_dates>0))
+       AND NOT EXISTS (${agreedNextTermSql("c")})
        AND NOT EXISTS(SELECT 1 FROM ppw_contract_offers bid WHERE bid.world_id=c.world_id
         AND bid.source_contract_id=c.contract_id AND bid.status='PENDING')
        AND NOT EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals bid WHERE bid.world_id=c.world_id
         AND bid.contract_id=c.contract_id AND bid.status='PENDING')
+       AND NOT EXISTS(SELECT 1 FROM ppw_delegated_contract_renewals task WHERE task.world_id=c.world_id
+        AND task.contract_id=c.contract_id AND task.owner_player_id=$2 AND task.status='QUEUED')
       ORDER BY c.expires_week_index,c.contract_id LIMIT 5
      ) due),'[]'::jsonb) AS contracts_due,
     (SELECT count(*)::integer FROM ppw_programmes programme
@@ -397,10 +395,6 @@ export async function readStaffWorkspace(pool:TransactionPool,input:{
    department:voice("CREATIVE","Creative desk"),target:"programmes",
    message:observations.priority
   });
-  if(current.repeated_programmes>0)notices.push({department:voice("CREATIVE","Creative desk"),target:"programmes",
-   message:current.repeated_programmes+" active programme"+
-    (current.repeated_programmes===1?" has":"s have")+
-    " repeated recent beats. Review the direction."});
   if(current.medical_risks>0)notices.push({
    department:voice("MEDICAL","Medical desk"),target:"roster",
    message:current.medical_risks+" contracted wrestler"+

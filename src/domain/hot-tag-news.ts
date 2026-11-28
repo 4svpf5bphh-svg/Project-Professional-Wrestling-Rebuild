@@ -492,18 +492,21 @@ export function projectUniqueHotTagNewsThread(story:HotTagNewsStory,excluded:Rea
  // Certified match headlines contain genuine public names and, often, a
  // star rating. Make fan opinions about THAT bout instead of reusing three
  // generic comments beneath every four/five-star article.
- const named=kind==="MATCH"?story.title.match(/^(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s+(?:steals the show|earns the replay|at\s)/i):null;
+ const named=kind==="MATCH"?
+  story.summary.match(/^(.+?) delivered a \d(?:\.\d{1,2})?-star match at /i)?.
+   [1]?.match(/^(.+?)\s+(?:vs\.?|versus)\s+(.+)$/i)??
+  story.title.match(/^(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s+(?:stands out|delivers|steals the show|earns the replay|at\s)/i):null;
  const pairing=named?named[1]!.trim()+" vs "+named[2]!.trim():null;
  const stars=kind==="MATCH"?
   story.summary.match(/\b(\d(?:\.\d{1,2})?)-star match\b/i)?.[1]??null:null;
  const specific=kind==="MATCH"&&pairing?[
   pairing+" is the match I'd send to a friend who asks why I watch wrestling. 🔥",
-  "Everyone's debating "+pairing+". I'm looking at what happens to those two next. 👀",
+  "People are arguing about the score for "+pairing+". I thought the wrestling spoke for itself. 👀",
   stars?stars+" stars for "+pairing+"? I'd still watch it again before arguing ratings. 📼":
    "I need a second watch of "+pairing+" before I pick a favourite spot. 📼",
   "That "+pairing+" result has to matter for the next card. Don't waste it. 🧐",
   "Please let "+pairing+" breathe before the inevitable rematch discourse starts. 😂",
-  "The real question after "+pairing+": who gets the next opportunity? 🍿",
+  "The crowd stayed with "+pairing+" all the way to the finish. That is what I wanted to see. 🍿",
   story.promotionName+" has something to follow up after "+pairing+". Book it with purpose. 💥"
  ]:[];
  // A published manager answer deserves an opinion about what was ACTUALLY

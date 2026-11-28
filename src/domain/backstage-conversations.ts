@@ -3,7 +3,7 @@ import {managementContractHorizon,managementWeek,type BackstageManagementContext
  from "./backstage-management-context.js";
 export type BackstageKind="CONTRACT"|"MORALE"|"MOMENTUM"|"CREATIVE"|"PARTNERSHIP"|"ROLE_USAGE"|"GIMMICK_PITCH"|"TAG_TEAM_PITCH"|"MENTORSHIP_PITCH"|"RIVALRY_PITCH"|"TEAM_MOMENT"|"MEDICAL_SUPPORT"|"BOOKING_OMISSION"|"LOSS_STREAK"|"TITLE_AMBITION"|"TRUST_CHECK_IN"|"MOMENTUM_OPPORTUNITY";
 export type BackstageDecision="TALK"|"DECLINE"|"PROMISE_APPEARANCE"|
- "PROMISE_SEGMENT"|"PROMISE_FEATURED"|"EXPLORE_RENEWAL"|"MEDIATE"|
+ "PROMISE_SEGMENT"|"PROMISE_FEATURED"|"PROMISE_TITLE_MATCH"|"EXPLORE_RENEWAL"|"MEDIATE"|
  "CONSIDER_REPACKAGE"|"KEEP_CHARACTER"|"EXPLORE_TEAM"|"EXPLORE_MENTORSHIP"|"EXPLORE_RIVALRY"|"NOT_NOW";
 export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]>={
  CONTRACT:["EXPLORE_RENEWAL","TALK","DECLINE"],
@@ -21,7 +21,7 @@ export const BACKSTAGE_CHOICES:Record<BackstageKind,readonly BackstageDecision[]
  MEDICAL_SUPPORT:["TALK","DECLINE"],
  BOOKING_OMISSION:["PROMISE_APPEARANCE","TALK","DECLINE"],
  LOSS_STREAK:["TALK","PROMISE_APPEARANCE","DECLINE"],
- TITLE_AMBITION:["TALK","DECLINE"],
+ TITLE_AMBITION:["PROMISE_TITLE_MATCH","TALK","DECLINE"],
  TRUST_CHECK_IN:["TALK","DECLINE"],
 };
 export const BACKSTAGE_LABELS:Record<BackstageDecision,string>={
@@ -29,6 +29,7 @@ export const BACKSTAGE_LABELS:Record<BackstageDecision,string>={
  PROMISE_APPEARANCE:"Promise an in-ring appearance",
  PROMISE_SEGMENT:"Promise time for a promo or angle",
  PROMISE_FEATURED:"Promise a featured match",
+ PROMISE_TITLE_MATCH:"Promise a title opportunity",
  CONSIDER_REPACKAGE:"Explore a different character",
  KEEP_CHARACTER:"Keep the current character",
  EXPLORE_TEAM:"Explore a tag partnership",
@@ -42,9 +43,9 @@ export function backstageDecisionEffect(kind:BackstageKind,decision:BackstageDec
   throw new Error("This wrestler request does not offer that response");
  // Conversation engagement alone cannot award competitive stats.
  return {moraleDelta:0,
-  promise:["PROMISE_APPEARANCE","PROMISE_SEGMENT","PROMISE_FEATURED"].includes(decision),
+  promise:["PROMISE_APPEARANCE","PROMISE_SEGMENT","PROMISE_FEATURED","PROMISE_TITLE_MATCH"].includes(decision),
   status:(decision==="DECLINE"||decision==="KEEP_CHARACTER"||decision==="NOT_NOW")?"DECLINED" as const:
-   ["PROMISE_APPEARANCE","PROMISE_SEGMENT","PROMISE_FEATURED"].includes(decision)?
+   ["PROMISE_APPEARANCE","PROMISE_SEGMENT","PROMISE_FEATURED","PROMISE_TITLE_MATCH"].includes(decision)?
     "PROMISED" as const:"ANSWERED" as const};
 }
 export function backstageMessage(kind:BackstageKind,evidence?:{
@@ -332,6 +333,7 @@ export function backstageManagerReply(decision:BackstageDecision,kind?:Backstage
   case "PROMISE_APPEARANCE":return deadline?"I'll put you in a match by "+deadline+".":"I'll put you in a match within the next two weeks.";
   case "PROMISE_SEGMENT":return deadline?"I'll give you promo or angle time by "+deadline+".":"I'll give you promo or angle time within two weeks.";
   case "PROMISE_FEATURED":return deadline?"I'll get you a featured match by "+deadline+".":"I'll get you a featured match within four weeks.";
+  case "PROMISE_TITLE_MATCH":return deadline?"I'll give you a match for that championship by "+deadline+".":"I'll give you a match for that championship.";
   case "EXPLORE_RENEWAL":return "Let's discuss a new deal. We still need to agree the terms.";
   case "MEDIATE":return "I'll speak to both of you. The trust still has to be earned in the ring.";
   case "CONSIDER_REPACKAGE":return "Let's explore a character that fits you. Nothing changes without your approval.";
@@ -395,6 +397,7 @@ export function backstageReply(decision:BackstageDecision,status:string,kind?:Ba
   case "PROMISE_APPEARANCE":return "I'll hold you to that. Two weeks to book me in a match.";
   case "PROMISE_SEGMENT":return "Thanks. Give me a promo or an angle in the next two weeks.";
   case "PROMISE_FEATURED":return "Four weeks to put me in my contracted featured spot. I will remember.";
+  case "PROMISE_TITLE_MATCH":return "A shot at the title. That's what I wanted to hear.";
   case "EXPLORE_RENEWAL":return "Good. Let's talk terms at the Contract Desk.";
   case "MEDIATE":return "I'll try, but our trust needs to be rebuilt through working together.";
   case "CONSIDER_REPACKAGE":return "I'm open to a new direction. Pitch a specific character below; I still need to agree.";

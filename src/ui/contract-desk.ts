@@ -1,3 +1,4 @@
+import {type RenewalDelegation,type RenewalStrategy} from "../domain/delegated-renewal.js";
 /** Mobile contract workspace adapted from original PPW's expiring/offers desk.
  * All balances are server receipts, never optimistic booking rights.
  */
@@ -17,7 +18,7 @@ export interface ContractDeskPort{
  load():Promise<ContractDeskView>;
  requestDates(input:Mutation&{contractId:string;additionalDates:number;additionalPayment:number}):Promise<unknown>;
  cancelDates(input:Mutation&{dateRequestId:string}):Promise<unknown>;
- renewal(input:Mutation&{contractId:string}):Promise<unknown>;
+ renewal(input:Mutation&{contractId:string;delegation?:RenewalDelegation}):Promise<unknown>;
  negotiatedRenewal(input:Mutation&{personId:string;sourceContractId:string;terms:OfferTerms}):Promise<unknown>;
  withdrawRenewal(input:Mutation&{proposalId:string}):Promise<unknown>;
  withdrawOffer(input:Mutation&{offerId:string}):Promise<unknown>;
@@ -77,6 +78,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
  const expandedRenewals=new Set<string>();
  // Keep the selected family, money and duration when the card redraws.
  const renewalDrafts=new Map<string,OfferTerms>();
+ const renewalPlans=new Map<string,RenewalDelegation>();
+ const strategyNames:Record<RenewalStrategy,string>={EXISTING_TERMS:"Existing terms",
+  PRIORITY_RETENTION:"Priority retention",BALANCED:"Balanced negotiation",REDUCE_COSTS:"Reduce costs"};
  // Native <details> state must survive negotiation, save and World revision
  // refresh, otherwise the manager is thrown back to the roster each time.
  const openContracts=new Set<string>();
@@ -140,7 +144,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   for(const [id,caption,count] of [
    ["ATTENTION","Needs action",view.summary.expiringSoon+view.summary.noDates],
    ["ROSTER","Roster",view.summary.signed],
-   ["OFFERS","Offers",view.requests.length+view.renewals.length+view.offers.length]
+   ["OFFERS","Offers",view.requests.length+view.renewals.length+view.offers.length+(view.delegations??[]).filter(d=>d.status==="QUEUED").length]
   ] as const){
    const label=caption+(count?" · "+count:"");
    const control=btn(label,()=>{
@@ -201,7 +205,7 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
   if(!view.canEdit)root.append(el("p","ppw-alert",
    "The deadline has passed. You can review current deals, but new offers must wait until next week."));
   const inbox=el("section","ppw-contract-inbox");
-  const pendingTotal=view.requests.length+view.renewals.length+view.offers.length;
+  const pendingTotal=view.requests.length+view.renewals.length+view.offers.length+(view.delegations??[]).filter(d=>d.status==="QUEUED").length;
   if(deskTab==="OFFERS"&&pendingTotal){
    const box=document.createElement("details");box.className="ppw-contract-pending";box.open=true;
    box.append(el("summary","",pendingTotal+" pending negotiations"));
@@ -212,6 +216,13 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
      btn("Withdraw request",()=>void action("date:"+r.request_id,m=>
       port.cancelDates({...m,dateRequestId:r.request_id}),
       "Additional-dates request withdrawn."),!editable()));
+    box.append(row);
+   }
+   for(const task of (view.delegations??[]).filter(d=>d.status==="QUEUED")){
+    const row=el("div","ppw-contract-request");
+    row.append(el("span","",task.person_name+" · "+strategyNames[task.strategy]+" · Queued for World Lock"),
+     btn("Cancel delegation",()=>void action("renewal:"+task.request_id,m=>
+      port.withdrawRenewal({...m,proposalId:task.request_id}),"Delegation cancelled."),!editable()));
     box.append(row);
    }
    for(const r of view.renewals){
@@ -259,24 +270,43 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
    root.append(el("p","ppw-muted ppw-contract-empty","No active negotiations. Accepted and declined offers remain in the decision history below."));
   // An accepted or declined contract is still visible after its Home news
   // item has been dismissed. This is the actual agreement desk, not an alert.
-  if(deskTab==="OFFERS"&&(view.resolvedOffers??[]).length){
+  const unable=(view.delegations??[]).filter(d=>d.status==="UNABLE");
+  if(deskTab==="OFFERS"&&((view.resolvedOffers??[]).length||unable.length)){
    const recent=document.createElement("details");
    recent.className="ppw-contract-decisions";recent.open=initialFocus==="PENDING";
    recent.append(el("summary","",
-    "Recent decisions · "+view.resolvedOffers.length));
+    "Recent decisions · "+(view.resolvedOffers.length+unable.length)));
    const events=el("div","ppw-contract-decision-list");
+   for(const task of unable){
+    const entry=el("article","ppw-contract-decision");
+    entry.append(el("small","ppw-contract-decision-state ppw-contract-decision-rejected","UNABLE TO NEGOTIATE"),
+     el("strong","",task.person_name),
+     el("p","ppw-muted",strategyNames[task.strategy]+" could not produce an eligible offer within the authorised terms. You can review the deal in Contracts."));
+    events.append(entry);
+   }
    for(const offer of view.resolvedOffers){
     const entry=el("article","ppw-contract-decision");
     const accepted=offer.status==="ACCEPTED";
     entry.append(el("small","ppw-contract-decision-state "+(accepted?
      "ppw-contract-decision-accepted":"ppw-contract-decision-rejected"),
-      accepted?"SIGNED":"DECLINED"),
+      accepted?"ACCEPTED":offer.counterTerms?"COUNTEROFFER":"DECLINED"),
      el("strong","",offer.name),
      el("p","ppw-muted",accepted?
       (offer.sourceContractId?
        "Renewal terms accepted. The next agreement begins after the current one.":
        "The wrestler accepted the proposed contract. Check the agreed dates before booking."):
-      (offer.reason??"The proposed terms were declined. You can discuss a different offer.")));
+      (offer.counterTerms?"Requested terms · "+money(offer.counterTerms.weeklyGuarantee)+
+       " per week · "+money(offer.counterTerms.appearanceFee)+" per appearance":
+       offer.reason??"The proposed terms were declined. You can discuss a different offer.")));
+    if(offer.counterTerms&&offer.sourceContractId&&view.canEdit){
+     const contractId=offer.sourceContractId,terms=offer.counterTerms;
+     const source=view.roster.find(c=>c.contractId===contractId);
+     if(source?.renewalEligible&&source.expiresWeekIndex+1===terms.startWeekIndex)
+      entry.append(btn("Review counteroffer",()=>{
+       renewalDrafts.set(contractId,{...terms});openContracts.add(contractId);expandedRenewals.add(contractId);
+       deskTab="ROSTER";filter="ALL";paint();
+      }));
+    }
     const week=offer.submittedWeekIndex;
     entry.append(el("small","ppw-contract-decision-week",
      "Offer submitted · Year "+(Math.floor(week/52)+1)+" Week "+(week%52+1)));
@@ -356,6 +386,8 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       c.weeksRemaining+" weeks left"));
     if(c.renewalArranged)
      chips.append(el("small","ppw-contract-pending-label","NEXT TERM AGREED"));
+    else if(c.delegatedRenewalQueued)
+     chips.append(el("small","ppw-contract-pending-label","QUEUED FOR WORLD LOCK"));
     else if(c.pendingRenewalOffer)
      chips.append(el("small","ppw-contract-pending-label",
       "OFFER SENT · AWAITING REPLY"));
@@ -364,13 +396,15 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       "RENEWAL SENT · AWAITING REPLY"));
     else if(c.pendingNegotiation)
      chips.append(el("small","ppw-contract-pending-label","DATES REQUESTED"));
-    else if(c.reason==="NO_DATES")
+    if(c.renewalArranged&&c.reason==="NO_DATES")
+     chips.append(el("small","ppw-contract-danger","NO DATES THIS TERM"));
+    else if(!c.renewalArranged&&!c.pendingRenewalOffer&&!c.pendingRenewal&&!c.pendingNegotiation&&c.reason==="NO_DATES")
      chips.append(el("small","ppw-contract-danger","NO DATES"));
     else if(c.expiringSoon)
      chips.append(el("small","ppw-contract-danger","EXPIRING"));
     summary.append(chips);card.append(summary);
     const body=el("div","ppw-contract-details");
-    if(c.remainingDates!==null&&c.remainingDates>0&&c.weeksRemaining<=4){
+    if(!c.renewalArranged&&c.remainingDates!==null&&c.remainingDates>0&&c.weeksRemaining<=4){
      const finalYear=Math.floor(c.expiresWeekIndex/52)+1;
      const finalWeek=c.expiresWeekIndex%52+1;
      const warning=el("p","ppw-contract-renew-hint",
@@ -445,13 +479,55 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     const negotiatedPending=c.renewalArranged||view!.offers.some(o=>o.source_contract_id===c.contractId)||
      view!.renewals.some(r=>r.contract_id===c.contractId);
     if(c.renewalArranged)body.append(el("p","ppw-contract-renew-hint",
-     "A renewal has already been accepted. Its new terms begin after this agreement expires; no second offer is needed."));
+     "The next term has been agreed."+(c.nextTermStart===null?"":
+      " It begins in Year "+(Math.floor(c.nextTermStart/52)+1)+" Week "+(c.nextTermStart%52+1)+".")+
+      (c.reason==="NO_DATES"?" No appearances remain under the current term.":"")));
     if(c.renewalEligible&&!c.pendingRenewal&&view!.canEdit&&!negotiatedPending){
      if(c.sameTermsUnavailableReason)body.append(el("p","ppw-contract-renew-hint",
       c.sameTermsUnavailableReason));
      else body.append(btn("Offer same-terms renewal",()=>void action(
       "renew:"+c.contractId,m=>port.renewal({...m,contractId:c.contractId}),
-      "Same-terms renewal offered. Awaiting wrestler decision."),!editable()));
+      "Offer sent. The wrestler decides at World Lock."),!editable()));
+     if(view?.talentManager&&!c.sameTermsUnavailableReason){
+      const staff=el("section","ppw-contract-delegation");
+      staff.append(el("h4","","Delegate to "+view.talentManager.name),
+       el("p","ppw-muted","The Talent Manager prepares the offer at World Lock. The wrestler decides whether to accept."));
+      const send=(delegation:RenewalDelegation)=>void action("delegate:"+c.contractId,m=>
+       port.renewal({...m,contractId:c.contractId,delegation}),"Renewal queued for World Lock.");
+      staff.append(btn("Ask Talent Manager to renew on existing terms",()=>send({strategy:"EXISTING_TERMS",
+       maxWeeklyGuarantee:c.weeklyGuarantee,maxAppearanceFee:c.appearanceFee}),!editable()));
+      const panel=document.createElement("details");panel.className="ppw-contract-strategies";
+      panel.append(el("summary","","Choose a negotiation strategy"));
+      const plan=renewalPlans.get(c.contractId)??{strategy:"BALANCED",maxWeeklyGuarantee:c.weeklyGuarantee,
+       maxAppearanceFee:c.appearanceFee};
+      renewalPlans.set(c.contractId,plan);
+      const strategies=document.createElement("fieldset");
+      strategies.className="ppw-contract-strategy-options";
+      strategies.append(el("legend","","Strategy"));
+      const explanation=el("p","ppw-muted");
+      const notes={EXISTING_TERMS:"",PRIORITY_RETENTION:"The manager can improve terms up to your limits.",
+       BALANCED:"The offer reflects market value, roster position and leverage.",
+       REDUCE_COSTS:"The manager tries a lower offer. The wrestler may decline."};
+      for(const key of ["PRIORITY_RETENTION","BALANCED","REDUCE_COSTS"] as const){
+       const option=el("label","ppw-contract-strategy-option");
+       const radio=document.createElement("input");radio.type="radio";
+       radio.name="renewal-strategy-"+c.contractId;radio.value=key;radio.checked=plan.strategy===key;
+       radio.disabled=!editable();
+       radio.onchange=()=>{plan.strategy=key;explanation.textContent=notes[key];};
+       option.append(radio,el("span","",strategyNames[key]));strategies.append(option);
+      }
+      explanation.textContent=notes[plan.strategy];
+      panel.append(strategies,explanation);
+      for(const [label,key] of [["Maximum weekly guarantee","maxWeeklyGuarantee"],
+       ["Maximum fee per appearance","maxAppearanceFee"]] as const){
+       const field=el("label","ppw-contract-field",label);
+       const input=document.createElement("input");input.type="number";input.min="0";
+       input.max="1000000000";input.step="1";input.value=String(plan[key]);
+       input.oninput=()=>{plan[key]=input.valueAsNumber;};field.append(input);panel.append(field);
+      }
+      panel.append(btn("Queue Talent Manager negotiation",()=>send({...plan}),!editable()));
+      staff.append(panel);body.append(staff);
+     }
      const open=expandedRenewals.has(c.contractId);
      const toggle=btn(open?"Close renewal terms":"Negotiate a new package",()=>{
       if(open)expandedRenewals.delete(c.contractId);

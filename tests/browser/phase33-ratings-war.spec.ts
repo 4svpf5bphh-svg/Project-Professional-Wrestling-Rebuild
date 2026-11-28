@@ -56,8 +56,12 @@ for(const width of [320,390]){
   await expect(war.locator(".ppw-ratings-war-score").last()).toContainText("3.0");
   await expect(war.locator(".ppw-ratings-war-note")).toContainText("HEAD-TO-HEAD");
   await expect(war.locator(".ppw-ratings-war-result")).toContainText("North Wrestling leads by 0.6 rating points.");
-  await expect(war.locator(".ppw-ratings-war-bar")).toHaveCount(3);
+  const history=war.getByRole("table",{name:"CWA certified TV audience history"});
+  await expect(history.getByRole("row")).toHaveCount(4);
+  await expect(history.getByRole("row").nth(1)).toContainText("+300,000");
   await expect(war.getByText("3 recent broadcasts · 2.3 average TV rating")).toBeVisible();
+  await history.screenshot({path:info.outputPath("ratings-history-"+width+".png")});
+  await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:info.outputPath("phase33-ratings-war-"+width+".png")});
   await expect(war.locator('.ppw-ratings-war-rival[data-selected="true"]')).toContainText("North Wrestling");
   await war.getByRole("button",{name:"Compare against Another Wrestling Company"}).click();

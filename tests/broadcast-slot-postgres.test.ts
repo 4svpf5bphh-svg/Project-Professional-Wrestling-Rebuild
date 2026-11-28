@@ -12,6 +12,8 @@ import {readSixWeekPlanner,planShowWeek} from "../src/db/planner-workspace.js";
 import {readPromotionCalendar} from "../src/db/calendar-workspace.js";
 import {saveAnnualPremiumPlan} from "../src/db/annual-premium-calendar.js";
 import {requestBroadcastDay} from "../src/db/broadcast-day-request.js";
+import {createCardClient} from "../src/web/card-client.js";
+import {dispatchCardRpc} from "../src/web/card-rpc.js";
 const url=process.env.PPW_NEON_TEST_URL;
 test("Signed weekly TV day is enforced by Planner; a network-approved change moves drafts, never PPV dates",{
  skip:!url?"No disposable PostgreSQL":false
@@ -55,7 +57,20 @@ test("Signed weekly TV day is enforced by Planner; a network-approved change mov
   const draft=planned.result.draftId;
   const newDay={...scope,dealId,requestedDay:4,requestId:"network-day-request",
    expectedRevision:planned.revision};
-  const response=await requestBroadcastDay(db.pool,newDay);
+  // Exercise the actual client allowlist, request envelope and server RPC
+  // against disposable PostgreSQL, rather than calling the mutation directly.
+  const client=createCardClient({worldId:world,promotionId:promotion,showId:"",csrfToken:"test-csrf"},
+   async (url,init)=>{
+    assert.equal(url,"/api/card");
+    assert.equal(init?.credentials,"same-origin");
+    assert.equal((init?.headers as Record<string,string>)["x-ppw-csrf"],"test-csrf");
+    const payload=JSON.parse(String(init?.body));
+    assert.equal(payload.playerId,undefined);
+    const result=await dispatchCardRpc({pool:db.pool,actor:{playerId:owner}},payload.method,payload);
+    return new Response(JSON.stringify(result),{status:200});
+   });
+  const {dealId:requestDeal,requestedDay,requestId,expectedRevision}=newDay;
+  const response=await client("requestBroadcastDay",{dealId:requestDeal,requestedDay,requestId,expectedRevision}) as Awaited<ReturnType<typeof requestBroadcastDay>>;
   assert.equal(response.status,"APPLIED");
   assert.equal(response.result.airingDay,4);
   assert.equal(response.result.movedDrafts,1);

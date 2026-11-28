@@ -436,12 +436,13 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
    // an outgoing offer, can create a fresh decision for the owner.
    if(item.waiting)continue;
    const noDates=item.kind==="DATES_EXHAUSTED";
-   const when=item.weeksRemaining===0?"this week":
-    "in "+item.weeksRemaining+" week"+(item.weeksRemaining===1?"":"s");
+   const when=item.weeksRemaining<=1?"this week":
+    "after "+item.weeksRemaining+" weeks, including this week";
    const title=noDates?item.name+" has no contracted dates left":
     item.name+"'s contract expires "+when;
    const detail=noDates?
-    "No bookable appearances remain. Open Contracts to offer more dates.":
+    (item.nextTermStart==null?"No bookable appearances remain. Open Contracts to offer more dates.":
+     "The current term has no dates left. The agreed renewal begins in Year "+(Math.floor(item.nextTermStart/52)+1)+" Week "+(item.nextTermStart%52+1)+"."):
     "The agreement expires "+when+". Review renewal terms.";
    items.push({title,detail,action:
     noDates?port.contracts:port.contractsExpiring??port.contracts,
@@ -493,11 +494,14 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
     const entry=el("article","ppw-home-wire-item");
     entry.append(el("span","ppw-home-wire-status "+(item.status==="ACCEPTED"?
      "ppw-home-wire-accepted":"ppw-home-wire-declined"),
-      item.status==="ACCEPTED"?"ACCEPTED":"DECLINED"),
+      item.status==="ACCEPTED"?"ACCEPTED":item.counteroffer?"COUNTEROFFER":"DECLINED"),
      el("strong","",item.name+(item.status==="ACCEPTED"?
-      " has signed":" declined the offer")),
+      (item.renewal?" agreed to renew":" has signed"):item.counteroffer?" proposed different terms":" declined the offer")),
      el("p","",item.status==="ACCEPTED"?
-      "The terms have been agreed. Review your current contracts and upcoming dates.":
+      item.renewal&&item.startWeekIndex!=null?
+       "The new terms start in Year "+(Math.floor(item.startWeekIndex/52)+1)+" Week "+(item.startWeekIndex%52+1)+".":
+       "The terms have been agreed. Review your current contracts and upcoming dates.":
+      item.counteroffer?"Open Contracts to review the wrestler’s proposed terms.":
       "The agreement did not go ahead. You can review the terms before approaching them again."));
     const actions=el("div","ppw-home-wire-actions");
     const open=el("button","ppw-home-wire-button","Open Contracts") as HTMLButtonElement;

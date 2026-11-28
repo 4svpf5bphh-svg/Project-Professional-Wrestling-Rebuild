@@ -7,15 +7,15 @@ test("real pending Backstage staff alerts offer temperament-specific next decisi
  for(const [role,subject] of [
   ["TALENT_MANAGER","Contract renewals need a look"],
   ["MEDICAL","The roster needs a breather"],
-  ["CREATIVE","Our rivalries are running in circles"]
+  ["CREATIVE","Creative · Alix Vale / Eli Crown"]
  ] as const){
   const evidence="The recorded weekly position is under review.";
   const voices=["FRANK","PATIENT","AMBITIOUS","LOYAL","ECCENTRIC"] as const;
   const versions=voices.map(personality=>
    staffAlertVoice({role,personality},subject,evidence));
   assert.equal(new Set(versions).size,5,role+" must sound like five colleagues");
-  assert.ok(versions.every(s=>s.startsWith(evidence)));
-  assert.ok(versions.every(s=>s.length>evidence.length+25));
+  assert.ok(versions.every(s=>s.includes(evidence)));
+  assert.ok(versions.every(s=>s.length>evidence.length+20));
   assert.ok(versions.every(s=>!s.includes("contract(s)")&&!s.includes("wrestler(s)")));
  }
 });

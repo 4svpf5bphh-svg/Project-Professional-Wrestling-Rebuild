@@ -1,3 +1,4 @@
+import type {readBackstagePromiseBook,PromiseBookView,PromiseBookCursor} from "../db/backstage-promise-book.js";
 /** The wrestler owns their character. Edits are proposals, not overrides.
  * Compact phone-like conversation shows the actual wrestler's response.
  */
@@ -17,6 +18,7 @@ import {STORY_FOLLOW_UPS,type StoryFollowUpChoice}
  from "../domain/programme-story-follow-up.js";
 export interface PersonaDeskPort{
  load(personId?:string):Promise<View>;
+ promises?(view:PromiseBookView,cursor?:PromiseBookCursor):ReturnType<typeof readBackstagePromiseBook>;
  consultStaff?():Promise<StaffConsultation>;
  markRead(personId:string):Promise<{readCount:number}>;
  markWorldRead?(mailId:string):Promise<{readCount:number}>;
@@ -73,7 +75,20 @@ export function mountPersonaDesk(root:HTMLElement,
  let companyInboxPreviouslyLoaded=false;
  let view:View|null=null,loading=false,error="",chosen:string|null=null,
  search="",answer:string|null=null,personId:string|undefined;
- let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"=initialPersonId?"THREAD":"INBOX";
+ let pane:"INBOX"|"THREAD"|"PROFILE"|"WORLD_THREAD"|"PROMISES"=initialPersonId?"THREAD":"INBOX";
+ let promiseView:PromiseBookView="OUTSTANDING";
+ let promiseBook:Awaited<ReturnType<typeof readBackstagePromiseBook>>|null=null;
+ let promiseBusy=false,promiseError="";
+ async function loadPromises(next:PromiseBookView,cursor?:PromiseBookCursor){
+  if(!port.promises||promiseBusy)return;
+  promiseView=next;promiseError="";promiseBusy=true;if(!cursor)promiseBook=null;
+  render();
+  try{
+   const page=await port.promises(next,cursor);
+   promiseBook={...page,entries:cursor?[...(promiseBook?.entries??[]),...page.entries]:page.entries};
+  }catch(e){promiseError=e instanceof Error?e.message:"Unable to load promises";}
+  finally{promiseBusy=false;render();}
+ }
  let selectedWorldMailId:string|null=null;
  let pendingNetwork:{mailId:string;decision:"COMMIT_RECOVERY"|"COMMIT_STANDARDS"|"STAND_FIRM";
   requestId:string;expectedRevision:number}|null=null;
@@ -291,6 +306,11 @@ export function mountPersonaDesk(root:HTMLElement,
     worldMessages:updated(view.worldMessages)};
    if(inboxWorldMessages!==null)inboxWorldMessages=updated(inboxWorldMessages);
    inboxWorldRevision=applied.revision;
+   if(decision==="DEFER"&&view.worldMessages?.some(m=>m.id===mailId&&m.adviceProgrammeId)){
+    const keep=(messages:WorldMail[]|null|undefined)=>(messages??[]).filter(m=>m.id!==mailId);
+    view={...view,worldMessages:keep(view.worldMessages)};
+    inboxWorldMessages=keep(inboxWorldMessages);pane="INBOX";
+   }
    pendingStaff=null;error="";
   }catch(e){error=e instanceof Error?e.message:"Staff reply not confirmed";}
   finally{loading=false;render();}
@@ -423,7 +443,7 @@ export function mountPersonaDesk(root:HTMLElement,
    preservedThreadPerson=previous.dataset.personId??null;}
   root.classList.add("ppw-editor","ppw-persona-desk","ppw-messenger");
   root.classList.remove("ppw-messenger-inbox","ppw-messenger-thread",
-   "ppw-messenger-profile","ppw-messenger-world_thread");
+   "ppw-messenger-profile","ppw-messenger-world_thread","ppw-messenger-promises");
   root.classList.add("ppw-messenger-"+pane.toLowerCase());
   root.replaceChildren();
   const head=el("header","ppw-persona-header");
@@ -438,7 +458,7 @@ export function mountPersonaDesk(root:HTMLElement,
   else if(pane==="PROFILE")head.append(el("span","ppw-eyebrow","BACKSTAGE / ROSTER"),
    el("h1","","People"),
    el("p","ppw-muted","Characters, conversations and career history."));
-  else head.append(el("h1","","Conversation"));
+  else head.append(el("h1","",pane==="PROMISES"?"Promises":"Conversation"));
   if(pane!=="THREAD"&&pane!=="WORLD_THREAD")root.append(head);
   else if(onBack){
    // From a dossier, leave the conversation without relying on a hidden
@@ -457,7 +477,50 @@ export function mountPersonaDesk(root:HTMLElement,
    if(pane===id)tab.classList.add("ppw-persona-selected");
    tabs.append(tab);
   }
+  if(port.promises){
+   const promises=button("Promises",()=>{pane="PROMISES";void loadPromises(promiseView);},promiseBusy);
+   if(pane==="PROMISES")promises.classList.add("ppw-persona-selected");
+   promises.setAttribute("aria-pressed",String(pane==="PROMISES"));tabs.append(promises);
+  }
   if(pane!=="THREAD"&&pane!=="WORLD_THREAD")root.append(tabs);
+  if(pane==="PROMISES"){
+   const section=el("section","ppw-promise-book");
+   const filters=el("div","ppw-backstage-tabs");
+   filters.setAttribute("aria-label","Promise history filters");
+   for(const [id,label] of [["OUTSTANDING","Outstanding"],["HISTORY","History"]] as const){
+    const choice=button(label,()=>void loadPromises(id),promiseBusy);
+    choice.setAttribute("aria-pressed",String(promiseView===id));
+    if(promiseView===id)choice.classList.add("ppw-persona-selected");
+    filters.append(choice);
+   }
+   section.append(filters);
+   if(promiseError)section.append(el("p","ppw-alert",promiseError),
+    button("Retry",()=>void loadPromises(promiseView),promiseBusy));
+   if(promiseBusy&&!promiseBook)section.append(el("p","ppw-muted","Loading promises…"));
+   if(promiseBook&&!promiseBook.entries.length)section.append(el("p","ppw-muted",
+    promiseView==="OUTSTANDING"?"No outstanding promises.":"No promises have settled."));
+   for(const promise of promiseBook?.entries??[]){
+    const card=el("article","ppw-promise-card");
+    const status=promise.status.replaceAll("_"," ");
+    const name=el("div","ppw-promise-title");
+    name.append(el("h2","",promise.name),el("small","ppw-promise-status",status));
+    card.dataset.status=promise.status.toLowerCase();
+    card.append(name,el("strong","",promise.commitment),
+     el("small","ppw-muted","Made "+managementWeek(promise.made)+
+      (promise.due===null?"":" · Due "+managementWeek(promise.due))),
+     el("p","",promise.detail));
+    if(promise.nextAction==="PLANNER"&&port.openPlanner)card.append(button("Open Show Planner",port.openPlanner));
+    if(promise.nextAction==="CONTRACTS"&&port.openContract)
+     card.append(button("Open contract",()=>port.openContract?.(promise.personId)));
+    if(promise.conversationId&&promiseView==="OUTSTANDING")card.append(button("Open conversation",()=>{
+     conversationToFocus=promise.conversationId??undefined;pane="THREAD";void load(promise.personId);
+    }));
+    section.append(card);
+   }
+   const cursor=promiseBook?.next;
+   if(cursor)section.append(button("Load more",()=>void loadPromises(promiseView,cursor),promiseBusy));
+   root.append(section);return;
+  }
   if(pane==="WORLD_THREAD"){
    const mail=view.worldMessages?.find(x=>x.id===selectedWorldMailId);
    if(!mail){pane="INBOX";render();return;}
@@ -510,7 +573,7 @@ export function mountPersonaDesk(root:HTMLElement,
     });
     consultation.append(ask,details);chat.append(consultation);
    }
-   if(!mail.storyChapter)chat.append(el("p","ppw-backstage-world-evidence",
+   if(!mail.storyChapter&&!mail.adviceProgrammeId&&mail.kind!=="STAFF")chat.append(el("p","ppw-backstage-world-evidence",
     mail.contentConcern?"From a completed television match with a verified hardcore stipulation.":
     mail.kind==="NETWORK"?"From a certified, completed broadcast review.":
      mail.kind==="SCOUT"?"The prospect is currently uncontracted; talks are not guaranteed.":
@@ -518,7 +581,9 @@ export function mountPersonaDesk(root:HTMLElement,
       mail.kind==="LOCKER_ROOM"&&mail.staffReview?
       "From your earlier staff decision and a completed review of real workload or programme progress.":
      mail.kind==="LOCKER_ROOM"?"From actual teammate match history and an answered mediation request.":
-     "Based on your actual roster, contracts or active programmes."));
+     ""));
+   if(mail.adviceProgrammeId&&port.openStoryProgramme)
+    chat.append(button("Open this programme",()=>port.openStoryProgramme?.(mail.adviceProgrammeId!)));
    const actionNames:Record<WorldMailAction,string>={
     COMMERCIALS:"Review broadcaster →",CONTRACTS:"Review contracts →",
     PROGRAMMES:"Plan a creative response →",STAFF:"Open Staff Office →",
@@ -553,7 +618,7 @@ export function mountPersonaDesk(root:HTMLElement,
       "Thanks for raising this. I'm not committing to a change just yet.":
      isTalent?"I authorise unchanged-terms renewal proposals at World Lock. I'll review the real negotiations.":
      isMedical?"I'll manage the workload and reduce the fatigue concerns.":
-      "I'll freshen up these rivalries. Check our creative progress."));
+      mail.adviceProgrammeId?"I'll give this programme a fresh chapter.":"I'll freshen up these rivalries. Check our creative progress."));
     chat.append(el("p","ppw-backstage-world-evidence",
      reply.status==="PENDING"?isTalent?
       "Delegation is enabled. Any eligible unchanged renewal offers are prepared at World Lock; wrestlers still decide.":
@@ -684,10 +749,12 @@ export function mountPersonaDesk(root:HTMLElement,
    if(mail.kind==="STAFF"&&mail.canStaffRespond&&!mail.staffResponse&&port.respondStaff){
     actions.append(button(mail.action==="CONTRACTS"?
      "Authorise same-terms renewal proposals":mail.action==="STAFF"?
-     "I'll rest the tired roster":"I'll refresh the rivalries",
+     "I'll rest the tired roster":mail.adviceProgrammeId?"I'll refresh this programme":"I'll refresh the rivalries",
      ()=>void answerStaff(mail.id,"COMMIT"),loading));
-    actions.append(button("Not now",()=>void answerStaff(mail.id,"DEFER"),loading));
-   }
+    actions.append(button(mail.adviceProgrammeId?"Dismiss advice":"Not now",()=>void answerStaff(mail.id,"DEFER"),loading));
+   }else if(mail.adviceProgrammeId&&!mail.staffResponse&&port.respondStaff)
+    actions.append(button("Dismiss advice",()=>void answerStaff(mail.id,"DEFER"),loading));
+
    if(mail.kind==="NETWORK"&&mail.canRespond&&!mail.networkResponse&&port.respondNetwork){
     actions.append(mail.contentConcern?
      button("Keep hardcore off our next TV show",
@@ -1252,13 +1319,14 @@ export function mountPersonaDesk(root:HTMLElement,
     actions.append(el("span","ppw-backstage-composer-caption","YOUR REPLY · TAP A MESSAGE TO SEND"));
     for(const decision of BACKSTAGE_CHOICES[item.kind]){
      const promise=decision==="PROMISE_APPEARANCE"||decision==="PROMISE_SEGMENT"||
-      decision==="PROMISE_FEATURED";
+      decision==="PROMISE_FEATURED"||decision==="PROMISE_TITLE_MATCH";
+     if(decision==="PROMISE_TITLE_MATCH"&&!item.titlePromiseAvailable)continue;
      if(promise&&item.promiseAvailableThrough===null)continue;
      if((decision==="EXPLORE_MENTORSHIP"||decision==="EXPLORE_TEAM"||
       decision==="EXPLORE_RIVALRY")&&item.partnerAvailable===false)continue;
      const now=(view.worldYear-1)*52+view.worldWeek-1;
      const deadline=promise&&item.promiseAvailableThrough!=null?
-      Math.min(item.promiseAvailableThrough,now+(decision==="PROMISE_FEATURED"?4:2)):null;
+      Math.min(item.promiseAvailableThrough,now+(decision==="PROMISE_FEATURED"||decision==="PROMISE_TITLE_MATCH"?4:2)):null;
      const dialogue=backstageManagerReply(decision,item.kind,deadline);
      const reply=button("",()=>void decide(item.conversationId,decision),loading);
      reply.classList.add("ppw-backstage-reply-choice");

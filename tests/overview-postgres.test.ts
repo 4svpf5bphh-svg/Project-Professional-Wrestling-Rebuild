@@ -113,9 +113,9 @@ test("overview and promotion picker only expose relevant narrow records",{skip:!
     assert.equal(contractMeter.assertBudget({maxQueries:1,maxResultBytes:4500}).queryCount,1);
     assert.deepEqual(named?.promotion?.attention.contractAlerts,[
      {contractId:"none",personId:"no-dates",name:"Ada",
-      kind:"DATES_EXHAUSTED",weeksRemaining:25,waiting:true},
+      kind:"DATES_EXHAUSTED",weeksRemaining:26,waiting:true,nextTermStart:null},
      {contractId:"soon",personId:"expiring",name:"Bert",
-      kind:"EXPIRING",weeksRemaining:1,waiting:false}
+      kind:"EXPIRING",weeksRemaining:2,waiting:false,nextTermStart:null}
     ]);
     assert.equal(named?.promotion?.attention.expiringTalent,true);
     assert.deepEqual(named?.promotion?.attention.worldStories,[

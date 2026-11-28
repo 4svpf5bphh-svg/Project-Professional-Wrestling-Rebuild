@@ -6,8 +6,9 @@ export const weeklyNewsPrioritySql=`CASE
  WHEN i.certainty<>'CONFIRMED' THEN 0
  WHEN i.story_key LIKE 'signing:%' AND i.summary LIKE '%An established headliner joins the roster.%' THEN 96
  WHEN i.source_kind='TITLE' OR i.story_key LIKE 'title:%' THEN CASE
-  WHEN split_part(i.title,' at ',1) ~* '(^| )world( |$)' AND i.summary NOT LIKE '%title was vacant%' THEN 100
-  ELSE 83 END
+  WHEN i.summary LIKE '%title was vacant%' THEN 83
+  WHEN split_part(i.title,' at ',1) ~* '(^| )world( |$)' THEN 100
+  ELSE 95 END
  WHEN i.story_key LIKE 'tournament:%' THEN 94
  WHEN i.story_key LIKE 'match:%' AND i.title LIKE 'A foreign object decides %' THEN 89
  WHEN i.story_key LIKE 'event:%' THEN 88

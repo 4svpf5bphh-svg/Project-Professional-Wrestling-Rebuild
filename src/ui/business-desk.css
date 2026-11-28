@@ -526,3 +526,11 @@
 .ppw-finance-group-label{margin:3px 0 0;font-size:13px;color:#e0edf6}
 .ppw-finance-settled .ppw-finance-snapshot-tile{border-color:#777489}
 @media(min-width:550px){.ppw-finance-snapshot{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.ppw-ratings-war-audience{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.75rem}
+.ppw-ratings-war-audience th,.ppw-ratings-war-audience td{padding:7px 4px;text-align:right;border-bottom:1px solid #ffffff24}
+.ppw-ratings-war-audience th:first-child{text-align:left;overflow-wrap:anywhere}
+.ppw-ratings-war-audience td{white-space:nowrap}
+.ppw-ratings-war-audience small{display:block;color:#b6d9e9;font-weight:normal}
+.ppw-ratings-viewers-up{color:#a4eeaf}
+.ppw-ratings-viewers-down{color:#ffb7aa}

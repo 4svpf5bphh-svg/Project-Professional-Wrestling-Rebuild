@@ -341,7 +341,7 @@ test("a recorded regular card resumes into a linked triple-threat PPV, then queu
    return {pool,entered,resume};
   };
   const privateWorker=pausedPool(sql=>sql.includes("SELECT old.promotion_id,old.year,old.week"));
-  const publicWorker=pausedPool(sql=>sql.includes("WITH ranked AS")&&sql.includes("FROM ppw_world_news_items i WHERE"));
+  const publicWorker=pausedPool(sql=>sql.includes("WITH ranked AS")&&sql.includes("FROM ppw_world_news_items i"));
   const reservedWorker=pausedPool(sql=>sql.includes("SELECT 1 FROM ppw_world_update_jobs j")&&
    sql.includes("r.claim_until>clock_timestamp()")&&!sql.includes("FOR UPDATE"));
   const privateRun=processWorldUpdate(privateWorker.pool,outgoing,deps);

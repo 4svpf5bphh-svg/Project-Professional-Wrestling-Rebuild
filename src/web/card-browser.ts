@@ -390,8 +390,8 @@ function contractPort(call:ReturnType<typeof createCardClient>,
    call("requestContractDates",{requestId,expectedRevision,contractId,additionalDates,additionalPayment}),
   cancelDates:({requestId,expectedRevision,dateRequestId})=>
    call("cancelContractDates",{requestId,expectedRevision,dateRequestId}),
-  renewal:({requestId,expectedRevision,contractId})=>
-   call("renewContract",{requestId,expectedRevision,contractId}),
+  renewal:({requestId,expectedRevision,contractId,delegation})=>
+   call("renewContract",{requestId,expectedRevision,contractId,delegation}),
   negotiatedRenewal:({requestId,expectedRevision,personId,sourceContractId,terms})=>
    call("submitContractOffer",{requestId,expectedRevision,personId,sourceContractId,terms}),
   withdrawRenewal:({requestId,expectedRevision,proposalId})=>
@@ -942,6 +942,7 @@ function personaPort(call:ReturnType<typeof createCardClient>,
  root:HTMLElement,scope:Scope):PersonaDeskPort{
  return {
   load:personId=>call("backstage",personId?{personId}:{inboxOnly:true}),
+  promises:(view,cursor)=>call("backstagePromises",{view,cursor}),
   consultStaff:()=>call("staffConsultation"),
   markRead:personId=>call("markBackstageRead",{personId}),
   markWorldRead:mailId=>call("markBackstageWorldRead",{mailId}),

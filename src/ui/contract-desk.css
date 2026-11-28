@@ -250,3 +250,22 @@
 .ppw-contract-exclusive-minimum[data-shortfall="true"]{border-color:#edb659;background:#3c2c32}
 .ppw-contract-exclusive-minimum small{font-size:12px;line-height:1.45}
 .ppw-contract-exclusive-minimum button{justify-self:start;min-height:42px}
+
+.ppw-contract-delegation{display:grid;gap:8px;margin:12px 0;padding:10px;border:1px solid #405779;border-radius:9px}
+.ppw-contract-delegation h4,.ppw-contract-delegation p{margin:0}
+.ppw-contract-strategies summary{padding:8px 0;cursor:pointer}
+.ppw-contract-strategies[open]{display:grid;gap:8px}
+
+.ppw-contract-strategy-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+ border:0;margin:0;padding:0;min-width:0}
+@media(min-width:470px){.ppw-contract-strategy-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.ppw-contract-strategy-options legend{margin-bottom:4px;padding:0}
+.ppw-contract-strategy-option{position:relative;display:flex;align-items:center;min-height:44px;padding:4px 7px;
+ border:1px solid #526b94;border-radius:7px;background:#182736;color:#f0f5ff;font-size:.86rem;line-height:1.15;cursor:pointer}
+.ppw-contract-strategy-option:has(input:checked){background:#234065;border-color:#9cc8ff}
+.ppw-contract-strategy-option:has(input:focus-visible){outline:2px solid #9cc8ff;outline-offset:2px}
+.ppw-contract-strategy-option:has(input:disabled){opacity:.65;cursor:default}
+.ppw-contract-strategy-option input{position:absolute;inset:0;max-width:1px;max-height:1px;opacity:0;pointer-events:none}
+.ppw-contract-strategy-option span{display:flex;align-items:center;gap:5px}
+.ppw-contract-strategy-option span::before{content:"";flex:0 0 10px;height:10px;border:1px solid #aac3e3;border-radius:50%}
+.ppw-contract-strategy-option input:checked+span::before{background:#9cc8ff;box-shadow:inset 0 0 0 2px #234065}
