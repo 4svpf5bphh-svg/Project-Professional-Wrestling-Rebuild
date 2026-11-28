@@ -70,8 +70,7 @@ test("Signed weekly TV day is enforced by Planner; a network-approved change mov
     return new Response(JSON.stringify(result),{status:200});
    });
   const {dealId:requestDeal,requestedDay,requestId,expectedRevision}=newDay;
-  const response=await client("requestBroadcastDay",{dealId:requestDeal,requestedDay,requestId,expectedRevision})
-   as Awaited<ReturnType<typeof requestBroadcastDay>>;
+  const response=await client("requestBroadcastDay",{dealId:requestDeal,requestedDay,requestId,expectedRevision}) as Awaited<ReturnType<typeof requestBroadcastDay>>;
   assert.equal(response.status,"APPLIED");
   assert.equal(response.result.airingDay,4);
   assert.equal(response.result.movedDrafts,1);
