@@ -236,3 +236,106 @@ body:has(.ppw-profile-overlay){overflow:hidden}
 .ppw-profile-current-drive small{font-size:10px;letter-spacing:.1em;font-weight:900;color:#8fcee9}
 .ppw-profile-current-drive strong{font-size:16px;color:#f1f8ff;line-height:1.3}
 .ppw-profile-current-drive span{font-size:12px;color:#c5d9e7;line-height:1.45}
+
+.ppw-wrestler-profile {
+ --dossier-paper:var(--ppw-raised,#101f2f);
+ --dossier-line:var(--ppw-outline,#3a5465);
+ --dossier-ink:var(--ppw-ink,#f4f8ff);
+ --dossier-dim:var(--ppw-secondary,#b3c5d4);
+ --dossier-highlight:var(--ppw-gold,#f4cf82);
+ color:var(--dossier-ink);
+}
+.ppw-profile-overlay.ppw-wrestler-profile {background:var(--ppw-canvas,#09111b)}
+.ppw-wrestler-profile .ppw-profile-header {padding-bottom:10px}
+.ppw-wrestler-profile .ppw-profile-kicker {
+ color:var(--dossier-highlight);font-size:11px;font-weight:800;
+ letter-spacing:.11em;text-transform:uppercase;
+}
+.ppw-profile-header .ppw-profile-kicker {text-align:right}
+.ppw-profile-hero {
+ isolation:isolate;position:relative;display:grid;grid-template-columns:minmax(88px,.75fr) minmax(0,1.25fr);
+ min-height:170px;overflow:hidden;align-items:stretch;
+ border-top:2px solid var(--dossier-highlight);border-bottom:1px solid var(--dossier-line);
+ background:linear-gradient(110deg,var(--dossier-paper),var(--ppw-deep,#0c1825));
+}
+.ppw-profile-portrait {
+ position:relative;min-width:0;display:grid;place-items:center;
+ background:repeating-linear-gradient(115deg,transparent 0 10px,#fff1 11px,transparent 12px 18px),
+  radial-gradient(ellipse at top left,#75705a 0%,#252e3c 65%,#151f2a 100%);
+}
+.ppw-profile-portrait > span {
+ color:var(--dossier-ink);font-size:clamp(32px,10vw,82px);font-weight:850;
+ font-style:italic;letter-spacing:-.09em;opacity:.7;
+}
+.ppw-profile-portrait .ppw-real-wrestler-photo {
+ position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 23%;
+}
+.ppw-profile-identity {
+ min-width:0;display:grid;align-content:center;gap:6px;
+ padding:16px 14px;overflow-wrap:anywhere;
+}
+.ppw-profile-identity h1 {
+ font-size:clamp(26px,7.3vw,52px);font-weight:900;line-height:.99;
+ letter-spacing:-.047em;color:var(--dossier-ink);margin:0;
+}
+.ppw-profile-ring-name,.ppw-profile-identity-meta {
+ color:var(--dossier-dim);margin:0;font-size:12px;line-height:1.35;
+}
+.ppw-profile-role,.ppw-profile-following {font-size:12px;line-height:1.3}
+.ppw-profile-role {color:var(--dossier-highlight)}
+.ppw-profile-following {font-weight:600;color:var(--dossier-dim)}
+.ppw-profile-title-strip {
+ display:grid;grid-template-columns:32px minmax(0,1fr);gap:7px;align-items:center;
+ border-top:1px solid var(--dossier-line);padding-top:7px;
+}
+.ppw-profile-title-strip img {width:32px;height:auto}
+.ppw-profile-title-names {margin:0;padding:0;list-style:none;color:var(--dossier-highlight);font-size:11px;font-weight:800}
+.ppw-wrestler-profile .ppw-profile-photo-credit-icon {
+ top:auto;bottom:0;right:auto;left:0;width:44px;height:44px;min-height:44px;
+ border-radius:0;background:#101c29c9;
+}
+.ppw-wrestler-profile .ppw-profile-manage,
+.ppw-wrestler-profile .ppw-profile-section {
+ padding:13px 0!important;border:0!important;border-radius:0;
+ border-bottom:1px solid var(--dossier-line)!important;background:none!important;
+}
+.ppw-wrestler-profile .ppw-profile-manage h2,
+.ppw-wrestler-profile .ppw-profile-section h2 {margin:0 0 7px;color:var(--dossier-ink)}
+.ppw-wrestler-profile .ppw-profile-manage .ppw-profile-manage-actions {
+ grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.ppw-wrestler-profile .ppw-profile-action {
+ margin-top:0;background:var(--dossier-paper)!important;border:1px solid var(--dossier-line)!important;
+ border-radius:6px;color:var(--dossier-ink)!important;
+}
+.ppw-wrestler-profile .ppw-profile-manage[data-status="SIGNED"]>.ppw-profile-manage-actions>.ppw-profile-action:first-child {
+ background:var(--dossier-highlight)!important;color:#171712!important;border-color:var(--dossier-highlight)!important;
+}
+.ppw-wrestler-profile .ppw-profile-action:focus-visible,
+.ppw-wrestler-profile .ppw-profile-tab:focus-visible,
+.ppw-wrestler-profile summary:focus-visible {outline:2px solid var(--dossier-highlight);outline-offset:2px}
+.ppw-wrestler-profile .ppw-profile-tabs {gap:0;border-bottom:1px solid var(--dossier-line)}
+.ppw-wrestler-profile .ppw-profile-tab {
+ color:var(--dossier-dim);background:transparent;border:0;border-bottom:2px solid transparent;
+ border-radius:0;font-size:13px;
+}
+.ppw-wrestler-profile .ppw-profile-tab[aria-current="page"] {
+ color:var(--dossier-ink);border-color:var(--dossier-highlight);
+}
+.ppw-profile-context-row {
+ display:grid;gap:3px;padding:11px 0;border-top:1px solid var(--dossier-line);
+ overflow-wrap:anywhere;
+}
+.ppw-profile-context-row p {margin:0;color:var(--dossier-dim);font-size:13px;line-height:1.4}
+.ppw-profile-context-row .ppw-profile-action {justify-self:start;margin:4px 0 0}
+.ppw-profile-context .ppw-profile-current-drive {
+ margin:0;border:0;border-top:1px solid var(--dossier-line);border-radius:0;background:none;
+}
+@media(min-width:660px) {
+ .ppw-profile-hero {grid-template-columns:minmax(170px,30%) minmax(0,1fr);min-height:225px}
+ .ppw-profile-identity {padding:24px 28px}
+ .ppw-profile-identity-meta,.ppw-profile-ring-name {font-size:14px}
+ .ppw-wrestler-profile .ppw-profile-manage .ppw-profile-manage-actions {
+  grid-template-columns:repeat(4,minmax(0,1fr));
+ }
+}

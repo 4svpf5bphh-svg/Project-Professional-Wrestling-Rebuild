@@ -167,7 +167,7 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-ratings-war-score[data-side='OWNER']")).toContainText("2.4");
   await page.getByRole("button",{name:"← Ringside Results"}).click();
   await expect(page).toHaveURL(/#\/results$/);
-  await expect(page.getByRole("heading",{name:"Ascension"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Ascension",level:1,exact:true})).toBeVisible();
   await expect(page.locator(".ppw-business")).toHaveCount(0);
   await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
   expect(methods).toEqual(["resultsArchive","results","business","results"]);

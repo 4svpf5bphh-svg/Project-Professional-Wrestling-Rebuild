@@ -76,9 +76,9 @@ test("bottom Business navigation enters the correct desk and Back restores the p
  await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByText("The Big Event")).toBeVisible();
  await expect(page.locator(".ppw-management-menu")).toHaveCount(0);
- await page.getByRole("button",{name:"Open Business menu"}).click();
- await page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:/Finances/}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await page.getByRole("dialog",{name:"More"})
+  .getByRole("link",{name:/Finances/}).click();
  await expect(page).toHaveURL(/#\/finances$/);
  await expect(page.locator("html")).toHaveAttribute("data-ppw-screen","finances");
  await page.goBack();
@@ -157,12 +157,12 @@ test("unfinished show shortcut chooses the required weekly card ahead of a draft
 
 // On an installed Home Screen app there are no Safari toolbar controls.
 // The one-handed menu and its drawer must remain inside the app viewport.
-test("iPhone standalone keeps one five-root drawer reachable from the bottom",async({page})=>{
+test("iPhone standalone keeps the five-tab dock and More reachable",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.route("**/api/session",route=>route.fulfill({json:session}));
  await page.route("**/api/card",route=>route.fulfill({json:session.overview}));
  await page.goto("/#/home");
- const menu=page.getByRole("button",{name:"Open World menu"});
+ const menu=page.getByRole("button",{name:"More",exact:true});
  await expect(menu).toBeVisible();
  await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
  const buttonBox=await menu.boundingBox();
@@ -171,19 +171,17 @@ test("iPhone standalone keeps one five-root drawer reachable from the bottom",as
  expect(buttonBox!.y).toBeGreaterThan(700);
  expect(buttonBox!.width).toBeGreaterThanOrEqual(44);
  await menu.click();
- const drawer=page.getByRole("navigation",{name:"Promotion navigation"});
+ const drawer=page.getByRole("dialog",{name:"More"});
  await expect(drawer).toBeVisible();
- const drawerBox=await drawer.boundingBox();
+ const drawerBox=await page.locator("#navigation").boundingBox();
  expect(drawerBox).not.toBeNull();
  expect(drawerBox!.y+drawerBox!.height).toBeLessThanOrEqual(buttonBox!.y+3);
  expect(drawerBox!.y+drawerBox!.height).toBeLessThanOrEqual(844);
  expect(drawerBox!.x).toBeGreaterThanOrEqual(0);
  expect(drawerBox!.x+drawerBox!.width).toBeLessThanOrEqual(390);
  await expect(drawer.locator(".ppw-tab")).toHaveCount(0);
- await expect(drawer.locator(".ppw-nav-drawer-entry")).toHaveCount(10);
- await expect(drawer.getByRole("button",{name:/World Dashboard/})).toBeVisible();
- await page.getByRole("button",{name:"Open Business menu"}).click();
- await expect(drawer.getByRole("button",{name:/Staff/})).toBeVisible();
+ await expect(drawer.getByRole("link",{name:"Backstage",exact:true})).toBeVisible();
+ await expect(drawer.getByRole("link",{name:/Staff/})).toBeVisible();
  await page.keyboard.press("Escape");
  await expect(drawer).toBeHidden();
 });

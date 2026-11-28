@@ -1,0 +1,92 @@
+{
+  "samples": [
+    {
+      "repetition": 1,
+      "cold": {
+        "milliseconds": 775,
+        "jsEncodedBytes": 352397,
+        "cssEncodedBytes": 121499,
+        "jsTransferredBytes": 352697,
+        "cssTransferredBytes": 121799
+      },
+      "warm": {
+        "milliseconds": 362,
+        "jsEncodedBytes": 352397,
+        "cssEncodedBytes": 121499,
+        "jsTransferredBytes": 0,
+        "cssTransferredBytes": 0
+      },
+      "requests": [
+        {
+          "path": "/api/session",
+          "bytes": 1719,
+          "sqlStatements": 3
+        },
+        {
+          "path": "/api/session",
+          "bytes": 1719,
+          "sqlStatements": 3
+        }
+      ]
+    },
+    {
+      "repetition": 2,
+      "cold": {
+        "milliseconds": 788,
+        "jsEncodedBytes": 352397,
+        "cssEncodedBytes": 121499,
+        "jsTransferredBytes": 352697,
+        "cssTransferredBytes": 121799
+      },
+      "warm": {
+        "milliseconds": 283,
+        "jsEncodedBytes": 352397,
+        "cssEncodedBytes": 121499,
+        "jsTransferredBytes": 0,
+        "cssTransferredBytes": 0
+      },
+      "requests": [
+        {
+          "path": "/api/session",
+          "bytes": 1719,
+          "sqlStatements": 3
+        },
+        {
+          "path": "/api/session",
+          "bytes": 1719,
+          "sqlStatements": 3
+        }
+      ]
+    },
+    {
+      "repetition": 3,
+      "cold": {
+        "milliseconds": 886,
+        "jsEncodedBytes": 352397,
+        "cssEncodedBytes": 121499,
+        "jsTransferredBytes": 352697,
+        "cssTransferredBytes": 121799
+      },
+      "warm": {
+        "milliseconds": 338,
+        "jsEncodedBytes": 352397,
+        "cssEncodedBytes": 121499,
+        "jsTransferredBytes": 0,
+        "cssTransferredBytes": 0
+      },
+      "requests": [
+        {
+          "path": "/api/session",
+          "bytes": 1719,
+          "sqlStatements": 3
+        },
+        {
+          "path": "/api/session",
+          "bytes": 1719,
+          "sqlStatements": 3
+        }
+      ]
+    }
+  ],
+  "providerRequests": 0
+}

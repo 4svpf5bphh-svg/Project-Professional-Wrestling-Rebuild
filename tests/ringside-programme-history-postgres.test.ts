@@ -187,12 +187,15 @@ test("historic Ringside joins exactly its own settled rivalry chapters and prior
   assert.equal(published.status,"ready");
   if(published.status==="ready")assert.deepEqual(validateRingsideCopy(published.review,view,
    {styleWarningOnly:true}),published.review);
-  assert.deepEqual(await loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI"),published);
+  assert.deepEqual(await loadRingsideCommentary(meteredPool,scope,"fixture",transport,"OPENAI"),
+   {status:"pending"},"Even ready commentary is private until the World edition is published");
+  await assert.rejects(readCompletedShowView(db.pool,scope,true),/unavailable to this controller/);
   await withSqlClient(db.pool,tx=>tx.query(`UPDATE ppw_world_update_jobs
    SET claim_until=clock_timestamp()-interval '1 second' WHERE world_id=$1 AND show_id=$2`,
   [worldId,scope.showId]));
   assert.equal((await processWorldUpdate(meteredPool,updateScope,{terraKey:"fixture",transport}))?.editorial?.state,"RECOVERED");
   assert.equal((await processWorldUpdate(meteredPool,updateScope,{}))?.status,"PUBLISHED");
+  assert.deepEqual(await loadRingsideCommentary(meteredPool,scope,undefined,transport,"OPENAI"),published);
   assert.equal(providerCalls,1);assert.equal(monthlyClaims,1);assert.equal(dailyClaims,1);
   const certified=await readCompletedShowView(db.pool,scope);
   assert.deepEqual(certified,view,"Editorial publication cannot change the certified results");

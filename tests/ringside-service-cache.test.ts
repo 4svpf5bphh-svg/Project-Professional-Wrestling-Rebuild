@@ -42,6 +42,12 @@ test("Groq not configured: one lightweight private check, never model or expande
  assert.deepEqual(await loadRingsideCommentary(x.pool,scope,undefined),{status:"unavailable"});
  assert.equal(x.calls(),1);
 });
+test("viewer with a configured provider key still reads only the saved result",async()=>{
+ const x=fixture("no-key");
+ const never:typeof fetch=async()=>{throw Error("Results must never dispatch editorial");};
+ assert.deepEqual(await loadRingsideCommentary(x.pool,scope,"fixture",never),{status:"unavailable"});
+ assert.equal(x.calls(),1);
+});
 test("no authenticated control: no fallback through cache or Groq",async()=>{
  const x=fixture("denied");
  await assert.rejects(loadRingsideCommentary(x.pool,scope,"fixture"),/unavailable to this controller/);

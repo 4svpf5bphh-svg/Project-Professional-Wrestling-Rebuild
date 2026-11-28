@@ -9,11 +9,9 @@ import {createCardClient,type CardSessionScope} from "./card-client.js";
 import type {PlayerWorldOverview} from "../db/player-world-overview.js";
 import {plannerCardHash,hostSectionHash,type HostSection,type ContractFocus,
  type HomeAttentionFocus,legendsVaultHash} from "./host-navigation.js";
-import {mountShowResults} from "../ui/show-results.js";
-import {mountPremiumPressScrum,type PremiumPressView} from "../ui/premium-press-screen.js";
-import "../ui/premium-press-screen.css";
+import type {ResultsNavigation} from "../ui/show-results.js";
+import type {PremiumPressView} from "../ui/premium-press-screen.js";
 import type {CompletedShowView} from "../db/show-results-view.js";
-const resultExitControllers=new WeakMap<HTMLElement,AbortController>();
 import {mountResultsArchive} from "../ui/results-archive.js";
 import {mountProgrammeDesk,type ProgrammeDeskPort} from "../ui/programme-desk.js";
 import {mountStableDesk,type StableDeskPort} from "../ui/stable-desk.js";
@@ -49,7 +47,6 @@ import "../ui/championship-desk.css";
 import "../ui/tag-team-desk.css";
 import "../ui/contract-desk.css";
 import "../ui/programme-desk.css";
-import "../ui/show-results.css";
 import "../ui/results-archive.css";
 import "../ui/card-editor.css";
 import "../ui/talent-filter-controls.css";
@@ -58,7 +55,7 @@ type Scope=CardSessionScope;
 // The Results → Ratings War handoff is a one-use local navigation context.
 // No completed-show ID or private user detail is placed into the URL.
 type ResultsRatingsOrigin={worldId:string;promotionId:string;showId:string;
- onBack?:()=>void};
+ onBack?:()=>void;historyRoute?:boolean};
 let pendingResultsRatingsOrigin:ResultsRatingsOrigin|null=null;
 // Ephemeral next-route focus; never expose player or wrestler IDs in a URL.
 let pendingProgrammeFocusPersonId:string|null=null;
@@ -70,9 +67,10 @@ let pendingBackstageRivalryFocus:BackstageRivalryFocus|null=null;
 /** An earned story reply opens exactly the Programme that produced it.
  * One-use and promotion-scoped; no public hash identity and no new query.
  */
-let pendingBackstageStoryFocus:{worldId:string;promotionId:string;programmeId:string}|null=null;
-export function queueBackstageStoryFocus(focus:{
- worldId:string;promotionId:string;programmeId:string}){
+type ProgrammeDeskFocus={worldId:string;promotionId:string;programmeId:string;lane?:"PLAN"};
+let pendingBackstageStoryFocus:ProgrammeDeskFocus|null=null;
+let pendingChampionshipLineage:{worldId:string;promotionId:string;championshipId:string}|null=null;
+export function queueBackstageStoryFocus(focus:ProgrammeDeskFocus){
  if(![focus.worldId,focus.promotionId,focus.programmeId].every(x=>
   typeof x==="string"&&x.length>0&&x.length<=200))return;
  pendingBackstageStoryFocus=focus;
@@ -149,7 +147,7 @@ export function consumeProgrammeBookingFocus(worldId:string,promotionId:string){
  */
 export type TitleChallengeFocus={worldId:string;promotionId:string;
  championshipId:string;holderId:string;holderName:string;
- challengerId:string;challengerName:string};
+ challengerId:string;challengerName:string;source?:"PROMISE"};
 let pendingTitleChallenge:TitleChallengeFocus|null=null;
 export function clearTitleChallengeFocus(){pendingTitleChallenge=null;}
 export function queueTitleChallengeFocus(focus:TitleChallengeFocus){
@@ -163,19 +161,19 @@ export function consumeTitleChallengeFocus(worldId:string,promotionId:string):
  return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?{
   championshipId:focus.championshipId,holderId:focus.holderId,
   holderName:focus.holderName,challengerId:focus.challengerId,
-  challengerName:focus.challengerName
+  challengerName:focus.challengerName,source:focus.source
  }:null;
 }
 // Private, one-use route from a wrestler dossier to a genuine unfinished card.
 // No show ID is guessed and no booking permission is assumed from the dossier.
-export type FocusedBookingWrestler={personId:string;name:string};
+export type FocusedBookingWrestler={personId:string;name:string;promiseSlot?:"MATCH"|"ANGLE"};
 let pendingBookingFocus:({worldId:string;promotionId:string}&FocusedBookingWrestler)|null=null;
 export function clearBookingFocus(){pendingBookingFocus=null;}
 export function consumeBookingFocus(worldId:string,promotionId:string):FocusedBookingWrestler|null{
  const focus=pendingBookingFocus;
  pendingBookingFocus=null;
  return focus&&focus.worldId===worldId&&focus.promotionId===promotionId?
-  {personId:focus.personId,name:focus.name}:null;
+  {personId:focus.personId,name:focus.name,promiseSlot:focus.promiseSlot}:null;
 }
 export function consumeProgrammeFocus():string|null{
  const focus=pendingProgrammeFocusPersonId;
@@ -200,19 +198,20 @@ function openFocusedProgrammes(root:HTMLElement,scope:Scope,personId:string){
  * Navigating does not advance simulation or create a new World.
  */
 export function mountWorldHomePage(root:HTMLElement,scope:Scope,
- onNavigate?:(section:HostSection,focus?:HomeAttentionFocus,personId?:string)=>void,
+ onNavigate?:(section:HostSection,focus?:HomeAttentionFocus,personId?:string,conversationId?:string)=>void,
  onOverview?:(overview:PlayerWorldOverview|null)=>void,
  manualAdvance?:WorldHomePort["manualAdvance"],
  extendBooking?:WorldHomePort["extendBooking"],
  onWeekPublished?:WorldHomePort["onWeekPublished"],
  openCompletedShow?:(showId:string)=>void,
  openUpcomingShow?:(showId:string)=>void,
- initialOverview?:PlayerWorldOverview){
+ initialOverview?:PlayerWorldOverview,
+ openShowtime?:()=>void){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
  const port:WorldHomePort={
-  manualAdvance,extendBooking,onWeekPublished,
+  manualAdvance,extendBooking,onWeekPublished,openShowtime,
   claimWeeklyKP:()=>call("kpClaimWeek") as Promise<{awarded:number;reason?:string}>,
   openKayfabe:()=>onNavigate?.("kayfabe"),
   openAchievements:()=>onNavigate?.("achievements"),
@@ -227,6 +226,31 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   planner:go("planner",()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope))),
   openUpcomingShow,
+  openProgramme:(programmeId,lane)=>{
+   if(onNavigate){
+    queueBackstageStoryFocus({worldId:scope.worldId,promotionId:scope.promotionId,programmeId,lane});
+    onNavigate("programmes");
+   }else mountProgrammePage(root,scope,undefined,undefined,programmeId,undefined,lane);
+  },
+  openContract:personId=>{
+   if(onNavigate)openFocusedContracts(scope,personId);
+   else mountContractDesk(root,contractPort(call,root,scope),
+    ()=>mountWorldHomePage(root,scope),"ATTENTION",personId);
+  },
+  openPromisedBooking:openUpcomingShow?(showId,promise)=>{
+   if(promise.decision==="PROMISE_TITLE_MATCH"){
+    const title=promise.title;
+    if(!title?.holderId||!title.holderName)return;
+    queueTitleChallengeFocus({worldId:scope.worldId,promotionId:scope.promotionId,
+     championshipId:title.id,holderId:title.holderId,holderName:title.holderName,
+     challengerId:promise.personId,challengerName:promise.name,source:"PROMISE"});
+   }else{
+    pendingBookingFocus={worldId:scope.worldId,promotionId:scope.promotionId,
+     personId:promise.personId,name:promise.name,
+     promiseSlot:promise.decision==="PROMISE_SEGMENT"?"ANGLE":"MATCH"};
+   }
+   openUpcomingShow(showId);
+  }:undefined,
   openUnfinishedCard:onNavigate?()=>onNavigate("planner","CARD"):
    ()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope),true),
   roster:go("roster",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")),
@@ -245,11 +269,11 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   openUnreadBackstage:onNavigate?()=>onNavigate("backstage","UNREAD"):
    ()=>mountPersonaDesk(root,personaPort(call,root,scope),
     ()=>mountWorldHomePage(root,scope),()=>mountProgrammePage(root,scope),"UNREAD"),
-  openBackstageThread:(personId,unread)=>onNavigate?
-   onNavigate("backstage",unread?"UNREAD":undefined,personId):
+  openBackstageThread:(personId,unread,conversationId)=>onNavigate?
+   onNavigate("backstage",unread?"UNREAD":undefined,personId,conversationId):
    mountPersonaDesk(root,personaPort(call,root,scope),
     ()=>mountWorldHomePage(root,scope),()=>mountProgrammePage(root,scope),
-    unread?"UNREAD":"ALL",personId),
+    unread?"UNREAD":"ALL",personId,conversationId),
   results:go("results",()=>{void mountResultsArchivePage(root,scope,
     ()=>mountWorldHomePage(root,scope));}),
    openCompletedShow:openCompletedShow??(showId=>{void mountResultsPage(root,{...scope,showId},
@@ -348,6 +372,8 @@ export function mountBookingPage(root:HTMLElement,scope:Scope,
 export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
  onBack?:()=>void,initialScope:"WORLD"|"MINE"="MINE"){
  const call=createCardClient(scope);
+ const focus=pendingChampionshipLineage;
+ pendingChampionshipLineage=null;
  const port:ChampionshipPort={
   loadDirectory:()=>call("championships"),
   createChampionship:({requestId,expectedRevision,name,kind})=>
@@ -369,7 +395,8 @@ export async function mountChampionshipsPage(root:HTMLElement,scope:Scope,
    return mountWrestlerProfile(root,wrestlerProfilePort(call,root,scope,back),id,back);
   }
  };
- return mountChampionshipDesk(root,port,onBack,initialScope);
+ return mountChampionshipDesk(root,port,onBack,initialScope,
+  focus?.worldId===scope.worldId&&focus.promotionId===scope.promotionId?focus.championshipId:undefined);
 }
 
 /** Independent Promotion tournament route; all mutations remain server-authoritative. */
@@ -401,7 +428,7 @@ function contractPort(call:ReturnType<typeof createCardClient>,
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId)};
 }
 function industryPort(root:HTMLElement,scope:Scope,
- call:ReturnType<typeof createCardClient>):IndustryHubPort{
+ call:ReturnType<typeof createCardClient>,openResults?:(showId:string)=>void):IndustryHubPort{
  return {
   load:()=>call("industry"),
   news:()=>call("industryNews"),
@@ -421,15 +448,16 @@ function industryPort(root:HTMLElement,scope:Scope,
   openMarket:()=>mountTalentMarketPage(root,scope),
   openPlanner:()=>mountPlannerPage(root,scope,
    ()=>mountIndustryWorldHub(root,industryPort(root,scope,call))),
-  openOwnResults:showId=>{void mountResultsPage(root,{...scope,showId},
-   ()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),"industry");},
+  openOwnResults:openResults??(showId=>{void mountResultsPage(root,{...scope,showId},
+   ()=>mountIndustryWorldHub(root,industryPort(root,scope,call)),"industry");}),
   back:scope.showId?()=>mountBookingPage(root,scope):
    ()=>{window.location.hash=hostSectionHash("home");}
  };
 }
-export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:LegendsVaultView){
+export function mountIndustryPage(root:HTMLElement,scope:Scope,initialLegends?:LegendsVaultView,
+ openResults?:(showId:string)=>void){
  const call=createCardClient(scope);
- return mountIndustryWorldHub(root,industryPort(root,scope,call),initialLegends);
+ return mountIndustryWorldHub(root,industryPort(root,scope,call,openResults),initialLegends);
 }
 /** Account-only card binder: one lazy Vault query, no extra World scan. */
 export function mountCollectionPage(root:HTMLElement,scope:Scope){
@@ -591,8 +619,8 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
  const returning=isRatings&&origin?.worldId===scope.worldId&&
   origin.promotionId===scope.promotionId?origin:null;
  const goBack=returning?()=>{
-  // Replace the deep-link route with its normal Results entry. The content
-  // is restored to the exact certified show; no new World mutation occurs.
+  if(returning.historyRoute){window.history.back();return;}
+  // Embedders can open a report inside an existing workspace.
   window.history.replaceState(null,"","#/results");
   void mountResultsPage(root,{...scope,showId:returning.showId},
    returning.onBack??(()=>void mountResultsArchivePage(root,scope)),"results");
@@ -602,7 +630,7 @@ export function mountBusinessPage(root:HTMLElement,scope:Scope){
  return mountBusinessDesk(root,port,startingPane);
 }
 function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
- root:HTMLElement,scope:Scope,onBack:()=>void):WrestlerProfilePort{
+ root:HTMLElement,scope:Scope,onBack:()=>void,origin?:HTMLElement):WrestlerProfilePort{
  const openWorkspace=(section:HostSection)=>{
   // Dossier portals live outside the host page. Remove them before routing
   // so a fixed modal never traps the destination behind an old overlay.
@@ -616,11 +644,11 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
    signatureMoves,finishingMoves})=>call("saveWrestlerRepertoire",{
     personId,requestId,expectedRevision,primaryStyle,secondaryStyle,
     signatureMoves,finishingMoves}),
-  openBackstage:personId=>{
+  openBackstage:(personId,conversationId)=>{
    // Remove the dossier portal before changing the host route, otherwise
    // the old fixed overlay would trap the full-screen Messages workspace.
    if(root.classList.contains("ppw-profile-overlay"))onBack();
-   window.dispatchEvent(new CustomEvent("ppw:open-backstage",{detail:{personId}}));
+   window.dispatchEvent(new CustomEvent("ppw:open-backstage",{detail:{personId,conversationId}}));
   },
   openContracts:personId=>mountContractDesk(root,contractPort(call,root,scope),
    onBack,"ATTENTION",personId),
@@ -634,8 +662,14 @@ function wrestlerProfilePort(call:ReturnType<typeof createCardClient>,
     personId,name};
    window.location.hash=plannerCardHash;
   }}),
-  openProgrammes:personId=>{
-   if(window.location.hash!==hostSectionHash("programmes"))
+  openProgrammes:(personId,programmeId)=>{
+   if(programmeId){
+    if(window.location.hash===hostSectionHash("programmes")&&origin){
+     onBack();mountProgrammePage(origin,scope,personId,undefined,programmeId);return;
+    }
+    queueBackstageStoryFocus({...scope,programmeId});
+   }
+   if(!programmeId&&window.location.hash!==hostSectionHash("programmes"))
     pendingProgrammeFocusPersonId=personId;
    openWorkspace("programmes");
   },
@@ -708,12 +742,13 @@ export function mountTagTeamsPage(root:HTMLElement,scope:Scope){
 }
 
 /** A history route independent of particular rivalries or show cards. */
-export async function mountResultsArchivePage(root:HTMLElement,scope:Scope,onBack?:()=>void){
+export async function mountResultsArchivePage(root:HTMLElement,scope:Scope,onBack?:()=>void,
+ openShow?:(showId:string)=>void){
  const call=createCardClient(scope);
  return mountResultsArchive(root,{
   load:(cursor)=>call("resultsArchive",cursor?{cursor}:{}),
-  open:(showId)=>{void mountResultsPage(root,{...scope,showId},
-   ()=>{void mountResultsArchivePage(root,scope,onBack);},"results archive");},
+  open:openShow??(showId=>{void mountResultsPage(root,{...scope,showId},
+   ()=>{void mountResultsArchivePage(root,scope,onBack);},"results archive");}),
   back:onBack,
  });
 }
@@ -733,11 +768,8 @@ async function scrumRequest(scope:Scope,fields:Record<string,unknown>){
 }
 /** Host may open the resolved-show broadcast without any write capability. */
 export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>void,
- backLabel="programmes"){
- resultExitControllers.get(root)?.abort();
- const resultExitController=new AbortController();
- resultExitControllers.set(root,resultExitController);
- let loadedShow:CompletedShowView|null=null,leaving=false;
+ backLabel="programmes",navigation?:ResultsNavigation){
+ let openingPress=false;
  const pressPort={
   read:()=>scrumRequest(scope,{action:"READ"}) as Promise<PremiumPressView>,
   answer:(questionId:import("../domain/premium-media-scrum.js").ScrumQuestionId,
@@ -745,51 +777,65 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
     action:"ANSWER",questionId,answerIndex}) as Promise<{answerIndex:number}>,
   dismiss:()=>scrumRequest(scope,{action:"DISMISS"}) as Promise<{dismissed:boolean}>
  };
- async function leave(next:()=>void,replay=false){
-  if(leaving)return;
-  if(loadedShow?.bookingClass!=="PREMIUM"){next();return;}
-  const proceed=()=>{
-   if(!replay){
-    delete root.dataset.ppwPremiumExit;
-    resultExitController.abort();
-   }
-   next();
-  };
-  leaving=true;
+ async function openPress(source:HTMLButtonElement){
+  if(openingPress)return;
+  openingPress=true;source.disabled=true;
+  source.parentElement?.querySelector(".ppw-ringside-press-error")?.remove();
   try{
-   const session=await pressPort.read();
-   if(!replay&&(session.dismissed||session.questions.every(q=>q.answerIndex!==null))){
-    leaving=false;proceed();return;
-   }
-   if(!root.isConnected){leaving=false;return;}
-   const prior=Array.from(root.childNodes);
-   mountPremiumPressScrum(root,pressPort,session,()=>{
-    leaving=false;
-    if(replay)root.replaceChildren(...prior);
-    else proceed();
+   const [{mountPremiumPressScrum},session]=await Promise.all([
+    import("../ui/premium-press-screen.js"),pressPort.read(),
+   ]);
+   if(!source.isConnected)return;
+   const scroll=window.scrollY;
+   const press=document.createElement("div");
+   press.className="ppw-ringside-press";press.tabIndex=-1;
+   root.dataset.pressActive="true";root.append(press);
+   mountPremiumPressScrum(press,pressPort,session,()=>{
+    press.remove();delete root.dataset.pressActive;
+    window.scrollTo({top:scroll,behavior:"instant"});
+    source.focus({preventScroll:true});
    });
-  }catch{
-   leaving=false;proceed(); // An unavailable press service must not block Results.
+   window.scrollTo({top:0,behavior:"instant"});press.focus({preventScroll:true});
+  }catch(e){
+   if(!source.isConnected)return;
+   const error=document.createElement("p");
+   error.className="ppw-ringside-press-error ppw-alert ppw-error";
+   error.setAttribute("role","alert");
+   error.textContent=e instanceof Error?e.message:"Press conference unavailable";
+   source.after(error);
+  }finally{
+   openingPress=false;source.disabled=false;
   }
  }
+ const loading=document.createElement("p");
+ loading.className="ppw-access-loading";loading.textContent="Opening Ringside…";
+ root.replaceChildren(loading);
+ let mountShowResults:typeof import("../ui/show-results.js").mountShowResults;
+ try{({mountShowResults}=await import("../ui/show-results.js"));}
+ catch{
+  if(root.isConnected)loading.textContent="Ringside could not open. Reload the page to retry.";
+  return;
+ }
+ if(!root.isConnected)return;
  await mountShowResults(root,{
-  load:async()=>{
-   const view=await createCardClient(scope)("results") as CompletedShowView;
-   loadedShow=view;
-   if(view.bookingClass==="PREMIUM")root.dataset.ppwPremiumExit="true";
-   else delete root.dataset.ppwPremiumExit;
-   return view;
+  load:()=>createCardClient(scope)("results") as Promise<CompletedShowView>,
+  openPress:source=>void openPress(source),
+  openNext:(destination,focus)=>{
+   if(destination==="programmes"&&focus?.programmeId)
+    queueBackstageStoryFocus({...scope,programmeId:focus.programmeId});
+   if(destination==="championships"&&focus?.championshipId)
+    pendingChampionshipLineage={...scope,championshipId:focus.championshipId};
+   window.location.hash=hostSectionHash(destination);
   },
-  openPress:()=>void leave(()=>{},true),
-  openNext:destination=>void leave(()=>{window.location.hash=hostSectionHash(destination);}),
-  openRatings:()=>void leave(()=>{
+  openRatings:()=>{
    if(scope.showId)pendingResultsRatingsOrigin={
     worldId:scope.worldId,promotionId:scope.promotionId,
-    showId:scope.showId,onBack};
+    showId:scope.showId,onBack,historyRoute:!!navigation?.openShow};
    window.location.hash="#/business/ratings";
-  }),
+  },
   openWrestler:personId=>openWrestlerDossier(root,scope,createCardClient(scope),personId),
   openProgrammes:personId=>openFocusedProgrammes(root,scope,personId),
+  navigation,
   commentary:async()=>{
    const res=await fetch("/api/results-commentary",{
     method:"POST",credentials:"same-origin",
@@ -801,16 +847,11 @@ export async function mountResultsPage(root:HTMLElement,scope:Scope,onBack?:()=>
    return res.json();
   }
  });
- root.addEventListener("ppw:results-exit",event=>{
-  const target=(event as CustomEvent<{targetHash:string}>).detail?.targetHash;
-  if(typeof target==="string"&&/^#\/[a-z/-]+$/.test(target))
-   void leave(()=>{window.location.hash=target;});
- },{signal:resultExitController.signal});
  if(onBack){
   const back=document.createElement("button");
   back.type="button";back.textContent="← Back";
   back.className="ppw-programme-action";
-  back.onclick=()=>void leave(onBack);
+  back.onclick=onBack;
   root.prepend(back);
  }
 }
@@ -833,13 +874,10 @@ function openWrestlerDossier(root:HTMLElement,scope:Scope,
   overlay.remove();
   if(previouslyFocused?.isConnected)previouslyFocused.focus({preventScroll:true});
  };
- overlay.addEventListener("keydown",event=>{
-  if(event.key==="Escape"){event.preventDefault();event.stopPropagation();close();}
- });
  // Portal outside transformed and scrolled ancestors so iOS Safari's
   // fixed-position dossier remains visible and independently scrollable.
   document.body.append(overlay);
-  mountWrestlerProfile(overlay,wrestlerProfilePort(call,overlay,scope,close),
+  mountWrestlerProfile(overlay,wrestlerProfilePort(call,overlay,scope,close,root),
   personId,close);
  overlay.focus({preventScroll:true});
  overlay.scrollTop=0;
@@ -897,14 +935,15 @@ function programmePort(call:ReturnType<typeof createCardClient>,
  };
 }
 export function mountProgrammePage(root:HTMLElement,scope:Scope,
- focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string){
+ focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string,
+ navigation?:{openShow(showId:string):void;openArchive():void},focusLane?:"PLAN"){
  const call=createCardClient(scope);
- const showResult=(showId:string)=>{void mountResultsPage(root,{...scope,showId},
-  ()=>mountProgrammePage(root,scope,focusPersonId));};
+ const showResult=navigation?.openShow??((showId:string)=>{void mountResultsPage(root,{...scope,showId},
+  ()=>mountProgrammePage(root,scope,focusPersonId));});
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
-  ()=>{void mountResultsArchivePage(root,scope,
-   ()=>mountProgrammePage(root,scope,focusPersonId));}),
-  undefined,focusPersonId,focusOpponentId,focusProgrammeId);
+  navigation?.openArchive??(()=>{void mountResultsArchivePage(root,scope,
+   ()=>mountProgrammePage(root,scope,focusPersonId));})),
+  undefined,focusPersonId,focusOpponentId,focusProgrammeId,focusLane);
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>,

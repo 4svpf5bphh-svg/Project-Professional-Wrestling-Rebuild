@@ -1,0 +1,64 @@
+{
+  "baseline": true,
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "cold": {
+    "navigationMs": 4378,
+    "resources": [
+      {
+        "name": "/assets/index-CxBo9-ZQ.js",
+        "encodedBytes": 387088,
+        "transferBytes": 387388
+      },
+      {
+        "name": "/assets/index-CoW-iigM.css",
+        "encodedBytes": 141391,
+        "transferBytes": 141691
+      }
+    ]
+  },
+  "warm": {
+    "navigationMs": 2596,
+    "resources": [
+      {
+        "name": "/assets/index-CxBo9-ZQ.js",
+        "encodedBytes": 387088,
+        "transferBytes": 0
+      },
+      {
+        "name": "/assets/index-CoW-iigM.css",
+        "encodedBytes": 141391,
+        "transferBytes": 0
+      }
+    ]
+  },
+  "home": [
+    {
+      "path": "/api/session",
+      "status": 200,
+      "bytes": 1782,
+      "sqlStatements": 3,
+      "sqlResultRows": 3,
+      "sqlChangedRows": 0,
+      "sqlResultBytes": 1913,
+      "milliseconds": 1976.95
+    }
+  ],
+  "openingCard": [
+    {
+      "path": "/api/card",
+      "status": 200,
+      "bytes": 1602,
+      "sqlStatements": 6,
+      "sqlResultRows": 3,
+      "sqlChangedRows": 0,
+      "sqlResultBytes": 1451,
+      "milliseconds": 296.11
+    }
+  ],
+  "interactions": 12,
+  "preparationMs": 12385,
+  "providerRequests": 0
+}

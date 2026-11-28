@@ -15,6 +15,8 @@ export interface BroadcastMedical{
 export interface BroadcastTitle{
  name:string;winnerName:string;priorHolderName:string|null;
  changed:boolean;
+ championshipId?:string;
+ division?:"SINGLES"|"TAG";
 }
 export interface BroadcastFallout{
  /** Immutable critic score and actual running time from the World simulation. */
@@ -35,6 +37,7 @@ export interface RecordedMatchFalloutRow extends Record<string,unknown>{
  report_finish_cheater_person_id?:string|null;
  report_linked_programmes?:number|null;report_programme_signal?:string|null;
  championship_name:string|null;title_changed:boolean|null;
+ championship_id?:string|null;championship_division?:"SINGLES"|"TAG"|null;
  title_winner_name:string|null;title_prior_holder_name:string|null;
  injuries:unknown;
 }
@@ -112,7 +115,9 @@ export function projectVerifiedBroadcastFallout(
    !isDecisiveChampionshipFinish(match.actualFinish))
    throw new Error("Title change contradicts verified match finish");
   result.title={name:row.championship_name,changed:row.title_changed,
-   winnerName:row.title_winner_name,priorHolderName:row.title_prior_holder_name};
+   winnerName:row.title_winner_name,priorHolderName:row.title_prior_holder_name,
+   ...(row.championship_id?{championshipId:row.championship_id}:{}),
+   ...(row.championship_division?{division:row.championship_division}:{})};
  }
  let evidence:CompletedMatchEvidence|null=null;
  if(row.evidence_json!==null){

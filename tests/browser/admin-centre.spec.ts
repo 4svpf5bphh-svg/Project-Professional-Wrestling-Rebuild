@@ -71,11 +71,11 @@ test("owner Admin lives only under Business and exposes audited Groq controls",a
  });
  await page.goto("/#/home");
  await expect(page.getByRole("button",{name:"Continue resolution"})).toHaveCount(0);
- await page.getByRole("button",{name:"Open Business menu"}).click();
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:/Admin/})).toBeVisible();
- await page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:/Admin/}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await expect(page.getByRole("dialog",{name:"More"})
+  .getByRole("link",{name:/Admin/})).toBeVisible();
+ await page.getByRole("dialog",{name:"More"})
+  .getByRole("link",{name:/Admin/}).click();
  await expect(page.getByRole("heading",{name:"Control Room"})).toBeVisible();
  await expect(page.getByText(/Completed shows: 8\/13/)).toBeVisible();
  await expect(page.getByRole("button",{name:"Advance Week"})).toBeVisible();
@@ -121,9 +121,9 @@ test("ordinary manager cannot discover the Admin department or route",async({pag
  let calls=0;
  await page.route("**/api/admin",route=>{calls++;return route.fulfill({status:403,json:{error:"Not authorised"}});});
  await page.goto("/#/home");
- await page.getByRole("button",{name:"Open Business menu"}).click();
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:/Admin/})).toHaveCount(0);
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await expect(page.getByRole("dialog",{name:"More"})
+  .getByRole("link",{name:/Admin/})).toHaveCount(0);
  await page.goto("/#/admin");
  await expect(page).toHaveURL(/#\/home$/);
  expect(calls).toBe(0);
@@ -169,10 +169,10 @@ test("isolated AI benchmark operator sees the lab, never World or Playtests cont
    benchmark:{certifiedFactsValidated:true,diagnosticCues:[],humanReviewRequired:true}}});
  });
  await page.goto("/#/home");
- await page.getByRole("button",{name:"Open Business menu"}).click();
- const nav=page.getByRole("navigation",{name:"Promotion navigation"});
- await expect(nav.getByRole("button",{name:/Admin/})).toBeVisible();
- await nav.getByRole("button",{name:/Admin/}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ const nav=page.getByRole("dialog",{name:"More"});
+ await expect(nav.getByRole("link",{name:/Admin/})).toBeVisible();
+ await nav.getByRole("link",{name:/Admin/}).click();
  await expect(page.getByRole("heading",{name:"Wrestling IQ Lab"})).toBeVisible();
  await expect(page.getByRole("heading",{name:"AI Quality Lab"})).toBeVisible();
  await expect(page.getByRole("button",{name:"AI Testing Lab"})).toBeVisible();

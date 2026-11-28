@@ -8,7 +8,7 @@ import {TERRA_PREVIEW_TIMEOUT_MS,TERRA_DAILY_PREVIEW_ATTEMPTS,TERRA_DAILY_TOKEN_
 import {sameShowComparisons,type SameShowProviderResult}
  from "../domain/ai-lab-head-to-head.js";
 type ActionPlan={
- year:number;week:number;action:string;blockers:string[];
+ year:number;week:number;blockers:string[];
  ready:{phase:string;active:number;regularSubmitted:number;submitted:number;
   cleared:number|null;certified:number|null;legacyResolved:number;detailedResolved:number;editorialProgress?:{total:number;completed:number;fallbacks:number;state:"WAITING"|"PROCESSING"|"RECOVERY_AVAILABLE"}};
 };
@@ -123,7 +123,8 @@ function renderGenerationTrace(root:HTMLElement,trace:GenerationTrace,review:Rec
  root.append(textDisclosure("Final accepted/recovered PPW article",JSON.stringify(review,null,2)),
   textDisclosure("Which card came from where",JSON.stringify(origins,null,2)));
 }
-type Context={csrfToken:string;benchmarkOnly?:boolean};
+type Context={csrfToken:string;benchmarkOnly?:boolean;
+ showtime?:{book():void;results():void;home():void}};
 const el=(tag:string,cls="",text="")=>{
  const n=document.createElement(tag);n.className=cls;n.textContent=text;return n;
 };
@@ -167,12 +168,16 @@ function beginEditorialPreviewWait(box:HTMLElement,provider:string){
  return ()=>clearInterval(timer);
 }
 export async function mountAdminCentre(root:HTMLElement,ctx:Context){
+ const showtime=ctx.showtime;
  root.classList.add("ppw-admin-centre");
- root.replaceChildren(el("span","ppw-eyebrow","PPW / ADMINISTRATOR"),
-  el("h1","",ctx.benchmarkOnly?"Wrestling IQ Lab":"Control Room"),
-  el("p","ppw-admin-sub",ctx.benchmarkOnly?
-   "Private, fictional Groq comparisons. No World advancement or published Results change.":
+ root.classList.toggle("ppw-showtime",!!showtime);
+ root.replaceChildren(
+  el("h1","",showtime?"Showtime":ctx.benchmarkOnly?"Wrestling IQ Lab":"Control Room"),
+  el("p","ppw-admin-sub",showtime?
+   "Check the shared World’s readiness and advance when the week is ready to run.":
+   ctx.benchmarkOnly?"Private, fictional Groq comparisons. No World advancement or published Results change.":
    "Only the designated World operator can change these settings. Multiplayer results and authored finishes remain authoritative."));
+ if(!showtime)root.prepend(el("span","ppw-eyebrow","PPW / ADMINISTRATOR"));
  const world=el("section","ppw-admin-panel");
  const studio=el("section","ppw-admin-panel");
  const labPanel=el("section","ppw-admin-panel");
@@ -220,7 +225,8 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
  }
  world.append(el("h2","","World Control"),el("p","ppw-admin-status","Loading verified World state…"));
  studio.append(el("h2","","Ringside AI Studio"),el("p","","Loading editorial controls…"));
- root.append(navigation,world,labPanel,studio,kpDesk,legendTrial);
+ if(showtime)root.append(world);
+ else root.append(navigation,world,labPanel,studio,kpDesk,legendTrial);
  switchTab();
  let busy=false;
  let editorialPreviewInFlight=false;
@@ -854,18 +860,34 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   }
  }
  let lastNotice="";let lastError=false;
- async function load(){
-  const data=await request("/api/admin","GET",ctx.csrfToken) as AdminData;
-  const p=data.plan,ready=p.ready;
-  world.replaceChildren(el("h2","","World Control"));
+ let publishedWeek=false;
+ async function load(focusStatus=false){
+  const data=showtime?null:await request("/api/admin","GET",ctx.csrfToken) as AdminData;
+  const p=data?.plan??(await request("/api/admin?worldPlan=1","GET",ctx.csrfToken) as {plan:ActionPlan}).plan;
+  const ready=p.ready;
+  const heading=el("h2","",showtime?"World readiness":"World Control");
+  heading.tabIndex=-1;
+  world.replaceChildren(heading);
   const status=el("div","ppw-admin-world-data");
-  status.append(el("strong","",`YEAR ${p.year} · WEEK ${p.week} · ${ready.phase}`),
-   el("p","",ready.phase==="OPEN"?
+  status.append(el("strong","",`YEAR ${p.year} · WEEK ${p.week} · ${ready.phase}`));
+  if(showtime){
+   const facts=el("ul","ppw-showtime-facts");
+   facts.append(el("li","",`${ready.active} active promotions`),
+    el("li","",`${ready.submitted} submitted shows`));
+   if(ready.cleared!==null)facts.append(el("li","",`${ready.cleared} shows cleared to run`));
+   if(ready.certified!==null)facts.append(el("li","",`${ready.certified} shows certified`));
+   status.append(facts,el("p","",ready.phase==="OPEN"?
+    "Confirmed cards still go through the shared World’s venue and talent checks.":
+    "A stopped run can resume from the last completed World stage."));
+  }else{
+   status.append(el("p","",ready.phase==="OPEN"?
     "Advance when ready. With one human player and no show booked, your promotion takes an off-week. The AI World continues.":
-    "Processing the shared World. A stopped run can resume without replaying completed results."),
-   el("p","",ready.phase==="OPEN"?"No automatic deadline during the solo playtest.":
-    ready.phase==="UPDATING"?`Show reports processed: ${ready.editorialProgress?.completed??0}/${ready.editorialProgress?.total??0}. Public news follows.`:
-    `Completed shows: ${ready.detailedResolved}/${ready.submitted}`));
+    "Processing the shared World. A stopped run can resume without replaying completed results."));
+  }
+  if(ready.phase!=="OPEN")status.append(el("p","",ready.phase==="UPDATING"?
+   `Show reports processed: ${ready.editorialProgress?.completed??0}/${ready.editorialProgress?.total??0}. Public news follows.`:
+   `Completed shows: ${ready.detailedResolved}/${ready.submitted}`));
+  else if(!showtime)status.append(el("p","","No automatic deadline during the solo playtest."));
   const progress=ready.editorialProgress;
   if(progress?.state==="PROCESSING")status.append(el("p","","An editorial attempt is in progress."));
   if(progress?.state==="RECOVERY_AVAILABLE")status.append(el("p","","The previous attempt expired. Resume World Updating to recover."));
@@ -879,7 +901,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   advance.type="button";
   advance.onclick=async()=>{
    if(busy)return;
-   if(ready.phase==="OPEN"&&!window.confirm(`Advance from Week ${p.week}? If you have no show booked this week, your promotion takes an off-week. Other promotions continue. Future cards remain intact.`))return;
+   if(ready.phase==="OPEN"&&!window.confirm(`Advance from Week ${p.week}? The shared World will check show readiness and resolve eligible events. In a one-manager World, a week with no show can run as an off-week.`))return;
    busy=true;advance.disabled=true;
    message(info,"Checking certified World stages…");
    try{
@@ -894,6 +916,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
       editorial?:{state:"PROCESSING"|"RECOVERED"|"FALLBACK"|"READY";retryAfterSeconds?:number}};
      usedFallback ||= result.editorial?.state==="FALLBACK";
      if(result.status==="PUBLISHED"){
+      publishedWeek=true;
       message(info,usedFallback?"Week advanced. Certified results and news are available where editorial could not finish.":
        "Week advanced. The next playable week is ready.");finished=true;break;
      }
@@ -920,7 +943,7 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
      if(batch===23)message(info,"The safe batch limit was reached; press Advance Week again to resume.",true);
     }
     lastNotice=info.textContent??"";lastError=!finished&&!waiting;
-    await load();
+    await load(!!showtime);
    }catch(e){message(info,e instanceof Error?e.message:"Resolution failed",true);
     lastNotice=info.textContent??"";lastError=true;}
    finally{busy=false;advance.disabled=false;}
@@ -940,13 +963,30 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
    finally{busy=false;reopen.disabled=false;}
   };
   reopen.hidden=ready.phase!=="OPEN";
-  actions.append(advance,reopen);
+  actions.append(advance);
+  if(!showtime)actions.append(reopen);
   const refresh=el("button","ppw-admin-secondary","Refresh diagnostics") as HTMLButtonElement;
   refresh.type="button";refresh.onclick=()=>void load().catch(e=>
    message(info,e instanceof Error?e.message:"Cannot refresh World status",true));
   actions.append(refresh);
-  world.append(status,actions,info,
-   el("p","ppw-admin-small","No automatic World advance or reset. Only your explicit Advance Week action moves the clock."));
+  world.append(status,actions,info);
+  if(focusStatus)heading.focus({preventScroll:true});
+  if(showtime){
+   const follow=el("nav","ppw-showtime-follow-up");
+   follow.setAttribute("aria-label","After World readiness");
+   const destinations:[[string,()=>void],[string,()=>void]]=publishedWeek?
+    [["See certified results",showtime.results],["Return to Home",showtime.home]]:
+    [["Return to Booking Room",showtime.book],["Return to Home",showtime.home]];
+   for(const [label,open] of destinations){
+    const next=el("button","ppw-admin-secondary",label) as HTMLButtonElement;
+    next.type="button";next.onclick=open;follow.append(next);
+   }
+   world.append(follow);
+   return;
+  }
+  world.append(el("p","ppw-admin-small",
+   "No automatic World advance or reset. Only your explicit Advance Week action moves the clock."));
+  if(!data)return;
 
   kpDesk.replaceChildren(el("h2","","Kayfabe Points · Testing"),
    el("p","ppw-admin-sub","Cosmetic purchases only. One authorised test top-up, not an unlimited currency generator."));
@@ -1147,12 +1187,15 @@ export async function mountAdminCentre(root:HTMLElement,ctx:Context){
   latest.addEventListener("change",toggleRetry);
   toggleRetry();
   recover.onclick=async()=>{
-   if(busy||!window.confirm("Re-arm this failed AI article? No published reports or match results will change."))return;
+   if(busy||!window.confirm("Use this show's Admin retry to request a new Ringside article?"))return;
    busy=true;recover.disabled=true;
    try{
-    await request("/api/admin","POST",ctx.csrfToken,{
-     action:"RETRY_FAILED_RINGSIDE",showId:latest.value});
-    message(aiStatus,"Retry authorised. Reopen this completed show in Results to generate a fresh AI article.");
+    const result=await request("/api/admin-preview","POST",ctx.csrfToken,{
+     action:"RETRY_FAILED_RINGSIDE",showId:latest.value}) as {status:"ready"|"pending"|"unavailable"};
+    const copy={ready:"The approved article is available in Results.",
+     pending:"Ringside is already preparing the article.",
+     unavailable:"This attempt returned no article. The certified report is available in Results."};
+    message(aiStatus,copy[result.status]);
     recover.hidden=true;
    }catch(e){message(aiStatus,e instanceof Error?e.message:"Could not re-arm the article",true);}
    finally{busy=false;recover.disabled=false;}

@@ -48,9 +48,12 @@ import {broadcastPackageClass} from "../domain/broadcast-packages.js";
 import {reconcileDraftAgreements} from "./card-contract-reconciliation.js";
 import {moveLinkedRunningOrder,dropLinkedRunningOrder,attachPostMatchAngle} from "./card-running-order.js";
 import {isQuickBookField} from "./quick-book.js";
-import {programmeMatchStarter,programmeAngleIdeaStarter,programmeAngleCastStarter,
+import {programmeAngleIdeaStarter,programmeAngleCastStarter,
  programmeStoryLeadStarter}
  from "./programme-booking-starter.js";
+import {eventArtworkSource} from "./event-artwork.js";
+import {inferProgrammeMatchLinks} from "../domain/programme-match-links.js";
+import "./booking-room.css";
 import {STORY_BLUEPRINTS,storyBlueprint,storyBlueprintFamily,type BlueprintFamily}
  from "../domain/story-blueprints.js";
 import {storyBlueprintAngleStarter} from "./story-blueprint-starter.js";
@@ -63,6 +66,11 @@ type View=Awaited<ReturnType<typeof readShowCardEditor>>;
 type TalentPage=Awaited<ReturnType<typeof readBookableCardTalent>>;
 type SaveResult=Awaited<ReturnType<typeof saveShowCardMatches>>;
 type ReadyResult=Awaited<ReturnType<typeof markPreparedShowReady>>;
+const WEEKLY_OUTLINE=[
+ {label:"Opener",minutes:12},
+ {label:"Feature match",minutes:16},
+ {label:"Main event",minutes:22},
+] as const;
 export interface CardEditorPort{
  load():Promise<View>;
  /** Transient on-page focus from the Programme Desk, not a saved game command. */
@@ -70,9 +78,9 @@ export interface CardEditorPort{
  focusProgrammeIdeaKind?:ProgrammeAngleIdea["kind"];
  focusBlueprintBeat?:{blueprintId:string;beatId:string};
  /** One-shot dossier route. Must re-check signed rights for the selected show. */
- focusWrestler?:{personId:string;name:string};
+ focusWrestler?:{personId:string;name:string;promiseSlot?:"MATCH"|"ANGLE"};
  focusTitleChallenge?:{championshipId:string;holderId:string;holderName:string;
-  challengerId:string;challengerName:string};
+  challengerId:string;challengerName:string;source?:"PROMISE"};
  talent(search:string,cursor:TalentPage["cursor"]):Promise<TalentPage>;
  save(input:{requestId:string;expectedRevision:number;
   matches:{slotId:string;payload:unknown;programmeId?:string|null}[];
@@ -147,6 +155,18 @@ function field(label:string,control:HTMLElement){
 }
 function nice(value:string){return value.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,x=>x.toUpperCase());}
+function containDialogFocus(sheet:HTMLElement,event:KeyboardEvent){
+ if(event.key!=="Tab")return;
+ const focusable=[...sheet.querySelectorAll<HTMLElement>(
+  "button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex='0']")]
+  .filter(node=>node.tabIndex>=0&&node.getClientRects().length>0&&!node.closest("[aria-hidden='true']"));
+ const first=focusable[0],last=focusable.at(-1);
+ if(first&&last&&event.shiftKey&&(!focusable.includes(document.activeElement as HTMLElement)||document.activeElement===first)){
+  event.preventDefault();last.focus();
+ }else if(first&&document.activeElement===last&&!event.shiftKey){
+  event.preventDefault();first.focus();
+ }
+}
 export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let view:View|null=null;
  let matches=new Map<string,EditorMatch>();
@@ -159,15 +179,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const selectedFinalePayoffs=new Map<string,ProgrammePayoff>();
  const finaleRequests=new Map<string,{fingerprint:string;requestId:string}>();
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
-  query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
+  query:string;searchDraft?:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
   division:"ALL"|"MEN"|"WOMEN";showOther?:boolean;
   source?:"ALL"|"FEUDS"|"TEAMS"|"TRIOS"|"FACTIONS";
-  sourceId?:string;chipsBySide?:Map<number,Set<string>>;
+  sourceId?:string;showFilters?:boolean;chipsBySide?:Map<number,Set<string>>;
   divisionBySide?:Map<number,"ALL"|"MEN"|"WOMEN">}|null=null;
  let loading=false,saving=false,dirty=false,error="",success="";
  const draftConsentFeedback=new Map<string,{name:string;text:string;failed:boolean}>();
  let talentRequestSequence=0;
+ let firstTalentPage:TalentPage|null=null;
  let pendingRequestId:string|null=null;
  let needsRevisionRefresh=false;
  let stableChoices:{stableId:string;name:string;members?:{
@@ -177,11 +198,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  let focusedPerson=port.focusWrestler??null,focusBusy=false;
  let focusedChallenge=port.focusTitleChallenge??null;
  let formatChoice:Format="SINGLES";
- let rivalryIdeasOpen=Boolean(port.focusProgrammeId);
  let initialProgrammeFocusDone=false;
  const openStyles=new Set<string>();
  const openRunIns=new Set<string>();
- const slotBookingModes=new Map<string,"QUICK"|"ADVANCED">();
+ const quickSlots=new Set<string>();
+ const explicitlyScripted=new Set<string>();
+ const outlineSlots=new Map<string,number>();
+ let nextOutlineSlot:number|null=null;
  const slotBookingSteps=new Map<string,"SETUP"|"CAST"|"OUTCOME"|"REVIEW">();
  const guidedPickerSlots=new Set<string>();
  // A new booking is only added to the working card at the final step.
@@ -323,9 +346,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const fmt=FORMATS.find(x=>x.value===m.format)?.label??"Match";
   const cast=assignedIds(m).length;
   const needed=m.teams.reduce((a,s)=>a+s.length,0);
-  // Once the cast is complete, the readiness count adds no useful detail.
-  return fmt+(cast<needed?" · "+cast+" / "+needed+" cast":"")+
-   " · "+m.plannedLengthMinutes+" min · "+nice(m.plannedFinish);
+  return [m.stipulation&&m.stipulation!=="STANDARD"?fmt:null,
+   cast<needed?cast+" / "+needed+" cast":null,nice(m.plannedFinish)].filter(Boolean).join(" · ");
  };
  function markDirty(){dirty=true;pendingRequestId=null;error="";success="";
   port.onDraftChange?.(true);}
@@ -335,13 +357,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  }
  function endWizard(slotId:string){
   inProgressWizards.delete(slotId);
+  const outlineIndex=outlineSlots.get(slotId);
+  if(outlineIndex!==undefined){
+   nextOutlineSlot=outlineIndex+1<WEEKLY_OUTLINE.length?outlineIndex+1:null;
+   outlineSlots.delete(slotId);
+  }
+  quickSlots.delete(slotId);explicitlyScripted.delete(slotId);
   expanded=null;render();
   // On iPhone, new running-order slots usually appear below the fold.
   // Bring the exact completed ticket into view *after* the wizard closes;
   // never scroll a cancelled booking or change saved World state.
   const ticket=[...root.querySelectorAll<HTMLElement>(
    ".ppw-card[data-booking-slot-id]")].find(node=>node.dataset.bookingSlotId===slotId);
-  ticket?.scrollIntoView({block:"center",inline:"nearest",behavior:"auto"});
+  ticket?.scrollIntoView({block:"nearest",inline:"nearest",behavior:"auto"});
+  ticket?.querySelector<HTMLElement>(".ppw-card-open-zone")?.focus({preventScroll:true});
  }
  function closeWizard(slotId:string){
   const pending=inProgressWizards.get(slotId);
@@ -355,6 +384,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   matches.delete(slotId);segments.delete(slotId);
   order=order.filter(id=>id!==slotId);
   inProgressWizards.delete(slotId);
+  quickSlots.delete(slotId);explicitlyScripted.delete(slotId);outlineSlots.delete(slotId);
   blueprintPickerOpen.delete(slotId);
   blueprintFamilies.delete(slotId);
   blueprintChoices.delete(slotId);
@@ -365,6 +395,10 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  }
  function setMatch(slotId:string,next:EditorMatch){
   matches.set(slotId,next);markDirty();render();
+ }
+ function scriptWinner(match:EditorMatch,side:number){
+  explicitlyScripted.add(match.slotId);
+  setMatch(match.slotId,changeWinner(match,side));
  }
  function setStipulation(match:EditorMatch,stipulation:MatchStipulation){
   if((match.stipulation??"STANDARD")===stipulation)return;
@@ -389,9 +423,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    view=await port.load();
    stableChoices=null;
    specialOwned=null;
+   firstTalentPage=null;
     // A new World week may activate signed renewals; discard stale contract IDs.
     roster.clear();
     matches=new Map();segments=new Map();
+   quickSlots.clear();explicitlyScripted.clear();outlineSlots.clear();
+   nextOutlineSlot=null;
    order=view.slots.map(x=>x.slotId);
    for(const slot of view.slots){
     if(slot.kind==="MATCH")
@@ -491,9 +528,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const request=picker;
   const sequence=++talentRequestSequence;
   const cursor=append?request.cursor:null;
+  if(!append)request.searchDraft=query;
   try{
-   const page=await port.talent(query,cursor);
+   const reusable=!query&&!append&&quickSlots.has(request.slotId);
+   const page=reusable&&firstTalentPage?firstTalentPage:await port.talent(query,cursor);
    if(picker!==request||sequence!==talentRequestSequence)return;
+   if(reusable)firstTalentPage=page;
    picker.query=query;picker.items=append?[...picker.items,...page.talent]:page.talent;
    picker.cursor=page.cursor;
    for(const p of page.talent)roster.set(p.personId,{...p});
@@ -506,6 +546,21 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   picker={slotId,side,member,query:"",cursor:null,items:[],sort:"POPULARITY",division:"ALL"};
   render();
   void findTalent("");
+ }
+ function startQuickMatch(outlineIndex?:number){
+  if(!mutable()||expanded!==null)return;
+  const id="match-"+crypto.randomUUID();
+  const match=newEditorMatch(id,"SINGLES");
+  if(outlineIndex!==undefined){
+   match.plannedLengthMinutes=WEEKLY_OUTLINE[outlineIndex]!.minutes;
+   outlineSlots.set(id,outlineIndex);
+  }
+  matches.set(id,match);
+  guidedPickerSlots.add(id);quickSlots.add(id);
+  slotBookingSteps.set(id,"CAST");
+  order.push(id);expanded=id;
+  startWizard(id);
+  pickFor(id,0,0);
  }
  async function startFocusedBooking(kind:"MATCH"|"ANGLE"){
   if(!focusedPerson||!view?.canEdit||saving||focusBusy)return;
@@ -590,6 +645,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }catch(e){error=errorText(e);}
   finally{focusBusy=false;render();}
  }
+ function wrongBookingDivision(candidate:TalentPage["talent"][number],match:EditorMatch,side:number,member:number){
+  // The same match division rule applies to every canonical match family.
+  if(candidate.division!=="MEN"&&candidate.division!=="WOMEN")return "No booking division";
+  const titleDivision=view?.championships.find(title=>title.championshipId===match.championshipId)?.bookingDivision;
+  if(titleDivision&&titleDivision!==candidate.division)return "Championship division mismatch";
+  const partners=match.teams.flatMap((team,sideIndex)=>team.flatMap((pick,memberIndex)=>
+   pick&&(side!==sideIndex||member!==memberIndex)?[roster.get(pick.personId)?.division]:[]));
+  const divisions=new Set(partners.filter(value=>value==="MEN"||value==="WOMEN"));
+  return divisions.size===1&&!divisions.has(candidate.division)?"Match division mismatch":null;
+ }
  function chooseTalent(p:TalentPage["talent"][number]){
   if(!picker||!p.available)return;
   if(picker.role==="RUN_IN"){
@@ -616,6 +681,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
   const target=matches.get(picker.slotId);
   if(!target)return;
+  if(wrongBookingDivision(p,target,picker.side,picker.member))return;
   const current=target.teams[picker.side]?.[picker.member];
   const used=[...matches.values()].flatMap(m=>assignedIds(m));
   if(used.includes(p.personId)&&current?.personId!==p.personId){
@@ -630,8 +696,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const next=updated.teams.flatMap((team,side)=>team.map((member,index)=>
      member?null:{side,index})).find(x=>x!==null);
     if(next){picker.side=next.side;picker.member=next.index;}
-    else picker=null;
+    else{
+     if(quickSlots.has(target.slotId)){
+      slotBookingSteps.set(target.slotId,"OUTCOME");resetGuideScroll=true;
+     }
+     picker=null;
+    }
    }else picker=null;
+   if(current?.personId!==p.personId)explicitlyScripted.delete(target.slotId);
    matches.set(target.slotId,updated);markDirty();render();
   }catch(e){error=errorText(e);render();}
  }
@@ -773,6 +845,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const fresh=await port.load();
    const changed=hasConcurrentCardChange(prior,fresh);
    view=fresh;
+   firstTalentPage=null;
    for(const person of fresh.selectedPeople){
     const existing=roster.get(person.personId);
     roster.set(person.personId,{...existing,personId:person.personId,
@@ -884,6 +957,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   // Keep one modal per mounted editor. Foreground sheets are portalled out
   // of the scrolling card and its animated containing block.
   const priorModal=activeEditShade?.querySelector<HTMLElement>(".ppw-card-edit-sheet")??null;
+  const previousPicker=activePickerShade?.querySelector<HTMLElement>(".ppw-sheet")??null;
+  const activeElement=document.activeElement as HTMLElement|null;
+  const previousPickerFocus=activeElement&&previousPicker?.contains(activeElement)?activeElement:null;
+  const previousEditorFocus=activeElement&&priorModal?.contains(activeElement)?activeElement:null;
+  const previousPickerRole=previousPicker?.dataset.castingPosition;
+  const restoreFocus=(container:HTMLElement,previous:HTMLElement|null,fallback:HTMLElement|null)=>{
+   const label=previous?.getAttribute("aria-label")??previous?.textContent;
+   const replacement=label?[...container.querySelectorAll<HTMLElement>(
+    "button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary")]
+    .find(node=>node.tagName===previous?.tagName&&
+     (node.getAttribute("aria-label")??node.textContent)===label&&node.getClientRects().length>0):null;
+   (replacement??fallback)?.focus({preventScroll:true});
+  };
   const previousScroll=resetGuideScroll?0:priorModal?.scrollTop??0;
   resetGuideScroll=false;
   activeEditShade?.remove();activeEditShade=null;
@@ -903,8 +989,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(window.confirm("Discard the changes you have not saved to this show?"))
     void load();
   },false,"ppw-card-discard"));
-  top.append(el("div","ppw-eyebrow","CREATIVE / SHOW BOOKING"),
-   el("h1","","The Card"));
+  top.append(el("h1","","The Card"));
   const headline=el("p","ppw-muted",loading?"Loading your show…":
    view?"Year "+view.year+" · Week "+view.week+" · "+
     (view.canEdit?"Booking open":"Read only"):"Your next show");
@@ -912,17 +997,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   if(view){
    const spotlight=el("div","ppw-card-show-identity");
    const marquee=el("div","ppw-card-show-copy");
-   marquee.append(el("span","ppw-eyebrow",view.bookingClass==="PREMIUM"?
-    "PREMIUM EVENT":"THIS WEEK'S SHOW"),
-    el("strong","",view.showName??(view.bookingClass==="PREMIUM"?
-     "Premium event":"Weekly show")),
+   const premium=view.bookingClass==="PREMIUM";
+   const showName=view.showName??(premium?"Premium event":"Weekly show");
+   const art=el("img","ppw-booking-event-art") as HTMLImageElement;
+   art.src=eventArtworkSource(showName,view.promotionName??"PPW",premium);
+   art.alt="";art.decoding="async";
+   marquee.append(el("span","ppw-eyebrow",premium?"PREMIUM EVENT":"BOOKING ROOM"),
+    el("strong","",showName),
     el("span","",view.promotionName));
    const location=el("div","ppw-card-show-location");
    location.append(el("span","",view.venueName??"Venue not selected"),
     el("span","",view.marketName??"Market to be confirmed"),
     el("span","",view.day===null?"Show day pending":
      ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][view.day-1]??"Show day pending"));
-   spotlight.append(marquee,location);top.append(spotlight);
+   spotlight.append(art,marquee,location);top.append(spotlight);
   }
   root.append(top);
   if(error&&expanded===null)root.append(el("p","ppw-alert ppw-error",error));
@@ -938,19 +1026,37 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    matches.has(id)?[matches.get(id)!]:[]);
   const committedSegments=committedOrder.flatMap(id=>
    segments.has(id)?[segments.get(id)!]:[]);
+  const concerns=view.creativeConcerns??[];
+  const approvals=concerns.filter(c=>c.requiresConsent&&c.decision!=="APPROVED");
+  const participation=[...committedMatches.flatMap(match=>[
+   ...assignedIds(match),...(match.interference?[match.interference.personId]:[])]),
+   ...committedSegments.flatMap(liveSegmentPersonIds)];
+  const bookedPeople=new Set(participation);
+  const inactiveCast=new Set(view.selectedPeople.filter(person=>
+   bookedPeople.has(person.personId)&&person.contractId===null&&
+   !roster.get(person.personId)?.available).map(person=>person.personId));
+  const airtimeEstimate=forecastBookingAirtime(null,null,
+   committedMatches,committedSegments,view.bookingClass);
   const castReady=committedMatches.filter(x=>matchCastingReadiness(x).complete).length+
    committedSegments.filter(x=>angleCastingReadiness(x).complete).length;
   // The run-down already shows match/angle minutes. Repeating six pill counters
   // adds noise on an iPhone. Show only the state that affects the next action.
   const state=el("p","ppw-card-status-line");
   const missing=Math.max(0,committedOrder.length-castReady);
+  const schedulePending=view.day===null||!view.venueId;
   state.dataset.state=dirty?"UNSAVED":view.ready?"CONFIRMED":
-   missing?"NEEDS_ATTENTION":"READY";
+   missing||inactiveCast.size||!committedMatches.length||airtimeEstimate.overBy||schedulePending||approvals.length?
+    "NEEDS_ATTENTION":"READY";
   state.append(el("strong","",dirty?"Unsaved changes":
    view.ready?"Show confirmed":
    !committedOrder.length?"Start building your card":
    missing?missing+" slot"+(missing===1?" needs":"s need")+" attention":
-   "Card ready to confirm"));
+   inactiveCast.size?"Review unavailable wrestlers on this card":
+   !committedMatches.length?"Book a match to complete this card":
+   airtimeEstimate.overBy?"Card exceeds its airtime limit":
+   schedulePending?"Complete the event schedule in Planner":
+   approvals.length?"Creative approval required":
+   view.canEdit?"Card saved · confirm when ready":"Card closed for editing"));
   if(dirty||missing)state.append(el("span","",dirty&&missing?
    " · "+missing+" slot"+(missing===1?" needs":"s need")+" attention":
    dirty?" · Save before confirming":" · Finish casting to continue"));
@@ -984,22 +1090,27 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   }
   if(focusedPerson){
    const focus=el("section","ppw-card-wrestler-focus");
-   focus.append(el("span","ppw-eyebrow","FROM THE WRESTLER DOSSIER"),
+   const promise=focusedPerson.promiseSlot;
+   focus.append(el("span","ppw-eyebrow",promise?"BACKSTAGE PROMISE":"FROM THE WRESTLER DOSSIER"),
     el("strong","",focusedPerson.name),
-    el("p","","Choose a match or a promo. The wrestler's actual show-week "+
-     "availability is checked before creating an unsaved slot."));
+    el("p","",promise?
+     "Start with the promised "+(promise==="ANGLE"?"promo":"match")+
+      ". The wrestler must be available and the appearance must be certified.":
+     "Choose a match or a promo. The wrestler's actual show-week "+
+      "availability is checked before creating an unsaved slot."));
    const actions=el("div","ppw-card-wrestler-actions");
-   actions.append(button(focusBusy?"Checking wrestler…":"Start a match",()=>{
+   const match=button(focusBusy&&promise!=="ANGLE"?"Checking wrestler…":"Start a match",()=>{
     void startFocusedBooking("MATCH");
-   },!mutable()||focusBusy,"ppw-primary"),
-    button("Start a promo",()=>void startFocusedBooking("ANGLE"),
-     !mutable()||focusBusy));
+   },!mutable()||focusBusy,promise==="ANGLE"?"":"ppw-primary");
+   const promo=button(focusBusy&&promise==="ANGLE"?"Checking wrestler…":"Start a promo",
+    ()=>void startFocusedBooking("ANGLE"),!mutable()||focusBusy,promise==="ANGLE"?"ppw-primary":"");
+   actions.append(...(promise==="ANGLE"?[promo,match]:[match,promo]));
    focus.append(actions);root.append(focus);
   }
   if(focusedChallenge){
    const choice=focusedChallenge;
    const focus=el("section","ppw-card-wrestler-focus ppw-card-title-focus");
-   focus.append(el("span","ppw-eyebrow","EARNED TITLE CHALLENGE"),
+   focus.append(el("span","ppw-eyebrow",choice.source==="PROMISE"?"PROMISED TITLE MATCH":"EARNED TITLE CHALLENGE"),
     el("strong","",choice.holderName+" vs "+choice.challengerName),
     el("p","","The title and signed match rights will be checked for this "+
      "show. You script the finish and choose when to save."));
@@ -1010,13 +1121,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    focus.append(actions);root.append(focus);
   }
   // Staff advice lives in the final booking briefing, not on the running order.
-  const concerns=view.creativeConcerns??[];
   if(concerns.length){
    const desk=el("section","ppw-card-creative");
-   const pending=concerns.filter(c=>c.requiresConsent&&c.decision!=="APPROVED");
    desk.append(el("span","ppw-eyebrow","WRESTLER AGREEMENTS"),
-    el("h3","",pending.length?
-     pending.length+" match approval"+(pending.length===1?"":"s")+" to resolve":
+    el("h3","",approvals.length?
+     approvals.length+" match approval"+(approvals.length===1?"":"s")+" to resolve":
      "Your wrestlers' creative terms"));
    if(dirty)desk.append(el("p","ppw-card-creative-advice",
     "These creative decisions apply to the last saved version. Save the revised card to reassess them."));
@@ -1058,43 +1167,39 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    root.append(desk);
   }
-  // Match timing is already authored and available in memory. Present only a
-  // truthful partial estimate: angles and entrances have their own air-time.
+  // Authored match and angle minutes count towards the TV ceiling. Entrances
+  // and commentary may need some of the remaining time.
   const matchMinutes=committedMatches.reduce((n,m)=>n+m.plannedLengthMinutes,0);
   const angleMinutes=committedSegments.reduce((n,a)=>n+a.durationMinutes,0);
-  const usedMinutes=matchMinutes+angleMinutes;
+  const usedMinutes=airtimeEstimate.total;
+  const limit=airtimeEstimate.limit;
   const airtime=el("section","ppw-card-airtime");
   const clock=el("div","ppw-card-airtime-heading");
-  clock.append(el("span","ppw-eyebrow","SHOW RUNDOWN"),
-   el("strong","",view.bookingClass==="REGULAR"?
-    usedMinutes+" / 120 min":
-    usedMinutes+" min booked"));
+  clock.append(el("span","ppw-eyebrow","BOOKED AIRTIME"),
+   el("strong","",limit===null?usedMinutes+" min":usedMinutes+" / "+limit+" min"));
   airtime.append(clock);
-  if(view.bookingClass==="REGULAR"){
+  if(limit!==null){
    const track=el("div","ppw-card-airtime-track");
    track.setAttribute("role","progressbar");
-   track.setAttribute("aria-label","Total match and angle minutes against the television running-time guide");
-   track.setAttribute("aria-valuemin","0");track.setAttribute("aria-valuemax","120");
-   track.setAttribute("aria-valuenow",String(Math.min(120,usedMinutes)));
+   track.setAttribute("aria-label","Booked minutes against the weekly running time limit");
+   track.setAttribute("aria-valuemin","0");track.setAttribute("aria-valuemax",String(limit));
+   track.setAttribute("aria-valuenow",String(Math.min(limit,usedMinutes)));
    const progress=el("span","ppw-card-airtime-fill");
-   progress.style.width=Math.min(100,usedMinutes/120*100)+"%";
-   if(usedMinutes>120)track.classList.add("ppw-card-airtime-overrun");
+   progress.style.width=Math.min(100,usedMinutes/limit*100)+"%";
+   if(airtimeEstimate.overBy){
+    track.classList.add("ppw-card-airtime-overrun");
+    track.setAttribute("aria-valuetext",usedMinutes+" minutes booked, "+
+     airtimeEstimate.overBy+" over the "+limit+" minute limit");
+   }
    track.append(progress);airtime.append(track);
   }
   airtime.append(el("small","",matchMinutes+" min matches · "+angleMinutes+" min angles"+
-   (view.bookingClass==="REGULAR"?" · "+Math.max(0,120-usedMinutes)+" min unallocated":"")));
-  if(view.bookingClass==="REGULAR"&&usedMinutes>110)
-   airtime.append(el("small","ppw-card-time-warning",usedMinutes>120?
-    "Over the TV limit — shorten your booking to save.":
+   (limit===null?"":" · "+airtimeEstimate.remaining+" min unallocated")));
+  if(limit!==null&&airtimeEstimate.remaining!<=10)
+   airtime.append(el("small","ppw-card-time-warning",airtimeEstimate.overBy?
+    "Shorten this card by "+airtimeEstimate.overBy+" min before saving.":
     "Very little time left for entrances, breaks and commentary."));
   root.append(airtime);
-   const participation=[
-    ...committedMatches.flatMap(m=>[
-     ...m.teams.flatMap(side=>side.flatMap(person=>person?[person.personId]:[])),
-     ...(m.interference?[m.interference.personId]:[])
-    ]),
-    ...committedSegments.flatMap(liveSegmentPersonIds)
-   ];
    const feeEstimate=forecastCardAppearanceFees(participation,roster);
    const finance=bookingFinanceBrief(view.bookingFinancials,feeEstimate,
     (view.year-1)*52+view.week-1);
@@ -1102,7 +1207,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     const money=(n:number)=>"$"+Math.round(n).toLocaleString("en-GB");
     const costs=el("details","ppw-card-appearance-cost") as HTMLDetailsElement;
     costs.append(el("summary","","Show talent fees · "+money(feeEstimate.amount)+
-     (feeEstimate.complete?"":" + unknown")));
+     (feeEstimate.complete?" estimated":" + unknown")));
     costs.append(el("p","",feeEstimate.performers+" wrestlers · "+
      (feeEstimate.complete?"All fees known":feeEstimate.unknown+" fees unknown")+
      ". Live match, angle and run-in appearances count once per show."));
@@ -1141,6 +1246,20 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   // taking up room above the actual running order.
   // One authoritative booking editor. There are no competing Quick/Advanced forms.
   const actions=el("div","ppw-experience-actions");
+  if(mutable()&&expanded===null){
+   const outlineIndex=nextOutlineSlot??(!committedOrder.length&&view.bookingClass==="REGULAR"?0:null);
+   const fast=el("div","ppw-booking-fast");
+   if(outlineIndex!==null){
+    const slot=WEEKLY_OUTLINE[outlineIndex]!;
+    fast.append(button(outlineIndex===0?"Build a weekly card":"Book "+slot.label.toLowerCase(),
+     ()=>startQuickMatch(outlineIndex),false,"ppw-primary ppw-booking-outline"));
+    fast.append(el("small","",outlineIndex===0?"Opener, feature and main event. You cast each bout and choose the finish.":
+     slot.minutes+" minutes suggested · Use any match format via Advanced booking."));
+   }
+   fast.append(button("Quick singles",()=>startQuickMatch(),false,
+    outlineIndex===null?"ppw-primary ppw-booking-quick":"ppw-booking-quick"));
+   toolbar.append(fast);
+  }
   actions.append(button("+ Add match",()=>{
    const id="match-"+crypto.randomUUID();
    matches.set(id,newEditorMatch(id,formatChoice));
@@ -1191,14 +1310,42 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    root.append(tournament);
   }
   // Blueprint scene options live in the Programme Desk, not on the show card.
-  const list=el("section","ppw-card-list");
+  const list=el("section","ppw-card-list ppw-booking-run-sheet");
+  list.setAttribute("aria-label","Show running order");
+  const runSheet=el("div","ppw-booking-run-heading");
+  runSheet.append(el("h2","","Run sheet"),el("span","",committedOrder.length+
+   (committedOrder.length===1?" slot":" slots")));
+  if(!committedOrder.length)list.append(el("p","ppw-booking-empty","Your show has no matches or angles yet."));
+  const programmeMembers=view.programmes.flatMap(p=>(p.cast??[]).flatMap(member=>
+   member.side==="A"||member.side==="B"?[{programmeId:p.programmeId,
+    personId:member.personId,side:member.side}]:[]));
+  const automaticStoryLinks=dirty&&programmeMembers.length<=600&&committedMatches.length<=100?inferProgrammeMatchLinks(
+   committedMatches.flatMap(m=>!m.tournamentId&&m.teams.length===2&&matchCastingReadiness(m).complete?[{
+    slotId:m.slotId,sideA:m.teams[0]!.flatMap(member=>member?[member.personId]:[]),
+    sideB:m.teams[1]!.flatMap(member=>member?[member.personId]:[])
+   }]:[]),programmeMembers):[];
+  const savedStories=new Map<string,string[]>();
+  for(const link of (dirty?automaticStoryLinks:view.matchProgrammeLinks??automaticStoryLinks)){
+   const stories=savedStories.get(link.slotId)??[];
+   stories.push(link.programmeId);savedStories.set(link.slotId,stories);
+  }
+  const linked=[...segments.values()].map(s=>({slotId:s.slotId,
+   kind:s.kind,sourceMatchSlotId:s.sourceMatchSlotId}));
   let editShade:HTMLElement|null=null;
+  let elapsedMinutes=0;
   for(const [i,slotId] of order.entries()){
    const m=matches.get(slotId);
    const segment=segments.get(slotId);
    const card=el("article","ppw-card "+(m?"ppw-match-card":"ppw-angle-card"));
    card.dataset.slot=String(i+1).padStart(2,"0");
    card.dataset.bookingSlotId=slotId;
+   const slotMinutes=m?.plannedLengthMinutes??segment?.durationMinutes??0;
+   const clock=el("div","ppw-booking-slot-clock");
+   const hours=Math.floor(elapsedMinutes/60);
+   const minutes=elapsedMinutes%60;
+   clock.append(el("span","",String(hours).padStart(2,"0")+":"+String(minutes).padStart(2,"0")),
+    el("small","",slotMinutes+" min"));
+   if(!inProgressWizards.has(slotId))elapsedMinutes+=slotMinutes;
    const bar=el("div","ppw-card-bar");
    const label=el("div","");
    if(m&&committedOrder.slice(committedOrder.indexOf(slotId)+1)
@@ -1229,7 +1376,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const headline=m?(m.stipulation&&m.stipulation!=="STANDARD"?
     MATCH_STIPULATIONS.find(s=>s.value===m.stipulation)?.label??"Match":
     FORMATS.find(f=>f.value===m.format)?.label??"Match"):angleName;
-   label.append(el("span","ppw-eyebrow","SLOT "+(i+1)+" · "+(m?"MATCH":"ANGLE")),
+   label.append(el("span","ppw-eyebrow",(m?"MATCH":"ANGLE")),
     el("strong","",headline),
     ...(m&&card.classList.contains("ppw-main-event")?[el("span","ppw-main-event-flag","MAIN EVENT")]:[]));
    const lineup=el("small","ppw-card-lineup");
@@ -1240,8 +1387,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     lineup.append(el("span","ppw-card-lineup-context",[
      segment?.scene?angleSceneLabel(segment.scene.location):"",
      segment?.scene?angleSceneLabel(segment.scene.purpose):"",
-     ...angleDetails.split(" · ").filter(Boolean),
-     segment?.durationMinutes+" min"
+     ...angleDetails.split(" · ").filter(Boolean)
     ].filter(Boolean).join(" · ")));
    }
    label.append(lineup);
@@ -1251,6 +1397,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     indicator.dataset.complete=String(status.complete);
     indicator.title=status.hint;
     label.append(indicator);
+   }
+   const slotPeople=m?[...assignedIds(m),...(m.interference?[m.interference.personId]:[])]:
+    segment?liveSegmentPersonIds(segment):[];
+   const unavailable=slotPeople.filter(personId=>inactiveCast.has(personId));
+   if(unavailable.length&&view.canEdit){
+    const names=unavailable.slice(0,2).map(personId=>roster.get(personId)?.name??personId);
+    label.append(el("small","ppw-booking-cast-warning","Unavailable · "+names.join(", ")+
+     (unavailable.length>2?" +"+(unavailable.length-2):"")));
    }
    if(m){
     const review=creativeForSlot(slotId,concerns,dirty);
@@ -1263,6 +1417,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     }
    }
    const toggleBooking=()=>{
+    if(unavailable.length)slotBookingSteps.set(slotId,"CAST");
     expanded=expanded===slotId?null:slotId;render();
     if(segment&&expanded===slotId&&specialOwned===null&&port.specialMoments)
      void loadSpecialMoments();
@@ -1280,13 +1435,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      event.preventDefault();toggleBooking();
     }
    };
-   bar.append(button(expanded===slotId?"▴":"▾",toggleBooking,
-    false,"ppw-expand"),label);
+   const expand=button(expanded===slotId?"▴":"▾",toggleBooking,false,"ppw-expand");
+   expand.setAttribute("aria-label","Open "+(m?"match":"angle")+" in slot "+(i+1));
+   bar.append(expand,label,clock);
    const arrows=el("div","ppw-actions");
    arrows.setAttribute("role","group");
    arrows.setAttribute("aria-label","Reorder "+(m?"match":"angle")+" in slot "+(i+1));
-   const linked=[...segments.values()].map(s=>({slotId:s.slotId,
-    kind:s.kind,sourceMatchSlotId:s.sourceMatchSlotId}));
    const up=moveLinkedRunningOrder(order,slotId,-1,linked);
    const down=moveLinkedRunningOrder(order,slotId,1,linked);
    const move=(next:string[]|null)=>()=>{
@@ -1389,7 +1543,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(segment?.kind==="POST_MATCH_ASSAULT"&&segment.sourceMatchSlotId&&
     order[i-1]===segment.sourceMatchSlotId)
     label.append(el("small","ppw-card-linked","Follows its match · moves together"));
-   bar.append(arrows);card.append(bar);
+   if(mutable()&&(up||down))bar.append(arrows);
+   card.append(bar);
    if(m&&m.teams.flat().some(Boolean)){
     const matchup=el("div","ppw-card-matchup");
     if(m.teams.length<=2)for(const [sideIndex,side] of m.teams.entries()){
@@ -1425,8 +1580,9 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       facts.append(el("span","","Title match · "+(title?.name??"Championship")));
      }
      if(m.tournamentId)facts.append(el("span","","Tournament bout"));
-      if(m.programmeId){
-       const story=view.programmes.find(p=>p.programmeId===m.programmeId);
+      const storyIds=m.programmeId?[m.programmeId]:savedStories.get(slotId)??[];
+      for(const storyId of storyIds){
+       const story=view.programmes.find(p=>p.programmeId===storyId);
        if(story)facts.append(el("span","","Storyline · "+story.label));
       }
     }
@@ -1436,10 +1592,6 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     }
     if(facts.childElementCount)card.append(facts);
    }
-   // Broadcast treatments belong to the results/presentation experience,
-   // not the working booking card.
-   // The movable card remains text-only. Portraits are reserved for the
-   // completed Ringside results presentation.
    if(segment&&expanded===slotId){
     const body=el("div","ppw-card-body");
     const readiness=angleCastingReadiness(segment);
@@ -1835,13 +1987,13 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      winnerPicker.append(createChoiceDialog("Choose winner",String(m.winnerSide),
       m.teams.map((side,index)=>({value:String(index),
        label:side.filter((p):p is PersonPick=>p!==null).map(selectedName).join(" & ")||
-        "Entrant "+(index+1)})),v=>setMatch(slotId,changeWinner(m,Number(v))),!mutable()));
+       "Entrant "+(index+1)})),v=>scriptWinner(m,Number(v)),!mutable()));
     }else for(const [sideIndex,side] of m.teams.entries()){
      const names=side.filter((p):p is PersonPick=>p!==null).map(selectedName);
      const label=names.join(" & ")||(m.format==="BATTLE_ROYAL"?
       "Entrant "+(sideIndex+1):"Side "+sideLabel(sideIndex));
-     const active=sideIndex===m.winnerSide;
-     const choice=button(label,()=>setMatch(slotId,changeWinner(m,sideIndex)),
+     const active=sideIndex===m.winnerSide&&(!quickSlots.has(slotId)||explicitlyScripted.has(slotId));
+     const choice=button(label,()=>scriptWinner(m,sideIndex),
       !mutable(),"ppw-winner-choice"+(active?" ppw-winner-selected":""));
      choice.setAttribute("aria-pressed",String(active));
      winnerPicker.append(choice);
@@ -2124,12 +2276,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      // the existing save, World revision, eligibility and consent pipeline.
      const readiness=m?matchCastingReadiness(m):angleCastingReadiness(segment!);
      const stage=slotBookingSteps.get(slotId)??(readiness.complete?"OUTCOME":"CAST");
+     const quick=Boolean(m&&quickSlots.has(slotId));
+     const hasWinner=!quick||explicitlyScripted.has(slotId);
      const castReadiness=stage==="CAST"&&!m?
       angleCastStageReadiness(segment!):readiness;
      const guide=el("section","ppw-guide-booking");
      guide.dataset.step=stage;
+     if(quick)guide.dataset.quick="true";
      const stepIndex=stage==="SETUP"?1:stage==="CAST"?2:stage==="OUTCOME"?3:4;
-     guide.append(el("span","ppw-eyebrow",
+     guide.append(el("span","ppw-eyebrow",quick?"QUICK SINGLES":
       "STEP "+stepIndex+" OF 4 · "+(stage==="SETUP"?"SETUP":
        stage==="CAST"?"CAST":stage==="OUTCOME"?"SCRIPT":"REVIEW")));
      const progress=el("div","ppw-guide-progress");
@@ -2142,7 +2297,19 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       const dot=el("span","ppw-guide-progress-dot");
       dot.dataset.done=String(n<=stepIndex);progress.append(dot);
      }
-     guide.append(progress);
+     if(!quick)guide.append(progress);
+     if(m&&inProgressWizards.has(slotId)&&(quick||m.format==="SINGLES")){
+      const mode=el("div","ppw-booking-mode-control");
+      mode.append(button(quick?"Advanced booking":"Quick singles",()=>{
+       if(quick){quickSlots.delete(slotId);slotBookingSteps.set(slotId,"SETUP");}
+       else{
+        quickSlots.add(slotId);
+        slotBookingSteps.set(slotId,readiness.complete?"OUTCOME":"CAST");
+       }
+       resetGuideScroll=true;render();
+      },false,"ppw-booking-mode-switch"));
+      guide.append(mode);
+     }
      if(error||success){
       const response=el("p","ppw-guide-consent-response"+(error?" ppw-error":""),
        error||success);
@@ -2215,6 +2382,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
            !window.confirm("Changing match size will clear your selected wrestlers. Continue?"))
            return;
           matches.set(slotId,newEditorMatch(slotId,option.value));
+          explicitlyScripted.delete(slotId);
           formatChoice=option.value;markDirty();resetGuideScroll=true;render();
          },!mutable(),"ppw-guide-format-tile");
          tile.setAttribute("aria-pressed",String(selected));
@@ -2425,6 +2593,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        const hint=el("p","ppw-booking-hint",castReadiness.hint);
        guide.append(hint,...cast);
        guide.append(button("← Match or scene type",()=>{
+        quickSlots.delete(slotId);
         slotBookingSteps.set(slotId,"SETUP");resetGuideScroll=true;render();
        },false,"ppw-guide-back"));
        guide.append(button("Next · Script outcome",()=>{
@@ -2461,7 +2630,15 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
         }
         direction.append(choices);
         const finish=essentials.querySelector<HTMLSelectElement>('select[aria-label="Finish"]');
-        if(finish){
+        if(finish&&quick){
+         const choice=createChoiceDialog("Finish",m.plannedFinish,
+          [...finish.options].map(option=>({value:option.value,label:option.textContent??option.value})),
+          value=>{
+           finish.value=value;
+           finish.dispatchEvent(new Event("change",{bubbles:true}));
+          },!mutable());
+         finish.closest(".ppw-field")?.replaceWith(choice);
+        }else if(finish){
          const parent=finish.closest(".ppw-field");
          const panel=el("section","ppw-guide-finish");
          panel.append(el("strong","ppw-guide-section-label","Finish"));
@@ -2476,7 +2653,28 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          }
          panel.append(grid);parent?.replaceWith(panel);
         }
-        guide.append(essentials,direction);
+        guide.append(essentials);
+        if(quick){
+         const notes=slotNotes(slotId);
+         const warning=notes.find(note=>note.level==="WATCH");
+         const forecast=forecastBookingAirtime(slotId,m,committedMatches,committedSegments,view.bookingClass);
+         const fees=forecastIncrementalAppearanceFees(
+          [...assignedIds(m),...(m.interference?[m.interference.personId]:[])],
+          [...committedMatches.filter(match=>match.slotId!==slotId).flatMap(match=>[
+           ...assignedIds(match),...(match.interference?[match.interference.personId]:[])]),
+           ...committedSegments.flatMap(liveSegmentPersonIds)],roster);
+         const summary=el("div","ppw-booking-quick-summary");
+         summary.append(el("span","",forecast.total+" min on the run sheet"+
+          (forecast.overBy?" · "+forecast.overBy+" min over the limit":"")),
+          el("span","","Additional talent fees · $"+Math.round(fees.amount).toLocaleString("en-GB")+
+           (fees.complete?" estimated":" + unknown")));
+         if(warning)summary.append(el("strong","",warning.title));
+         if(hasWinner)for(const term of previewMatchCreativeTerms(m,roster))
+          summary.append(el("span","",term.message));
+         guide.append(summary);
+         extraContent.prepend(direction);
+         if(!extra.contains(extraContent))extra.append(extraContent);
+        }else guide.append(direction);
        }else{
         // The original angle fields and server-validated callbacks are
         // preserved, but no longer appear as one undifferentiated form.
@@ -2571,7 +2769,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          "The default winner is not a creative recommendation. Choose who wins."));
        if(m){
         const runIn=extraContent.querySelector<HTMLElement>(".ppw-run-in");
-        if(runIn)guide.append(runIn);
+        if(runIn&&!quick)guide.append(runIn);
         if(extra.childElementCount>1){
          const open=openQuickExtras.has(slotId);
          const control=button(open?"Hide detailed match direction":"Fine-tune match",
@@ -2606,10 +2804,12 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
          kind:segment.kind,actorIds:segment.actors.map(p=>p.personId),
          targetIds:segment.targets.map(p=>p.personId),
          targetPresence:segment.targetPresence});
-       actions.append(button("Next · Staff briefing",()=>{
+       actions.append(button(quick?"Review staff advice":"Next · Staff briefing",()=>{
         slotBookingSteps.set(slotId,"REVIEW");resetGuideScroll=true;render();
-       },!mutable()||!readiness.complete||!sequenceReady,
-       "ppw-primary ppw-booking-done"));
+       },!mutable()||!readiness.complete||!sequenceReady||!hasWinner,
+       quick?"ppw-guide-back":"ppw-primary ppw-booking-done"));
+       if(quick)actions.append(button("Add match to card",()=>endWizard(slotId),
+        !mutable()||!readiness.complete||!hasWinner,"ppw-primary ppw-booking-done"));
        guide.append(actions);
       }else{
        const brief=el("section","ppw-guide-staff-review");
@@ -2865,7 +3065,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        },false,"ppw-guide-back"));
        actions.append(button(m?"Complete match":"Complete angle",()=>{
         endWizard(slotId);
-       },!mutable()||!readiness.complete,"ppw-primary ppw-booking-done"));
+       },!mutable()||!readiness.complete||!hasWinner,"ppw-primary ppw-booking-done"));
        guide.append(actions);
       }
       if(remove)guide.append(remove);
@@ -2891,16 +3091,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
        if(picker)return;
        event.preventDefault();closeWizard(slotId);return;
       }
-      if(event.key!=="Tab")return;
-      const focusable=[...sheet.querySelectorAll<HTMLElement>(
-       "button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary")];
-      if(!focusable.length)return;
-      const first=focusable[0]!,last=focusable[focusable.length-1]!;
-      if(event.shiftKey&&document.activeElement===first){
-       event.preventDefault();last.focus();
-      }else if(!event.shiftKey&&document.activeElement===last){
-       event.preventDefault();first.focus();
-      }
+      containDialogFocus(sheet,event);
      };
      shade.append(sheet);
      shade.onclick=event=>{
@@ -2913,7 +3104,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    // order until Complete is pressed. Modal remains mounted independently.
    if(!inProgressWizards.has(slotId))list.append(card);
   }
-  root.append(list);
+  root.append(runSheet,list);
   const foot=el("div","ppw-save");
   foot.setAttribute("role","group");
   foot.setAttribute("aria-label","Save and confirm show");
@@ -2945,7 +3136,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    (root.isConnected?document.body:root).append(editShade);
    if(priorModal){
     const scroll=editShade.querySelector<HTMLElement>(".ppw-card-edit-sheet");
-    if(scroll)scroll.scrollTop=previousScroll;
+    if(scroll){
+     scroll.scrollTop=previousScroll;
+     if(!picker)restoreFocus(scroll,previousEditorFocus,
+      scroll.querySelector<HTMLElement>(".ppw-card-edit-close"));
+    }
    }else editShade.querySelector<HTMLButtonElement>(".ppw-card-edit-close")?.focus();
   }
   if(picker){
@@ -2955,10 +3150,26 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const sheet=el("div","ppw-sheet");
    sheet.setAttribute("role","dialog");sheet.setAttribute("aria-modal","true");
    sheet.setAttribute("aria-label","Choose wrestler");
+   const quickPicker=quickSlots.has(current.slotId)&&!current.role;
+   sheet.classList.toggle("ppw-quick-talent-sheet",quickPicker);
+   sheet.dataset.castingPosition=(current.role??"CAST")+":"+current.side+":"+current.member;
    const heading=el("div","ppw-sheet-head");
-   heading.append(el("h2","",current.role==="RUN_IN"?"Choose a run-in wrestler":"Choose wrestler"),
-    button("×",()=>{picker=null;render();}));
+   const title=el("h2","",current.role==="RUN_IN"?"Choose a run-in wrestler":
+    quickPicker?current.side===0?"Choose the first wrestler":"Choose their opponent":"Choose wrestler");
+   title.tabIndex=-1;
+   const close=button("×",()=>{picker=null;render();});
+   close.setAttribute("aria-label","Close wrestler picker");
+   heading.append(title,close);
    sheet.append(heading);
+   sheet.onkeydown=event=>{
+    if(event.target instanceof Element&&event.target.closest(".ppw-profile-overlay"))return;
+    if(event.key==="Escape"){event.preventDefault();picker=null;render();return;}
+    containDialogFocus(sheet,event);
+   };
+   const pickerFilters=el("details","ppw-booking-picker-filters") as HTMLDetailsElement;
+   pickerFilters.open=Boolean(current.showFilters);
+   pickerFilters.ontoggle=()=>{if(pickerFilters.isConnected)current.showFilters=pickerFilters.open;};
+   pickerFilters.append(el("summary","","Roster filters and groups"));
    const focusedStory=(current.role==="actors"||current.role==="targets")?
     view?.programmes.find(x=>x.programmeId===segments.get(current.slotId)?.programmeId):null;
    if(focusedStory?.programmeFormat==="SOLO"&&current.role==="targets")
@@ -3065,7 +3276,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      },false,"ppw-picker-source-tab");
      tab.setAttribute("aria-pressed",String(source===key));sources.append(tab);
     }
-    sheet.append(sources);
+    const sourceTarget=quickPicker?pickerFilters:sheet;
+    sourceTarget.append(sources);
     if(source==="FEUDS"){
      const groups=el("div","ppw-picker-unit-list");
      for(const feud of view?.programmes??[]){
@@ -3079,7 +3291,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
      if(!groups.childElementCount)groups.append(el("p","ppw-muted",
       "No active feuds have a bookable cast on this show."));
-     sheet.append(groups);
+     sourceTarget.append(groups);
     }
     if(source==="TEAMS"||source==="TRIOS"){
      const groups=el("div","ppw-picker-unit-list");
@@ -3107,7 +3319,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      }
      if(!groups.childElementCount)groups.append(el("p","ppw-muted",
       "No established, eligible groups are available for this show."));
-     sheet.append(groups);
+     sourceTarget.append(groups);
     }
     if(source==="FACTIONS"){
      const groups=el("div","ppw-picker-unit-list");
@@ -3121,13 +3333,17 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       item.setAttribute("aria-pressed",String(current.sourceId===unit.stableId));
       groups.append(item);
      }
-     sheet.append(groups);
+     sourceTarget.append(groups);
     }
    }
    const form=document.createElement("form");form.className="ppw-search";
    const search=document.createElement("input");
    search.type="search";search.placeholder="Search your roster";
-   search.value=current.query;search.setAttribute("aria-label","Search wrestlers");
+   // Keep draft text when the initial roster response redraws this sheet.
+   // Pagination still uses the query that produced the loaded results.
+   search.value=current.searchDraft??current.query;
+   search.setAttribute("aria-label","Search wrestlers");
+   search.oninput=()=>{current.searchDraft=search.value;};
    form.append(search);
    const submit=document.createElement("button");submit.type="submit";
    submit.textContent="Search";form.append(submit);
@@ -3180,13 +3396,16 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
       currentDivision===key:flags.has(key)));chips.append(chip);
     }
    }
-   sheet.append(createTalentFilterFrame(form,tools,chips));
+   const filterFrame=createTalentFilterFrame(form,tools,chips);
+   if(quickPicker){pickerFilters.append(tools,chips);filterFrame.append(pickerFilters);}
+   sheet.append(filterFrame);
 
    const matchForPicker=matches.get(current.slotId);
    const chosen=current.role==="RUN_IN"?null:
     matchForPicker?.teams[current.side]?.[current.member]??null;
    if(chosen)sheet.append(button("Clear position",()=>{
     const item=matches.get(current.slotId)!;
+    explicitlyScripted.delete(current.slotId);
     setMatch(current.slotId,assignPerformer(item,current.side,current.member,null));
     picker=null;render();
    }));
@@ -3209,6 +3428,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     source==="FACTIONS"?(selectedFaction?.members??stableChoices?.flatMap(x=>x.members??[])??[])
      .map(p=>p.personId):[]);
    const flags=current.chipsBySide?.get(current.side)??new Set<string>();
+   const contextualReasons=new Map(current.items.map(candidate=>[candidate.personId,
+    matchForPicker&&!current.role?wrongBookingDivision(candidate,matchForPicker,current.side,current.member):null]));
    const sorted=current.items
     .filter(p=>(!focusedStory||current.showOther||
      focusedStory.cast?.some(member=>member.personId===p.personId))&&
@@ -3223,7 +3444,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      (!flags.has("DATES")||(p.remainingDates??1)>0))
     .sort((a,b)=>{
      const unavailable=(p:TalentPage["talent"][number])=>
-      Number(!p.available||takenIds.has(p.personId)&&
+      Number(!p.available||Boolean(contextualReasons.get(p.personId))||takenIds.has(p.personId)&&
        chosen?.personId!==p.personId);
      if(unavailable(a)!==unavailable(b))return unavailable(a)-unavailable(b);
      const measure=(p:TalentPage["talent"][number])=>
@@ -3254,13 +3475,14 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    for(const candidate of sorted){
     const taken=takenIds.has(candidate.personId)&&
      chosen?.personId!==candidate.personId;
+    const contextReason=contextualReasons.get(candidate.personId);
     const label=candidate.reason==="INJURED"?
      candidate.medicalWeeksRemaining==null?"Injured · clearance date unavailable":
       "Injured · "+candidate.medicalWeeksRemaining+
        (candidate.medicalWeeksRemaining===1?" week":" weeks")+" to clearance":
      candidate.available?
-      (candidate.remainingDates===null?"Unlimited dates":
-       candidate.remainingDates+" dates remaining"):
+      contextReason??(candidate.remainingDates===null?"Unlimited dates":
+       candidate.remainingDates===undefined?"Signed agreement":candidate.remainingDates+" dates remaining"):
       unavailableLabels[candidate.reason]??nice(candidate.reason);
     const entry=el("div","ppw-picker-wrestler");
     entry.append(createWrestlerCard({...candidate,name:candidate.name??candidate.personId,
@@ -3268,7 +3490,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
      context:"BOOKING",compact:true,showPortrait:false,label:taken?
       (current.role==="actors"||current.role==="targets"?"ALREADY IN SCENE":
        current.role==="RUN_IN"?"IN THIS MATCH":"ALREADY BOOKED"):label,
-     disabled:!candidate.available||taken,onSelect:()=>chooseTalent(candidate)}));
+     disabled:!candidate.available||taken||Boolean(contextReason),onSelect:()=>chooseTalent(candidate)}));
     const otherShows=otherWorkloads.get(candidate.personId);
     if(otherShows?.size)entry.append(el("small","ppw-picker-other-show",
      "Also on this week’s card · "+[...otherShows].join(", ")));
@@ -3306,6 +3528,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    shade.append(sheet);
    activePickerShade=shade;
    (root.isConnected?document.body:root).append(shade);
+   restoreFocus(sheet,previousPickerRole===sheet.dataset.castingPosition?previousPickerFocus:null,title);
   }
  }
  function cardIdentity(pick:PersonPick):HTMLElement{

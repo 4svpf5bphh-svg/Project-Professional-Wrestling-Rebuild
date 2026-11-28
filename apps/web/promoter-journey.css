@@ -1,0 +1,89 @@
+.ppw-first-show {
+  position: relative;
+  max-width: 980px;
+  margin: 12px auto 0;
+  width: calc(100% - 24px);
+  padding: 12px 54px 12px 14px;
+  border: 1px solid #556178;
+  border-left: 3px solid #ffc785;
+  border-radius: 8px;
+  background: #171d2b;
+  color: #f8f0e3;
+}
+
+.ppw-first-show h2 { margin: 0; font-size: 1rem; }
+.ppw-first-show p {
+  margin: 4px 0;
+  max-width: 62ch;
+  color: #d5dceb;
+  font-size: .875rem;
+  line-height: 1.4;
+}
+
+.ppw-first-show button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  color: #ffd4aa;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ppw-first-show button:focus-visible { outline: 2px solid #90d6ff; }
+.ppw-first-show .ppw-first-show-dismiss {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 44px;
+  font-size: 1.35rem;
+}
+
+.ppw-first-show .ppw-first-show-action {
+  padding-inline: 8px;
+  margin-left: -8px;
+  text-decoration: underline;
+  text-underline-offset: .19em;
+  font-size: .875rem;
+  font-weight: 750;
+}
+
+#game .ppw-showtime {
+  max-width: 820px;
+  color: #fbf3e7;
+}
+
+#game .ppw-showtime h1 { font-size: clamp(1.75rem, 7vw, 2.7rem); }
+#game .ppw-showtime .ppw-admin-panel {
+  border-top: 3px solid #ffc785;
+  border-radius: 10px;
+  background: #181e2c;
+}
+#game .ppw-showtime .ppw-admin-world-data {
+  border-color: #53617b;
+  background: #101522;
+  color: #f1f3f7;
+}
+
+.ppw-showtime-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-block: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.ppw-showtime-facts li {
+  border-left: 2px solid #7a8ba7;
+  padding: 3px 8px;
+  color: #ecf1fc;
+  font-size: .875rem;
+}
+
+.ppw-showtime-follow-up {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}

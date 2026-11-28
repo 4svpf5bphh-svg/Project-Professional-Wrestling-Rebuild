@@ -22,3 +22,26 @@
 .ppw-archive-back:focus-visible{outline:3px solid #7ce9d0;outline-offset:2px}
 @media(max-width:520px){.ppw-archive-list{grid-template-columns:1fr}
  .ppw-archive-show{min-height:130px}}
+
+#game .ppw-results-archive .ppw-archive-hero {
+ padding:12px 0;border:0;border-radius:0;background:none;
+ border-bottom:2px solid var(--ppw-gold,#f4cf82);
+}
+#game .ppw-results-archive .ppw-archive-hero h1 {
+ font-style:normal;font-size:clamp(25px,6.8vw,36px);letter-spacing:-.045em;
+}
+#game .ppw-results-archive .ppw-archive-list {grid-template-columns:1fr;gap:0}
+#game .ppw-results-archive .ppw-archive-show {
+ grid-template-columns:clamp(48px,17vw,116px) minmax(0,1fr) auto;
+ align-items:center;column-gap:12px;min-height:92px;padding:10px 0;
+ border:0;border-bottom:1px solid var(--ppw-outline,#365062);border-radius:0;
+ background:none;box-shadow:none;
+}
+#game .ppw-results-archive .ppw-archive-show:hover {background:#ffffff0b}
+.ppw-archive-art {width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:4px}
+.ppw-archive-info {min-width:0;display:grid;gap:3px;overflow-wrap:anywhere}
+.ppw-archive-show-name {font-size:clamp(14px,4vw,19px);line-height:1.15}
+#game .ppw-results-archive .ppw-archive-week {color:var(--ppw-secondary,#bdcddb);letter-spacing:.07em}
+#game .ppw-results-archive [data-premium] .ppw-archive-week {color:var(--ppw-gold,#f4cf82)}
+#game .ppw-results-archive .ppw-archive-score {font-size:clamp(13px,3.6vw,20px)}
+#game .ppw-results-archive .ppw-archive-open {padding:0;background:none;color:var(--ppw-cyan,#77dcf0)}

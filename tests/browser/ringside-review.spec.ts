@@ -107,7 +107,7 @@ for(const skin of [null,"TERRITORY_TV","FIGHT_NIGHT","UNDERGROUND_ZINE","RETRO_B
      expect.soft(await textContrast(editorialStatus),"article loading label").toBeGreaterThanOrEqual(4.5);
      const nav=report.getByRole("navigation",{name:"Show report sections"});
      const full=nav.getByRole("button",{name:"Full show",exact:true});
-     const after=nav.getByRole("button",{name:"Post-show brief",exact:true});
+     const after=nav.getByRole("button",{name:"After the Bell",exact:true});
      await expect(full).toHaveAttribute("aria-pressed","true");
      await expect(after).toHaveAttribute("aria-pressed","false");
      const light=await full.evaluate(el=>getComputedStyle(el).backgroundColor);
@@ -374,7 +374,7 @@ for(const width of [320,390]){
  });
 }
 
-test("premium PPV press follows exit, advances after answering and preserves replay",async({page})=>{
+test("premium PPV press opens on demand, saves one answer and replays without another write",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  let reads=0,answers=0,dismissals=0,stored:number|null=null,dismissed=false;
  const ppv={...show,bookingClass:"PREMIUM",showName:"Starlight PPV"};
@@ -412,19 +412,23 @@ test("premium PPV press follows exit, advances after answering and preserves rep
  await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
  expect(reads).toBe(0);
  await page.getByRole("button",{name:"← Back"}).click();
+ await expect(page.getByRole("heading",{name:"Meet the Press"})).toHaveCount(0);
+ expect(reads).toBe(0);
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).click();
+ await page.getByRole("button",{name:"Read Post-show Brief"}).click();
+ await page.getByRole("button",{name:"Revisit press conference"}).click();
  await expect(page.getByRole("heading",{name:"Meet the Press"})).toBeVisible();
  await expect(page.getByText("What did you make of the main event?")).toBeVisible();
  await page.getByRole("button",{name:"There will be conversations backstage."}).click();
- await expect(page.getByRole("button",{name:/Read ringside report/})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"AFTER THE BELL"})).toBeVisible();
  expect(reads).toBe(1);expect(answers).toBe(1);expect(dismissals).toBe(1);
- await page.getByRole("button",{name:/Read ringside report/}).click();
- await page.getByRole("button",{name:"Read Post-show Brief"}).click();
  await page.getByRole("button",{name:"Revisit press conference"}).click();
  await expect(page.locator(".ppw-press-quote")).toContainText(
   "There will be conversations backstage.");
  await page.getByRole("button",{name:"Finish"}).click();
  await expect(page.getByRole("heading",{name:"AFTER THE BELL"})).toBeVisible();
- expect(reads).toBe(2);expect(answers).toBe(1);expect(dismissals).toBe(2);
+ expect(reads).toBe(2);expect(answers).toBe(1);expect(dismissals).toBe(1);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -773,10 +777,48 @@ test("renamed PPV preserves its poster choice and the equipped Results skin",asy
  await expect(page.locator(".ppw-results-page[data-page=full]")).toBeVisible();
  expect(await page.evaluate(()=>getComputedStyle(document.body).backgroundColor))
   .toBe("rgb(36, 39, 44)");
- await page.getByRole("button",{name:"Post-show brief",exact:true}).first().click();
+ await page.getByRole("button",{name:"After the Bell",exact:true}).click();
  await expect(page.locator(".ppw-results-page[data-page=after]")).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
+});
+
+test("430px Ringside makes event motion optional and keeps the title result and press actions accessible",async({page})=>{
+ await page.setViewportSize({width:430,height:844});
+ const championship={name:"World Title",division:"SINGLES",championshipId:"world",
+  winnerName:"Kenny Omega",priorHolderName:"Samoa Joe",changed:true};
+ const result={...show,bookingClass:"PREMIUM",showName:"The Lottery",eventPosterStyle:"INFERNO",
+  promotionName:"AEW",entries:[{...show.entries[0],fallout:{...show.entries[0]!.fallout,title:championship}},show.entries[1]]};
+ const calls:string[]=[];
+ await page.route("**/api/session",r=>r.fulfill({json:session}));
+ await page.route("**/api/card",r=>{
+  const method=r.request().postDataJSON().method;
+  calls.push(method);
+  return r.fulfill({json:method==="resultsArchive"?
+   {items:[{...result,entries:undefined}],nextCursor:null}:result});
+ });
+ await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
+ await page.goto("/#/results");
+ await page.getByRole("button",{name:/Read ringside report/}).tap();
+ const opening=page.locator(".ppw-ringside-opening");
+ const title=page.locator(".ppw-ringside-title-change");
+ await expect(title).toContainText("Kenny Omega captures World Title from Samoa Joe");
+ await expect(title.locator("img")).toHaveAttribute("src","/belts/aew-world.svg");
+ await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
+ await expect(opening).not.toHaveAttribute("data-playing");
+ const play=opening.getByRole("button",{name:"Play show opening"});
+ await play.focus();await page.keyboard.press("Enter");
+ await expect(opening).toHaveAttribute("data-playing","true");
+ await page.keyboard.press("Enter");
+ await expect(opening).not.toHaveAttribute("data-playing");
+ await page.emulateMedia({reducedMotion:"reduce"});
+ await expect(play).toBeHidden();
+ await expect(page.getByRole("heading",{name:"THE FULL SHOW"})).toBeVisible();
+ await page.getByRole("button",{name:"After the Bell",exact:true}).tap();
+ await expect(page.getByRole("heading",{name:"AFTER THE BELL"})).toBeFocused();
+ await expect(page.getByRole("button",{name:"View championships"})).toBeVisible();
+ expect(calls).toEqual(["resultsArchive","results"]);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
 
 test("post-show evidence links reopen the certified match, without a second results read",async({page})=>{

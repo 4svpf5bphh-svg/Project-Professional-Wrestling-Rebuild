@@ -1,3 +1,4 @@
+import {publishedShowSql} from "./published-show-sql.js";
 /** Post-resolution only. The show and controller are authenticated before a
  * claim; no AI request is ever permitted in the World Lock transaction.
  */
@@ -807,14 +808,14 @@ export async function generateGroqReview(show:CompletedShowView,key:string,
 }
 export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  key:string|undefined,transport:typeof fetch=fetch,
- provider:"GROQ"|"OPENAI"="GROQ",mode:"VIEWER"|"UPDATE"="VIEWER",
+ provider:"GROQ"|"OPENAI"="GROQ",mode:"VIEWER"|"UPDATE"|"ADMIN_RETRY"="VIEWER",
  updateToken?:string):Promise<RingsideResponse>{
  // Single indexed read enforces active human control and retrieves cached
  // editorial. Reopening an already reviewed show requires no five-query slot
  // expansion, roster fetch, model call, or polling.
  const current=await withSqlClient(pool,async db=>db.query<CacheRow>(`
   SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts,r.claim_until,j.state AS update_state,
-   ((c.year,c.week)>=(w.year,w.week) AND w.phase<>'OPEN') AS locked_current
+   NOT (${publishedShowSql("c","w")}) AS locked_current
   FROM ppw_completed_shows c
   JOIN ppw_worlds w ON w.world_id=c.world_id
   LEFT JOIN ppw_world_update_jobs j ON j.world_id=c.world_id AND j.year=c.year AND j.week=c.week AND j.show_id=c.show_id
@@ -843,24 +844,27 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
    RINGSIDE_PROMPT_VERSION,RINGSIDE_PREVIOUS_VERSION,RINGSIDE_OLDER_VERSION,RINGSIDE_LEGACY_VERSION]));
  if(!current.length)throw new Error("Completed show unavailable to this controller");
  const saved=current[0];
+ if(mode!=="UPDATE"&&saved?.locked_current)return {status:"pending"};
  if(saved?.state==="READY"){
   // A database cache entry remains untrusted; validate its bounded shape
   // without loading five extra tables on every reviewed show reopen.
   try{return {status:"ready",review:validateCachedRingsideCopy(saved.report_json)};}
   catch{return {status:"unavailable"};}
  }
- if(mode==="VIEWER"&&saved?.locked_current)return {status:"pending"};
  if(mode==="VIEWER"&&saved?.update_state)return {status:["WAITING","PROCESSING"].includes(saved.update_state)?"pending":"unavailable"};
+ if(mode==="ADMIN_RETRY"&&saved?.update_state&&["WAITING","PROCESSING"].includes(saved.update_state))
+  return {status:"pending"};
  if(!key)return {status:"unavailable"};
  if(saved?.state==="PENDING"&&saved.claim_until&&
     new Date(saved.claim_until).getTime()>Date.now())
   return {status:"pending"};
+ if(mode==="VIEWER")return {status:"unavailable"};
  // A paid attempt (including an expired/ambiguous lease) is never retried
  // automatically, even if the operator rolls the provider back to Groq.
  if(saved?.attempts>=2||saved?.model===OPENAI_PREVIEW_MODEL)
   return {status:"unavailable"};
  const settings=await readAdminRingsideSettings(pool,scope.worldId);
- const show=await readCompletedShowView(pool,scope);
+ const show=await readCompletedShowView(pool,scope,mode!=="UPDATE");
  const digest=immutableResultDigest(show),params=scoped(scope);
  if(show.entries.length>30||JSON.stringify(ringsideFacts(show)).length>26000)
   return {status:"unavailable"};

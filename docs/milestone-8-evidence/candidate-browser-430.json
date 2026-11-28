@@ -1,0 +1,76 @@
+{
+  "baseline": false,
+  "viewport": {
+    "width": 430,
+    "height": 844
+  },
+  "cold": {
+    "navigationMs": 3354,
+    "resources": [
+      {
+        "name": "/assets/index-BdsbojVx.js",
+        "encodedBytes": 352291,
+        "transferBytes": 352591
+      },
+      {
+        "name": "/assets/index-D9kt4DkP.css",
+        "encodedBytes": 121458,
+        "transferBytes": 121758
+      }
+    ]
+  },
+  "warm": {
+    "navigationMs": 2162,
+    "resources": [
+      {
+        "name": "/assets/index-BdsbojVx.js",
+        "encodedBytes": 352291,
+        "transferBytes": 0
+      },
+      {
+        "name": "/assets/index-D9kt4DkP.css",
+        "encodedBytes": 121458,
+        "transferBytes": 0
+      }
+    ]
+  },
+  "home": [
+    {
+      "path": "/api/session",
+      "status": 200,
+      "bytes": 2067,
+      "sqlStatements": 3,
+      "sqlResultRows": 3,
+      "sqlChangedRows": 0,
+      "sqlResultBytes": 2261,
+      "milliseconds": 1114.61
+    }
+  ],
+  "openingCard": [
+    {
+      "path": "/api/card",
+      "status": 200,
+      "bytes": 1602,
+      "sqlStatements": 6,
+      "sqlResultRows": 3,
+      "sqlChangedRows": 0,
+      "sqlResultBytes": 1451,
+      "milliseconds": 407.67
+    }
+  ],
+  "interactions": 8,
+  "preparationMs": 8307,
+  "continuity": {
+    "week": 5,
+    "seals": 4,
+    "show_weeks": [
+      1,
+      2,
+      2,
+      4
+    ],
+    "holder": "samoa-joe",
+    "defences": 2
+  },
+  "providerRequests": 0
+}

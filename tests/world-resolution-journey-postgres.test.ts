@@ -296,6 +296,8 @@ test("a recorded regular card resumes into a linked triple-threat PPV, then queu
    "SELECT show_id,receipt_digest FROM ppw_completed_shows WHERE world_id=$1",[worldId]);
   assert.equal(before.length,1);
   assert.equal(before[0]!.show_id,showIds[0]);
+  await assert.rejects(readCompletedShowView(db.pool,{worldId,playerId,
+   promotionId:promotions[0]!,showId:showIds[0]!},true),/Completed show unavailable/);
   const stages=await driveWorldResolution(db.pool,{worldId,resolutionId,maxStages:12,manualRecovery:true,deferEditorial:true});
   assert.equal(stages.status,"PUBLISHED");
   assert.deepEqual(stages.steps.map(s=>s.action),[
@@ -413,7 +415,10 @@ test("a recorded regular card resumes into a linked triple-threat PPV, then queu
   assert.deepEqual(archive.items.map(x=>x.showName).sort(),
    ["Monday Night Raw","Royal Rumble"]);
   const ppvView=await readCompletedShowView(db.pool,{worldId,playerId,
-   promotionId:promotions[0]!,showId:showIds[1]!});
+   promotionId:promotions[0]!,showId:showIds[1]!},true);
+  assert.deepEqual(ppvView.weekShows?.map(x=>[x.showName,x.bookingClass]),[
+   ["Monday Night Raw","REGULAR"],["Royal Rumble","PREMIUM"],
+  ]);
   assert.equal(ppvView.showName,"Royal Rumble");
   assert.equal(ppvView.bookingClass,"PREMIUM");
   const story=await read<{match_count:number;side_a_wins:number;side_b_wins:number;draws:number}>(

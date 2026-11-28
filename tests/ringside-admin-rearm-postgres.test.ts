@@ -36,7 +36,7 @@ test("Admin can retry exhausted "+model+" Ringside once without rewriting comple
   await assert.rejects(rearmFailedRingsideReport(db.pool,world,"intruder",show),
    /not one of your completed shows/);
   assert.deepEqual(await rearmFailedRingsideReport(db.pool,world,player,show),
-   {status:"ARMED",showId:show});
+   {status:"ARMED",showId:show,promotionId:promo});
   const rows=await withWorldTransaction(db.pool,tx=>tx.query<{n:string;revision:string}>(`
    SELECT (SELECT count(*)::text FROM ppw_ringside_reports WHERE world_id=$1) n,
     (SELECT receipt_digest FROM ppw_completed_shows WHERE world_id=$1 AND show_id=$2) revision`,

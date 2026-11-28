@@ -110,9 +110,9 @@ for(const width of [320,390]){
   await expect(page.getByRole("button",{name:/BOOKING OPEN/})).toBeVisible();
   await expect(page.locator(".ppw-home-show-spotlight .ppw-tv-frame"))
    .toHaveAttribute("data-broadcast-package","luchafiesta");
-  await page.getByRole("button",{name:"Open Plan menu"}).click();
-  const drawer=page.getByRole("navigation",{name:"Promotion navigation"});
-  await drawer.getByRole("button",{name:/Calendar/}).click();
+  await page.getByRole("button",{name:"More",exact:true}).click();
+  const drawer=page.getByRole("dialog",{name:"More"});
+  await drawer.getByRole("link",{name:/Calendar/}).click();
   await expect(page).toHaveURL(/#\/calendar$/);
 
   // Phase 60: one combined real week, a contract-locked slot and protected PPV.

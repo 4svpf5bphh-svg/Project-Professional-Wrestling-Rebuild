@@ -96,7 +96,10 @@ for(const width of [320,390]){
   await expect(page.getByRole("heading",{name:"Notifications"})).toBeVisible();
   const notificationHead=page.locator(".ppw-home-brief-title");
   const count=notificationHead.locator(".ppw-home-notification-count");
-  await expect(count).toHaveText("1 TO REVIEW");
+  await expect(count).toHaveText("ALL CLEAR");
+  const decisions=page.getByRole("region",{name:"At your desk"});
+  await expect(decisions.getByRole("button",{name:"Review Jay Lethal's contract"})).toBeVisible();
+  await expect(page.locator(".ppw-home-brief")).not.toContainText("Jay Lethal");
   if(width===320){
    const metrics=await notificationHead.evaluate(header=>{
     const title=header.querySelector("h3")!.getBoundingClientRect();

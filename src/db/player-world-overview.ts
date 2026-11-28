@@ -1,3 +1,4 @@
+import {publishedShowSql} from "./published-show-sql.js";
 import {staffPressureSql,staffPressureEvidenceSql} from "./staff-pressure-sql.js";
 import {creativeAdviceSourcesSql,creativeAdviceEvidenceSql} from "./creative-staff-advice.js";
 import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
@@ -11,6 +12,8 @@ import {promoterAchievementCountersSql} from "./promoter-achievement-sql.js";
 import {promotionCompetitionProjectionSql,type PromotionCompetitionCard}
  from "./promotion-competition.js";
 import type {ShowAudienceReceipt} from "../domain/show-audience.js";
+import {promoterOfficeSql,type OfficeMedicalHold,type OfficeProgramme,type OfficePromise}
+ from "./promoter-office-sql.js";
 
 export interface HomeCompletedShow{
  showId:string;year:number;week:number;showName:string;crowdResponse:number;
@@ -21,6 +24,7 @@ export interface HomeUpcomingShow{
  showId:string;year:number;week:number;showName:string;ready:boolean;status:string;
  bookingClass:"REGULAR"|"PREMIUM";showDay:number|null;hasVenue:boolean;
  broadcastFormat?:ShowAudienceReceipt["format"];
+ posterStyle?:string;
 }
 export interface PlayerWorldOverview {
  world:{id:string;name:string;year:number;week:number;day:number;
@@ -42,6 +46,9 @@ export interface PlayerWorldOverview {
   attention:{
    unpreparedShow:boolean;pendingBackstage:boolean;expiringTalent:boolean;
    backstageUnreadCount?:number;
+   medicalHold?:OfficeMedicalHold;
+   programme?:OfficeProgramme;
+   promise?:OfficePromise;
    pendingContractOffers:boolean;plannedShows:number;
    backstageRequests?:{personId:string;name:string;kind:string}[];
    offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED";renewal?:boolean;startWeekIndex?:number|null;counteroffer?:boolean}[];
@@ -100,6 +107,7 @@ export async function readPlayerWorldOverview(
    medical_clearances:unknown;world_stories:unknown;
    kp_claim_available:boolean|null;unseen_legends:number|null;
    standing:unknown;upcoming_shows:HomeUpcomingShow[]|null;latest_shows:unknown;flagship_name:string|null;
+   office:{medical?:OfficeMedicalHold;programme?:OfficeProgramme;promise?:OfficePromise}|null;
    cp:PromotionCompetitionCard|null;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
@@ -122,6 +130,8 @@ export async function readPlayerWorldOverview(
     notices.injury_news,notices.medical_clearances,
     public_news.world_stories,kp.kp_claim_available,legends.unseen_legends,
     dashboard.standing,dashboard.upcoming_shows,dashboard.latest_shows,dashboard.flagship_name,
+    (SELECT jsonb_object_agg(key,value) FROM jsonb_each(to_jsonb(office))
+     WHERE value<>'null'::jsonb) AS office,
     ${promotionCompetitionProjectionSql("w.world_id","owned.promotion_id")}
      AS cp
    FROM ppw_worlds w
@@ -936,6 +946,8 @@ export async function readPlayerWorldOverview(
         THEN 'Premium event' ELSE 'Weekly show' END),
        'bookingClass',d.booking_class,'ready',d.lock_ready_fingerprint IS NOT NULL,
        'status',d.status,'hasVenue',d.venue_id IS NOT NULL) ||
+       CASE WHEN series_art.style IS NOT NULL THEN jsonb_build_object('posterStyle',series_art.style)
+        ELSE '{}'::jsonb END ||
        CASE WHEN d.booking_class='PREMIUM' THEN '{"broadcastFormat":"PPV"}'::jsonb
         WHEN EXISTS (
          SELECT 1 FROM ppw_commercial_deals deal
@@ -945,6 +957,9 @@ export async function readPlayerWorldOverview(
           AND deal.airing_day=d.show_day
         ) THEN '{"broadcastFormat":"TV"}'::jsonb ELSE '{}'::jsonb END AS card
        FROM ppw_booking_drafts d
+       LEFT JOIN ppw_kp_series_posters series_art ON d.booking_class='PREMIUM'
+        AND series_art.world_id=d.world_id AND series_art.promotion_id=d.promotion_id
+        AND series_art.series_id=d.show_series_id AND series_art.player_id=$2
        WHERE d.world_id=w.world_id AND d.promotion_id=owned.promotion_id
         AND (d.year,d.week)>=(w.year,w.week) AND d.status IN ('DRAFT','SUBMITTED')
        ORDER BY d.year,d.week,d.show_day NULLS LAST,d.draft_id LIMIT 2
@@ -969,10 +984,11 @@ export async function readPlayerWorldOverview(
         ON audience.world_id=c.world_id AND audience.show_id=c.show_id
         AND audience.promotion_id=c.promotion_id
        WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
-        AND ((c.year,c.week)<(w.year,w.week) OR w.phase='OPEN')
+        AND ${publishedShowSql("c","w")}
        ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,c.show_id DESC LIMIT 2
       ) recent) AS latest_shows
    ) dashboard ON owned.promotion_id IS NOT NULL
+   LEFT JOIN LATERAL (${promoterOfficeSql}) office ON owned.promotion_id IS NOT NULL
    WHERE w.world_id=$1`,[worldId,playerId]);
   if(!rows.length)return null;
   const x=rows[0]!;
@@ -1030,6 +1046,9 @@ export async function readPlayerWorldOverview(
      unseenLegends:Number(x.unseen_legends??0),
      unpreparedShow:x.unprepared_show===true,
      pendingBackstage:x.pending_backstage===true,
+     ...(x.office?.medical?{medicalHold:x.office.medical}:{}),
+     ...(x.office?.programme?{programme:x.office.programme}:{}),
+     ...(x.office?.promise?{promise:x.office.promise}:{}),
      // The compact Home snapshot did not contain a Backstage count before
      // this feature. Omit zero rather than allocating an extra field on
      // every ordinary overview response or breaking existing consumers.

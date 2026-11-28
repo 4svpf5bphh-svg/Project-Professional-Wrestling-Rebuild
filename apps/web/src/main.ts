@@ -9,8 +9,8 @@ import {mountWorldHomePage,mountPlannerPage,mountRosterPage,
  consumeTitleChallengeFocus,clearTitleChallengeFocus,
  type ProgrammeBookingFocus}
  from "../../../src/web/card-browser.js";
-import {HOST_SECTIONS,HOST_DRAWER_ROOTS,drawerRootForSection,readHostSection,hostSectionHash,
- type HostSection,type HostDrawerRoot,contractAttentionHash,readContractFocus,
+import {HOST_SECTIONS,HOST_PRIMARY_NAV,HOST_MORE_GROUPS,navTabForSection,readHostSection,hostSectionHash,
+ type HostSection,type HostNavTab,contractAttentionHash,readContractFocus,
  plannerCardHash,backstageUnreadHash,bookingHistoryState,readBookingHistory,
  type HomeAttentionFocus,legendsVaultHash,readBookingProgrammeFocus,resultsHistoryState,readResultsHistory}
  from "../../../src/web/host-navigation.js";
@@ -28,9 +28,10 @@ import "../bottom-navigation.css";
 import "../ringside-editorial.css";
 import "../phase16.css";
 import {promotionBrand} from "../../../src/ui/broadcast-identity.js";
-import {mountAdminCentre} from "../../../src/ui/admin-centre.js";
-import "../admin-centre.css";
+
 import "../ppw-brand.css";
+import "../promoter-journey.css";
+import {renderFirstShowGuide} from "./first-show-guide.js";
 import type {PlayerWorldOverview} from "../../../src/db/player-world-overview.js";
 
 type SessionView={
@@ -50,15 +51,16 @@ let confirmedOwnerName:{playerId:string;displayName:string}|null=null;
 // Latest session wins when overlapping requests complete out of order.
 let sessionReadSequence=0;
 let drawerExpanded=false;
-let drawerRoot:HostDrawerRoot="world";
+
 // Private one-shot navigation target; no wrestler IDs in URLs or storage.
 let pendingBackstageThread:{personId:string;conversationId?:string}|null=null;
 let backstageReturnSection:HostSection="home";
 let lastRenderedSection:HostSection|null=null;
 let bookingDirty=false;
-let activeBooking:{worldId:string;promotionId:string;showId:string}|null=null;
-function confirmLeavingBooking(next:HostSection){
- if(!bookingDirty||next==="card")return true;
+let activeBooking:ReturnType<typeof bookingHistoryState>|null=null;
+let renderedHash:string|null=null;
+function confirmLeavingBooking(next:HostSection,showId=activeBooking?.ppwBooking.showId??null){
+ if(!bookingDirty||(next==="card"&&showId===activeBooking?.ppwBooking.showId))return true;
  if(!window.confirm("You have unsaved changes to this show. Leave without saving?"))
   return false;
  bookingDirty=false;activeBooking=null;
@@ -122,7 +124,11 @@ function openSection(section:HostSection,focus?:HomeAttentionFocus,personId?:str
   section==="backstage"&&focus==="UNREAD"?backstageUnreadHash:
   hostSectionHash(section);
  if(location.hash!==target)location.hash=target;
- else if(pendingBackstageThread)renderSection(true);
+ else if(section==="results"&&session?.overview.promotion&&
+  readResultsHistory(history.state,session.worldId,session.overview.promotion.id)){
+  history.pushState(null,"",target);
+  renderSection(true);
+ }else if(pendingBackstageThread)renderSection(true);
  else{
   renderNavigation(section);
   if(wasDrawerOpen)game.querySelector<HTMLElement>(".ppw-workspace")?.focus({preventScroll:true});
@@ -139,7 +145,7 @@ function openBooking(showId:string,focus?:ProgrammeBookingFocus|null){
  const validFocus=focus&&focus.worldId===worldId&&
   focus.promotionId===promotionId?focus:null;
  const state=bookingHistoryState(worldId,promotionId,showId,validFocus);
- bookingDirty=false;activeBooking={worldId,promotionId,showId};
+ bookingDirty=false;activeBooking=state;
  if(location.hash===plannerCardHash)
   history.replaceState(null,"",hostSectionHash("planner"));
  history.pushState(state,"",hostSectionHash("card"));
@@ -147,50 +153,58 @@ function openBooking(showId:string,focus?:ProgrammeBookingFocus|null){
 }
 
 /** Small, self-contained 24px icons; no emoji fonts, image fetches or runtime dependency. */
-function departmentIcon(name:HostDrawerRoot):SVGSVGElement{
- const paths:Record<HostDrawerRoot,string[]>={
+function departmentIcon(name:HostNavTab):SVGSVGElement{
+ const paths:Record<HostNavTab,string[]>={
+  home:["M2 11 12 3l10 8","M5 10v11h14V10","M10 21v-6h4v6"],
   world:["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z","M2 12h20","M12 2a15.3 15.3 0 0 1 0 20","M12 2a15.3 15.3 0 0 0 0 20"],
-  promotion:["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2","M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z","M22 21v-2a4 4 0 0 0-3-3.87","M16 3.13a4 4 0 0 1 0 7.75"],
-  plan:["M8 2v4","M16 2v4","M3 10h18","M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z","M8 14h3","M8 18h3","M15 14h2"],
-  business:["M3 21h18","M5 21V5l7-3 7 3v16","M9 9h1","M14 9h1","M9 13h1","M14 13h1","M10 21v-4h4v4"],
-  news:["M8 21h8","M12 17v4","M7 4h10v7a5 5 0 0 1-10 0V4Z","M7 6H4a2 2 0 0 0-2 2c0 3 2 5 5 5","M17 6h3a2 2 0 0 1 2 2c0 3-2 5-5 5"]
+  roster:["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2","M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z","M22 21v-2a4 4 0 0 0-3-3.87","M16 3.13a4 4 0 0 1 0 7.75"],
+  book:["M8 2v4","M16 2v4","M3 10h18","M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z","M8 14h3","M8 18h3","M15 14h2"],
+  more:["M5 12h.01","M12 12h.01","M19 12h.01"]
  };
  const ns="http://www.w3.org/2000/svg";
  const svg=document.createElementNS(ns,"svg");
  svg.setAttribute("viewBox","0 0 24 24");svg.setAttribute("width","25");svg.setAttribute("height","25");
  svg.setAttribute("fill","none");svg.setAttribute("stroke","currentColor");
- svg.setAttribute("stroke-width","1.85");svg.setAttribute("stroke-linecap","round");
+ svg.setAttribute("stroke-width",name==="more"?"3":"1.85");svg.setAttribute("stroke-linecap","round");
  svg.setAttribute("stroke-linejoin","round");svg.setAttribute("aria-hidden","true");
  svg.classList.add("ppw-department-icon");
  for(const d of paths[name]){const path=document.createElementNS(ns,"path");path.setAttribute("d",d);svg.append(path);}
  return svg;
 }
+function sectionLink(label:string,section:HostSection,cls:string){
+ const link=document.createElement("a");
+ link.href=hostSectionHash(section);
+ link.className=cls;link.textContent=label;
+ link.onclick=event=>{
+  if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+  event.preventDefault();openSection(section);
+ };
+ return link;
+}
+function decorateTab(tab:HTMLElement,key:HostNavTab,label:string){
+ tab.dataset.tab=key;
+ const art=el("span","ppw-bottom-tab-glyph");
+ art.append(departmentIcon(key));
+ tab.replaceChildren(art,el("span","ppw-bottom-tab-label",label));
+}
 function renderBottomNavigation(section:HostSection){
  document.querySelector(".ppw-bottom-navigation")?.remove();
  if(!session?.overview.promotion||session.overview.membership!=="ACTIVE")return;
  const bar=el("nav","ppw-bottom-navigation");
- bar.setAttribute("aria-label","Promotion departments");
- const selected=drawerExpanded?drawerRoot:drawerRootForSection(section);
- for(const root of HOST_DRAWER_ROOTS){
-  const tab=button("",()=>{
-   // News is a newsroom, not a one-entry drawer requiring a second tap.
-   if(root.key==="news"){
-    drawerExpanded=false;openSection("news");return;
-   }
-   if(drawerExpanded&&drawerRoot===root.key)drawerExpanded=false;
-   else{drawerRoot=root.key;drawerExpanded=true;}
-   renderNavigation(readHostSection(location.hash));
-   if(drawerExpanded)navigation.querySelector<HTMLButtonElement>(".ppw-nav-drawer-close")?.focus();
-  });
-  tab.className="ppw-bottom-tab ppw-bottom-root"+(selected===root.key?" ppw-bottom-tab-active":"");
-  tab.dataset.root=root.key;
-  tab.setAttribute("aria-label",root.key==="news"?"Open News":"Open "+root.label+" menu");
-  tab.setAttribute("aria-controls","navigation");
-  tab.setAttribute("aria-expanded",String(drawerExpanded&&drawerRoot===root.key));
-  const art=el("span","ppw-bottom-tab-glyph");art.append(departmentIcon(root.key));
-  tab.append(art,el("span","ppw-bottom-tab-label",root.label));
-  bar.append(tab);
+ bar.setAttribute("aria-label","Promotion navigation");
+ for(const tab of HOST_PRIMARY_NAV){
+  // The Book tab stays on the open running order, including its unsaved edits.
+  const target=tab.key==="book"&&section==="card"?"card":tab.landing;
+  const link=sectionLink(tab.label,target,"ppw-bottom-tab");
+  decorateTab(link,tab.key,tab.label);bar.append(link);
  }
+ const more=button("More",()=>{
+  drawerExpanded=true;renderNavigation(section);
+  navigation.querySelector<HTMLButtonElement>(".ppw-nav-drawer-close")?.focus();
+ });
+ more.className="ppw-bottom-tab";more.setAttribute("aria-haspopup","dialog");
+ more.setAttribute("aria-controls","navigation");
+ decorateTab(more,"more","More");bar.append(more);
  document.body.append(bar);
 }
 function renderNavigation(section:HostSection){
@@ -199,61 +213,65 @@ function renderNavigation(section:HostSection){
  navigation.classList.toggle("ppw-navigation-open",drawerExpanded);
  navigation.hidden=!drawerExpanded;
  document.body.classList.toggle("ppw-drawer-active",drawerExpanded);
- const selected=drawerExpanded?drawerRoot:drawerRootForSection(section);
- document.querySelectorAll<HTMLButtonElement>(".ppw-bottom-root").forEach(tab=>{
-  tab.classList.toggle("ppw-bottom-tab-active",tab.dataset.root===selected);
-  tab.setAttribute("aria-expanded",String(drawerExpanded&&tab.dataset.root===drawerRoot));
- });
+ account.inert=game.inert=drawerExpanded;
+ const bar=document.querySelector<HTMLElement>(".ppw-bottom-navigation");
+ if(bar){
+  bar.inert=drawerExpanded;
+  const selected=navTabForSection(section);
+  for(const tab of bar.querySelectorAll<HTMLElement>("[data-tab]")){
+   const active=tab.dataset.tab===(drawerExpanded?"more":selected);
+   tab.classList.toggle("ppw-bottom-tab-active",active);
+   if(tab instanceof HTMLAnchorElement){
+    if(active)tab.setAttribute("aria-current",readHostSection(tab.hash)===section?"page":"location");
+    else tab.removeAttribute("aria-current");
+   }else tab.setAttribute("aria-expanded",String(drawerExpanded));
+  }
+ }
  if(!drawerExpanded)return;
- const restoreFocus=()=>document.querySelector<HTMLButtonElement>(
-  '.ppw-bottom-root[data-root="'+drawerRoot+'"]')?.focus();
- const close=()=>{drawerExpanded=false;renderNavigation(section);restoreFocus();};
- const backdrop=el("button","ppw-drawer-backdrop") as HTMLButtonElement;
- backdrop.type="button";backdrop.id="ppw-drawer-backdrop";
- backdrop.setAttribute("aria-label","Close promotion menu");
- backdrop.onclick=close;
+ const close=()=>{
+  drawerExpanded=false;renderNavigation(section);
+  bar?.querySelector<HTMLElement>('[data-tab="more"]')?.focus();
+ };
+ const backdrop=el("div","ppw-drawer-backdrop");
+ backdrop.id="ppw-drawer-backdrop";backdrop.setAttribute("aria-hidden","true");backdrop.onclick=close;
  document.body.append(backdrop);
- const root=HOST_DRAWER_ROOTS.find(x=>x.key===drawerRoot)!;
  const drawer=el("section","ppw-nav-drawer");
- drawer.setAttribute("aria-label",root.label+" departments");
- const head=el("div","ppw-nav-drawer-heading");
- head.append(el("span","","THE PROMOTION OFFICE"),el("strong","",root.label));
+ drawer.setAttribute("role","dialog");drawer.setAttribute("aria-modal","true");
+ drawer.setAttribute("aria-labelledby","ppw-more-title");
+ const head=el("header","ppw-nav-drawer-heading");
+ const title=el("h2","","More");title.id="ppw-more-title";head.append(title);
  const closeButton=button("×",close);
  closeButton.className="ppw-nav-drawer-close";
- closeButton.setAttribute("aria-label","Close promotion menu");
+ closeButton.setAttribute("aria-label","Close menu");
  head.append(closeButton);drawer.append(head);
- const entries=el("div","ppw-nav-drawer-entries");
- for(const [index,[id,label,description]] of root.destinations.entries()){
-  if(id==="admin"&&!session?.canManualAdvance&&!session?.canAiBenchmark)continue;
-  const entry=button("",()=>openSection(id as HostSection));
-  entry.className="ppw-nav-drawer-entry";
-  entry.append(el("span","ppw-nav-entry-index",String(index+1).padStart(2,"0")));
-  const copy=el("span","ppw-nav-entry-copy");
-  copy.append(el("strong","",label),el("small","",description));
-  entry.append(copy,el("span","ppw-nav-entry-arrow","↗"));
-  if(id===section)entry.setAttribute("aria-current","page");
-  entries.append(entry);
+ const groups=el("div","ppw-nav-groups");
+ for(const group of HOST_MORE_GROUPS){
+  const sectionGroup=el("section","ppw-nav-group");
+  sectionGroup.append(el("h3","",group.label));
+  const entries=el("div","ppw-nav-drawer-entries");
+  for(const [id,label] of group.destinations){
+   if(id==="admin"&&!session?.canManualAdvance&&!session?.canAiBenchmark)continue;
+   if(id==="showtime"&&!session?.canManualAdvance)continue;
+   const link=sectionLink(label,id,"ppw-nav-drawer-entry");
+   if(id===section)link.setAttribute("aria-current","page");
+   entries.append(link);
+  }
+  sectionGroup.append(entries);groups.append(sectionGroup);
  }
- drawer.append(entries);
- navigation.append(drawer);
+ drawer.append(groups);navigation.append(drawer);
+ navigation.scrollTop=0;
  navigation.onkeydown=event=>{
+  if(event.key==="Escape"){event.preventDefault();close();return;}
   if(event.key!=="Tab")return;
-  const buttons=[...navigation.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
-  if(!buttons.length)return;
-  const first=buttons[0]!,last=buttons[buttons.length-1]!;
+  const links=navigation.querySelectorAll<HTMLElement>("button,a[href]");
+  const first=links[0],last=links[links.length-1];
   if(event.shiftKey&&document.activeElement===first){
-   event.preventDefault();last.focus();
+   event.preventDefault();last?.focus();
   }else if(!event.shiftKey&&document.activeElement===last){
-   event.preventDefault();first.focus();
+   event.preventDefault();first?.focus();
   }
  };
 }
-document.addEventListener("keydown",e=>{
- if(e.key==="Escape"&&drawerExpanded){
-  drawerExpanded=false;renderNavigation(readHostSection(location.hash));
-  document.querySelector<HTMLButtonElement>('.ppw-bottom-root[data-root="'+drawerRoot+'"]')?.focus();
- }
-});
 /** One Vault query only after real World publication or an observed change.
  * The pending unlock is per-player and never read through background polling.
  */
@@ -273,16 +291,29 @@ async function offerUnseenLegendReveals(scope:CardSessionScope,view:HTMLElement)
   // authenticated sign-in retries it without a provider call or timer.
  }
 }
+let firstShowGuideKey:string|null=null;
+function showFirstShowGuideFor(promotionId:string){
+ if(!session)return;
+ firstShowGuideKey=JSON.stringify(["ppw-first-show",session.worldId,session.playerId,promotionId]);
+ try{sessionStorage.setItem(firstShowGuideKey,"1");}catch{/* Browser storage is optional. */}
+}
 function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
  if(!session?.overview?.promotion)return;
  document.documentElement.dataset.ppwPromotion=promotionBrand(session.overview.promotion.name).key;
- const section=readHostSection(location.hash);
+ let section=readHostSection(location.hash);
+ if(section==="card"&&!readBookingHistory(history.state,session.worldId,session.overview.promotion.id)){
+  history.replaceState(null,"",hostSectionHash("planner"));section="planner";
+ }
  // Deep links can originate from another desk without going through the
  // drawer. Preserve that origin just as openSection does for a direct action.
  if(section==="backstage"&&lastRenderedSection&&lastRenderedSection!=="backstage")
   backstageReturnSection=lastRenderedSection;
+ if((section==="admin"&&!session.canManualAdvance&&!session.canAiBenchmark)||
+  (section==="showtime"&&!session.canManualAdvance)){
+  history.replaceState(null,"",hostSectionHash("home"));section="home";
+ }
+ renderedHash=location.hash;
  lastRenderedSection=section;
- if(section==="admin"&&!session.canManualAdvance&&!session.canAiBenchmark){location.hash=hostSectionHash("home");return;}
  if(section!=="card"){bookingDirty=false;activeBooking=null;}
  if(section!=="card"&&section!=="planner"){
   clearBookingFocus();clearTitleChallengeFocus();
@@ -290,12 +321,13 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
  const backstageThread=section==="backstage"?pendingBackstageThread:null;
  pendingBackstageThread=null;
  clearLegendRevealPortal();
+ document.querySelectorAll(".ppw-profile-overlay").forEach(overlay=>overlay.remove());
  const scope:CardSessionScope={worldId:session.worldId,
   promotionId:session.overview.promotion.id,showId:"",
   csrfToken:session.csrfToken};
- renderNavigation(section);
  document.documentElement.dataset.ppwScreen=section;
  renderBottomNavigation(section);
+ renderNavigation(section);
  // A fresh mounted viewport prevents slow replies from an abandoned desk
  // replacing the next screen. No extra RPC or global store is involved.
  const view=el("div","ppw-workspace");
@@ -310,16 +342,43 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
  game.replaceChildren(view);
  if(!reduced&&section!=="card")view.classList.add("ppw-route-arrive");
  const back=()=>openSection("home");
+ const openShowtime=session.canManualAdvance?()=>openSection("showtime"):undefined;
+ const openResults=(showId:string)=>{
+  if(!confirmLeavingBooking("results"))return;
+  if(location.hash===hostSectionHash("results")&&
+   readResultsHistory(history.state,scope.worldId,scope.promotionId)===showId)return;
+  history.pushState(resultsHistoryState(scope.worldId,scope.promotionId,showId),"",hostSectionHash("results"));
+  renderSection(true);
+ };
+ const guideKey=JSON.stringify(["ppw-first-show",session.worldId,session.playerId,scope.promotionId]);
+ const guide=el("aside");
+ const updateGuide=(overview:PlayerWorldOverview)=>{
+  let enabled=firstShowGuideKey===guideKey;
+  try{enabled||=sessionStorage.getItem(guideKey)==="1";}catch{/* Browser storage is optional. */}
+  if(!enabled)return;
+  if(!guide.isConnected)view.before(guide);
+  renderFirstShowGuide(guide,overview,{
+   book:()=>openSection("planner"),showtime:openShowtime,
+   dismiss:()=>{
+    firstShowGuideKey=null;
+    try{sessionStorage.removeItem(guideKey);}catch{/* Browser storage is optional. */}
+    guide.remove();view.focus({preventScroll:true});
+   }
+  });
+ };
  if(window.scrollY>0)window.scrollTo(0,0);
  if(moveFocus)view.focus({preventScroll:true});
  switch(section){
-  case "home":mountWorldHomePage(view,scope,openSection,updated=>{
+  case "home":{
+   if(initialOverview)updateGuide(initialOverview);
+   mountWorldHomePage(view,scope,openSection,updated=>{
    // An explicit World status check can update the shell without another read.
    if(!updated||!view.isConnected||!session?.overview.promotion||
     session.worldId!==scope.worldId||session.overview.promotion.id!==scope.promotionId)return;
    const changed=updated.world.year!==session.overview.world.year||
     updated.world.week!==session.overview.world.week;
-   session.overview.world=updated.world;
+   session.overview=updated;
+   updateGuide(updated);
    // No repeated World polling. One Vault check if a shared week's
    // change was already observed by the current Home request.
    if(changed)void offerUnseenLegendReveals(scope,view);
@@ -345,11 +404,9 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
    session.canManualAdvance?async(year,week)=>command("/api/playtest-booking",{
     confirm:"EXTEND_SHARED_BOOKING",year,week
    },session?.csrfToken):undefined,
-   async()=>{await offerUnseenLegendReveals(scope,view);},showId=>{
-   if(!confirmLeavingBooking("results"))return;
-   history.pushState(resultsHistoryState(scope.worldId,scope.promotionId,showId),"",hostSectionHash("results"));
-   renderSection(true);
-  },openBooking,initialOverview);break;
+   async()=>{await offerUnseenLegendReveals(scope,view);},openResults,
+   openBooking,initialOverview,openShowtime);break;
+  }
   case "planner":{
    const storyFocus=consumeProgrammeBookingFocus(scope.worldId,scope.promotionId);
    mountPlannerPage(view,scope,back,
@@ -364,25 +421,18 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
   }
   case "card":{
    const showId=readBookingHistory(history.state,scope.worldId,scope.promotionId);
-   if(!showId){
-    bookingDirty=false;activeBooking=null;
-    history.replaceState(null,"",hostSectionHash("planner"));
-    mountPlannerPage(view,scope,back,false,undefined,
-     showId=>openBooking(showId));
-   }else{
-    activeBooking={worldId:scope.worldId,promotionId:scope.promotionId,showId};
-    const storyFocus=readBookingProgrammeFocus(history.state,
-     scope.worldId,scope.promotionId);
-    mountBookingPageForHost(view,{...scope,showId},()=>openSection("planner"),
-     dirty=>{
-      if(view.isConnected&&readHostSection(location.hash)==="card"&&
-       activeBooking?.showId===showId)bookingDirty=dirty;
-     },section=>openSection(section),storyFocus?.programmeId,
-     storyFocus?.ideaKind,
-     consumeBookingFocus(scope.worldId,scope.promotionId)??undefined,
-     consumeTitleChallengeFocus(scope.worldId,scope.promotionId)??undefined,
-     storyFocus?.blueprintBeat);
-   }
+   if(!showId)break;
+   const storyFocus=readBookingProgrammeFocus(history.state,scope.worldId,scope.promotionId);
+   activeBooking=bookingHistoryState(scope.worldId,scope.promotionId,showId,storyFocus);
+   mountBookingPageForHost(view,{...scope,showId},()=>openSection("planner"),
+    dirty=>{
+     if(view.isConnected&&readHostSection(location.hash)==="card"&&
+      activeBooking?.ppwBooking.showId===showId)bookingDirty=dirty;
+    },section=>openSection(section),storyFocus?.programmeId,
+    storyFocus?.ideaKind,
+    consumeBookingFocus(scope.worldId,scope.promotionId)??undefined,
+    consumeTitleChallengeFocus(scope.worldId,scope.promotionId)??undefined,
+    storyFocus?.blueprintBeat);
    break;
   }
   case "roster":mountRosterPage(view,scope);break;
@@ -395,8 +445,21 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
   case "business-standing":case "business-activity":case "business-events":
   case "business-territories":mountBusinessPage(view,scope);break;
   case "staff":mountStaffPage(view,scope);break;
-  case "admin":void mountAdminCentre(view,{csrfToken:session.csrfToken,
-    benchmarkOnly:!session.canManualAdvance&&!!session.canAiBenchmark});break;
+  case "showtime":case "admin":{
+   const context={csrfToken:session.csrfToken,
+    benchmarkOnly:!session.canManualAdvance&&!!session.canAiBenchmark,
+    showtime:section==="showtime"?{
+     book:()=>openSection("planner"),results:()=>openSection("results"),home:back,
+    }:undefined};
+   view.append(el("p","ppw-access-loading","Checking World readiness…"));
+   void import("./operator-desks.js").then(({mountAdminCentre})=>{
+    if(view.isConnected)return mountAdminCentre(view,context);
+   }).catch(()=>{
+    if(view.isConnected)view.replaceChildren(el("p","ppw-access-error",
+     "This desk could not open. Reload the page to retry."));
+   });
+   break;
+  }
   case "industry":
   case "promotions":
   case "broadcasts":
@@ -405,7 +468,7 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
   case "hall-of-fame":
   case "annual-awards":
   case "world-moments":
-   mountIndustryPage(view,scope,pendingLegends??undefined);
+   mountIndustryPage(view,scope,pendingLegends??undefined,openResults);
    pendingLegends=null;break;
    case "collection":mountCollectionPage(view,scope);break;
    case "achievements":mountAchievementsPage(view,scope,()=>openSection("home"),()=>openSection("kayfabe"));break;
@@ -414,8 +477,10 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
   case "calendar":mountCalendarPage(view,scope,back,openBooking);break;
   case "results":{
     const showId=readResultsHistory(history.state,scope.worldId,scope.promotionId);
-    if(showId)void mountResultsPage(view,{...scope,showId},back,"home");
-    else void mountResultsArchivePage(view,scope,back);
+    if(showId)void mountResultsPage(view,{...scope,showId},()=>history.back(),"previous screen",{
+     weekShows:session.overview.promotion.latestShows,openShow:openResults,
+    });
+    else void mountResultsArchivePage(view,scope,back,openResults);
     break;
    }
   case "programmes":{
@@ -424,7 +489,8 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
    const storyFocus=consumeBackstageStoryFocus(scope.worldId,scope.promotionId);
    mountProgrammePage(view,scope,
     pitchFocus?.personId??dossierFocus??undefined,pitchFocus?.opponentId,
-    storyFocus?.programmeId);
+    storyFocus?.programmeId,
+    {openShow:openResults,openArchive:()=>openSection("results")},storyFocus?.lane);
    break;
   }
   case "championships":void mountChampionshipsPage(view,scope,back,"MINE");break;
@@ -435,28 +501,24 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
 
  }
 }
-window.addEventListener("hashchange",()=>{
+function restoreHistoryRoute(){
  const section=readHostSection(location.hash);
- if(!confirmLeavingBooking(section)){
-  const booking=activeBooking;
-  if(booking)history.pushState(
-   bookingHistoryState(booking.worldId,booking.promotionId,booking.showId),
-   "",hostSectionHash("card"));
-  return;
- }
- // The current PPV manager gets an optional press room when leaving a
- // freshly viewed certified Results page, including drawer/hash navigation.
- // Restore the URL without another history entry until their decision.
- const resultView=game.firstElementChild as HTMLElement|null;
- if(section!=="results"&&resultView?.dataset.ppwPremiumExit==="true"){
-  const target=window.location.hash;
-  window.history.replaceState(null,"","#/results");
-  resultView.dispatchEvent(new CustomEvent("ppw:results-exit",{
-   detail:{targetHash:target}
-  }));
+ const booking=activeBooking;
+ const showId=booking&&section==="card"?readBookingHistory(
+  history.state,booking.ppwBooking.worldId,booking.ppwBooking.promotionId):null;
+ if(!confirmLeavingBooking(section,showId)){
+  if(booking)history.pushState(booking,"",hostSectionHash("card"));
   return;
  }
  drawerExpanded=false;renderSection(true);
+}
+window.addEventListener("hashchange",restoreHistoryRoute);
+// History entries with different cards or Results may share a public URL.
+// Other workspaces have no history state to restore.
+// For a different URL the hashchange listener already handles restoration.
+window.addEventListener("popstate",()=>{
+ const section=readHostSection(location.hash);
+ if(location.hash===renderedHash&&(section==="card"||section==="results"))restoreHistoryRoute();
 });
 window.addEventListener("beforeunload",event=>{
  if(bookingDirty){event.preventDefault();event.returnValue="";}
@@ -473,7 +535,9 @@ async function loadSession(){
  pendingBackstageThread=null;pendingLegends=null;
  lastRenderedSection=null;backstageReturnSection="home";
  clearBookingFocus();clearTitleChallengeFocus();clearLegendRevealPortal();
- drawerExpanded=false;document.querySelector("#ppw-drawer-backdrop")?.remove();
+ document.querySelectorAll(".ppw-profile-overlay").forEach(overlay=>overlay.remove());
+ drawerExpanded=false;account.inert=game.inert=false;
+ document.querySelector("#ppw-drawer-backdrop")?.remove();
  document.body.classList.remove("ppw-drawer-active");
  account.replaceChildren();navigation.replaceChildren();navigation.hidden=true;
  document.querySelector('.ppw-bottom-navigation')?.remove();
@@ -530,7 +594,7 @@ async function loadSession(){
    // Reuse it once and let subsequent navigation read current game state.
    const overview=session.overview;
    renderSection(false,overview.world.id===session.worldId&&
-    !!overview.promotion.attention?overview:undefined);
+    !!overview.promotion?.attention?overview:undefined);
    presentOpening();
   }
  }catch(e){
@@ -547,7 +611,8 @@ async function loadSession(){
 function presentOpening(){
  // Only the actual app launch gets a blocking intro; explicit deep links
  // and returning from departments must remain immediately interactive.
- if(!session?.overview.promotion||readHostSection(location.hash)!=="home"||
+ if(window.matchMedia("(prefers-reduced-motion: reduce)").matches||
+  !session?.overview.promotion||readHostSection(location.hash)!=="home"||
   (location.hash!==""&&location.hash!=="#/"))return;
  const key="ppw-opening:"+session.worldId+":"+session.overview.promotion.id;
  try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"1");}catch{return;}
@@ -621,6 +686,9 @@ function showOwnerName(){
    const saved=await command("/api/profile",{action:"SET_NAME",name:name.value},
     session!.csrfToken) as {displayName:string};
    confirmedOwnerName={playerId:session!.playerId,displayName:saved.displayName};
+   const promotion=session!.overview.promotion;
+   if(promotion&&!promotion.latestShow&&!(promotion.latestShows?.length))
+    showFirstShowGuideFor(promotion.id);
    await loadSession();
   }catch(error){showError(card,error instanceof Error?error.message:"Name could not be saved");}
   finally{submit.disabled=false;}
@@ -715,6 +783,7 @@ function showClaim(){
     const outcome=await command("/api/claim",{promotionId:p.id,requestId:crypto.randomUUID(),
      expectedRevision:session!.overview.world.revision},session!.csrfToken);
     requireSuccessfulPromotionClaim(outcome);
+    showFirstShowGuideFor(p.id);
     showTakeoverBrand(p.id,p.name);
    }catch(e){
     choosing=false;

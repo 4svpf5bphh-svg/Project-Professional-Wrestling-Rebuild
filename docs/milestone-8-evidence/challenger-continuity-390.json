@@ -1,0 +1,21 @@
+{
+  "baseline": false,
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "resumeWeekTwo": true,
+  "continuity": {
+    "week": 5,
+    "seals": 4,
+    "show_weeks": [
+      1,
+      2,
+      2,
+      4
+    ],
+    "holder": "will-ospreay",
+    "defences": 1
+  },
+  "providerRequests": 0
+}

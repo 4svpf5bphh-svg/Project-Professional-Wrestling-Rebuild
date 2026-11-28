@@ -460,3 +460,40 @@
 .ppw-news-results-link{display:table;margin-top:9px;padding:4px 0;font-size:.84rem;color:#aee7ff;text-underline-offset:3px}
 
 .ppw-news-opinion-label{font-size:.78em}
+
+/* Public industry standings read as a league table, with separate archive typography. */
+#game .ppw-industry .ppw-industry-head:is([data-world-view="standings"],[data-world-view="broadcasts"],[data-world-view="records"],[data-world-view="heritage"]) {
+ padding:12px 0;border:0;border-bottom:2px solid var(--ppw-cyan,#77dcf0);
+ border-radius:0;background:none;box-shadow:none;
+}
+#game .ppw-industry .ppw-industry-head:is([data-world-view="records"],[data-world-view="heritage"]) {
+ border-bottom-color:var(--ppw-gold,#f4cf82);
+}
+#game .ppw-industry .ppw-industry-head[data-world-view] h1 {
+ font-size:clamp(27px,7vw,42px);font-style:normal;line-height:1.04;
+}
+#game .ppw-industry .ppw-industry-companies {gap:0}
+#game .ppw-industry .ppw-industry-companies .ppw-industry-company {
+ border:0;border-bottom:1px solid var(--ppw-outline,#3c5367);
+ border-radius:0;background:none;box-shadow:none;
+}
+#game .ppw-industry .ppw-industry-companies .ppw-industry-company[open] {background:var(--ppw-raised,#101f2f)}
+#game .ppw-industry .ppw-industry-company-summary {padding:10px 7px;min-height:65px}
+#game .ppw-industry .ppw-industry-company-name {text-transform:none}
+#game .ppw-industry .ppw-industry-company-crest {
+ position:relative;overflow:hidden;display:grid;place-items:center;
+ height:42px;border:1px solid var(--ppw-outline,#64778b);
+ border-radius:5px;transform:none;box-shadow:none;background:var(--ppw-raised,#101f2f);
+ font-size:12px;
+}
+#game .ppw-industry .ppw-industry-company-crest img {
+ position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;
+}
+#game .ppw-industry .ppw-industry-company-crest-img img {
+ display:block;padding:3px;
+}
+#game .ppw-industry .ppw-industry-company-standing {font-size:19px}
+#game .ppw-industry .ppw-industry-own .ppw-industry-company-standing {color:var(--ppw-gold,#f4cf82)}
+#game .ppw-industry .ppw-industry-company-summary:focus-visible {
+ outline:2px solid var(--ppw-cyan,#77dcf0);outline-offset:-2px;
+}

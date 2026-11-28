@@ -25,6 +25,50 @@ const overview={world:{revision:4,name:"Genesis",year:1,week:5,phase:"OPEN",
  debt:0,lastWeeklyNet:0,financialDistress:"HEALTHY"}};
 const session={worldId:"genesis",playerId:"owner",csrfToken:"csrf",overview,availablePromotions:[]};
 
+test("Quick singles and Advanced booking keep the same cast and scripted finish",async({page})=>{
+ await page.setViewportSize({width:320,height:780});
+ await page.emulateMedia({reducedMotion:"reduce"});
+ const talent=[
+  {personId:"alice",contractId:"deal-alice",name:"Alice",division:"WOMEN"},
+  {personId:"bea",contractId:"deal-bea",name:"Bea",division:"WOMEN"},
+  {personId:"chris",contractId:"deal-chris",name:"Chris",division:"MEN"},
+ ].map(person=>({...person,available:true,reason:"AVAILABLE",remainingDates:8,appearanceFee:1000}));
+ await page.route("**/api/session",route=>route.fulfill({json:session}));
+ await page.route("**/api/card",route=>{
+  const method=String(route.request().postDataJSON().method);
+  return route.fulfill({json:method==="planner"?planner:method==="talent"?{talent,cursor:null}:{
+   showId:"weekly",year:1,week:5,canEdit:true,ready:false,worldRevision:4,
+   day:5,venueId:"arena",showName:"Friday Fights",promotionName:"Crown",
+   venueName:"Arena",marketName:"Home",bookingClass:"REGULAR",
+   ticketStrategy:"STANDARD",championships:[],programmes:[],programmeLinks:[],selectedPeople:[],slots:[]
+  }});
+ });
+ await page.goto("/#/planner");
+ await page.getByRole("button",{name:"Edit card"}).click();
+ await page.getByRole("button",{name:"Quick singles",exact:true}).click();
+ const picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ await picker.getByRole("button",{name:/^Alice · Women/}).click();
+ await expect(picker.getByRole("button",{name:/^Chris.*Match division mismatch/})).toBeDisabled();
+ await picker.getByRole("button",{name:/^Bea · Women/}).press("Enter");
+ const editor=page.getByRole("dialog",{name:"Edit match"});
+ await expect(editor.getByRole("button",{name:"Add match to card"})).toBeDisabled();
+ await editor.getByRole("button",{name:"Bea",exact:true}).click();
+ await editor.getByRole("button",{name:"Finish · Clean Pin"}).click();
+ await page.getByRole("dialog",{name:"Finish",exact:true}).getByRole("button",{name:"Submission"}).click();
+ await editor.getByRole("button",{name:"Advanced booking"}).click();
+ await expect(editor.getByText("STEP 1 OF 4 · SETUP")).toBeVisible();
+ await editor.getByRole("button",{name:"Continue · Select wrestlers"}).click();
+ await expect(editor.locator(".ppw-side").filter({hasText:"Alice"})).toHaveCount(1);
+ await expect(editor.locator(".ppw-side").filter({hasText:"Bea"})).toHaveCount(1);
+ await editor.getByRole("button",{name:"Quick singles",exact:true}).click();
+ await expect(editor.getByRole("button",{name:"Bea",exact:true})).toHaveAttribute("aria-pressed","true");
+ await expect(editor.getByRole("button",{name:"Finish · Submission"})).toBeVisible();
+ await editor.getByRole("button",{name:"Add match to card"}).click();
+ await expect(page.locator(".ppw-card-lineup")).toContainText("Submission");
+ await expect(page.locator(".ppw-card-booked-facts")).toContainText("Planned winner · Bea");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});
+
 test("Quick Book completes a team match and a tag-team turn using the ordinary save and reopen path",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  let revision=4;

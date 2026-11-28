@@ -109,9 +109,34 @@ test("one wrestler dossier uses seven bounded SQL reads, preserves rival privacy
   }) as {status:string};
   assert.equal(retry.status,"REPLAYED");
   assert.equal((await readWrestlerProfile(db.pool,scope)).worldRevision,3);
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(String.raw`
+    INSERT INTO ppw_programmes(world_id,promotion_id,programme_id,status,heat,repetition,started_week_index)
+    VALUES($1,'promotion-0','local-story','ACTIVE',48,0,0),
+          ($1,'promotion-1','other-story','ACTIVE',53,0,0)`,[world]);
+   await tx.query(String.raw`
+    INSERT INTO ppw_programme_participants(world_id,promotion_id,programme_id,person_id,side)
+    VALUES($1,'promotion-0','local-story','person-0','A'),
+          ($1,'promotion-1','other-story','person-0','A')`,[world]);
+   await tx.query(String.raw`
+    INSERT INTO ppw_programme_side_refs(world_id,promotion_id,programme_id,side,position,ref_kind,ref_id)
+    VALUES($1,'promotion-0','local-story','B',0,'PERSON','person-8'),
+          ($1,'promotion-1','other-story','B',0,'PERSON','person-1')`,[world]);
+   await tx.query(String.raw`
+    INSERT INTO ppw_backstage_requests(world_id,request_id,promotion_id,person_id,kind,
+     created_week_index,status,decision,responded_week_index,due_week_index)
+    VALUES($1,'local-promise','promotion-0','person-0','CREATIVE',0,'PROMISED','PROMISE_SEGMENT',0,2),
+          ($1,'other-promise','promotion-1','person-0','CREATIVE',0,'PROMISED','PROMISE_APPEARANCE',0,1)`,[world]);
+  });
+  const dossier=await readWrestlerProfile(db.pool,scope);
+  assert.deepEqual(dossier.activeProgrammes,[{id:"local-story",format:"RIVALRY",opposition:["Wrestler 8"],title:null}]);
+  assert.equal(dossier.commitment?.headline,"Promo/angle still to book");
+  assert.match(dossier.commitment!.detail,/Y1 W3/);
+  assert.equal(dossier.recentAchievement,null);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
+    "ppw_programme_side_refs","ppw_programme_participants","ppw_programmes",
     "ppw_backstage_memories","ppw_backstage_requests",
     "ppw_portable_persona_history","ppw_portable_personas",
     "ppw_contract_offers","ppw_contract_renewal_proposals",

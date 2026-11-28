@@ -12,7 +12,10 @@ for(const width of [320,390]){
    overview:{world:{revision:4,name:"Genesis",year:1,week:7,phase:"OPEN",
     nextLockEpoch:Date.now()/1000+5000,serverEpoch:Date.now()/1000},
     membership:"ACTIVE",promotion:{id:"cwa",name:"CWA",tier:"LOCAL",
-     cash:100000,debt:0}},availablePromotions:[]};
+     cash:100000,debt:0,attention:{plannedShows:0,unpreparedShow:false,
+      pendingBackstage:false,expiringTalent:false,pendingContractOffers:false,
+      programme:{programmeId:"solo-joe",cast:"Samoa Joe",titleName:null,heat:null}}}},
+   availablePromotions:[]};
   const planner={worldName:"Genesis",promotionName:"CWA",year:1,week:7,
    canEdit:true,worldRevision:4,homeMarketId:"home",venues:[],
    weeks:[{year:1,week:7,offset:0,required:true,major:false,canEdit:true,
@@ -43,6 +46,7 @@ for(const width of [320,390]){
      eligibleCreativePeople:[],creativeAgreements:[],wrestlerChanges:[],
      latestFollowUp:null,finale:null}]
    }});
+   if(method==="overview")return r.fulfill({json:session.overview});
    if(method==="planner")return r.fulfill({json:planner});
    if(method==="load")return r.fulfill({json:{
     showId:"weekly",year:1,week:7,canEdit:true,ready:false,worldRevision:revision,
@@ -56,6 +60,8 @@ for(const width of [320,390]){
      ...(saved?[{slotId:saved.slotId,kind:"SEGMENT",position:1,payload:saved.payload}]:[])]
    }});
    if(method==="save"){
+    expect(r.request().headers()["x-ppw-csrf"]).toBe(session.csrfToken);
+    expect(body).toMatchObject({worldId:session.worldId,promotionId:"cwa",showId:"weekly"});
     const segments=body.segments as {slotId:string;payload:Record<string,unknown>;
      programmeId:string|null}[];
     expect(segments).toHaveLength(1);
@@ -75,10 +81,13 @@ for(const width of [320,390]){
    if(method==="kpWorkspace")return r.fulfill({json:{entitlements:[]}});
    throw Error("Unexpected method "+method);
   });
-  // Programme Desk is the one source of creative chapter starters now;
-  // the Card no longer repeats its recommendations above actual booking.
-  await page.goto("/#/programmes");
-  await page.getByRole("button",{name:"Plan",exact:true}).click();
+  await page.goto("/#/home");
+  const desk=page.getByRole("region",{name:"At your desk"});
+  await desk.getByRole("button",{name:"Review story and bookings"}).click();
+  await expect(page.getByRole("button",{name:"Story",exact:true})).toHaveAttribute("aria-current","page");
+  await page.goBack();
+  await desk.getByRole("button",{name:"Plan next chapter"}).click();
+  await expect(page.getByRole("button",{name:"Plan",exact:true})).toHaveAttribute("aria-current","page");
   await page.getByRole("button",{name:"Introduce their ambition"}).click();
   let dialog=page.getByRole("dialog",{name:"Edit angle"});
   await expect(dialog.getByText("CAST YOUR STORY")).toBeVisible();
@@ -91,7 +100,7 @@ for(const width of [320,390]){
   const rosterSheet=page.getByRole("dialog",{name:"Choose wrestler"});
   await expect(rosterSheet).toContainText("Solo stories have no Side B");
   await expect(rosterSheet).toContainText("The Champion");
-  await rosterSheet.getByRole("button",{name:"×"}).click();
+  await rosterSheet.getByRole("button",{name:"Close wrestler picker"}).click();
   // The authenticated save below verifies the actual Joe actor ID.
   // Avoid matching a hidden <option> label in the optional Storyline selector.
   await expect(dialog.getByRole("button",{name:"Next · Script outcome"})).toBeEnabled();
