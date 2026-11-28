@@ -1,3 +1,4 @@
+import {publishedShowSql} from "./published-show-sql.js";
 /** Post-resolution only. The show and controller are authenticated before a
  * claim; no AI request is ever permitted in the World Lock transaction.
  */
@@ -814,8 +815,7 @@ export async function loadRingsideCommentary(pool:TransactionPool,scope:Scope,
  // expansion, roster fetch, model call, or polling.
  const current=await withSqlClient(pool,async db=>db.query<CacheRow>(`
   SELECT r.state,r.report_json,r.receipt_digest,r.model,r.attempts,r.claim_until,j.state AS update_state,
-   ((c.year,c.week)>(w.year,w.week) OR ((c.year,c.week)=(w.year,w.week)
-    AND w.phase<>'OPEN')) AS locked_current
+   NOT (${publishedShowSql("c","w")}) AS locked_current
   FROM ppw_completed_shows c
   JOIN ppw_worlds w ON w.world_id=c.world_id
   LEFT JOIN ppw_world_update_jobs j ON j.world_id=c.world_id AND j.year=c.year AND j.week=c.week AND j.show_id=c.show_id

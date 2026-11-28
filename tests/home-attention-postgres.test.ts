@@ -285,3 +285,49 @@ test("Verified singles/tag injury reports are owner-scoped, dismissible, and do 
   }).finally(()=>db.close());
  }
 });
+
+test("Office programme ranking considers the whole active field and only linked upcoming payoffs",{
+ skip:!url?"No disposable PostgreSQL":false
+},async()=>{
+ const world="home-programmes-"+randomUUID(),player="booker-"+randomUUID();
+ const db=postgresPool(url!,4),promotionId="promotion-0";
+ try{
+  await importOriginalGenesis(db.pool,originalGenesisFixture(world,40));
+  await joinWorld(db.pool,{worldId:world,playerId:player,requestId:"join",expectedRevision:0});
+  await submitPromotionClaim(db.pool,{worldId:world,playerId:player,
+   promotionId,requestId:"claim",expectedRevision:1});
+  await withWorldTransaction(db.pool,async tx=>{
+   await tx.query(`INSERT INTO ppw_championships
+    (world_id,promotion_id,championship_id,name,division,status,prestige)
+    VALUES($1,$2,'office-world','Office World Championship','SINGLES','ACTIVE',70)`,[world,promotionId]);
+   await tx.query(`INSERT INTO ppw_programmes
+    (world_id,promotion_id,programme_id,status,heat,repetition,programme_key,championship_id)
+    SELECT $1,$2,id,'ACTIVE',heat,0,id,title
+    FROM (VALUES ('a-showcase',99,NULL),('b-feud',98,NULL),('c-feud',97,NULL),
+     ('d-title',25,'office-world'),('e-title',65,'office-world')) AS programme(id,heat,title)`,
+    [world,promotionId]);
+   await tx.query(`INSERT INTO ppw_programme_side_refs
+    (world_id,promotion_id,programme_id,side,position,ref_kind,ref_id)
+    SELECT world_id,promotion_id,programme_id,'A',0,'PERSON','person-0'
+    FROM ppw_programmes WHERE world_id=$1 AND promotion_id=$2`,[world,promotionId]);
+   await tx.query(`INSERT INTO ppw_booking_drafts
+    (world_id,draft_id,promotion_id,year,week,status)
+    VALUES($1,'payoff-card',$2,1,2,'DRAFT')`,[world,promotionId]);
+   await tx.query(`INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind)
+    VALUES($1,'payoff-card','main',0,'MATCH')`,[world]);
+   await tx.query(`INSERT INTO ppw_programme_finales
+    (world_id,promotion_id,programme_id,show_id,slot_id,kind,payoff,planned_week_index)
+    VALUES($1,$2,'d-title','payoff-card','main','MATCH','TITLE_SHOWDOWN',1)`,[world,promotionId]);
+  });
+  const featured=async()=>(await readPlayerWorldOverview(db.pool,world,player))?.promotion?.attention.programme;
+  assert.deepEqual(await featured(),{
+   programmeId:"e-title",cast:"Wrestler 0",titleName:"Office World Championship",heat:65,
+  },"Active title programmes sort ahead of the first three keys, even with higher-heat non-title stories");
+  await withWorldTransaction(db.pool,tx=>tx.query(`INSERT INTO ppw_programme_match_activities
+   (world_id,promotion_id,programme_id,draft_id,slot_id,kind)
+   VALUES($1,$2,'d-title','payoff-card','main','MATCH')`,[world,promotionId]));
+  assert.deepEqual(await featured(),{
+   programmeId:"d-title",cast:"Wrestler 0",titleName:"Office World Championship",heat:25,payoffWeekIndex:1,
+  });
+ }finally{await db.close();}
+});

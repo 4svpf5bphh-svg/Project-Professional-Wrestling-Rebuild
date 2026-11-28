@@ -20,7 +20,7 @@ export interface WorldHomePort{
  openLegends?():void;openKayfabe?():void;openAchievements?():void;
  planner():void;roster():void;market():void;contracts():void;
  openShowtime?():void;
- openProgramme?(programmeId:string):void;
+ openProgramme?(programmeId:string,lane?:"PLAN"):void;
  openContract?(personId:string):void;
  openPromisedBooking?(showId:string,promise:OfficePromise):void;
  openUnfinishedCard?():void;openUpcomingShow?(showId:string):void;openUnreadBackstage?():void;
@@ -88,6 +88,9 @@ function officeDecisions(promotion:NonNullable<PlayerWorldOverview["promotion"]>
  }
  const contract=(attention.contractAlerts??[]).find(item=>!item.waiting);
  const programme=attention.programme;
+ const nextDraft=bookingOpen?upcoming.find(show=>show.status==="DRAFT"&&
+  !show.ready&&show.hasVenue&&(show.year-1)*52+show.week-1===weekIndex):undefined;
+ const openDraft=port.openUpcomingShow;
  const renewal:OfficeDecision|null=contract?{
   category:"Contract",
   headline:contract.kind==="DATES_EXHAUSTED"?contract.name+" has no dates left":
@@ -100,7 +103,9 @@ function officeDecisions(promotion:NonNullable<PlayerWorldOverview["promotion"]>
    "Last contracted week: "+weekLabel(weekIndex+Math.max(0,contract.weeksRemaining-1))+
    ". Review renewal terms before committing future bookings.",
   action:{label:"Review "+contract.name+"'s contract",open:()=>port.openContract?
-   port.openContract(contract.personId):(port.contractsExpiring??port.contracts)()}
+   port.openContract(contract.personId):(port.contractsExpiring??port.contracts)()},
+  ...(nextDraft&&openDraft?{alternative:{label:"Review "+nextDraft.showName+" card",
+   open:()=>openDraft(nextDraft.showId)}}:{})
  }:null;
  const urgentRenewal=contract&&(contract.kind==="DATES_EXHAUSTED"||contract.weeksRemaining<=1);
  if(renewal&&urgentRenewal)choices.push(renewal);
@@ -109,9 +114,11 @@ function officeDecisions(promotion:NonNullable<PlayerWorldOverview["promotion"]>
   choices.push({category:programme.titleName?"Championship programme":"Programme",
    headline:programme.titleName??programme.cast,
    detail:[programme.titleName?programme.cast:null,
-    programme.heat===null?null:Math.round(programme.heat)+"/100 heat"].filter(Boolean).join(" · "),
-   action:{label:"Plan next chapter",open:()=>open(programme.programmeId)},
-   ...(bookingOpen?{alternative:{label:"Open free booking",open:port.planner}}:{})});
+    programme.heat===null?null:Math.round(programme.heat)+"/100 heat",
+    programme.payoffWeekIndex===undefined?null:
+     "Payoff planned for "+weekLabel(programme.payoffWeekIndex)].filter(Boolean).join(" · "),
+   action:{label:"Plan next chapter",open:()=>open(programme.programmeId,"PLAN")},
+   alternative:{label:"Review story and bookings",open:()=>open(programme.programmeId)}});
  }
  if(renewal&&!urgentRenewal)choices.push(renewal);
  return choices.slice(0,3);

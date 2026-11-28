@@ -1,3 +1,4 @@
+import {publishedShowSql} from "./published-show-sql.js";
 import { publicStoryBlueprintName } from "../domain/story-blueprints.js";
 /** Spectator read of verified results from another promotion.
  * Only certified outcomes and public match information; no future booking,
@@ -39,7 +40,7 @@ export async function readPublicCompletedShow(pool:TransactionPool,input:{
    "JOIN ppw_memberships member ON member.world_id=c.world_id",
    "AND member.player_id=$2 AND member.status='ACTIVE'",
    "WHERE c.world_id=$1 AND c.promotion_id=$4 AND c.show_id=$5",
-   "AND ((c.year,c.week)<(w.year,w.week) OR ((c.year,c.week)=(w.year,w.week) AND w.phase='OPEN'))",
+   `AND ${publishedShowSql("c","w")}`,
    "AND (rival.player_id<>viewer.player_id OR (d.booking_origin='AI' AND EXISTS (",
    "SELECT 1 FROM ppw_world_news_weeks published WHERE published.world_id=c.world_id",
    "AND published.year=c.year AND published.week=c.week))) LIMIT 1"

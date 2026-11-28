@@ -54,7 +54,8 @@ const button=(title:string,click:()=>void,disabled=false)=>{
  x.type="button";x.disabled=disabled;x.onclick=click;return x;
 };
 export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
- onBack?:()=>void,focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string){
+ onBack?:()=>void,focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string,
+ focusLane?:"PLAN"){
  let view:ProgrammeView|null=null,working=false,error="",success="";
 
  let refsA:(ProgrammeRef|null)[]=[null],refsB:(ProgrammeRef|null)[]=[null];
@@ -197,7 +198,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     focusResolved=true;
     const actual=view.programmes.find(p=>p.programmeId===focusProgrammeId);
     if(actual?.status==="ACTIVE"){
-     selectedProgrammeId=actual.programmeId;activeLane="STORY";
+     selectedProgrammeId=actual.programmeId;activeLane=focusLane??"STORY";
     }else if(actual){
      selectedArchiveId=actual.programmeId;archiveView=true;
     }else focusWarning="That storyline is no longer available in your company.";

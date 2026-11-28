@@ -1,3 +1,4 @@
+import {publishedShowSql} from "../db/published-show-sql.js";
 /** Vercel Node function adapter: session and World selection are server-owned.
  * Does NOT create or migrate Worlds, start a scheduler or connect to old Neon.
  * Single small connection pool reused within each warm function instance.
@@ -225,7 +226,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
         COALESCE((r.model=$4 AND (r.state='FAILED' OR
          (r.state='PENDING' AND r.claim_until<=now()))) OR
          (r.state='FAILED' AND r.attempts=2),false) AS editorial_retryable
-       FROM ppw_completed_shows c
+       FROM ppw_completed_shows c JOIN ppw_worlds w ON w.world_id=c.world_id
        JOIN ppw_promotion_controls p ON p.world_id=c.world_id
         AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
        LEFT JOIN ppw_booking_drafts d ON d.world_id=c.world_id
@@ -238,7 +239,8 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
         ORDER BY CASE WHEN r.state='READY' THEN 0 ELSE 1 END,r.created_at DESC
         LIMIT 1
        ) r ON TRUE
-       WHERE c.world_id=$1 ORDER BY c.year DESC,c.week DESC,c.completed_at DESC LIMIT 6`,
+       WHERE c.world_id=$1 AND ${publishedShowSql("c","w")}
+       ORDER BY c.year DESC,c.week DESC,c.completed_at DESC LIMIT 6`,
        [cfg.worldId,user.playerId,RINGSIDE_PROMPT_VERSION,OPENAI_PREVIEW_MODEL])),
      readLegendPilot(pool,cfg.worldId),
      readPlaytestKp(pool,cfg.worldId,user.playerId),
@@ -350,7 +352,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
      if(promotion.length!==1)return json(404,{error:"Completed show not available"});
      const scope={worldId:cfg.worldId,playerId:user.playerId,
       promotionId:promotion[0]!.promotion_id,showId:body.showId as string};
-     show=await readCompletedShowView(pool,scope);
+     show=await readCompletedShowView(pool,scope,true);
      try{memory=await readRingsideMemory(pool,scope,show);}
      catch{console.warn("Ringside inspector history unavailable; showing certified card facts");}
     }
@@ -465,7 +467,7 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     if(promotion.length!==1)return json(404,{error:"Completed show not available"});
     show=await readCompletedShowView(pool,{worldId:cfg.worldId,
      playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
-     showId:body.showId as string});
+     showId:body.showId as string},true);
     try{memory=await readRingsideMemory(pool,{worldId:cfg.worldId,
      playerId:user.playerId,promotionId:promotion[0]!.promotion_id,
      showId:body.showId as string},show);}

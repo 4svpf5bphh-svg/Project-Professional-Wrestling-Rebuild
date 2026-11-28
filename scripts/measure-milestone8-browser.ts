@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import {resolve} from "node:path";
 import {chromium, type Page} from "@playwright/test";
 import {postgresPool} from "../src/db/postgres.js";
@@ -32,7 +33,7 @@ async function measure(page:Page,open:()=>Promise<unknown>){
 }
 
 try{
- await seedMilestone8World(db.pool,worldId,{benchmark:true});
+ await seedMilestone8World(db.pool,worldId);
  const host=await startMilestone8Host(resolve(appRoot),database,worldId);
  try{
   const browser=await chromium.launch({executablePath:process.env.PPW_M8_CHROMIUM});
@@ -53,10 +54,21 @@ try{
      const start=host.samples.length;
      const cold=await measure(page,()=>page.goto(host.origin+"/#/home"));
      const warm=await measure(page,()=>page.reload());
-     const requests=host.samples.slice(start).map(({path,bytes,sqlStatements})=>({
+     const measuredRequests=(from:number)=>host.samples.slice(from).map(({path,bytes,sqlStatements})=>({
       path,bytes,sqlStatements,
      }));
-     samples.push({repetition,cold,warm,requests});
+     const requests=measuredRequests(start);
+     const titleStart=host.samples.length;
+     const titleUrl=host.origin+"/#/championships";
+     const titleDesk=page.getByRole("heading",{name:"My Champions",exact:true});
+     await page.goto(titleUrl);
+     await titleDesk.waitFor();
+     await page.setViewportSize({width:320,height:844});
+     await page.goto(titleUrl);
+     await titleDesk.waitFor();
+     const championshipRequests=measuredRequests(titleStart);
+     assert.equal(championshipRequests.filter(sample=>sample.path==="/api/card").length,1);
+     samples.push({repetition,cold,warm,requests,championshipRequests});
     }finally{await context.close();}
    }
    console.log(JSON.stringify({samples,providerRequests:host.providerRequests},null,2));

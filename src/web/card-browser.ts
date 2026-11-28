@@ -67,10 +67,10 @@ let pendingBackstageRivalryFocus:BackstageRivalryFocus|null=null;
 /** An earned story reply opens exactly the Programme that produced it.
  * One-use and promotion-scoped; no public hash identity and no new query.
  */
-let pendingBackstageStoryFocus:{worldId:string;promotionId:string;programmeId:string}|null=null;
+type ProgrammeDeskFocus={worldId:string;promotionId:string;programmeId:string;lane?:"PLAN"};
+let pendingBackstageStoryFocus:ProgrammeDeskFocus|null=null;
 let pendingChampionshipLineage:{worldId:string;promotionId:string;championshipId:string}|null=null;
-export function queueBackstageStoryFocus(focus:{
- worldId:string;promotionId:string;programmeId:string}){
+export function queueBackstageStoryFocus(focus:ProgrammeDeskFocus){
  if(![focus.worldId,focus.promotionId,focus.programmeId].every(x=>
   typeof x==="string"&&x.length>0&&x.length<=200))return;
  pendingBackstageStoryFocus=focus;
@@ -226,11 +226,11 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   planner:go("planner",()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope))),
   openUpcomingShow,
-  openProgramme:programmeId=>{
-   queueBackstageStoryFocus({worldId:scope.worldId,promotionId:scope.promotionId,programmeId});
-   if(onNavigate)onNavigate("programmes");
-   else mountProgrammePage(root,scope,undefined,undefined,
-    consumeBackstageStoryFocus(scope.worldId,scope.promotionId)?.programmeId);
+  openProgramme:(programmeId,lane)=>{
+   if(onNavigate){
+    queueBackstageStoryFocus({worldId:scope.worldId,promotionId:scope.promotionId,programmeId,lane});
+    onNavigate("programmes");
+   }else mountProgrammePage(root,scope,undefined,undefined,programmeId,undefined,lane);
   },
   openContract:personId=>{
    if(onNavigate)openFocusedContracts(scope,personId);
@@ -936,14 +936,14 @@ function programmePort(call:ReturnType<typeof createCardClient>,
 }
 export function mountProgrammePage(root:HTMLElement,scope:Scope,
  focusPersonId?:string,focusOpponentId?:string,focusProgrammeId?:string,
- navigation?:{openShow(showId:string):void;openArchive():void}){
+ navigation?:{openShow(showId:string):void;openArchive():void},focusLane?:"PLAN"){
  const call=createCardClient(scope);
  const showResult=navigation?.openShow??((showId:string)=>{void mountResultsPage(root,{...scope,showId},
   ()=>mountProgrammePage(root,scope,focusPersonId));});
  return mountProgrammeDesk(root,programmePort(call,root,scope,showResult,
   navigation?.openArchive??(()=>{void mountResultsArchivePage(root,scope,
    ()=>mountProgrammePage(root,scope,focusPersonId));})),
-  undefined,focusPersonId,focusOpponentId,focusProgrammeId);
+  undefined,focusPersonId,focusOpponentId,focusProgrammeId,focusLane);
 }
 
 function stablePort(call:ReturnType<typeof createCardClient>,

@@ -1,3 +1,4 @@
+import {publishedShowSql} from "./published-show-sql.js";
 /** Promotion-private historic results index. One paged, indexed SQL read:
  * no World snapshot, no receipt transfer and no background polling.
  */
@@ -33,7 +34,7 @@ export async function readCompletedShowArchive(pool:TransactionPool,
    "ON d.world_id=c.world_id AND d.draft_id=c.show_id",
    "JOIN ppw_worlds w ON w.world_id=c.world_id",
    "WHERE c.world_id=$1 AND c.promotion_id=$3",
-   "AND ((c.year,c.week)<(w.year,w.week) OR ((c.year,c.week)=(w.year,w.week) AND w.phase='OPEN'))",
+   `AND ${publishedShowSql("c","w")}`,
    "AND EXISTS (SELECT 1 FROM ppw_promotion_controls p",
    "JOIN ppw_memberships m ON m.world_id=p.world_id AND m.player_id=p.player_id",
    "WHERE p.world_id=c.world_id AND p.promotion_id=c.promotion_id",

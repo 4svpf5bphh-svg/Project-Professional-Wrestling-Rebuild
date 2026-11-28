@@ -1,3 +1,4 @@
+import {publishedShowSql} from "./published-show-sql.js";
 /** Controller-scoped results, composed from persisted World-authoritative receipts.
  * At most five bounded indexed reads; no World JSON, client scores or resimulation.
  */
@@ -181,8 +182,7 @@ export async function readCompletedShowView(
     AND m.player_id=p.player_id AND m.status='ACTIVE'
    WHERE c.world_id=$1 AND c.promotion_id=$3 AND c.show_id=$4
     ${publishedOnly?`AND EXISTS(SELECT 1 FROM ppw_worlds w WHERE w.world_id=c.world_id
-     AND ((c.year,c.week)<(w.year,w.week) OR ((c.year,c.week)=(w.year,w.week)
-      AND w.phase='OPEN')))` : ""}`,
+     AND ${publishedShowSql("c","w")})` : ""}`,
    [input.worldId,input.playerId,input.promotionId,input.showId]);
   if(rows.length!==1)throw new Error("Completed show unavailable to this controller");
   const receipt=validateCompletedShowReceipt(rows[0]!.receipt_json as CompletedShowReceipt);

@@ -6,6 +6,7 @@ export interface OfficeProgramme {
  cast:string;
  titleName:string|null;
  heat:number|null;
+ payoffWeekIndex?:number;
 }
 
 export interface OfficePromise {
@@ -28,7 +29,8 @@ export interface OfficeMedicalHold {
 }
 
 /** At most one item per category in the authenticated overview query.
- * Programme candidates use the active identity index. Promise candidates
+ * Programme ranking uses the promotion’s active identity range. Cast lookups
+ * run only for the three ranked candidates. Promise candidates
  * use the outstanding deadline index and a six-week booking horizon.
  * Medical checks touch only this promotion's current-week bookings.
  */
@@ -36,13 +38,34 @@ const now="((w.year-1)*52+w.week-1)";
 export const promoterOfficeSql=`
  SELECT
   (SELECT jsonb_build_object('programmeId',p.programme_id,'cast',performers.names,
-    'titleName',title.name,'heat',p.heat)
+    'titleName',p.title_name,'heat',p.heat) ||
+    CASE WHEN p.payoff_week IS NULL THEN '{}'::jsonb
+     ELSE jsonb_build_object('payoffWeekIndex',p.payoff_week) END
    FROM (
-    SELECT p.programme_id,p.heat,p.championship_id,p.programme_key
+    SELECT p.programme_id,p.heat,p.programme_key,title.name AS title_name,
+     finale.planned_week_index AS payoff_week
     FROM ppw_programmes p
+    LEFT JOIN ppw_championships title ON title.world_id=p.world_id
+     AND title.promotion_id=p.promotion_id AND title.championship_id=p.championship_id
+     AND title.status='ACTIVE'
+    LEFT JOIN ppw_programme_finales finale ON finale.world_id=p.world_id
+     AND finale.promotion_id=p.promotion_id AND finale.programme_id=p.programme_id
+     AND finale.resolved_week_index IS NULL
+     AND finale.planned_week_index BETWEEN ${now} AND ${now}+2
+     AND EXISTS (
+      SELECT 1 FROM ppw_programme_match_activities activity
+      JOIN ppw_booking_drafts booked ON booked.world_id=activity.world_id
+       AND booked.promotion_id=activity.promotion_id AND booked.draft_id=activity.draft_id
+      WHERE activity.world_id=finale.world_id AND activity.promotion_id=finale.promotion_id
+       AND activity.programme_id=finale.programme_id AND activity.draft_id=finale.show_id
+       AND activity.slot_id=finale.slot_id AND activity.kind=finale.kind
+       AND booked.status IN ('DRAFT','SUBMITTED')
+       AND (booked.year-1)*52+booked.week-1=finale.planned_week_index
+     )
     WHERE p.world_id=w.world_id AND p.promotion_id=owned.promotion_id
      AND p.status='ACTIVE' AND p.programme_key IS NOT NULL
-    ORDER BY p.programme_key LIMIT 3
+    ORDER BY (title.name IS NULL),finale.planned_week_index NULLS LAST,
+     p.heat DESC NULLS LAST,p.programme_key LIMIT 3
    ) p
    JOIN LATERAL (
     SELECT string_agg(coalesce(person.name,team.name),', ' ORDER BY side.side,side.position) AS names
@@ -54,10 +77,8 @@ export const promoterOfficeSql=`
     WHERE side.world_id=w.world_id AND side.promotion_id=owned.promotion_id
      AND side.programme_id=p.programme_id
    ) performers ON performers.names IS NOT NULL
-   LEFT JOIN ppw_championships title ON title.world_id=w.world_id
-    AND title.promotion_id=owned.promotion_id AND title.championship_id=p.championship_id
-    AND title.status='ACTIVE'
-   ORDER BY (title.name IS NULL),p.heat DESC NULLS LAST,p.programme_key LIMIT 1
+   ORDER BY (p.title_name IS NULL),p.payoff_week NULLS LAST,
+    p.heat DESC NULLS LAST,p.programme_key LIMIT 1
   ) AS programme,
   (SELECT jsonb_build_object('conversationId',r.request_id,'personId',r.person_id,
     'name',person.name,'decision',r.decision,'dueWeekIndex',r.due_week_index,

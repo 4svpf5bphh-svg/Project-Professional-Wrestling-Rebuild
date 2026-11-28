@@ -1,3 +1,4 @@
+import {publishedShowSql} from "./published-show-sql.js";
 import {fictionalPromotionOwner} from "./owner-identities.js";
 /** The public Industry sheet: one World clock, standings and only finished
  * broadcasts. Unsubmitted rival card details, finances and negotiations stay
@@ -46,8 +47,8 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
      SELECT c.promotion_id,max((c.year-1)*52+c.week-1) AS latest_show_week,
       avg(c.crowd_response)::numeric(6,1)::text AS recent_avg_crowd,
       count(*)::integer AS completed_events
-     FROM ppw_completed_shows c
-     WHERE c.world_id=$1
+     FROM ppw_completed_shows c JOIN ppw_worlds w ON w.world_id=c.world_id
+     WHERE c.world_id=$1 AND ${publishedShowSql("c","w")}
        AND (c.year,c.week)>=($2::integer,$3::integer)
        AND (c.year,c.week)<=($4::integer,$5::integer)
      GROUP BY c.promotion_id
@@ -81,11 +82,11 @@ export async function readIndustryWorldHub(pool:TransactionPool,input:{
     EXISTS(SELECT 1 FROM ppw_promotion_controls controller
      WHERE controller.world_id=c.world_id AND controller.promotion_id=c.promotion_id
      AND controller.active) AS human_managed
-   FROM ppw_completed_shows c
+   FROM ppw_completed_shows c JOIN ppw_worlds w ON w.world_id=c.world_id
    JOIN ppw_promotions p ON p.world_id=c.world_id
     AND p.promotion_id=c.promotion_id
    JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id
-   WHERE c.world_id=$1 AND p.lifecycle='ACTIVE'
+   WHERE c.world_id=$1 AND p.lifecycle='ACTIVE' AND ${publishedShowSql("c","w")}
     AND (c.year,c.week)>=($2::integer,$3::integer)
     AND (c.year,c.week)<=($4::integer,$5::integer)
    ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,

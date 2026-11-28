@@ -1,3 +1,4 @@
+import {publishedShowSql} from "./published-show-sql.js";
 import {staffPressureSql,staffPressureEvidenceSql} from "./staff-pressure-sql.js";
 import {creativeAdviceSourcesSql,creativeAdviceEvidenceSql} from "./creative-staff-advice.js";
 import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
@@ -983,7 +984,7 @@ export async function readPlayerWorldOverview(
         ON audience.world_id=c.world_id AND audience.show_id=c.show_id
         AND audience.promotion_id=c.promotion_id
        WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
-        AND ((c.year,c.week)<(w.year,w.week) OR w.phase='OPEN')
+        AND ${publishedShowSql("c","w")}
        ORDER BY c.year DESC,c.week DESC,d.show_day DESC NULLS LAST,c.show_id DESC LIMIT 2
       ) recent) AS latest_shows
    ) dashboard ON owned.promotion_id IS NOT NULL

@@ -85,8 +85,34 @@ test("two signed managers retain private cards through World readiness and venue
     origin:host.origin,"x-ppw-csrf":(await (await rival.request.get(host.origin+"/api/session")).json()).csrfToken,
    },data:{method:"load",worldId,promotionId,showId:"tv-1"}});
    expect(denied.ok()).toBe(false);
+   const phase=async()=>(await withWorldTransaction(db.pool,tx=>tx.query<{week:number;phase:string}>(
+    "SELECT week,phase FROM ppw_worlds WHERE world_id=$1",[worldId])))[0];
+   // Stop between settlement and publication. Arbitration can take more
+   // than one bounded request before it reaches the editorial handoff.
+   for(let batch=0;batch<8;batch++){
+    const begin=await page.request.post(host.origin+"/api/playtest-week",{headers:crown,
+     data:{confirm:"ADVANCE_SHARED_WORLD",year:1,week:1}});
+    expect(await begin.json()).toMatchObject({status:"LIMIT_REACHED"});
+    if((await phase())?.phase==="UPDATING")break;
+   }
+   expect(await phase()).toEqual({week:2,phase:"UPDATING"});
+   const own={worldId,promotionId,showId:"tv-1"};
+   const read=(method:string,extra:Record<string,unknown>={})=>page.request.post(
+    host.origin+"/api/card",{headers:crown,data:{...own,method,...extra}});
+   expect((await read("results")).ok()).toBe(false);
+   expect((await read("publicResults",{
+    targetPromotionId:rivalPromotionId,targetShowId:"atlas-1"})).ok()).toBe(false);
+   expect(await (await read("resultsArchive")).json()).toMatchObject({items:[]});
+   const commentary=await page.request.post(host.origin+"/api/results-commentary",{headers:crown,data:own});
+   expect(commentary.status()).toBe(202);
+   expect(await commentary.json()).toEqual({status:"pending"});
+   const inspect=()=>page.request.post(host.origin+"/api/admin-preview",{headers:crown,
+    data:{action:"INSPECT_PROMPT",showId:"tv-1"}});
+   expect((await inspect()).status()).toBe(422);
+
    await advance();
    await expect(page.getByRole("button",{name:"See certified results"})).toBeVisible({timeout:45_000});
+   expect((await inspect()).ok()).toBe(true);
    const receipts=()=>withWorldTransaction(db.pool,tx=>tx.query(`SELECT d.draft_id,d.venue_id,
     c.receipt_digest,c.receipt_json #>> '{matches,0,actualWinnerSide}' AS winner,
     (SELECT count(*) FROM ppw_ledger_events WHERE world_id=$1) AS ledger_entries,

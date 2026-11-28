@@ -490,7 +490,7 @@ function renderSection(moveFocus=false,initialOverview?:PlayerWorldOverview){
    mountProgrammePage(view,scope,
     pitchFocus?.personId??dossierFocus??undefined,pitchFocus?.opponentId,
     storyFocus?.programmeId,
-    {openShow:openResults,openArchive:()=>openSection("results")});
+    {openShow:openResults,openArchive:()=>openSection("results")},storyFocus?.lane);
    break;
   }
   case "championships":void mountChampionshipsPage(view,scope,back,"MINE");break;

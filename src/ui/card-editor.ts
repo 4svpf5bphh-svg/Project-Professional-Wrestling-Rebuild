@@ -1166,8 +1166,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    }
    root.append(desk);
   }
-  // Match timing is already authored and available in memory. Present only a
-  // truthful partial estimate: angles and entrances have their own air-time.
+  // Authored match and angle minutes count towards the TV ceiling. Entrances
+  // and commentary may need some of the remaining time.
   const matchMinutes=committedMatches.reduce((n,m)=>n+m.plannedLengthMinutes,0);
   const angleMinutes=committedSegments.reduce((n,a)=>n+a.durationMinutes,0);
   const usedMinutes=airtimeEstimate.total;
@@ -1185,7 +1185,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    track.setAttribute("aria-valuenow",String(Math.min(limit,usedMinutes)));
    const progress=el("span","ppw-card-airtime-fill");
    progress.style.width=Math.min(100,usedMinutes/limit*100)+"%";
-   if(airtimeEstimate.overBy)track.classList.add("ppw-card-airtime-overrun");
+   if(airtimeEstimate.overBy){
+    track.classList.add("ppw-card-airtime-overrun");
+    track.setAttribute("aria-valuetext",usedMinutes+" minutes booked, "+
+     airtimeEstimate.overBy+" over the "+limit+" minute limit");
+   }
    track.append(progress);airtime.append(track);
   }
   airtime.append(el("small","",matchMinutes+" min matches · "+angleMinutes+" min angles"+
