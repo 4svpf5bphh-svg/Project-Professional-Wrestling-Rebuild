@@ -86,7 +86,7 @@ export async function startMilestone8Host(root:string,rawUrl:string,worldId:stri
  execFileSync("openssl",["req","-x509","-newkey","rsa:2048","-nodes","-days","1",
   "-subj","/CN=127.0.0.1","-keyout",join(tls,"key.pem"),"-out",join(tls,"cert.pem")],{stdio:"ignore"});
  const {handleVercelNodeRequest}=await import(pathToFileURL(join(root,"src/web/vercel-node-adapter.ts")).href) as typeof import("../../src/web/vercel-node-adapter.js");
- const assets=resolve(root,"dist/web");
+ const assets=process.env.PPW_M8_STATIC_ROOT?resolve(process.env.PPW_M8_STATIC_ROOT):resolve(root,"dist/web");
  await readFile(join(assets,"index.html"));
  const [key,cert]=await Promise.all([readFile(join(tls,"key.pem")),readFile(join(tls,"cert.pem"))]);
  const server=httpsServer({key,cert},(req,res)=>{

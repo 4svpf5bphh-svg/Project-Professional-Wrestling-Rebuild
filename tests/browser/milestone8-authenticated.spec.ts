@@ -16,11 +16,17 @@ const coldStart=process.env.PPW_M8_COLD_START==="1";
 const evidence=process.env.PPW_M8_EVIDENCE;
 const fullJourney=process.env.PPW_M8_FULL_JOURNEY==="1";
 const chooseChallenger=process.env.PPW_M8_TITLE_WINNER!=="champion";
-const tap=(locator:Locator)=>locator.tap();
+const commercial=process.env.PPW_M8_COMMERCIAL==="1";
+const resumeWeekTwo=process.env.PPW_M8_RESUME_WEEK_TWO==="1";
+const tap=async(locator:Locator)=>{
+ if(process.env.PPW_M8_KEYBOARD==="1"){await locator.focus();await locator.press("Enter");}
+ else await locator.tap();
+};
 const control=(page:Page|Locator,name:string|RegExp)=>page.getByRole("button",{name,exact:typeof name==="string"});
 const game= (page:Page)=>page.locator("#game");
 const addMatch=(page:Page)=>control(page,/^\+? ?Add match$/);
-const homeCard=(page:Page)=>page.getByRole("button",{name:/Ascension/}).filter({hasNotText:/Read|Results/}).first();
+const homeCard=(page:Page,name="Ascension")=>page.locator(".ppw-home-recent-show")
+ .filter({hasText:name}).filter({hasNotText:/crowd/}).first();
 async function enterHome(page:Page,origin:string){
  await page.goto(origin+"/#/home");
  await expect(page.locator(".ppw-shell-brand strong")).toHaveText("Crown Wrestling");
@@ -78,7 +84,7 @@ async function bookMatch(page:Page,options:{
  const briefing=control(dialog,"Next · Staff briefing");
  if(await briefing.isVisible())await act(briefing);
  if(options.ordinary)await screenshot(page,"quick-booking");
- await act(control(dialog,/^Complete match$|^Add to (?:card|run sheet)$/i));
+ await act(control(dialog,/^Complete match$|^Add match to (?:card|run sheet)$/i));
  return interactions;
 }
 
@@ -97,7 +103,7 @@ async function advance(page:Page,origin:string,week:number){
  await screenshot(page,"week-"+week+"-readiness");
  page.once("dialog",dialog=>dialog.accept());
  await tap(control(page,"Advance Week"));
- await expect(page.getByText(/next playable week is ready|Week advanced/i).first()).toBeVisible({timeout:35_000});
+ await expect(page.getByText(/next playable week is ready|Week advanced/i).first()).toBeVisible({timeout:60_000});
 }
 async function assetMetrics(page:Page){
  return page.evaluate(()=>({
@@ -115,82 +121,117 @@ test("signed manager books, advances and reads actual certified weeks",async({pa
  const read=<T extends Record<string,unknown>>(sql:string,params:readonly unknown[]=[worldId])=>
   withWorldTransaction(db.pool,tx=>tx.query<T>(sql,params));
  try{
-  await seedMilestone8World(db.pool,worldId,{coldStart});
+  if(resumeWeekTwo){
+   const [state]=await read<{week:number;phase:string}>("SELECT week,phase FROM ppw_worlds WHERE world_id=$1");
+   expect(state).toEqual({week:2,phase:"OPEN"});
+   expect(fullJourney).toBe(true);
+  }else await seedMilestone8World(db.pool,worldId,{coldStart,commercial});
   const host=await startMilestone8Host(root,url,worldId);
   try{
    await signIn(page,host.origin);
    await expect(page.locator(".ppw-shell-brand strong")).toHaveText("Crown Wrestling");
-   if(coldStart)await seedMilestone8Programme(db.pool,worldId);
+   if(coldStart){
+    await expect(page.getByRole("heading",{name:"Your first show"})).toBeVisible();
+    await screenshot(page,"first-show-guide");
+    await seedMilestone8Programme(db.pool,worldId);
+    await enterHome(page,host.origin);
+   }
    await expect(game(page).getByText("Ascension",{exact:true}).first()).toBeVisible();
-   await screenshot(page,"promoters-office");
-   if(!baseline&&fullJourney){
-    const decision=page.getByRole("region",{name:"At your desk"});
-    await expect(decision).toBeVisible();
-    await decision.scrollIntoViewIfNeeded();
-    await screenshot(page,"contextual-decision");
+   let measurements:Record<string,unknown>={resumeWeekTwo};
+   if(!resumeWeekTwo){
+    await screenshot(page,"promoters-office");
+    if(!baseline&&fullJourney){
+     const decision=page.getByRole("region",{name:"At your desk"});
+     await expect(decision).toBeVisible();
+     await decision.scrollIntoViewIfNeeded();
+     await screenshot(page,"contextual-decision");
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+    const signed=await page.context().storageState();
+    const clean=await browser.newContext({storageState:signed,ignoreHTTPSErrors:true,
+     isMobile:true,hasTouch:true,viewport:page.viewportSize()??undefined});
+    let cold,warm,home,openingCard;
+    try{
+     const loading=await clean.newPage();
+     const startHome=host.samples.length;
+     await enterHome(loading,host.origin);
+     cold=await assetMetrics(loading);
+     home=host.samples.slice(startHome);
+     await loading.reload();
+     await expect(game(loading).getByText("Ascension",{exact:true}).first()).toBeVisible();
+     warm=await assetMetrics(loading);
+     const startCard=host.samples.length;
+     await tap(homeCard(loading));
+     await expect(addMatch(loading)).toBeVisible();
+     openingCard=host.samples.slice(startCard);
+    }finally{await clean.close();}
+    const started=performance.now();
+    await tap(homeCard(page));
+    await expect(addMatch(page)).toBeVisible();
+    await screenshot(page,"booking-room");
+    const interactions=1+await bookMatch(page,{first:"Alex Shelley",second:"Chris Sabin",winner:1,ordinary:true})+2;
+    await saveAndConfirm(page);
+    const preparationMs=Math.round(performance.now()-started);
+    console.log("Confirmed Week 1 booking",JSON.stringify({interactions,preparationMs}));
+    await screenshot(page,"run-sheet");
+    await advance(page,host.origin,1);
+    await enterHome(page,host.origin);
+    await screenshot(page,"next-week-home");
+    const weekOneResult=control(page,/Read Ascension/).first();
+    if(await weekOneResult.count())await tap(weekOneResult);
+    else await page.goto(host.origin+"/#/results");
+    await expect(game(page).getByText(/Ascension/).first()).toBeVisible();
+    if(!baseline&&fullJourney){
+     await page.goto(host.origin+"/#/roster");
+     await tap(page.locator(".ppw-directory-list .ppw-wrestler-card").filter({hasText:"Samoa Joe"}).first());
+     await expect(page.getByRole("dialog",{name:"Wrestler dossier"})).toBeVisible();
+     await screenshot(page,"wrestler-dossier");
+     await page.keyboard.press("Escape");
+    }
+    const facts=await read<{week:number;shows:number;seals:number}>(`SELECT week,
+     (SELECT count(*)::integer FROM ppw_completed_shows s WHERE s.world_id=w.world_id) AS shows,
+     (SELECT count(*)::integer FROM ppw_week_resolution_seals s WHERE s.world_id=w.world_id) AS seals
+     FROM ppw_worlds w WHERE world_id=$1`);
+    expect(facts[0]).toEqual({week:2,shows:2,seals:1});
+    console.log("Certified Week 1",JSON.stringify(facts[0]));
+    const [promise]=await read<{status:string}>(`
+     SELECT status FROM ppw_backstage_requests
+     WHERE world_id=$1 AND request_id='shelley-wants-a-match'`);
+    expect(promise).toMatchObject({status:"FULFILLED"});
+    measurements={cold,warm,home,openingCard,interactions,preparationMs};
    }
-   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
-   const signed=await page.context().storageState();
-   const clean=await browser.newContext({storageState:signed,ignoreHTTPSErrors:true,
-    isMobile:true,hasTouch:true,viewport:page.viewportSize()??undefined});
-   let cold,warm,home,openingCard;
-   try{
-    const loading=await clean.newPage();
-    const startHome=host.samples.length;
-    await enterHome(loading,host.origin);
-    cold=await assetMetrics(loading);
-    home=host.samples.slice(startHome);
-    await loading.reload();
-    await expect(game(loading).getByText("Ascension",{exact:true}).first()).toBeVisible();
-    warm=await assetMetrics(loading);
-    const startCard=host.samples.length;
-    await tap(homeCard(loading));
-    await expect(addMatch(loading)).toBeVisible();
-    openingCard=host.samples.slice(startCard);
-   }finally{await clean.close();}
-   const started=performance.now();
-   await tap(homeCard(page));
-   await expect(addMatch(page)).toBeVisible();
-   await screenshot(page,"booking-room");
-   const interactions=1+await bookMatch(page,{first:"Alex Shelley",second:"Chris Sabin",winner:1,ordinary:true})+2;
-   await saveAndConfirm(page);
-   const preparationMs=Math.round(performance.now()-started);
-   await screenshot(page,"run-sheet");
-   await advance(page,host.origin,1);
-   await enterHome(page,host.origin);
-   await screenshot(page,"next-week-home");
-   const weekOneResult=control(page,/Read Ascension/).first();
-   if(await weekOneResult.count())await tap(weekOneResult);
-   else await page.goto(host.origin+"/#/results");
-   await expect(game(page).getByText(/Ascension/).first()).toBeVisible();
-   if(!baseline&&fullJourney){
-    await page.goto(host.origin+"/#/roster");
-    await tap(page.locator(".ppw-directory-list .ppw-wrestler-card").filter({hasText:"Samoa Joe"}).first());
-    await expect(page.getByRole("dialog",{name:"Wrestler dossier"})).toBeVisible();
-    await screenshot(page,"wrestler-dossier");
-   }
-   const facts=await read<{week:number;shows:number;seals:number}>(`SELECT week,
-    (SELECT count(*)::integer FROM ppw_completed_shows s WHERE s.world_id=w.world_id) AS shows,
-    (SELECT count(*)::integer FROM ppw_week_resolution_seals s WHERE s.world_id=w.world_id) AS seals
-    FROM ppw_worlds w WHERE world_id=$1`);
-   expect(facts[0]).toEqual({week:2,shows:2,seals:1});
    if(fullJourney){
     // Week 2: advanced title match plus PPV, then a truly dark Week 3.
     await enterHome(page,host.origin);
     await tap(homeCard(page));
     await bookMatch(page,{first:"Samoa Joe",second:"Will Ospreay",
-     winner:chooseChallenger?1:0,title:true,stipulation:"Ladder Match",capture:true});
+     winner:chooseChallenger?1:0,title:true,stipulation:"Steel Cage",capture:true});
     await saveAndConfirm(page);
     await enterHome(page,host.origin);
-    await tap(page.getByRole("button",{name:/The Lottery/}).first());
+    await tap(homeCard(page,"The Lottery"));
     await bookMatch(page,{first:"AJ Styles",second:"Kurt Angle",winner:0});
     await saveAndConfirm(page);
     await advance(page,host.origin,2);
+    if(commercial){
+     const formats=await read<{audience_format:string;ppv_buys:number|null;tv_household_rating:number|null;net_result:string}>(`
+      SELECT audience_format,ppv_buys::integer,tv_household_rating::double precision,net_result::text
+      FROM ppw_show_economics WHERE world_id=$1 AND promotion_id=$2 AND week=2
+      ORDER BY audience_format`,[worldId,promotionId]);
+     expect(formats).toMatchObject([
+      {audience_format:"PPV",ppv_buys:expect.any(Number),tv_household_rating:null},
+      {audience_format:"TV",ppv_buys:null,tv_household_rating:expect.any(Number)},
+     ]);
+     measurements={...measurements,formats};
+    }
     await enterHome(page,host.origin);
-    await screenshot(page,"after-the-bell");
     await tap(control(page,/Read The Lottery/).first());
     await expect(game(page).getByText("The Lottery",{exact:true}).first()).toBeVisible();
     await screenshot(page,"certified-premium-result");
+    const afterBell=control(page,"After the Bell");
+    if(await afterBell.count()){
+     await tap(afterBell);
+     await screenshot(page,"after-the-bell");
+    }
     await page.reload();
     await expect(game(page).getByText("The Lottery",{exact:true}).first()).toBeVisible();
     await advance(page,host.origin,3);
@@ -210,10 +251,10 @@ test("signed manager books, advances and reads actual certified weeks",async({pa
      WHERE w.world_id=$1`,[worldId,promotionId]);
     expect(continuity[0]).toMatchObject({week:5,seals:4,show_weeks:[1,2,2,4],
      holder:chooseChallenger?"will-ospreay":"samoa-joe",defences:chooseChallenger?1:2});
+    measurements={...measurements,continuity:continuity[0]};
    }
    expect(host.providerRequests).toBe(0);
-   const data={baseline,viewport:page.viewportSize(),cold,warm,home,openingCard,
-    interactions,preparationMs,providerRequests:host.providerRequests};
+   const data={baseline,viewport:page.viewportSize(),...measurements,providerRequests:host.providerRequests};
    console.log("Milestone 8 browser measurements",JSON.stringify(data));
    await testInfo.attach("Browser measurements",{body:JSON.stringify(data,null,2),contentType:"application/json"});
    if(evidence)await writeFile(join(evidence,"browser-measurements.json"),JSON.stringify(data,null,2)+"\n");

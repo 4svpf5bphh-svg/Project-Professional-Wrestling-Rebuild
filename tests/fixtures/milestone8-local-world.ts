@@ -4,6 +4,7 @@ import {withWorldTransaction} from "../../src/db/transaction.js";
 import {addPromotion,createWorld} from "../../src/db/world-operations.js";
 import {decideBackstageRequest} from "../../src/db/backstage-conversations.js";
 import {saveOwnerDisplayName} from "../../src/db/owner-identities.js";
+import {worldStaff} from "../../src/domain/world-staff.js";
 import {startProgramme} from "../../src/db/programme-workspace.js";
 
 export const managerId="m8-booker";
@@ -33,12 +34,13 @@ export function disposableDatabaseUrl(raw:string|undefined){
 }
 
 export async function seedMilestone8World(pool:TransactionPool,worldId:string,options:{
- companies?:number;secondManager?:boolean;coldStart?:boolean;benchmark?:boolean;
+ companies?:number;secondManager?:boolean;coldStart?:boolean;benchmark?:boolean;commercial?:boolean;
 }={}){
  const count=options.companies??2;
  await withWorldTransaction(pool,async tx=>{
   await createWorld(tx,{id:worldId,name:"North American Wrestling World",seed:8213,rulesetVersion:"test"});
-  await tx.query("UPDATE ppw_worlds SET injury_rate_multiplier=0 WHERE world_id=$1",[worldId]);
+  await tx.query(`UPDATE ppw_worlds SET injury_rate_multiplier=0,show_economics_enabled=$2,
+   major_event_interval_weeks=52 WHERE world_id=$1`,[worldId,options.commercial===true]);
   await tx.query(`INSERT INTO ppw_markets(world_id,market_id,name,audience_potential,wrestling_interest,spending_index)
    VALUES($1,'home','New England',70,78,100)`,[worldId]);
   for(let company=0;company<count;company++){
@@ -52,8 +54,12 @@ export async function seedMilestone8World(pool:TransactionPool,worldId:string,op
     ai_risk_tolerance=52,ai_match_quality_preference=70,ai_star_preference=60,ai_financial_caution=60,
     financial_distress='HEALTHY' WHERE world_id=$1 AND promotion_id=$2`,
     [worldId,id,owned?"HUMAN":"AI"]);
-   await tx.query(`INSERT INTO ppw_venues(world_id,venue_id,name,market_id,capacity)
-    VALUES($1,$2,$3,'home',2500)`,[worldId,arena,company===0?"Crown Pavilion":name+" Arena"]);
+   if(options.commercial)await tx.query(`INSERT INTO ppw_promotion_market_states
+    (world_id,promotion_id,market_id,awareness,live_strength,loyalty)
+    VALUES($1,$2,'home',64,70,59)`,[worldId,id]);
+   await tx.query(`INSERT INTO ppw_venues(world_id,venue_id,name,market_id,capacity,weekly_hire_cost,
+    prestige,production_suitability)
+    VALUES($1,$2,$3,'home',2500,8500,68,80)`,[worldId,arena,company===0?"Crown Pavilion":name+" Arena"]);
    await tx.query(`INSERT INTO ppw_show_series(world_id,promotion_id,series_id,name,role,
     event_type,cadence_weeks,anchor_week,importance)
     VALUES($1,$2,$3,$4,'FLAGSHIP','REGULAR',1,0,65)`,
@@ -87,8 +93,8 @@ export async function seedMilestone8World(pool:TransactionPool,worldId:string,op
     const showId=company===0?"tv-"+week:"atlas-"+week;
     await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,
      week,status,show_day,venue_id,market_id,booking_class,event_type,show_name,
-     show_series_id,event_importance)
-     VALUES($1,$2,$3,1,$4,'DRAFT',$5,$6,'home','REGULAR','REGULAR',$7,$8,65)`,
+     show_series_id,event_importance,ticket_strategy)
+     VALUES($1,$2,$3,1,$4,'DRAFT',$5,$6,'home','REGULAR','REGULAR',$7,$8,65,'STANDARD')`,
      [worldId,showId,id,week,company===0?3:5,arena,company===0?"Ascension":"Atlas Live",id+"-flagship"]);
    }
   }
@@ -97,9 +103,9 @@ export async function seedMilestone8World(pool:TransactionPool,worldId:string,op
     event_type,cadence_weeks,anchor_week,importance)
     VALUES($1,$2,'lottery-series','The Lottery','PREMIUM','MAJOR',52,1,91)`,[worldId,promotionId]);
    await tx.query(`INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,
-    status,show_day,venue_id,market_id,booking_class,event_type,show_name,show_series_id,event_importance)
+    status,show_day,venue_id,market_id,booking_class,event_type,show_name,show_series_id,event_importance,ticket_strategy)
     VALUES($1,'the-lottery',$2,1,2,'DRAFT',7,'arena-0','home','PREMIUM','MAJOR',
-     'The Lottery','lottery-series',91)`,[worldId,promotionId]);
+     'The Lottery','lottery-series',91,'STANDARD')`,[worldId,promotionId]);
    await tx.query(`INSERT INTO ppw_championships
     (world_id,promotion_id,championship_id,name,division,status,prestige,current_reign_id)
     VALUES($1,$2,'crown-world','Crown World Championship','SINGLES','ACTIVE',87,'initial-reign')`,[worldId,promotionId]);
@@ -109,10 +115,12 @@ export async function seedMilestone8World(pool:TransactionPool,worldId:string,op
    await tx.query(`INSERT INTO ppw_backstage_requests(world_id,request_id,promotion_id,person_id,kind,
     created_week_index,source_contract_id)
     VALUES($1,'shelley-wants-a-match',$2,'alex-shelley','MORALE',0,'deal-alex-shelley')`,[worldId,promotionId]);
+   const staff=worldStaff(8213);
    await tx.query(`INSERT INTO ppw_staff_employments(world_id,employment_id,staff_id,role,promotion_id,
     status,weekly_salary,start_week_index,expires_week_index,term_weeks,morale)
-    VALUES($1,'road-agent','staff-001','ROAD_AGENT',$2,'ACTIVE',750,0,51,52,75),
-          ($1,'talent-manager','staff-002','TALENT_MANAGER',$2,'ACTIVE',750,0,51,52,75)`,[worldId,promotionId]);
+    VALUES($1,'road-agent',$3,'ROAD_AGENT',$2,'ACTIVE',750,0,51,52,75),
+          ($1,'talent-manager',$4,'TALENT_MANAGER',$2,'ACTIVE',750,0,51,52,75)`,[worldId,promotionId,
+     staff.find(member=>member.role==="ROAD_AGENT")!.staffId,staff.find(member=>member.role==="TALENT_MANAGER")!.staffId]);
   }
  });
  if(!options.coldStart){
