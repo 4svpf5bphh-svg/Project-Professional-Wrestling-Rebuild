@@ -1,8 +1,8 @@
 /** Shared expanded profile for roster, market and booking inspection.
  * Loaded explicitly on open; quick cards use their existing bounded pages.
  */
-import {createWrestlerCard,wrestlerLabel} from "./wrestler-card.js";
-import {portraitCredit} from "./wrestler-portrait.js";
+import {wrestlerInitials,wrestlerLabel} from "./wrestler-card.js";
+import {createWrestlerPortrait,portraitCredit} from "./wrestler-portrait.js";
 import type {readWrestlerProfile} from "../db/wrestler-profile.js";
 import type {editWrestlerRepertoire} from "../db/wrestler-profile.js";
 import type {CareerView} from "../db/wrestler-career.js";
@@ -11,6 +11,7 @@ import {recordedCareerHighlights} from "../domain/recorded-career-highlights.js"
 import {WRESTLING_STYLES} from "../domain/portable-persona.js";
 import {wrestlerManagementStatus} from "./wrestler-management-status.js";
 import {remainingRosterExposure} from "../domain/remaining-contract-exposure.js";
+import {compactFanEstimate,estimateWrestlerFans} from "../domain/fan-following.js";
 type View=Awaited<ReturnType<typeof readWrestlerProfile>>;
 type Save=Awaited<ReturnType<typeof editWrestlerRepertoire>>;
 export interface WrestlerProfilePort{
@@ -19,11 +20,11 @@ export interface WrestlerProfilePort{
  save(input:{personId:string;requestId:string;expectedRevision:number;
   primaryStyle:string|null;secondaryStyle:string|null;
   signatureMoves:string[];finishingMoves:string[]}):Promise<Save>;
- openBackstage?(personId:string):void;
+ openBackstage?(personId:string,conversationId?:string):void;
  openContracts?(personId:string):void;
  openPlanner?():void;
  openBooking?(personId:string,name:string):void;
- openProgrammes?(personId:string):void;
+ openProgrammes?(personId:string,programmeId?:string):void;
  openTagTeams?():void;
  openStables?():void;
 }
@@ -35,6 +36,7 @@ const button=(label:string,cb:()=>void,disabled=false)=>{
  b.type="button";b.disabled=disabled;b.onclick=cb;return b;
 };
 const fmt=(n:number|null|undefined)=>n==null?"—":Math.round(n).toString();
+const worldWeek=(index:number)=>"Y"+(Math.floor(index/52)+1)+" W"+(index%52+1);
 function stat(label:string,value:number|null|undefined){
  const node=el("div","ppw-profile-stat");
  node.append(el("span","",label),el("strong","",fmt(value)));
@@ -51,8 +53,31 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
  // Each dossier is a new top-level reading experience. A route from the
  // talent market or a news notification must not inherit the old scrollY.
  // Overlay dossiers own their own scroll surface and must remain scrollable.
+ const overlay=root.classList.contains("ppw-profile-overlay");
+ const opener=overlay&&document.activeElement instanceof HTMLElement?document.activeElement:null;
+ const close=onBack?()=>{
+  onBack();
+  if(opener?.isConnected)opener.focus({preventScroll:true});
+ }:undefined;
  root.scrollTop=0;
- if(!root.classList.contains("ppw-profile-overlay"))window.scrollTo(0,0);
+ if(overlay){
+  root.tabIndex=-1;
+  root.addEventListener("keydown",event=>{
+   if(event.key==="Escape"&&close){
+    event.preventDefault();event.stopPropagation();close();return;
+   }
+   if(event.key!=="Tab")return;
+   const items=[...root.querySelectorAll<HTMLElement>(
+    'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary')]
+    .filter(item=>item.getClientRects().length>0);
+   const first=items[0],last=items.at(-1),focused=document.activeElement;
+   if(!first||!last){event.preventDefault();return;}
+   if(focused===root||(event.shiftKey?focused===first:focused===last)){
+    event.preventDefault();(event.shiftKey?last:first).focus();
+   }
+  });
+  root.focus({preventScroll:true});
+ }else window.scrollTo(0,0);
  let view:View|null=null,loading=false,saving=false,error="",success="";
  let activeTab:"OVERVIEW"|"CAREER"|"CHARACTER"|"CONTRACT"="OVERVIEW";
  let career:CareerView|null=null,careerLoading=false,careerError="";
@@ -86,34 +111,53 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   return x;
  }
  function render(){
+  const restoreFocus=overlay&&root.contains(document.activeElement);
   root.replaceChildren();root.classList.add("ppw-wrestler-profile");
   const heading=el("header","ppw-profile-header");
-  if(onBack)heading.append(button("‹ Back",onBack));
-  heading.append(el("span","ppw-profile-kicker","SCOUTING / WRESTLER DOSSIER"));
+  if(close)heading.append(button("‹ Back",close));
+  heading.append(el("span","ppw-profile-kicker","Wrestler dossier"));
   root.append(heading);
+  if(restoreFocus)root.focus({preventScroll:true});
   if(error)root.append(el("p","ppw-profile-message ppw-profile-error",error));
   if(!view){root.append(el("p","ppw-profile-muted",loading?
    "Opening wrestler dossier…":"Profile not available."));return;}
   if(success)root.append(el("p","ppw-profile-message",success));
   const ownAgreement=view.contracts.find(c=>c.isYours);
-  const ownDates=ownAgreement?.remainingDates;
-  const identityStatus=view.status==="RETIRED"?"RETIRED":
-   view.medicalWeeksRemaining!=null?
-    "INJURED · "+view.medicalWeeksRemaining+" WEEKS TO CLEARANCE":
-   view.onYourRoster?(ownDates===null?"UNLIMITED DATES":
-    typeof ownDates==="number"?ownDates+" DATES LEFT":"SIGNED TO YOUR PROMOTION"):
-   "SCOUTING REPORT";
-  const hero=createWrestlerCard({
-   personId:view.personId,name:view.name,ringName:view.persona.personaName,
-   division:view.division,alignment:view.alignment,championships:view.championships,
-   gimmickId:view.persona.gimmickId,primaryStyle:view.persona.primaryStyle,
-   popularity:view.popularity,recognition:view.recognition,momentum:view.momentum,
-   inRingQuality:view.inRingQuality,matchCraft:view.matchCraft,presentation:view.presentation,
-   signatureMove:view.persona.signatureMoves[0]?.name,
-   finisherMove:view.persona.finishingMoves[0]?.name,
-   status:identityStatus
-  },{context:view.onYourRoster?"ROSTER":"MARKET",
-   label:identityStatus});
+  const hero=el("section","ppw-profile-hero");
+  const ringName=view.persona.personaName||view.name;
+  const portrait=el("div","ppw-profile-portrait");
+  portrait.setAttribute("aria-hidden","true");
+  portrait.append(el("span","",wrestlerInitials(ringName)));
+  const photo=createWrestlerPortrait(ringName,320,view.personId)??
+   (ringName!==view.name?createWrestlerPortrait(view.name,320,view.personId):null);
+  if(photo){photo.loading="eager";photo.onerror=()=>photo.remove();portrait.append(photo);}
+  const identity=el("div","ppw-profile-identity");
+  const identityParts=[view.alignment,view.division,view.persona.primaryStyle]
+   .filter(Boolean).map(wrestlerLabel);
+  identity.append(el("h1","",ringName));
+  if(ringName!==view.name)identity.append(el("span","ppw-profile-ring-name",view.name));
+  if(identityParts.length)identity.append(el("p","ppw-profile-identity-meta",identityParts.join(" · ")));
+  if(view.persona.gimmickId)
+   identity.append(el("p","ppw-profile-identity-meta",wrestlerLabel(view.persona.gimmickId)));
+  const role=ownAgreement?.role??view.careerStage;
+  if(role||view.status==="RETIRED")identity.append(el("strong","ppw-profile-role",
+   view.status==="RETIRED"?"Retired":wrestlerLabel(role)));
+  const following=compactFanEstimate(estimateWrestlerFans(view.popularity,view.recognition,view.momentum));
+  if(following){
+   const estimate=el("span","ppw-wrestler-fans ppw-profile-following",following);
+   estimate.title="Estimated following based on popularity, recognition and momentum";
+   identity.append(estimate);
+  }
+  if(view.championships?.length){
+   const titles=el("div","ppw-profile-title-strip");
+   const belt=document.createElement("img");
+   belt.src="/belts/custom-world.svg";belt.alt="";belt.decoding="async";
+   const championshipNames=el("ul","ppw-profile-title-names");
+   championshipNames.setAttribute("aria-label","Current championships");
+   for(const title of view.championships)championshipNames.append(el("li","",title));
+   titles.append(belt,championshipNames);identity.append(titles);
+  }
+  hero.append(portrait,identity);
   if(portraitCredit(view.name)){
    // Required CC attribution stays accessible without the distracting
    // full-width credit line on every wrestler dossier.
@@ -130,19 +174,19 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
   const status=wrestlerManagementStatus(view);
   const manage=el("section","ppw-profile-manage");
   manage.dataset.status=status.kind;
-  manage.append(el("span","ppw-profile-kicker","THE BOOKER / MANAGE TALENT"),
-   el("h2","","Your next move"));
+  manage.append(el("h2","","Your next move"));
   // Signed talent needs the buttons, not an explanation of the booking rules.
   if(status.kind!=="SIGNED")manage.append(
    el("strong","ppw-profile-manage-status",status.headline),
    el("p","ppw-profile-manage-note",status.detail));
   if(ownAgreement){
    const weeksLeft=ownAgreement.expiresWeekIndex-view.currentWeekIndex+1;
-   manage.append(el("p","ppw-profile-manage-contract",
-    (ownAgreement.remainingDates===null?"Unlimited dates":
-     ownAgreement.remainingDates+" appearance dates")+
-    " · "+(weeksLeft>0?weeksLeft+" contract weeks remaining":"Contract term ended")+
-    " · Current World week"));
+   const fee=ownAgreement.appearanceFee;
+   const terms=[ownAgreement.remainingDates===null?"Unlimited dates":
+    ownAgreement.remainingDates+" appearance dates",
+    weeksLeft>0?"Through "+worldWeek(ownAgreement.expiresWeekIndex):"Contract term ended"];
+   if(typeof fee==="number"&&fee>0)terms.push("$"+fee.toLocaleString("en-GB")+" per appearance");
+   manage.append(el("p","ppw-profile-manage-contract",terms.join(" · ")));
   }
   const actions=el("div","ppw-profile-manage-actions");
   const action=(label:string,fn:()=>void)=>{
@@ -150,7 +194,7 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    control.classList.add("ppw-profile-manage-button");
    actions.append(control);
   };
-  if(view.onYourRoster&&view.canEdit&&status.kind==="SIGNED"&&port.openBooking)
+  if(view.onYourRoster&&(view.canBookThisWeek??view.canEdit)&&status.kind==="SIGNED"&&port.openBooking)
    action("Book on this week's show",()=>port.openBooking?.(personId,view!.name));
   if(view.onYourRoster&&port.openPlanner)
    action("Open show planner",()=>port.openPlanner?.());
@@ -199,19 +243,51 @@ export function mountWrestlerProfile(root:HTMLElement,port:WrestlerProfilePort,
    switches.push({key,button:pick});nav.append(pick);
   }
   root.append(nav);
+  if(view.activeProgrammes?.length||view.commitment||view.recentAchievement||view.motivation){
+   const context=section("In the picture");
+   context.classList.add("ppw-profile-context");
+   const fact=(label:string,headline:string,detail?:string,action?:HTMLButtonElement)=>{
+    const row=el("div","ppw-profile-context-row");
+    row.append(el("span","ppw-profile-kicker",label),el("strong","",headline));
+    if(detail)row.append(el("p","",detail));
+    if(action)row.append(action);
+    context.append(row);return row;
+   };
+   for(const story of view.activeProgrammes??[]){
+    const label=story.format==="RIVALRY"?"Rivalry":wrestlerLabel(story.format)+" programme";
+    const headline=story.opposition.length?
+     (story.format==="RIVALRY"?"Against ":"With ")+story.opposition.join(" & "):label;
+    fact("Active programme",headline,story.title??(story.opposition.length?label:undefined),
+     port.openProgrammes?button("Review programme",()=>port.openProgrammes?.(personId,story.id)):undefined);
+   }
+   const commitment=view.commitment;
+   if(commitment){
+    fact("Booking promise",commitment.headline,commitment.detail,
+     port.openBackstage?button("Review promise in Backstage",
+      ()=>port.openBackstage?.(personId,commitment.conversationId)):undefined);
+   }
+   const achievement=view.recentAchievement;
+   if(achievement){
+    const outcome=achievement.title?
+     achievement.titleChanged?"Won the "+achievement.title:"Won a "+achievement.title+" match":
+     "Victory at "+achievement.showName;
+    const detail="Y"+achievement.year+" W"+achievement.week+
+     (achievement.title?" · "+achievement.showName:"")+
+     (achievement.stars===null?"":" · "+achievement.stars.toFixed(2)+"★");
+    fact("Recent certified result",outcome,detail);
+   }
+   if(view.motivation&&!view.commitment){
+    const drive=fact("Current drive",view.motivation.title,view.motivation.reason);
+    drive.classList.add("ppw-profile-current-drive");
+    drive.setAttribute("aria-label","Current wrestler motivation");
+    drive.dataset.motivation=view.motivation.kind;
+   }
+   sections("OVERVIEW",context);
+  }
   // The list cards have no duplicate stat bars. The profile displays the
   // authoritative complete attributes immediately, once, in one section.
   const attrs=section("Full scouting attributes");
   attrs.classList.add("ppw-profile-attributes");
-  if(view.motivation){
-   const drive=el("div","ppw-profile-current-drive");
-   drive.setAttribute("aria-label","Current wrestler motivation");
-   drive.dataset.motivation=view.motivation.kind;
-   drive.append(el("small","","CURRENT DRIVE"),
-    el("strong","",view.motivation.title),
-    el("span","",view.motivation.reason));
-   attrs.append(drive);
-  }
   if(view.medicalWeeksRemaining!=null)
   attrs.append(el("p","ppw-profile-message",
    "MEDICAL ABSENCE · "+(view.medicalSeverity??"INJURY")+

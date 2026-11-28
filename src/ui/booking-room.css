@@ -1,0 +1,257 @@
+#game .ppw-card-booking {
+ --booking-canvas:#151822;
+ --booking-panel:#1b202c;
+ --booking-line:#424a59;
+ --booking-ink:#f4f1e9;
+ --booking-dim:#bdc5d3;
+ --booking-accent:#efb876;
+}
+
+#game .ppw-card-booking .ppw-top {
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:4px 12px;
+ padding:0 0 8px;
+}
+
+#game .ppw-card-booking .ppw-top h1 {
+ margin:0;
+ color:var(--booking-ink);
+ font:800 19px/1.2 system-ui,sans-serif;
+ letter-spacing:-.025em;
+ text-transform:none;
+}
+
+#game .ppw-card-booking .ppw-top>.ppw-muted { color:var(--booking-dim); }
+
+#game .ppw-card-booking .ppw-card-show-identity {
+ display:grid;
+ grid-template-columns:minmax(0,1fr) 92px;
+ width:100%;
+ gap:7px 12px;
+ padding:13px 14px;
+ align-items:center;
+ background:var(--tv-booking-surface,var(--booking-canvas));
+ border:1px solid var(--tv-border,var(--booking-line));
+ border-left:3px solid var(--tv-ribbon,var(--booking-accent));
+ border-radius:7px;
+ box-shadow:none;
+}
+
+#game .ppw-card-booking .ppw-card-show-identity::after { content:none; }
+
+#game .ppw-card-booking .ppw-booking-event-art {
+ width:100%;
+ grid-area:1/2/3/3;
+ height:auto;
+ max-height:96px;
+ object-fit:contain;
+}
+
+#game .ppw-card-booking .ppw-card-show-copy {
+ grid-area:1/1/2/2;
+ color:var(--tv-booking-ink,var(--booking-ink));
+}
+
+#game .ppw-card-booking .ppw-card-show-copy strong {
+ color:inherit;
+ font:900 clamp(20px,5.5vw,34px)/1.03 system-ui,sans-serif;
+ text-transform:none;
+ text-shadow:none;
+ overflow-wrap:anywhere;
+}
+
+#game .ppw-card-booking .ppw-card-show-copy span,
+#game .ppw-card-booking .ppw-card-show-location span {
+ color:inherit;
+ text-shadow:none;
+}
+
+#game .ppw-card-booking .ppw-card-show-location {
+ grid-area:2/1/3/2;
+ display:flex;
+ flex-wrap:wrap;
+ gap:3px 8px;
+ padding:0;
+ border:0;
+ color:var(--tv-booking-ink,var(--booking-dim));
+ font-size:11px;
+}
+
+#game .ppw-card-booking :is(.ppw-card-airtime,.ppw-card-appearance-cost) {
+ color:var(--booking-ink);
+ background:var(--booking-panel);
+ border:1px solid var(--booking-line);
+ border-radius:7px;
+ box-shadow:none;
+}
+
+#game .ppw-card-booking .ppw-card-airtime-fill { background:var(--booking-accent); }
+#game .ppw-card-booking .ppw-card-airtime-overrun .ppw-card-airtime-fill { background:#ff795d; }
+
+#game .ppw-card-booking .ppw-booking-fast {
+ display:grid;
+ grid-template-columns:minmax(0,1fr) auto;
+ padding:0;
+ gap:6px 8px;
+}
+
+#game .ppw-card-booking .ppw-booking-fast small {
+ grid-column:1/-1;
+ grid-row:2;
+ color:var(--booking-dim);
+ line-height:1.45;
+}
+
+#game .ppw-card-booking .ppw-booking-fast button {
+ width:100%;
+ min-height:44px;
+ background:var(--booking-panel);
+ border:1px solid var(--booking-line);
+ border-radius:6px;
+ font-size:13px;
+}
+
+#game .ppw-card-booking .ppw-booking-fast .ppw-primary {
+ color:#20190e;
+ background:var(--booking-accent);
+ border-color:var(--booking-accent);
+ box-shadow:none;
+}
+
+#game .ppw-card-booking .ppw-experience-actions :is(.ppw-action-match,.ppw-action-angle) {
+ min-height:44px;
+ background:var(--booking-panel)!important;
+ border:1px solid var(--booking-line)!important;
+ border-radius:6px;
+ font-size:13px;
+}
+
+.ppw-booking-run-heading {
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ gap:10px;
+ margin:13px 0 7px;
+ padding-bottom:6px;
+ border-bottom:1px solid var(--booking-line);
+ color:var(--booking-dim);
+ font-size:12px;
+}
+
+.ppw-booking-run-heading h2 { margin:0;color:var(--booking-ink);font-size:18px; }
+.ppw-booking-empty { margin:0;padding:8px 0;color:var(--booking-dim);font-size:13px; }
+
+#game .ppw-card-booking .ppw-booking-run-sheet { gap:5px; }
+
+#game .ppw-card-booking .ppw-booking-run-sheet .ppw-card {
+ margin:0;
+ background:var(--booking-panel)!important;
+ border:1px solid var(--booking-line)!important;
+ border-radius:7px!important;
+ box-shadow:none;
+}
+
+#game .ppw-card-booking .ppw-booking-run-sheet .ppw-card::before { content:none; }
+
+#game .ppw-card-booking .ppw-booking-run-sheet .ppw-main-event {
+ border-color:var(--tv-border,var(--booking-accent))!important;
+}
+
+#game .ppw-card-booking .ppw-card-bar {
+ display:grid;
+ grid-template-columns:36px minmax(0,1fr) auto;
+ align-items:start;
+ column-gap:8px;
+ row-gap:0;
+ padding:7px 9px;
+}
+
+#game .ppw-card-booking .ppw-card-bar .ppw-eyebrow {
+ color:var(--tv-booking-ink,var(--booking-accent));
+ text-shadow:none;
+ line-height:1;
+}
+
+#game .ppw-card-booking .ppw-card-bar .ppw-expand {
+ width:36px;
+ min-height:44px;
+ color:var(--booking-ink);
+ background:var(--booking-canvas);
+ border:1px solid var(--booking-line);
+ border-radius:5px;
+}
+
+#game .ppw-card-booking .ppw-card-bar .ppw-actions {
+ grid-column:2/-1;
+ justify-self:end;
+}
+
+.ppw-booking-slot-clock {
+ display:grid;
+ gap:2px;
+ color:var(--tv-booking-ink,var(--booking-ink));
+ text-align:right;
+ font:700 13px/1.3 ui-monospace,monospace;
+ font-variant-numeric:tabular-nums;
+}
+
+.ppw-booking-slot-clock small { color:var(--tv-booking-ink,var(--booking-dim));font-size:10px; }
+.ppw-booking-cast-warning { display:block;color:var(--tv-booking-ink,#ffd49e);font-size:11px; }
+
+#game .ppw-card-booking .ppw-card-matchup {
+ padding:5px 9px;
+ background:var(--booking-canvas);
+ border-color:var(--booking-line);
+}
+
+#game .ppw-card-booking .ppw-card-matchup-side .ppw-card-person {
+ width:auto;
+ max-width:120px;
+ padding:2px 4px;
+ border:0;
+ background:none;
+ color:var(--booking-ink);
+ overflow-wrap:anywhere;
+}
+
+#game .ppw-card-booking .ppw-card-booked-facts { padding:4px 9px 6px; }
+
+.ppw-booking-mode-control { display:flex;justify-content:flex-end; }
+
+body .ppw-card-edit-sheet button.ppw-booking-mode-switch {
+ min-height:44px;
+ color:#f6ddbb;
+ background:#2e2529;
+ border:1px solid #9c7755;
+ border-radius:6px;
+}
+
+.ppw-booking-quick-summary {
+ display:grid;
+ gap:4px;
+ padding:10px 0;
+ border-block:1px solid #526174;
+ color:#d6dfec;
+ font-size:13px;
+}
+
+.ppw-booking-quick-summary strong { color:#f7cc91; }
+.ppw-booking-picker-filters { margin-bottom:4px; }
+
+.ppw-booking-picker-filters summary {
+ padding:11px 4px;
+ min-height:44px;
+ cursor:pointer;
+ color:#ecdfcc;
+ font-size:13px;
+}
+
+body>.ppw-sheet-shade .ppw-quick-talent-sheet { padding-bottom:max(16px,env(safe-area-inset-bottom)); }
+
+@media (min-width:640px) {
+ #game .ppw-card-booking .ppw-card-show-identity { grid-template-columns:minmax(0,1fr) 145px; }
+ #game .ppw-card-booking .ppw-card-bar { grid-template-columns:36px minmax(0,1fr) 65px auto; }
+ #game .ppw-card-booking .ppw-card-bar .ppw-actions { grid-column:4; }
+}

@@ -86,6 +86,7 @@ const human=(v:string)=>v.toLowerCase().replaceAll("_"," ")
 export async function readCompletedShowView(
  pool:TransactionPool,input:{worldId:string;playerId:string;
   promotionId:string;showId:string},
+ publishedOnly=false,
 ):Promise<CompletedShowView>{
  if(!Object.values(input).every(x=>typeof x==="string"&&x.trim()&&x.length<=200))
   throw new Error("Invalid results scope");
@@ -154,7 +155,10 @@ export async function readCompletedShowView(
     AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
    JOIN ppw_memberships m ON m.world_id=p.world_id
     AND m.player_id=p.player_id AND m.status='ACTIVE'
-   WHERE c.world_id=$1 AND c.promotion_id=$3 AND c.show_id=$4`,
+   WHERE c.world_id=$1 AND c.promotion_id=$3 AND c.show_id=$4
+    ${publishedOnly?`AND EXISTS(SELECT 1 FROM ppw_worlds w WHERE w.world_id=c.world_id
+     AND ((c.year,c.week)<(w.year,w.week) OR ((c.year,c.week)=(w.year,w.week)
+      AND w.phase='OPEN')))` : ""}`,
    [input.worldId,input.playerId,input.promotionId,input.showId]);
   if(rows.length!==1)throw new Error("Completed show unavailable to this controller");
   const receipt=validateCompletedShowReceipt(rows[0]!.receipt_json as CompletedShowReceipt);
@@ -207,6 +211,7 @@ export async function readCompletedShowView(
   const falloutRows=receipt.matches.length?await tx.query<RecordedMatchFalloutRow>(`
    SELECT m.match_id,e.evidence_json,
     championship.name AS championship_name,cc.title_changed,
+    cc.championship_id,championship.division AS championship_division,
     COALESCE(winner.name,winner_team.name) AS title_winner_name,
     COALESCE(prior_person.name,prior_team.name) AS title_prior_holder_name,
     facts.rating_stars AS report_rating_stars,

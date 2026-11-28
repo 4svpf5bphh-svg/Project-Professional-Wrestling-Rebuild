@@ -25,7 +25,7 @@ const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
  .replace(/(^|\s)\S/g,c=>c.toUpperCase());
 const week=(index:number)=>"YEAR "+(Math.floor(index/52)+1)+" / WEEK "+(index%52+1);
 export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPort,
- onBack?:()=>void,initialScope:"WORLD"|"MINE"="MINE"){
+ onBack?:()=>void,initialScope:"WORLD"|"MINE"="MINE",focusChampionshipId?:string){
  root.classList.add("ppw-editor","ppw-championship-desk");
  root.replaceChildren(element("p","ppw-muted","Opening championship records…"));
  try{
@@ -351,13 +351,19 @@ export async function mountChampionshipDesk(root:HTMLElement,port:ChampionshipPo
   status.addEventListener("change",update);
   division.addEventListener("change",update);
   update();
+  const focused=focusChampionshipId&&buckets.get(directory.viewerPromotionId+":"+focusChampionshipId)?.card;
+  if(focused instanceof HTMLDetailsElement){
+   focused.open=true;
+   focused.querySelector("summary")?.focus({preventScroll:true});
+   focused.scrollIntoView({block:"start",behavior:"instant"});
+  }
   if(!directory.titles.length)list.append(element("p","ppw-muted",
    "No championships have been created in this World."));
  }catch(e){
   const error=element("p","ppw-alert ppw-error",
    e instanceof Error?e.message:"Championship history unavailable");
   const retry=element("button","ppw-title-more","Try again") as HTMLButtonElement;
-  retry.type="button";retry.onclick=()=>void mountChampionshipDesk(root,port,onBack,initialScope);
+  retry.type="button";retry.onclick=()=>void mountChampionshipDesk(root,port,onBack,initialScope,focusChampionshipId);
   root.replaceChildren(error,retry);
  }
 }

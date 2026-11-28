@@ -1,6 +1,6 @@
 /** URL navigation contains only section IDs, never player/World credentials. */
 export const HOST_SECTIONS=[
- {id:"home",label:"World",glyph:"W",primary:true},
+ {id:"home",label:"Promoter’s Office",glyph:"W",primary:true},
  {id:"news",label:"News",glyph:"N",primary:true},
  {id:"kayfabe",label:"Kayfabe Points",glyph:"★"},
  {id:"achievements",label:"Achievements",glyph:"✦"},
@@ -20,7 +20,8 @@ export const HOST_SECTIONS=[
  {id:"business-territories",label:"Territories",glyph:"◎"},
  {id:"staff",label:"Staff",glyph:"◉"},
  {id:"admin",label:"Admin",glyph:"⚙"},
- {id:"industry",label:"Industry",glyph:"◎"},
+ {id:"showtime",label:"Showtime",glyph:"▶"},
+ {id:"industry",label:"Wrestling World",glyph:"◎"},
  {id:"promotions",label:"Promotions",glyph:"◎"},
  {id:"broadcasts",label:"Recent Broadcasts",glyph:"▣"},
  {id:"records",label:"Record Book",glyph:"▤"},
@@ -64,60 +65,39 @@ export function readHostSection(hash:string):HostSection{
 }
 export const hostSectionHash=(section:HostSection)=>"#/"+section;
 
-/** Backstage remains a deep-linkable section but opens prominently from Home,
- * not as another nested promotion drawer option. The five roots remain client-only. */
-export const HOST_DRAWER_ROOTS=[
- {key:"world",label:"World",glyph:"W",landing:"home",destinations:[
-  ["home","World Dashboard","Your promotion and the shared week"],
-  ["promotions","Promotions","Companies and industry standings"],
-  ["broadcasts","Recent Broadcasts","Completed shows and public results"],
-  ["records","Record Book","Wrestler records and career search"],
-  ["legends","Legends Vault","Clues, discoveries and unlock reveals"],
-  ["collection","My Collection","Your private Legends card binder"],
-  ["achievements","Trophy Room","Track promoter legacy and earned prestige"],
-  ["hall-of-fame","Hall of Fame","Careers that earned their place"],
-  ["annual-awards","Annual Awards","The finest of each completed year"],
-  ["world-moments","World Moments","Historic highlights worth remembering"]]},
- {key:"news",label:"News",glyph:"N",landing:"news",destinations:[
-  ["news","PPW Wire","Official news, dirt sheets and weekly honours"]]},
- {key:"promotion",label:"Promotion",glyph:"P",landing:"roster",destinations:[
-  ["roster","My Roster","Wrestlers, divisions and dossiers"],
-  ["market","Talent Market","Recruitment and free agents"],
-  ["results","Results","Completed shows and reports"],
-  ["championships","My Champions","Your belts, champions and title history"],
-  ["tournaments","Tournaments","Create, active brackets and heritage"],
-  ["contracts","Contracts","Deals, renewals and dates"],
-  ["teams","Tag Teams","Partnerships and pairings"],
-  ["stables","Stables","Groups and factions"],
-  ["connections","Connections","Working relationships"]]},
- {key:"plan",label:"Plan",glyph:"P",landing:"planner",destinations:[
-  ["planner","Show Planner","Prepare future shows"],
-  ["calendar","Calendar","Events and venues"],
-  ["programmes","Programmes","Rivalries and ongoing stories"]]},
- {key:"business",label:"Business",glyph:"B",landing:"finances",destinations:[
-  ["finances","Finances","Bank, budgets and event accounts"],
-  ["commercials","Commercials","TV, streaming and sponsors"],
-  ["ratings-war","Ratings War","Audiences and rivals"],
-  ["staff","Staff Office","Staff meetings and decisions"],
-  ["business-standing","Standing","Company reputation and progress"],
-  ["business-activity","Activity","Income and expenditure history"],
-  ["business-events","Events","Show takings and business results"],
-  ["business-territories","Territories","Where your audience is growing"],
-  ["business","Company","Promotion identity and overview"],
-  ["admin","Admin","Operator-only World controls"]]}
+export const HOST_PRIMARY_NAV=[
+ {key:"home",label:"Home",landing:"home",sections:["home"]},
+ {key:"book",label:"Book",landing:"planner",sections:["planner","card","calendar","programmes","showtime"]},
+ {key:"roster",label:"Roster",landing:"roster",
+  sections:["roster","market","contracts","championships","tournaments","teams","stables","connections"]},
+ {key:"world",label:"World",landing:"industry",
+  sections:["industry","news","promotions","broadcasts","records","hall-of-fame","annual-awards","world-moments"]},
 ] as const;
-export type HostDrawerRoot=typeof HOST_DRAWER_ROOTS[number]["key"];
-export function drawerRootForSection(section:HostSection):HostDrawerRoot{
- if(section==="news")return "news";
- if(["industry","promotions","broadcasts","records","legends","collection","achievements","hall-of-fame",
-  "annual-awards","world-moments"].includes(section))return "world";
- if(["roster","market","results","championships","tournaments","contracts","backstage","teams","stables","connections"].includes(section))return "promotion";
- if(["planner","card","calendar","programmes"].includes(section))return "plan";
- if(["business","finances","commercials","ratings-war","business-standing",
-  "business-activity","business-events","business-territories",
-  "staff","admin","kayfabe"].includes(section))return "business";
- return "world";
+export type HostNavTab=typeof HOST_PRIMARY_NAV[number]["key"]|"more";
+export function navTabForSection(section:HostSection):HostNavTab{
+ return HOST_PRIMARY_NAV.find(tab=>(tab.sections as readonly HostSection[]).includes(section))?.key??"more";
 }
+
+interface HostMenuGroup{label:string;destinations:readonly [HostSection,string][]}
+export const HOST_MORE_GROUPS:readonly HostMenuGroup[]=[
+ {label:"This promotion",destinations:[
+  ["backstage","Backstage"],["results","Show Results"],["programmes","Programmes"],
+  ["calendar","Calendar"],["championships","My Champions"],["staff","Staff Office"],
+  ["showtime","Showtime"],["contracts","Contract Desk"],["market","Talent Market"],
+  ["teams","Tag Teams"],["stables","Stables"],["connections","Connections"],
+  ["tournaments","Tournaments"]]},
+ {label:"Business",destinations:[
+  ["business","Company"],["finances","Finances"],["commercials","Broadcasters & Sponsors"],
+  ["ratings-war","Ratings War"],["business-standing","Standing"],["business-activity","Activity"],
+  ["business-events","Event Accounts"],["business-territories","Territories"]]},
+ {label:"World & history",destinations:[
+  ["news","PPW Wire & Hot Tag"],["promotions","Promotions"],["broadcasts","Recent Broadcasts"],
+  ["records","Record Book"],["hall-of-fame","Hall of Fame"],["annual-awards","Annual Awards"],
+  ["world-moments","World Moments"]]},
+ {label:"Collection & rewards",destinations:[
+  ["kayfabe","Kayfabe Points & Cosmetics"],["legends","Legends Vault"],
+  ["collection","My Collection"],["achievements","Trophy Room"],["admin","Admin"]]}
+];
 
 /** Selected show IDs remain in this browser history entry, never in the URL.
  * The authenticated booking endpoint still verifies World/promotion control.

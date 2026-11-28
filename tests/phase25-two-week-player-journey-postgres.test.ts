@@ -14,6 +14,7 @@ import {driveWorldResolution} from "../src/db/world-resolution-pipeline.js";
 import {submitManualContractOffer} from "../src/db/manual-contract-offers.js";
 import {forecastCardAppearanceFees} from "../src/domain/card-appearance-forecast.js";
 import {bookingFinanceBrief} from "../src/domain/booking-financial-brief.js";
+import {readWrestlerProfile} from "../src/db/wrestler-profile.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 
@@ -189,6 +190,9 @@ test("player books and certifies two weeks with a renewed show-week contract and
   assert.deepEqual(advanceBefore.map(x=>x.remaining_dates),[5,5],
    "Authoring and confirming must never spend appearance dates");
   assert.equal((await ready(firstShow,"confirm-opening")).status,"APPLIED");
+  const profileBefore=await readWrestlerProfile(db.pool,{...scope,personId:"mistico"});
+  assert.equal(profileBefore.activeProgrammes[0]?.id,programmeId);
+  assert.equal(profileBefore.recentAchievement,null,"Prepared match scripts never count as achievements");
   card=await showCardEditorAsActor(context,worldId,promotionId,firstShow);
   assert.equal(card.ready,true);
   // True manager action: the old Week-1 Joe deal expires after this show.
@@ -203,6 +207,10 @@ test("player books and certifies two weeks with a renewed show-week contract and
    }});
   assert.equal(offered.status,"APPLIED","Only the controlling manager can send the renewal");
   await resolve(1);
+  const profileAfter=await readWrestlerProfile(db.pool,{...scope,personId:"mistico"});
+  assert.equal(profileAfter.recentAchievement?.showName,"Ascension: Week 1");
+  assert.equal(profileAfter.recentAchievement?.week,1);
+  assert.equal((await readWrestlerProfile(db.pool,{...scope,personId:"joe"})).recentAchievement,null);
   const result=await readCompletedShowView(db.pool,{...scope,showId:firstShow});
   assert.equal(result.matchCount,1);
   assert.equal(result.angleCount,1);

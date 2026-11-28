@@ -51,9 +51,9 @@ test("iPhone protected AI Lab runs one fictional 20B voice batch and keeps saved
    metrics:{durationMs:1250,providerCalls:1,inputTokens:825,outputTokens:240}}});
  });
  await page.goto("/#/home");
- await page.getByRole("button",{name:"Open Business menu"}).click();
- await page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:/Admin/}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await page.getByRole("dialog",{name:"More"})
+  .getByRole("link",{name:/Admin/}).click();
  await expect(page.getByRole("heading",{name:"Post-show voices · Groq 20B"})).toBeVisible();
  await expect(page.getByRole("button",{name:"Playtests"})).toHaveCount(0);
  const scenario=page.getByLabel("Fictional post-show scenario");

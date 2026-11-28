@@ -104,12 +104,12 @@ test("iPhone signs in and opens every department through a single drawer",async(
  });
  await page.goto("/#/home");
  await expect(page.getByRole("heading",{name:"Enter the locker room"})).toBeVisible();
- const nav=page.getByRole("navigation",{name:"Promotion navigation"});
+ const nav=page.getByRole("dialog",{name:"More"});
  await expect(nav).toBeHidden();
  await page.getByLabel("Player ID").fill("test-owner");
  await page.getByLabel("Private access code").fill("test-code-123456789");
  await page.getByRole("button",{name:"Sign in"}).click();
- const menu=page.getByRole("button",{name:"Open World menu"});
+ const menu=page.getByRole("button",{name:"More",exact:true});
  await expect(menu).toBeVisible();
   const menuBox=await menu.boundingBox();
   expect(menuBox).not.toBeNull();
@@ -123,26 +123,22 @@ test("iPhone signs in and opens every department through a single drawer",async(
  await expect(nav).toBeVisible();
  await expect(menu).toHaveAttribute("aria-expanded","true");
  await expect(page.locator("body")).toHaveClass(/ppw-drawer-active/);
- await expect(nav.getByRole("button",{name:"Close promotion menu"})).toBeFocused();
+ await expect(nav.getByRole("button",{name:"Close menu"})).toBeFocused();
  await page.keyboard.press("Escape");
  await expect(nav).toBeHidden();
  await expect(menu).toBeFocused();
  await expect(page.locator("body")).not.toHaveClass(/ppw-drawer-active/);
  await menu.click();
- await expect(page.getByRole("region",{name:"World departments"})).toBeVisible();
+ await expect(nav.getByRole("heading",{name:"World & history"})).toBeVisible();
  expect(methods.length,"The promotion drawer never reads Neon").toBe(before);
- await page.getByRole("button",{name:"Open Promotion menu"}).click();
- await expect(page.getByRole("region",{name:"Promotion departments"})).toBeVisible();
- await nav.getByRole("button",{name:/Talent Market/}).click();
+ await nav.getByRole("link",{name:"Talent Market"}).click();
  await expect(page).toHaveURL(/#\/market$/);
  await expect(nav).toBeHidden();
  await expect(menu).toHaveAttribute("aria-expanded","false");
- await page.getByRole("button",{name:"Open Promotion menu"}).click();
- await expect(page.getByRole("region",{name:"Promotion departments"})).toBeVisible();
- await nav.getByRole("button",{name:/Contracts/}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await nav.getByRole("link",{name:/Contracts/}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
- await page.getByRole("button",{name:"Open Plan menu"}).click();
- await nav.getByRole("button",{name:/Show Planner/}).click();
+ await page.getByRole("link",{name:"Book",exact:true}).click();
  await expect(page).toHaveURL(/#\/planner$/);
  await expect(page.getByRole("heading",{name:"Show Planner"})).toBeVisible();
  await page.goto("/#/home");
@@ -179,7 +175,7 @@ test("Home alerts open expiring agreements or pending offers directly without an
  await expect(page.getByRole("button",{name:/RESULTS ARCHIVE|LATEST CERTIFIED SHOW/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Offers awaiting decisions/})).toHaveCount(0);
  expect(methods).toEqual(["overview","contracts","overview"]);
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+ await expect(page.getByRole("dialog",{name:"More"})).toBeHidden();
 });
 
 test("named contract alerts give the right negotiation and expiry routes without hiding booking",async({page})=>{
@@ -768,7 +764,7 @@ test("Home reminders open the unfinished card and unread locker room directly",a
  await expect(page.locator(".ppw-backstage-contact")).toHaveCount(1);
  await expect(page.getByRole("button",{name:/Charlie/})).toBeVisible();
  expect(methods).toEqual(["overview","planner","load","planner","overview","backstage"]);
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+ await expect(page.getByRole("dialog",{name:"More"})).toBeHidden();
 });
 
 test("PWA manifest, service worker and explicit offline shell",async({page,request})=>{
@@ -815,7 +811,7 @@ test("PWA manifest, service worker and explicit offline shell",async({page,reque
  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href","/manifest.webmanifest");
 });
 
-test("small iPhones have only the five department drawers at the bottom without More",async({page})=>{
+test("small iPhones have four direct links and More at the bottom",async({page})=>{
  await page.setViewportSize({width:320,height:700});
  await page.route("**/api/session",async route=>route.fulfill({json:current}));
  await page.route("**/api/card",async route=>{
@@ -823,8 +819,8 @@ test("small iPhones have only the five department drawers at the bottom without 
   await route.fulfill({json:method==="overview"?overview:{}});
  });
  await page.goto("/#/home");
- const nav=page.getByRole("navigation",{name:"Promotion navigation"});
- const menu=page.getByRole("button",{name:"Open World menu"});
+ const nav=page.getByRole("dialog",{name:"More"});
+ const menu=page.getByRole("button",{name:"More",exact:true});
  await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
  await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("alt","PPW");
  await expect(page.locator(".ppw-shell-logo")).toHaveAttribute("src","/branding/ppw-showcase-header.webp");
@@ -839,29 +835,25 @@ test("small iPhones have only the five department drawers at the bottom without 
  await menu.click();
  await expect(nav).toBeVisible();
  await expect(nav.locator(".ppw-tab")).toHaveCount(0);
- await expect(nav.locator(".ppw-nav-drawer-entry")).toHaveCount(10);
- await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab span:last-child")).toHaveText(["World","News","Promotion","Plan","Business"]);
- await expect(page.getByRole("button",{name:"Open More menu"})).toHaveCount(0);
- await page.getByRole("button",{name:"Open Business menu"}).click();
- for(const label of ["Finances","Commercials","Ratings War","Staff Office"]){
-  await expect(nav.getByRole("button",{name:new RegExp(label)})).toBeVisible();
+ await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab span:last-child")).toHaveText(["Home","Book","Roster","World","More"]);
+ for(const label of ["Finances","Broadcasters & Sponsors","Ratings War","Staff Office"]){
+  await expect(nav.getByRole("link",{name:new RegExp(label)})).toBeVisible();
  }
- await nav.getByRole("button",{name:/Commercials/}).click();
+ await nav.getByRole("link",{name:"Broadcasters & Sponsors"}).click();
  await expect(page).toHaveURL(/#\/commercials$/);
  await expect(page.getByRole("heading",{name:"Commercials",level:1})).toBeVisible();
- await page.getByRole("button",{name:"Open Business menu"}).click();
- await nav.getByRole("button",{name:/Finances/}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await nav.getByRole("link",{name:/Finances/}).click();
  await expect(page).toHaveURL(/#\/finances$/);
  await expect(page.getByRole("heading",{name:"Finances"})).toBeVisible();
- await page.getByRole("button",{name:"Open Business menu"}).click();
- await page.getByRole("button",{name:"Open Promotion menu"}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
  expect(await overflow()).toBeLessThanOrEqual(1);
- await nav.getByRole("button",{name:/Contracts/}).click();
+ await nav.getByRole("link",{name:/Contracts/}).click();
  await expect(page).toHaveURL(/#\/contracts$/);
  await expect(nav).toBeHidden();
  await page.setViewportSize({width:390,height:844});
- await page.getByRole("button",{name:"Open World menu"}).click();
- await page.getByRole("button",{name:"Open News"}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await page.getByRole("link",{name:"PPW Wire & Hot Tag"}).click();
  await expect(page).toHaveURL(/#\/news$/);
  await expect(nav).toBeHidden();
  expect(await overflow()).toBeLessThanOrEqual(1);
@@ -895,7 +887,7 @@ test("verified player can join, claim and reach World without bypassing session 
  await page.route("**/api/card",async route=>route.fulfill({json:overview}));
  await page.goto("/#/home");
  await expect(page.getByRole("heading",{name:"Join Genesis"})).toBeVisible();
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+ await expect(page.getByRole("dialog",{name:"More"})).toBeHidden();
  await page.getByRole("button",{name:"Join World"}).click();
  await expect(page.getByRole("heading",{name:"Pick a promotion"})).toBeVisible();
  await expect(page.getByText("Home territory · Chicago")).toBeVisible();
@@ -904,8 +896,13 @@ test("verified player can join, claim and reach World without bypassing session 
  await expect(page.getByRole("heading",{name:"Make it yours"})).toBeVisible();
  await page.getByRole("button",{name:"Keep AEW"}).click();
  await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
- await expect(page.getByRole("button",{name:"Open World menu"})).toBeVisible();
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+ await expect(page.getByRole("button",{name:"More",exact:true})).toBeVisible();
+ await expect(page.getByRole("dialog",{name:"More"})).toBeHidden();
+ await expect(page.getByRole("complementary",{name:"First show guide"})).toBeVisible();
+ await page.reload();
+ await page.getByRole("button",{name:"Dismiss first show guide"}).click();
+ await page.reload();
+ await expect(page.getByRole("complementary",{name:"First show guide"})).toHaveCount(0);
  expect(mutated).toEqual(["/api/join","/api/claim"]);
 });
 
@@ -933,9 +930,9 @@ test("slow abandoned results cannot overwrite the next mobile workspace",async({
  await expect(page.getByRole("button",{name:/Saturday Spectacle/})).toBeVisible();
  await page.getByRole("button",{name:/Saturday Spectacle/}).click();
  await requested;
- const nav=page.getByRole("navigation",{name:"Promotion navigation"});
- await page.getByRole("button",{name:"Open World menu"}).click();
- await page.getByRole("button",{name:"Open News"}).click();
+ const nav=page.getByRole("dialog",{name:"More"});
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await page.getByRole("link",{name:"PPW Wire & Hot Tag"}).click();
  await expect(page).toHaveURL(/#\/news$/);
  releaseShow();
  await page.waitForTimeout(250);
@@ -1090,7 +1087,7 @@ test("Programme casting opens the universal wrestler dossier without erasing its
  await page.getByRole("button",{name:"View Alice's dossier ↗"}).click();
  const dialog=page.getByRole("dialog",{name:"Wrestler dossier"});
  await expect(dialog).toBeVisible();
- await expect(dialog.getByText("SCOUTING / WRESTLER DOSSIER")).toBeVisible();
+ await expect(dialog.getByRole("heading",{name:"Alice",level:1})).toBeVisible();
  await expect(dialog.getByText("Alice",{exact:true}).first()).toBeVisible();
  expect(calls.filter(x=>x==="programmes")).toHaveLength(1);
  expect(calls.filter(x=>x==="wrestlerProfile")).toHaveLength(1);
@@ -1243,7 +1240,7 @@ test("Business event pulse reuses loaded receipts and opens detailed accounts wi
  const expanded=page.locator('details.ppw-business-show[data-show-id="event-new"]');
  await expect(expanded).toHaveAttribute("open","");
  await expect(expanded.getByText("Gate revenue")).toBeVisible();
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeHidden();
+ await expect(page.getByRole("dialog",{name:"More"})).toBeHidden();
  expect(methods).toEqual(["business"]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
@@ -2164,19 +2161,21 @@ for(const width of [320,390]){
    }:method==="industryNews"?{stories:[],voices:[],awards:[],annualAwards:[]}:{}});
   });
   await page.goto("/#/home");
-  const nav=page.getByRole("navigation",{name:"Promotion navigation"});
-  await page.getByRole("button",{name:"Open World menu"}).focus();
+  const nav=page.getByRole("dialog",{name:"More"});
+  await page.getByRole("button",{name:"More",exact:true}).focus();
   await page.keyboard.press("Enter");
-  await expect(nav.getByRole("button",{name:"Close promotion menu"})).toBeFocused();
+  await expect(nav.getByRole("button",{name:"Close menu"})).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(nav.getByRole("button",{name:/World Dashboard/})).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect(nav.getByRole("button",{name:/Promotions Companies/})).toBeFocused();
+  await expect(nav.getByRole("link",{name:"Backstage"})).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button",{name:"More",exact:true})).toBeFocused();
+  await page.getByRole("link",{name:"World",exact:true}).focus();
   await page.keyboard.press("Enter");
   const workspace=page.locator("#game > .ppw-workspace");
-  await expect(workspace).toHaveAttribute("aria-label","Promotions");
+  await expect(workspace).toHaveAttribute("aria-label","Wrestling World");
   await expect(workspace).toBeFocused();
-  await page.getByRole("button",{name:"Open News",exact:true}).focus();
+  await page.getByRole("button",{name:"More",exact:true}).click();
+  await nav.getByRole("link",{name:"PPW Wire & Hot Tag"}).focus();
   await page.keyboard.press("Enter");
   await expect(workspace).toHaveAttribute("aria-label","News");
   await expect(workspace).toBeFocused();
@@ -2184,7 +2183,7 @@ for(const width of [320,390]){
   await page.keyboard.press("Tab");
   expect(await workspace.evaluate(el=>el.contains(document.activeElement))).toBe(true);
   await page.goBack();
-  await expect(workspace).toHaveAttribute("aria-label","Promotions");
+  await expect(workspace).toHaveAttribute("aria-label","Wrestling World");
   await expect(workspace).toBeFocused();
  });
 }

@@ -4,7 +4,11 @@
 import {promotionBrand} from "./broadcast-identity.js";
 import {createBroadcastPackageFrame} from "./broadcast-package-frame.js";
 import {createPromoterPrestigeCrest} from "./promoter-prestige-crest.js";
+import {createAnimatedEventPoster} from "./animated-event-poster.js";
+import {createPromotionLogo,fictionalPromotionLogoSources} from "./promotion-logo.js";
+import {describeBookingCommitment} from "../domain/backstage-booking-commitment.js";
 import type {HomeCompletedShow,HomeUpcomingShow,PlayerWorldOverview} from "../db/player-world-overview.js";
+import type {OfficePromise} from "../db/promoter-office-sql.js";
 export interface WorldHomePort{
  load():Promise<PlayerWorldOverview|null>;
  /** Only enabled for the selected private preview operator. Never on a timer. */
@@ -15,8 +19,12 @@ export interface WorldHomePort{
  claimWeeklyKP?():Promise<{awarded:number;reason?:string}>;
  openLegends?():void;openKayfabe?():void;openAchievements?():void;
  planner():void;roster():void;market():void;contracts():void;
+ openShowtime?():void;
+ openProgramme?(programmeId:string):void;
+ openContract?(personId:string):void;
+ openPromisedBooking?(showId:string,promise:OfficePromise):void;
  openUnfinishedCard?():void;openUpcomingShow?(showId:string):void;openUnreadBackstage?():void;
- openBackstageThread?(personId:string,unread:boolean):void;
+ openBackstageThread?(personId:string,unread:boolean,conversationId?:string):void;
  contractsExpiring?():void;contractsPending?():void;
  backstage():void;results():void;openCompletedShow?(showId:string):void;business():void;staff():void;
  ratingsWar?():void;
@@ -31,6 +39,81 @@ const el=(tag:string,cls="",label="")=>{
 };
 function homeEventFormat(show:HomeCompletedShow|HomeUpcomingShow):string{
  return show.broadcastFormat??(show.bookingClass==="PREMIUM"?"Premium event":"Regular event");
+}
+const weekLabel=(weekIndex:number)=>"Y"+(Math.floor(weekIndex/52)+1)+" W"+(weekIndex%52+1);
+const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const actionButton=(cls:string,label:string,action:()=>void)=>{
+ const button=document.createElement("button");
+ button.type="button";button.className=cls;button.textContent=label;button.onclick=action;
+ return button;
+};
+
+interface OfficeDecision{
+ category:string;headline:string;detail:string;
+ action:{label:string;open:()=>void};alternative?:{label:string;open:()=>void};
+}
+
+function officeDecisions(promotion:NonNullable<PlayerWorldOverview["promotion"]>,
+ weekIndex:number,bookingOpen:boolean,upcoming:HomeUpcomingShow[],port:WorldHomePort){
+ const attention=promotion.attention;
+ if(!attention)return [];
+ const choices:OfficeDecision[]=[];
+ const hold=attention.medicalHold;
+ if(hold&&bookingOpen&&port.openUpcomingShow){
+  const open=port.openUpcomingShow;
+  const dossier=port.openWrestler;
+  choices.push({category:"Card change",headline:hold.name+" cannot work "+hold.showName,
+   detail:"Slot "+hold.position+" needs a decision. Estimated return "+weekLabel(hold.clearedWeekIndex)+
+    ". Edit the match, move it, or book someone with eligible dates.",
+   action:{label:"Review affected card",open:()=>open(hold.showId)},
+   ...(dossier?{alternative:{label:"Medical report",open:()=>dossier(hold.personId)}}:{})});
+ }
+ const promise=attention.promise;
+ if(promise){
+  const chapter=describeBookingCommitment({decision:promise.decision,status:"PROMISED",
+   dueWeekIndex:promise.dueWeekIndex,plannedBooking:promise.planned,
+   relevantTitle:promise.title?.name,assessmentReason:null,trustDelta:0},weekIndex);
+  if(chapter){
+   const target=bookingOpen&&!promise.planned?upcoming.find(show=>show.status==="DRAFT"&&
+    !show.ready&&show.hasVenue&&(show.year-1)*52+show.week-1<=promise.dueWeekIndex):undefined;
+   const canFocus=promise.decision!=="PROMISE_TITLE_MATCH"||!!promise.title?.holderId;
+   const direct=target&&canFocus?port.openPromisedBooking:undefined;
+   const thread={label:"Open conversation",open:()=>port.openBackstageThread?
+    port.openBackstageThread(promise.personId,false,promise.conversationId):port.backstage()};
+   choices.push({category:"Backstage promise",headline:promise.name+" · "+chapter.headline,
+    detail:chapter.detail,
+    action:direct&&target?{label:"Book on "+target.showName,open:()=>direct(target.showId,promise)}:thread,
+    ...(direct?{alternative:thread}:{})});
+  }
+ }
+ const contract=(attention.contractAlerts??[]).find(item=>!item.waiting);
+ const programme=attention.programme;
+ const renewal:OfficeDecision|null=contract?{
+  category:"Contract",
+  headline:contract.kind==="DATES_EXHAUSTED"?contract.name+" has no dates left":
+   contract.name+"'s deal ends "+(contract.weeksRemaining<=1?"this week":
+    weekLabel(weekIndex+contract.weeksRemaining-1)),
+  detail:contract.kind==="DATES_EXHAUSTED"?
+   (contract.nextTermStart==null?
+    "Review the terms for extra dates or prepare a card without this wrestler.":
+    "The next term begins "+weekLabel(contract.nextTermStart)+". The current term has no bookable dates."):
+   "See the current costs and available renewal terms. The wrestler decides whether to accept.",
+  action:{label:"Review "+contract.name+"'s contract",open:()=>port.openContract?
+   port.openContract(contract.personId):(port.contractsExpiring??port.contracts)()}
+ }:null;
+ const urgentRenewal=contract&&(contract.kind==="DATES_EXHAUSTED"||contract.weeksRemaining<=1);
+ if(renewal&&urgentRenewal)choices.push(renewal);
+ if(programme&&port.openProgramme){
+  const open=port.openProgramme;
+  choices.push({category:programme.titleName?"Championship programme":"Programme",
+   headline:programme.titleName??programme.cast,
+   detail:[programme.titleName?programme.cast:null,
+    programme.heat===null?null:Math.round(programme.heat)+"/100 heat"].filter(Boolean).join(" · "),
+   action:{label:"Plan next chapter",open:()=>open(programme.programmeId)},
+   ...(bookingOpen?{alternative:{label:"Open free booking",open:port.planner}}:{})});
+ }
+ if(renewal&&!urgentRenewal)choices.push(renewal);
+ return choices.slice(0,3);
 }
 export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOverview?:PlayerWorldOverview){
  let overview:PlayerWorldOverview|null=initialOverview??null;
@@ -48,18 +131,19 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
    !Number.isFinite(world.serverEpoch))return;
   const origin=Date.now(),serverStart=world.serverEpoch;
   const tick=()=>{
-   if(!root.isConnected||!root.contains(node)){clearClock();return;}
+   if(!root.isConnected||!root.contains(node)){clearClock();return false;}
    const seconds=Math.max(0,Math.ceil(world.nextLockEpoch-
     (serverStart+(Date.now()-origin)/1000)));
    if(seconds===0){node.textContent="Booking deadline reached · check World status";
-    onDeadline();clearClock();return;}
+    clearClock();onDeadline();return false;}
    const days=Math.floor(seconds/86400),hours=Math.floor(seconds%86400/3600),
     mins=Math.floor(seconds%3600/60),secs=seconds%60;
    node.textContent="Booking closes in "+(days?days+"d ":"")+
     String(hours).padStart(2,"0")+":"+String(mins).padStart(2,"0")+
     ":"+String(secs).padStart(2,"0");
+   return true;
   };
-  tick();clockTimer=setInterval(tick,1000);
+  if(tick())clockTimer=setInterval(tick,1000);
  }
  const control=(title:string,summary:string,action:()=>void,icon:string)=>{
   const b=el("button","ppw-home-tile") as HTMLButtonElement;
@@ -141,6 +225,7 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
  }
  function draw(){
   clearClock();root.classList.add("ppw-home");root.replaceChildren();
+  root.dataset.office="";
   if(error)root.append(el("p","ppw-alert ppw-error",error));
   if(!loaded){
    root.append(el("p","ppw-home-small",loading?
@@ -161,19 +246,35 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
    (Number.isFinite(world.nextLockEpoch)&&Number.isFinite(world.serverEpoch)
     &&world.nextLockEpoch<=world.serverEpoch));
   const bookingOpen=world.phase==="OPEN"&&!deadlineDue;
+  const upcoming=promotion?.upcomingShows??[];
+  const currentShows=upcoming.filter(show=>show.year===world.year&&show.week===world.week);
+  const unfinished=currentShows.find(show=>!show.ready&&show.status!=="SUBMITTED");
+  const allReady=currentShows.length>0&&!unfinished;
+  const upcomingAction=(show:HomeUpcomingShow)=>show.hasVenue&&port.openUpcomingShow?
+   ()=>port.openUpcomingShow!(show.showId):port.calendar;
+  const officeActions=promotion?officeDecisions(promotion,
+   (world.year-1)*52+world.week-1,bookingOpen,upcoming,port):[];
   const masthead=el("header","ppw-home-head");
-  const phaseText=deadlineDue?"LOCK DUE":world.phase==="OPEN"?"WORLD OPEN":
+  const phaseText=deadlineDue?"DEADLINE REACHED":world.phase==="OPEN"?"WORLD OPEN":
    world.phase==="LOCKED"?"CARDS LOCKED":world.phase==="UPDATING"?"WORLD UPDATING":"WORLD PROCESSING";
   const phase=el("strong","ppw-home-phase-tag",phaseText);
   phase.dataset.phase=deadlineDue?"due":world.phase.toLowerCase();
-  masthead.append(phase,el("span","ppw-home-period",
-   "Y"+world.year+" W"+world.week));
+  masthead.append(el("h1","ppw-office-title","Promoter’s Office"),
+   el("span","ppw-home-period","Y"+world.year+" W"+world.week),phase);
   root.append(masthead);
   const hero=el("section","ppw-home-hero ppw-home-hero-compact");
-  hero.dataset.promotion=promotionBrand(promotion?.name??"").key;
+  const brand=promotionBrand(promotion?.name??"");
+  hero.dataset.promotion=brand.key;
   hero.setAttribute("aria-label","Your promotion and World status");
-  hero.append(el("h2","ppw-home-promotion-name",
-   promotion?.name??"Choose a promotion"));
+  const identity=el("div","ppw-office-identity");
+  const names=el("div","ppw-office-identity-copy");
+  names.append(el("h2","ppw-home-promotion-name",promotion?.name??"Choose a promotion"));
+  if(promotion?.homeMarketName)names.append(el("p","ppw-office-market",promotion.homeMarketName));
+  if(fictionalPromotionLogoSources[brand.key]){
+   const logo=createPromotionLogo(brand.key,110);
+   if(logo)identity.append(logo);
+  }
+  identity.append(names);hero.append(identity);
   if(promotion?.promoterPrestige){
    const prestige=promotion.promoterPrestige;
    const crest=createPromoterPrestigeCrest({
@@ -197,46 +298,58 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
    }else crest.append(awards);
    hero.append(crest);
   }
-  if(!bookingOpen){
-   const check=el("button","ppw-home-status-refresh",
-    "Check World status") as HTMLButtonElement;
-   check.type="button";check.disabled=loading;check.onclick=()=>void load();
-   hero.append(check);
-  }
   root.append(hero);
-  // The booking-open cue stays prominent without expanding the prestige bar.
-  // Actual server-supplied lock time remains authoritative.
-  const booking=el("button","ppw-home-booking-strip") as HTMLButtonElement;
-  booking.type="button";booking.dataset.phase=deadlineDue?"due":world.phase.toLowerCase();
-  const copy=el("span","ppw-home-booking-copy");
-  copy.append(el("strong","",bookingOpen?"BOOKING OPEN":
-   deadlineDue?"BOOKING DEADLINE REACHED":
-   world.phase==="LOCKED"?"BOOKING CLOSED":world.phase==="UPDATING"?"WORLD UPDATING":"WORLD PROCESSING"));
+  const nextAction=el("section","ppw-office-week");
+  nextAction.setAttribute("aria-label","This week");
   const longTestWindow=bookingOpen&&Number.isFinite(world.nextLockEpoch)&&
    Number.isFinite(world.serverEpoch)&&world.nextLockEpoch-world.serverEpoch>30*86400;
-  const detail=el("small","ppw-home-countdown",deadlineDue?"Booking deadline reached · check World status":
-   bookingOpen&&longTestWindow?"Booking is open · finish your next card when ready":
-   bookingOpen?"Booking closes soon · prepare your next show":
-   world.phase==="UPDATING"?"Preparing results and news · plan your upcoming shows":
-   "Your World will update after processing.");
-  copy.append(detail);
-  const scheduled=promotion?.upcomingShows??[];
-  if(bookingOpen&&promotion?.attention?.plannedShows&&!promotion.attention.unpreparedShow&&
-   scheduled.length&&scheduled.every(show=>show.year===world.year&&show.week===world.week&&
-    (show.ready||show.status==="SUBMITTED"))){
-   copy.append(el("small","ppw-home-booking-ready","Cards confirmed for this week"));
-  }
-  booking.append(el("span","ppw-home-booking-icon","▣"),copy,
-   el("span","ppw-home-booking-arrow","→"));
-  // The banner is an independent action. Its accessible name must not
-  // duplicate the dedicated Check World status button at the lock boundary.
-  if(world.phase==="UPDATING")booking.setAttribute("aria-label","Plan upcoming shows while World updates");
-  else if(!bookingOpen)booking.setAttribute("aria-label",
-   deadlineDue?"Review booking deadline":"Review World lock");
-  booking.onclick=bookingOpen||world.phase==="UPDATING"?port.planner:()=>void load();
-  root.append(booking);
+  const lead=deadlineDue?"Booking deadline reached":world.phase==="LOCKED"?"Cards are locked":
+   world.phase==="UPDATING"?"Results and news are updating":
+   world.phase!=="OPEN"?"The World is processing":
+   unfinished?.showName??(allReady?"Your cards are confirmed":"No shows on your calendar this week");
+  const detail=el("p","ppw-home-countdown",bookingOpen?
+   longTestWindow?"Booking is open":"Booking closes soon":
+   world.phase==="UPDATING"?"Certified results will appear after publication.":
+   "Check the World for the latest status.");
+  const keyline=el("div","ppw-office-week-copy");
+  keyline.append(el("span","ppw-office-kicker",bookingOpen?"BOOKING OPEN":"CURRENT WEEK"),
+   el("h3","",lead),detail);
+  const primary=unfinished?
+   actionButton("ppw-office-primary",unfinished.hasVenue?"Prepare card":"Choose venue",upcomingAction(unfinished)):
+   allReady&&port.openShowtime?actionButton("ppw-office-primary","Showtime controls",port.openShowtime):
+   allReady?actionButton("ppw-office-primary","Review confirmed card",upcomingAction(currentShows[0]!)):
+   actionButton("ppw-office-primary","Plan a show",port.planner);
+  primary.setAttribute("aria-label",primary.textContent+" · BOOKING OPEN");
+  const check=actionButton(bookingOpen?"ppw-office-secondary":"ppw-office-primary",
+   loading?"Checking status…":"Check World status",()=>void load());
+  check.disabled=loading;
+  const weekButtons=el("div","ppw-office-week-actions");
+  if(bookingOpen)weekButtons.append(primary);
+  else if(world.phase==="UPDATING")
+   weekButtons.append(actionButton("ppw-office-secondary","Plan upcoming shows",port.planner));
+  weekButtons.append(check);
+  if(port.openShowtime&&!(bookingOpen&&allReady))
+   weekButtons.append(actionButton("ppw-office-secondary","Showtime controls",port.openShowtime));
+  nextAction.append(keyline,weekButtons);root.append(nextAction);
   if(bookingOpen&&!longTestWindow)
    startClock(detail,world,()=>{expiredOnScreen=key;draw();});
+  if(officeActions.length){
+   const decisions=el("section","ppw-office-decisions");
+   decisions.setAttribute("aria-label","At your desk");
+   decisions.append(el("h3","","At your desk"));
+   for(const choice of officeActions){
+    const item=el("article","ppw-office-decision");
+    item.append(el("span","ppw-office-kicker",choice.category),
+     el("h4","",choice.headline));
+    if(choice.detail)item.append(el("p","",choice.detail));
+    const actions=el("div","ppw-office-decision-actions");
+    actions.append(actionButton("ppw-office-decision-primary",choice.action.label,choice.action.open));
+    if(choice.alternative)
+     actions.append(actionButton("ppw-office-secondary",choice.alternative.label,choice.alternative.open));
+    item.append(actions);decisions.append(item);
+   }
+   root.append(decisions);
+  }
   if(promotion){
    const dashboard=el("section","ppw-home-dashboard");
    dashboard.setAttribute("aria-label","Your show and Backstage");
@@ -244,20 +357,24 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
    const spotlight=el("section","ppw-home-show-spotlight");
    spotlight.setAttribute("aria-label","Your shows");
    const completed=promotion.latestShows??[];
-   const upcoming=promotion.upcomingShows??[];
+   const posterEvent=upcoming.find(show=>show.posterStyle);
    const name=promotion.flagshipName??completed.find(s=>s.bookingClass==="REGULAR")?.showName??
-    (completed.length?null:next?.showName??last?.showName)??"Weekly show";
+    upcoming[0]?.showName??next?.showName??last?.showName;
    const featured=upcoming.find(s=>s.showName===name)??completed.find(s=>s.showName===name);
    const televised=featured?.broadcastFormat==="TV";
-   const frame=createBroadcastPackageFrame({
+   const poster=posterEvent?createAnimatedEventPoster({style:posterEvent.posterStyle,
+    eventName:posterEvent.showName,promotionName:promotion.name,compact:true}):null;
+   const frame=name?createBroadcastPackageFrame({
     style:promotion.broadcastPackageStyle??null,
-    promotion:promotion.name,show:name,kind:"OPEN",televised
-   });
-   if(frame){
+    promotion:promotion.name,show:name,kind:"OPEN",compact:true,televised
+   }):null;
+   if(poster){
+    spotlight.append(poster);
+   }else if(frame){
     frame.classList.add("ppw-home-broadcast-frame");
     spotlight.dataset.broadcastPackage=frame.dataset.broadcastPackage??"standard";
     spotlight.append(frame);
-   }else{
+   }else if(name){
     const standard=el("div","ppw-home-standard-opening");
     standard.append(el("small","",televised?"PPW / ON AIR":"PPW / LIVE EVENTS"),
      el("strong","",name));
@@ -279,11 +396,13 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
      const format=homeEventFormat(show);
      const status=show.status==="SUBMITTED"?"Submitted":show.ready?"Ready":
       !show.hasVenue?"Choose venue":bookingOpen?"Edit card":"View card";
-     const action=show.hasVenue&&port.openUpcomingShow?
-      ()=>port.openUpcomingShow!(show.showId):port.calendar;
-     const tile=control(show.showName,format+" · "+status,action,"▶");
+     const tile=control(show.showName,format+" · "+status,upcomingAction(show),"▶");
      tile.classList.add("ppw-home-recent-show");
      tile.dataset.bookingClass=show.bookingClass.toLowerCase();
+     if(show.showDay&&days[show.showDay-1]){
+      tile.setAttribute("aria-label",show.showName+" "+format+" · "+status);
+      tile.querySelector(".ppw-home-tile-copy")?.append(el("small","ppw-office-event-day",days[show.showDay-1]!));
+     }
      rows.append(tile);
     }
    }
@@ -431,10 +550,12 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
   // Backstage's hero already owns wrestler, network and staff messages.
   // Avoid duplicates in the general Notifications list.
   const contractAlerts=(attention?.contractAlerts??[]).slice(0,5);
+  const featuredContract=officeActions.some(choice=>choice.category==="Contract")?
+   contractAlerts.find(item=>!item.waiting):undefined;
   for(const item of contractAlerts){
    // The owner already placed this proposal. Only an outcome, not
    // an outgoing offer, can create a fresh decision for the owner.
-   if(item.waiting)continue;
+   if(item.waiting||item===featuredContract)continue;
    const noDates=item.kind==="DATES_EXHAUSTED";
    const when=item.weeksRemaining<=1?"this week":
     "after "+item.weeksRemaining+" weeks, including this week";
@@ -479,8 +600,8 @@ export function mountWorldHome(root:HTMLElement,port:WorldHomePort,initialOvervi
   // All counts reflect the existing, authenticated overview response.
   briefHead.append(el("span","ppw-home-notification-count",
    items.length?items.length+" TO REVIEW":"ALL CLEAR"));
-  if(!items.length)brief.append(el("p","ppw-home-brief-clear",
-   "No management issues require attention right now."));
+  if(!items.length)brief.append(el("p","ppw-home-brief-clear",featuredContract?
+   "No other updates need your attention.":"No management issues require attention right now."));
   root.append(brief);
   // Secondary news is one compact inbox; accepted offers already have their
   // own primary action and acknowledgement above the dashboard.

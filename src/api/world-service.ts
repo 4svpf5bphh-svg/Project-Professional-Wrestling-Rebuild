@@ -629,7 +629,7 @@ export async function completedShowAsActor(context:WorldApiContext,
  validate(context.actor.playerId,"actor");
  validate(worldId,"World");validate(promotionId,"promotion");validate(showId,"show");
  return readCompletedShowView(context.pool,{worldId,promotionId,showId,
-  playerId:context.actor.playerId});
+  playerId:context.actor.playerId},true);
 }
 
 /** The audience may read completed rival broadcasts and published AI results.

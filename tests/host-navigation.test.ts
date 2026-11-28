@@ -23,44 +23,21 @@ test("Admin is a private route protected by the host",()=>{
  assert.equal(readHostSection("#/admin?token=secret"),"home");
 });
 
-test("original five-root drawer maps gameplay desks without extra routes",async()=>{
- const {HOST_DRAWER_ROOTS,drawerRootForSection}=await import("../src/web/host-navigation.js");
- assert.deepEqual(HOST_DRAWER_ROOTS.map(x=>x.label),
-  ["World","News","Promotion","Plan","Business"]);
- const allDestinations=HOST_DRAWER_ROOTS.flatMap(x=>x.destinations.map(y=>y[0]));
- assert.equal(allDestinations.length,new Set(allDestinations).size);
- for(const dest of allDestinations){
-  assert.equal(readHostSection(hostSectionHash(dest)),dest);
-  assert.equal(HOST_DRAWER_ROOTS.find(x=>x.key===drawerRootForSection(dest))?.destinations.some(x=>x[0]===dest),true);
+test("direct tabs and More reach every desk, including back- and forward-compatible routes",async()=>{
+ const {HOST_PRIMARY_NAV,HOST_MORE_GROUPS,navTabForSection}=await import("../src/web/host-navigation.js");
+ assert.deepEqual(HOST_PRIMARY_NAV.map(tab=>[tab.label,tab.landing]),[
+  ["Home","home"],["Book","planner"],["Roster","roster"],["World","industry"],
+ ]);
+ const destinations=HOST_MORE_GROUPS.flatMap(group=>group.destinations.map(([section])=>section));
+ assert.equal(destinations.length,new Set(destinations).size);
+ assert.deepEqual(new Set([...destinations,...HOST_PRIMARY_NAV.map(tab=>tab.landing),"card"]),
+  new Set(HOST_SECTIONS.map(section=>section.id)));
+ for(const tab of HOST_PRIMARY_NAV){
+  for(const section of tab.sections)assert.equal(navTabForSection(section),tab.key);
  }
-});
-
-test("World archives have their own private-data-free routes and only one News drawer destination",async()=>{
- const {HOST_DRAWER_ROOTS,drawerRootForSection}=await import("../src/web/host-navigation.js");
- const world=HOST_DRAWER_ROOTS.find(x=>x.key==="world")!;
- const news=HOST_DRAWER_ROOTS.find(x=>x.key==="news")!;
- assert.deepEqual(world.destinations.map(x=>x[0]),[
-  "home","promotions","broadcasts","records","legends","collection","achievements","hall-of-fame",
-  "annual-awards","world-moments"]);
- assert.deepEqual(news.destinations.map(x=>x[0]),["news"]);
- for(const route of world.destinations.map(x=>x[0])){
-  assert.equal(drawerRootForSection(route as typeof HOST_SECTIONS[number]["id"]),"world");
- }
+ assert.equal(navTabForSection("backstage"),"more");
  assert.equal(readHostSection("#/industry/legends"),"legends");
- assert.equal(readHostSection("#/collection"),"collection");
-});
-test("Business drawer directly opens individual independently addressable desks",async()=>{
- const {HOST_DRAWER_ROOTS,drawerRootForSection}=await import("../src/web/host-navigation.js");
- const business=HOST_DRAWER_ROOTS.find(x=>x.key==="business")!;
- const deskIds=["finances","commercials","ratings-war","staff",
-  "business-standing","business-activity","business-events","business-territories"];
- for(const id of deskIds){
-  assert.ok(business.destinations.some(x=>x[0]===id),id+" must be a drawer destination");
-  assert.equal(readHostSection("#/"+id),id);
-  assert.equal(drawerRootForSection(id as typeof HOST_SECTIONS[number]["id"]),"business");
- }
- assert.equal(readHostSection("#/business/ratings"),"business",
-  "Existing Results ratings links must remain valid");
+ assert.equal(readHostSection("#/business/ratings"),"business");
 });
 
 test("Home alerts deep-link to the right contract queue without revealing wrestler IDs",()=>{

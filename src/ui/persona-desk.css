@@ -609,3 +609,16 @@ html[data-ppw-screen=backstage] #game .ppw-messenger-promises{padding-bottom:cal
 #game .ppw-backstage-tabs .ppw-persona-button{color:#e6f2ff;border-color:#546681}
 #game .ppw-backstage-tabs .ppw-persona-selected{color:#071829;background:#b4d9ff;border-color:#b4d9ff}
 #game .ppw-backstage-contacts .ppw-backstage-world-contact{min-height:62px}
+
+/* The inbox is the locker-room entrance. Conversations retain their chat layout. */
+html[data-ppw-screen="backstage"] #game .ppw-messenger-inbox .ppw-persona-header {
+ min-height:75px;padding:12px!important;border-radius:8px!important;
+ background:linear-gradient(90deg,#11192bef,#14182d89),
+  url("/assets/home/backstage-hub.svg") center 55%/cover!important;
+}
+html[data-ppw-screen="backstage"] #game .ppw-messenger-inbox .ppw-persona-header h1 {
+ color:#f5f8ff!important;font-size:clamp(27px,6.2vw,35px);
+}
+html[data-ppw-screen="backstage"] #game .ppw-messenger-inbox .ppw-persona-header .ppw-backstage-exit {
+ color:#f5f8ff!important;border-color:#a8b9e780!important;background:#18233de8!important;
+}

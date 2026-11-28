@@ -187,6 +187,11 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
   if(!normalOperator&&!benchmarkOperator)
    return json(403,{error:"Admin access requires the designated World operator"});
   if(post&&!csrf(req,user))return json(403,{error:"Invalid admin session"});
+  if(path==="/api/admin"&&get&&routeUrl.searchParams.get("worldPlan")==="1"){
+   if(!normalOperator)return json(403,{error:"World readiness requires the designated World operator"});
+   try{return json(200,{plan:await planNextWorldResolutionAction(pool,cfg.worldId)});}
+   catch{return json(503,{error:"World readiness is unavailable. Try again."});}
+  }
   if(path==="/api/admin"&&get&&routeUrl.searchParams.get("aiLab")){
    const view=routeUrl.searchParams.get("aiLab");
    try{
@@ -279,14 +284,6 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
     catch(e){return json(409,{error:e instanceof Error?e.message:
       "AI preview feedback was not saved"});}
    }
-   if(body.action==="RETRY_FAILED_RINGSIDE"){
-    if(typeof body.showId!=="string"||body.showId.length>200)
-     return json(400,{error:"Select a completed show"});
-    try{return json(200,await rearmFailedRingsideReport(pool,cfg.worldId,
-      user.playerId,body.showId));}
-    catch(e){return json(409,{error:e instanceof Error?e.message:
-      "Failed review retry was not permitted"});}
-   }
    if(body.action!=="SAVE_RINGSIDE"||
       !Number.isSafeInteger(body.expectedVersion)||
       typeof body.settings!=="object")
@@ -296,6 +293,23 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
      body.settings,body.expectedVersion as number);
     return json(200,{settings:saved});
    }catch(e){return json(409,{error:e instanceof Error?e.message:"Settings rejected"});}
+  }
+  if(path==="/api/admin-preview"&&body.action==="RETRY_FAILED_RINGSIDE"){
+   if(!normalOperator)return json(403,{error:"Retry requires the designated World operator"});
+   if(typeof body.showId!=="string"||!body.showId||body.showId.length>200)
+    return json(400,{error:"Select a completed show"});
+   if(!allow("admin-settings:"+cfg.worldId,12,60*60_000))
+    return json(429,{error:"Admin settings rate limit reached"});
+   const live=liveRingsideProvider(process.env);
+   if(!live.key)return json(503,{error:"The live Ringside provider is unavailable"});
+   try{
+    const rearmed=await rearmFailedRingsideReport(pool,cfg.worldId,user.playerId,body.showId);
+    const {status}=await loadRingsideCommentary(pool,{worldId:cfg.worldId,
+     playerId:user.playerId,promotionId:rearmed.promotionId,showId:rearmed.showId},
+     live.key,fetch,live.provider,"ADMIN_RETRY");
+    return json(200,{status});
+   }catch(e){return json(409,{error:e instanceof Error?e.message:
+    "Failed review retry was not permitted"});}
   }
   // Read-only owner inspector: derives the EXACT first Groq request from
   // certified show data or a named lab fixture. No API key, provider call,
@@ -584,11 +598,9 @@ export async function handlePpwHostApi(req:Request):Promise<Response>{
    body.promotionId.length>200||typeof body.showId!=="string"||
    !body.showId||body.showId.length>200)return json(400,{error:"Invalid show scope"});
   try{
-   const live=liveRingsideProvider(process.env);
    const result=await loadRingsideCommentary(pool,{
     worldId:cfg.worldId,playerId:user.playerId,
-    promotionId:body.promotionId,showId:body.showId},
-    live.key,fetch,live.provider);
+    promotionId:body.promotionId,showId:body.showId},undefined);
    return json(result.status==="pending"?202:200,result);
   }catch{return json(404,{error:"No completed show available"});}
  }

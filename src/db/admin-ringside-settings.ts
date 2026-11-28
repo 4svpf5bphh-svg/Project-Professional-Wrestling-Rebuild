@@ -65,12 +65,14 @@ export async function rearmFailedRingsideReport(pool:TransactionPool,
   throw new Error("Select one completed player-controlled show.");
  return withWorldTransaction(pool,async tx=>{
   await tx.query("SELECT world_id FROM ppw_worlds WHERE world_id=$1 FOR UPDATE",[worldId]);
-  const rows=await tx.query<{state:string;attempts:number;model:string;claim_expired:boolean;published:boolean}>(`
-   SELECT r.state,r.attempts,r.model,r.claim_until<=now() AS claim_expired,
+  const rows=await tx.query<{promotion_id:string;state:string;attempts:number;
+   model:string;claim_expired:boolean;published:boolean}>(`
+   SELECT c.promotion_id,r.state,r.attempts,r.model,r.claim_until<=now() AS claim_expired,
     EXISTS(SELECT 1 FROM ppw_ringside_reports old
      WHERE old.world_id=c.world_id AND old.promotion_id=c.promotion_id
       AND old.show_id=c.show_id AND old.state='READY') AS published
    FROM ppw_completed_shows c
+   JOIN ppw_worlds w ON w.world_id=c.world_id
    JOIN ppw_promotion_controls p ON p.world_id=c.world_id
     AND p.promotion_id=c.promotion_id AND p.player_id=$2 AND p.active
    JOIN ppw_memberships m ON m.world_id=p.world_id AND m.player_id=p.player_id
@@ -78,7 +80,8 @@ export async function rearmFailedRingsideReport(pool:TransactionPool,
    LEFT JOIN ppw_ringside_reports r ON r.world_id=c.world_id
     AND r.promotion_id=c.promotion_id AND r.show_id=c.show_id
     AND r.prompt_version=$4
-   WHERE c.world_id=$1 AND c.show_id=$3 LIMIT 1`,
+   WHERE c.world_id=$1 AND c.show_id=$3 AND w.phase='OPEN'
+    AND (c.year,c.week)<=(w.year,w.week) LIMIT 1`,
    [worldId,playerId,showId,RINGSIDE_PROMPT_VERSION]);
   if(rows.length!==1)throw new Error("This is not one of your completed shows.");
   if(rows[0]?.published||rows[0]?.state==="READY")
@@ -108,6 +111,6 @@ export async function rearmFailedRingsideReport(pool:TransactionPool,
    (world_id,event_id,player_id,action,context_json)
    VALUES($1,$2,$3,'RINGSIDE_FAILED_RETRY',$4::jsonb)`,
    [worldId,randomUUID(),playerId,JSON.stringify({showId})]);
-  return {status:"ARMED",showId};
+  return {status:"ARMED",showId,promotionId:row.promotion_id};
  });
 }

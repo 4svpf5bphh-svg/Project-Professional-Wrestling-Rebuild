@@ -76,9 +76,9 @@ test("owner runs a controlled wrestling benchmark and sees actual usage without 
   }});
  });
  await page.goto("/#/home");
- await page.getByRole("button",{name:"Open Business menu"}).click();
- await page.getByRole("navigation",{name:"Promotion navigation"}).getByRole(
-  "button",{name:/Admin/}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await page.getByRole("dialog",{name:"More"}).getByRole(
+  "link",{name:/Admin/}).click();
  await page.getByRole("button",{name:"AI Testing Lab"}).click();
  await expect(page.getByRole("heading",{name:"Wrestling IQ Benchmarks"})).toBeVisible();
  await expect(page.getByText(/970\/1000 requests left that day/)).toBeVisible();

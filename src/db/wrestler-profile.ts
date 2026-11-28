@@ -8,6 +8,9 @@ import type {SqlRows} from "./world-operations.js";
 import {effectiveWrestlerAlignment} from "../domain/original-alignment.js";
 import {applyWorldCommand} from "./world-commands.js";
 import {livingWrestlerMotivation} from "../domain/living-character-motivation.js";
+import {describeBookingCommitment,type UpcomingPromiseBooking} from "../domain/backstage-booking-commitment.js";
+import {plannedPromiseBookingSql} from "./backstage-promise-sql.js";
+import {weekDateRangeSql} from "./week-date-sql.js";
 import {originalPersonaBaseline,validatePortablePersona,WRESTLING_STYLES}
  from "../domain/portable-persona.js";
 import type {PortablePersona,PortableIdentityMove} from "../domain/portable-identity-types.js";
@@ -38,6 +41,16 @@ type Person={
  shared_human:boolean;
  medical_severity:string|null;medical_clearance_week_index:number|null;
 };
+type ProgrammeContext={id:string;format:string;opposition:string[];title:string|null};
+type BookingPromiseContext={id:string;decision:string;status:string;title:string|null;
+ dueWeekIndex:number|null;planned:UpcomingPromiseBooking|null};
+type RecentAchievement={showName:string;year:number;week:number;stars:number|null;
+ title:string|null;titleChanged:boolean};
+type ProfilePerson=Person&{
+ active_programmes:ProgrammeContext[];
+ booking_promise:BookingPromiseContext|null;
+ recent_achievement:RecentAchievement|null;
+};
 type Contract={promotion_id:string;promotion_name:string;family:string;
  remaining_dates:number|null;start_week_index:number;expires_week_index:number;
  role_expectation:string|null;weekly_guarantee:string|null;
@@ -54,7 +67,7 @@ const authorised=async(tx:SqlRows,s:ProfileScope)=>{
  if(row.length!==1)throw new Error("Wrestler profile access denied");
  return {...row[0]!,currentWeekIndex:week(row[0]!.year,row[0]!.week)};
 };
-const personSql=String.raw`
+const personSql=(includeDossier=false)=>String.raw`
  SELECT p.person_id,p.name,p.status,p.booking_division,p.career_stage,
   p.biological_age,p.career_experience,p.generated_talent,p.debut_week_index,
   p.popularity,p.recognition,p.momentum,
@@ -79,6 +92,8 @@ const personSql=String.raw`
     AND shared.start_week_index<=$4 AND shared.expires_week_index>=$4
    LIMIT 1
   ) AS shared_human
+ ${includeDossier?`,programmes.active_programmes, promise.booking_promise,
+  achievement.recent_achievement`:``}
  FROM ppw_people p
  ${currentWrestlerTitlesJoin}
  LEFT JOIN ppw_medical_absences medical ON medical.world_id=p.world_id
@@ -133,7 +148,89 @@ const personSql=String.raw`
   ORDER BY CASE WHEN r.status IN ('PENDING','PROMISED') THEN 0 ELSE 1 END,
    r.created_week_index DESC,r.request_id DESC LIMIT 1
  ) expressed ON TRUE
+ ${includeDossier?dossierContextSql:``}
  WHERE p.world_id=$1 AND p.person_id=$3`;
+
+/** Display-only context for one dossier. Existing owner, promotion/person,
+ * and company/date indices bound these reads inside the profile statement.
+ * The repertoire mutation uses the shorter identity projection. */
+const dossierContextSql=String.raw`
+ LEFT JOIN LATERAL (
+  SELECT coalesce(jsonb_agg(jsonb_build_object('id',active.programme_id,
+   'format',active.programme_format,'title',title.name,'opposition',ARRAY(
+    SELECT coalesce(person.name,team.name)
+    FROM ppw_programme_side_refs r
+    LEFT JOIN ppw_people person ON person.world_id=r.world_id
+     AND person.person_id=r.ref_id AND r.ref_kind='PERSON'
+    LEFT JOIN ppw_tag_teams team ON team.world_id=r.world_id
+     AND team.team_id=r.ref_id AND r.ref_kind='TEAM'
+    WHERE r.world_id=p.world_id AND r.promotion_id=$2
+     AND r.programme_id=active.programme_id AND r.side<>active.side
+     AND coalesce(person.name,team.name) IS NOT NULL
+    ORDER BY r.position
+   )) ORDER BY active.started_week_index DESC NULLS LAST,active.programme_id),
+   '[]'::jsonb) AS active_programmes
+  FROM (
+   SELECT story.programme_id,story.programme_format,story.championship_id,
+    story.started_week_index,part.side
+   FROM ppw_programme_participants part
+   JOIN ppw_programmes story ON story.world_id=part.world_id
+    AND story.promotion_id=part.promotion_id AND story.programme_id=part.programme_id
+   WHERE part.world_id=p.world_id AND part.promotion_id=$2 AND part.person_id=p.person_id
+    AND story.status='ACTIVE'
+   ORDER BY story.started_week_index DESC NULLS LAST,story.programme_id LIMIT 3
+  ) active
+  LEFT JOIN ppw_championships title ON title.world_id=p.world_id
+   AND title.promotion_id=$2 AND title.championship_id=active.championship_id
+ ) programmes ON true
+ LEFT JOIN LATERAL (
+  SELECT jsonb_build_object('id',r.request_id,'decision',r.decision,'status',r.status,
+   'dueWeekIndex',r.due_week_index,'title',coalesce(title.name,r.relevant_title),
+   'planned',CASE WHEN card.show_name IS NOT NULL THEN jsonb_build_object(
+    'showName',card.show_name,'year',card.year,'week',card.week,
+    'status',card.status,'kind',card.kind) END) AS booking_promise
+  FROM ppw_backstage_requests r
+  LEFT JOIN ppw_championships title ON title.world_id=r.world_id
+   AND title.promotion_id=r.promotion_id AND title.championship_id=r.promised_championship_id
+  LEFT JOIN LATERAL (${plannedPromiseBookingSql("r","$4")}) card ON true
+  WHERE r.world_id=p.world_id AND r.promotion_id=$2 AND r.person_id=p.person_id
+   AND r.status IN ('PENDING','PROMISED') AND r.status='PROMISED'
+  LIMIT 1
+ ) promise ON true
+ LEFT JOIN LATERAL (
+  SELECT jsonb_build_object('showName',coalesce(draft.show_name,'Weekly show'),
+   'year',done.year,'week',done.week,'stars',report.rating_stars,
+   'title',title.name,'titleChanged',coalesce(contest.title_changed,false)) AS recent_achievement
+  FROM (
+   SELECT s.world_id,s.promotion_id,s.show_id,s.year,s.week
+   FROM ppw_completed_shows s
+   JOIN ppw_week_resolution_seals seal ON seal.world_id=s.world_id
+    AND seal.year=s.year AND seal.week=s.week
+   WHERE s.world_id=p.world_id AND s.promotion_id=$2
+    AND ${weekDateRangeSql("s","greatest(0,$4-4)","$4-1")}
+   ORDER BY s.year DESC,s.week DESC,s.show_id DESC LIMIT 12
+  ) done
+  JOIN LATERAL (
+   SELECT match_id FROM ppw_individual_field_career_effects
+   WHERE world_id=done.world_id AND show_id=done.show_id AND person_id=p.person_id AND won
+   UNION ALL
+   SELECT match_id FROM ppw_tag_match_career_effects
+   WHERE world_id=done.world_id AND show_id=done.show_id AND person_id=p.person_id AND won
+  ) result ON true
+  JOIN ppw_completed_show_matches match ON match.world_id=done.world_id
+   AND match.show_id=done.show_id AND match.match_id=result.match_id
+  LEFT JOIN ppw_booking_drafts draft ON draft.world_id=done.world_id AND draft.draft_id=done.show_id
+  LEFT JOIN ppw_completed_match_report_facts report ON report.world_id=done.world_id
+   AND report.show_id=done.show_id AND report.match_id=result.match_id
+  LEFT JOIN ppw_championship_contests contest ON contest.world_id=done.world_id
+   AND contest.promotion_id=done.promotion_id AND contest.show_id=done.show_id
+   AND contest.slot_id=result.match_id
+  LEFT JOIN ppw_championships title ON title.world_id=done.world_id
+   AND title.promotion_id=done.promotion_id AND title.championship_id=contest.championship_id
+  ORDER BY done.year DESC,done.week DESC,coalesce(contest.title_changed,false) DESC,
+   done.show_id DESC,match.position DESC,contest.championship_id LIMIT 1
+ ) achievement ON true
+`;
 function parsedPersona(p:Person):PortablePersona{
  return p.persona_record?
   validatePortablePersona(p.persona_record,p.name):
@@ -144,7 +241,7 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
   throw new Error("Invalid wrestler profile scope");
  return withSqlClient(pool,async tx=>{
   const auth=await authorised(tx,s);
-  const people=await tx.query<Person>(personSql,
+  const people=await tx.query<ProfilePerson>(personSql(true),
    [s.worldId,s.promotionId,s.personId,auth.currentWeekIndex]);
   if(people.length!==1)throw new Error("Wrestler not found");
   const p=people[0]!;
@@ -160,7 +257,8 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
     AND p.promotion_id=c.promotion_id
    WHERE c.world_id=$1 AND c.person_id=$2 AND c.status='SIGNED'
     AND c.expires_week_index>=$4
-   ORDER BY (c.promotion_id=$3) DESC,c.expires_week_index DESC LIMIT 9`,
+   ORDER BY (c.promotion_id=$3) DESC,(c.start_week_index<=$4) DESC,
+    c.expires_week_index DESC,c.contract_id LIMIT 9`,
    [s.worldId,s.personId,s.promotionId,auth.currentWeekIndex]);
   const own=contracts.find(c=>c.promotion_id===s.promotionId &&
    c.start_week_index<=auth.currentWeekIndex);
@@ -188,6 +286,13 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
    championships:normaliseCurrentTitles(p.championship_titles),
    memories,requests:request?[request]:[]
   });
+  const promise=p.booking_promise;
+  const chapter=promise?describeBookingCommitment({
+   decision:promise.decision,status:promise.status,dueWeekIndex:promise.dueWeekIndex,
+   plannedBooking:promise.planned,relevantTitle:promise.title,
+   assessmentReason:null,trustDelta:0
+  },auth.currentWeekIndex):null;
+  const commitment=chapter&&promise?{...chapter,conversationId:promise.id}:null;
   const teams=await tx.query<{name:string;team_id:string}>(String.raw`
    SELECT t.name,t.team_id FROM ppw_tag_team_members m
    JOIN ppw_tag_teams t ON t.world_id=m.world_id AND t.team_id=m.team_id
@@ -229,6 +334,8 @@ export async function readWrestlerProfile(pool:TransactionPool,s:ProfileScope){
    presentation:p.presentation,stamina:p.stamina,safety:p.safety,
    fatigue:p.fatigue,wear:p.wear,alignment:effectiveWrestlerAlignment(auth.seed,p.person_id,p.default_alignment,p.alignment),
    persona:parsedPersona(p),motivation,
+   activeProgrammes:p.active_programmes,commitment,recentAchievement:p.recent_achievement,
+   canBookThisWeek:!!own&&auth.can_edit&&p.status==="ACTIVE",
    contracts:contracts.map(c=>({promotionId:c.promotion_id,promotion:c.promotion_name,
     isYours:c.promotion_id===s.promotionId,family:c.family,
     role:c.role_expectation,remainingDates:c.remaining_dates,
@@ -283,7 +390,7 @@ export async function editWrestlerRepertoire(pool:TransactionPool,s:RepertoireEd
   commandType:"EDIT_WRESTLER_REPERTOIRE",requiresOpenWeek:true,
   execute:async tx=>{
    const auth=await authorised(tx,s);
-   const person=await tx.query<Person>(personSql,
+   const person=await tx.query<Person>(personSql(),
     [s.worldId,s.promotionId,s.personId,auth.currentWeekIndex]);
    if(person.length!==1||person[0]!.shared_human||person[0]!.status!=="ACTIVE")
     throw new Error("Wrestler is not available for shared identity editing");

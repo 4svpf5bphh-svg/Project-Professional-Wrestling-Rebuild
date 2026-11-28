@@ -13,6 +13,8 @@ import {projectHotTagNewsWrestlerPost} from "../domain/hot-tag-wrestler-voice.js
 import {drawLegendsVault,clearLegendRevealPortal,type LegendsVaultView} from "./legends-vault.js";
 import {createWrestlerCard} from "./wrestler-card.js";
 import {originalPersonaBaseline} from "../domain/portable-persona.js";
+import {promotionBrand} from "./broadcast-identity.js";
+import {createPromotionLogo,fictionalPromotionLogoSources} from "./promotion-logo.js";
 export type IndustryHubView=Awaited<ReturnType<typeof readIndustryWorldHub>>;
 export type IndustryFeaturedView=Awaited<ReturnType<typeof readIndustryFeaturedTalent>>;
 export type IndustryNewsView=Awaited<ReturnType<typeof readIndustryWorldNews>>;
@@ -396,6 +398,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
   const newsLayout=active==="OFFICIAL"||active==="DIRT";
   root.classList.toggle("ppw-news-layout",newsLayout);
   const head=el("header","ppw-industry-head");
+  head.dataset.worldView=active.toLowerCase();
   if(port.back)head.append(btn("← Back",()=>port.back?.()));
   const headings:Record<string,[string,string]>={
    STANDINGS:["THE WORLD / COMPANIES",route==="#/industry"?"Industry":"Promotions"],
@@ -493,16 +496,22 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      if(p.isYours)card.classList.add("ppw-industry-own");
       card.dataset.promotionTier=p.tier.toLowerCase();
      const summary=document.createElement("summary");summary.className="ppw-industry-company-summary";
-     const crest=el("span","ppw-industry-company-crest",
-      p.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join("").toUpperCase());
+     const brand=promotionBrand(p.name);
+     const crest=el("span","ppw-industry-company-crest",brand.mark);
      crest.setAttribute("aria-hidden","true");
+     if(fictionalPromotionLogoSources[brand.key]){
+      const logo=createPromotionLogo(brand.key,90);
+      if(logo){
+       logo.onload=()=>{crest.replaceChildren(logo);crest.classList.add("ppw-industry-company-crest-img");};
+       crest.append(logo);
+      }
+     }
      const identity=el("span","ppw-industry-company-identity");
      identity.append(el("span","ppw-industry-company-name",p.name));
      const state=el("span","ppw-industry-company-subtitle",
       p.tier.toLowerCase()+" · "+
       (p.isYours?"Your promotion":"Rival promotion"));
      identity.append(state);
-     if(p.isYours)identity.append(el("span","ppw-industry-ours","YOU"));
      const position=el("span","ppw-industry-company-standing","#"+p.rank);
      position.append(el("small","","MEDIA RANK"));
      summary.append(crest,identity,position);

@@ -3,6 +3,7 @@ import {activateWorkspaceRoot} from "./workspace-root.js";
  * Show rows are small metadata projections; only opening a show loads its receipt.
  */
 import type {ShowArchiveCursor,ShowArchivePage} from "../db/completed-show-archive.js";
+import {eventArtworkSource} from "./event-artwork.js";
 export interface ArchivePort{
  load(cursor:ShowArchiveCursor|null):Promise<ShowArchivePage>;
  open(showId:string):void;
@@ -17,9 +18,7 @@ export async function mountResultsArchive(root:HTMLElement,port:ArchivePort){
   const back=el("button","ppw-archive-back","← Back") as HTMLButtonElement;
   back.type="button";back.onclick=port.back;heading.append(back);
  }
- heading.append(el("span","ppw-eyebrow","PPW / RINGSIDE"),
-  el("h1","","THE TAPE LIBRARY"),
-  el("p","","Every show, every result. The history stays in the books."));
+ heading.append(el("h1","","THE TAPE LIBRARY"));
  const list=el("div","ppw-archive-list");
  const status=el("p","ppw-muted","");
  const more=el("button","ppw-archive-more","Load older shows") as HTMLButtonElement;
@@ -36,14 +35,21 @@ export async function mountResultsArchive(root:HTMLElement,port:ArchivePort){
    for(const show of page.items){
     const card=el("button","ppw-archive-show") as HTMLButtonElement;
     card.type="button";
-    const caption=el("span","ppw-archive-week",
-     "YEAR "+show.year+"  /  WEEK "+show.week);
+    const title=show.showName??"Weekly show";
+    const premium=show.bookingClass==="PREMIUM";
+    if(premium)card.dataset.premium="true";
+    const art=document.createElement("img");
+    art.className="ppw-archive-art";art.alt="";
+    art.src=eventArtworkSource(title,"",premium);art.loading="lazy";art.decoding="async";
+    const info=el("span","ppw-archive-info");
+    const caption=el("span","ppw-archive-week","Y"+show.year+" W"+show.week+
+     (premium?" · PPV":""));
     const score=el("span","ppw-archive-score",String(Math.round(show.crowdResponse))+"/100");
     const meta=el("span","ppw-archive-meta",
      show.matchCount+" matches  ·  "+show.angleCount+" angles");
-    card.append(caption,el("strong","ppw-archive-show-name",
-     show.showName??"Weekly show"),score,meta,
-     el("span","ppw-archive-open","Read ringside report  ↗"));
+    info.append(caption,el("strong","ppw-archive-show-name",title),meta,
+     el("span","ppw-archive-open","Read ringside report ↗"));
+    card.append(art,info,score);
     card.onclick=()=>port.open(show.showId);
     list.append(card);
    }

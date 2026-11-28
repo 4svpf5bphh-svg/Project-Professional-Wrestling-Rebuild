@@ -29,6 +29,7 @@ export async function readPublicCompletedShow(pool:TransactionPool,input:{
    promotion_name:string;year:number;week:number;crowd_response:number|string}>([
    "SELECT c.receipt_json,d.show_name,p.name AS promotion_name,",
    "c.year,c.week,c.crowd_response FROM ppw_completed_shows c",
+   "JOIN ppw_worlds w ON w.world_id=c.world_id",
    "JOIN ppw_booking_drafts d ON d.world_id=c.world_id AND d.draft_id=c.show_id",
    "JOIN ppw_promotions p ON p.world_id=c.world_id AND p.promotion_id=c.promotion_id",
    "LEFT JOIN ppw_promotion_controls rival ON rival.world_id=c.world_id",
@@ -38,6 +39,7 @@ export async function readPublicCompletedShow(pool:TransactionPool,input:{
    "JOIN ppw_memberships member ON member.world_id=c.world_id",
    "AND member.player_id=$2 AND member.status='ACTIVE'",
    "WHERE c.world_id=$1 AND c.promotion_id=$4 AND c.show_id=$5",
+   "AND ((c.year,c.week)<(w.year,w.week) OR ((c.year,c.week)=(w.year,w.week) AND w.phase='OPEN'))",
    "AND (rival.player_id<>viewer.player_id OR (d.booking_origin='AI' AND EXISTS (",
    "SELECT 1 FROM ppw_world_news_weeks published WHERE published.world_id=c.world_id",
    "AND published.year=c.year AND published.week=c.week))) LIMIT 1"

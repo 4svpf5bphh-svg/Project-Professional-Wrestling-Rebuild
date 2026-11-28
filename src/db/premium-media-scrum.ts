@@ -13,7 +13,7 @@ export interface PremiumScrumScope{
 const valid=(x:string)=>typeof x==="string"&&x.length>0&&x.length<=200;
 export async function readPremiumScrum(pool:TransactionPool,s:PremiumScrumScope){
  if(!Object.values(s).every(valid))throw new Error("Invalid media session");
- const show=await readCompletedShowView(pool,s);
+ const show=await readCompletedShowView(pool,s,true);
  if(show.bookingClass!=="PREMIUM")throw new Error("Press scrums follow premium events only");
  const [rows,editorial]=await withSqlClient(pool,tx=>Promise.all([tx.query<{
   question_id:ScrumQuestionId|"DISMISSED";answer_index:number}>(`
@@ -36,7 +36,7 @@ export async function readPremiumScrum(pool:TransactionPool,s:PremiumScrumScope)
 export async function answerPremiumScrum(pool:TransactionPool,s:PremiumScrumScope,
  questionId:string,answerIndex:number){
  if(!Object.values(s).every(valid))throw new Error("Invalid media session");
- const show=await readCompletedShowView(pool,s);
+ const show=await readCompletedShowView(pool,s,true);
  if(show.bookingClass!=="PREMIUM")throw new Error("Press scrums follow premium events only");
  const question=premiumScrumQuestions(show).find(q=>q.id===questionId);
  if(!question||!Number.isInteger(answerIndex)||answerIndex<0||answerIndex>2)
@@ -77,7 +77,7 @@ export async function answerPremiumScrum(pool:TransactionPool,s:PremiumScrumScop
 /** Persistent, owner-scoped 'session ended' marker in the existing answer table. */
 export async function dismissPremiumScrum(pool:TransactionPool,s:PremiumScrumScope){
  if(!Object.values(s).every(valid))throw new Error("Invalid media session");
- const show=await readCompletedShowView(pool,s);
+ const show=await readCompletedShowView(pool,s,true);
  if(show.bookingClass!=="PREMIUM")throw new Error("Press scrums follow premium events only");
  return withWorldTransaction(pool,async tx=>{
   const owned=await tx.query<{promotion_id:string}>(`

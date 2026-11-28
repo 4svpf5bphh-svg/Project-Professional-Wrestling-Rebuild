@@ -116,6 +116,31 @@ test("dossier-based promo is explicitly unsaved and does not bypass the angle ed
  expect(calls.filter(x=>x==="talent")).toHaveLength(1);
  expect(calls).not.toContain("save");
 });
+test("430px keyboard inspection returns to the same unsaved match and talent search",async({page})=>{
+ await page.setViewportSize({width:430,height:780});
+ await page.emulateMedia({reducedMotion:"reduce"});
+ const calls=await mock(page);
+ await openFromDossier(page);
+ await page.locator(".ppw-card-wrestler-focus").getByRole("button",{name:"Start a match"}).click();
+ const editor=page.getByRole("dialog",{name:"Edit match"});
+ await editor.getByRole("button",{name:"Choose wrestler",exact:true}).last().click();
+ const picker=page.getByRole("dialog",{name:"Choose wrestler"});
+ const search=picker.locator('input[type="search"]');
+ await search.fill("Alice");
+ const inspect=picker.getByRole("button",{name:"View full wrestler profile"});
+ await inspect.focus();await page.keyboard.press("Enter");
+ const profile=page.getByRole("dialog",{name:"Wrestler profile"});
+ await expect(profile.getByRole("heading",{name:"Alice Vale",level:1})).toBeVisible();
+ await page.keyboard.press("Tab");
+ await expect(profile.getByRole("button",{name:"‹ Back"})).toBeFocused();
+ await page.keyboard.press("Escape");
+ await expect(profile).toHaveCount(0);
+ await expect(inspect).toBeFocused();
+ await expect(search).toHaveValue("Alice");
+ await expect(editor).toContainText("Alice Vale");
+ await expect(page.getByText("Unsaved changes")).toBeVisible();
+ expect(calls).not.toContain("save");
+});
 test("dossier shortcut refuses an injured show-week wrestler without writing or creating a slot",async({page})=>{
  await page.setViewportSize({width:320,height:740});
  const calls=await mock(page,{availability:"INJURED"});

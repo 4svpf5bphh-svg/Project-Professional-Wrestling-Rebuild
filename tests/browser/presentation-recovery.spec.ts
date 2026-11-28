@@ -108,16 +108,13 @@ test("Backstage owns the entire phone, preserves inbox state, and leaves for the
  });
  await page.goto("/#/roster");
  await expect(page.getByRole("heading",{name:"My Roster"})).toBeVisible();
- await page.getByRole("button",{name:"Open Promotion menu"}).click();
- await expect(page.getByRole("navigation",{name:"Promotion navigation"})
-  .getByRole("button",{name:/Backstage/})).toHaveCount(0,
-  // Backstage is now prominently accessed from Home, not buried in Promotion.
- );
- // Wrestler profiles and other surfaces still support the direct Backstage
- // route and must remember the previous desk when leaving on mobile.
- await page.evaluate(()=>{window.location.hash="#/backstage";});
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ await expect(page.getByRole("dialog",{name:"More"})
+  .getByRole("link",{name:"Backstage",exact:true})).toBeVisible();
+ // Backstage must remember the previous desk when leaving on mobile.
+ await page.getByRole("dialog",{name:"More"}).getByRole("link",{name:"Backstage",exact:true}).click();
  await expect(page).toHaveURL(/#\/backstage$/);
- const menu=page.getByRole("button",{name:"Open Promotion menu"});
+ const menu=page.getByRole("button",{name:"More",exact:true});
  await expect(menu).toBeHidden();
  await expect(page.getByRole("button",{name:"Leave Backstage"})).toBeVisible();
  await page.getByRole("button",{name:"Unread",exact:true}).click();
@@ -162,10 +159,10 @@ for(const width of [320,390]){
   await expect(page.locator(".ppw-home-phase-tag")).toBeVisible();
   if(await page.getByRole("button",{name:/Skip intro/}).isVisible().catch(()=>false))
    await page.getByRole("button",{name:/Skip intro/}).click();
-  const menu=page.getByRole("button",{name:"Open World menu"});
+  const menu=page.getByRole("button",{name:"More",exact:true});
   await expect(menu).toBeVisible();
   const bounds=await page.evaluate(()=>{
-   const nav=document.querySelector(".ppw-bottom-root")!.getBoundingClientRect();
+   const nav=document.querySelector(".ppw-bottom-tab")!.getBoundingClientRect();
    const head=document.querySelector(".ppw-account-banner")!.getBoundingClientRect();
    return {nav:{top:nav.top,bottom:nav.bottom,width:nav.width},
     head:{top:head.top,bottom:head.bottom}};
@@ -175,7 +172,7 @@ for(const width of [320,390]){
   expect(bounds.nav.top).toBeGreaterThan(bounds.head.bottom);
   expect(bounds.nav.bottom).toBeGreaterThan(bounds.head.bottom);
   await menu.click();
-  await expect(page.getByRole("navigation",{name:"Promotion navigation"})).toBeVisible();
+  await expect(page.getByRole("dialog",{name:"More"})).toBeVisible();
   await page.locator(".ppw-nav-drawer-close").click();
 
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))

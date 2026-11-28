@@ -51,9 +51,9 @@ test("iPhone can read another human's completed results without viewing any unbo
  await expect(page.getByRole("heading",{name:"Promotions"})).toBeVisible();
  expect(calls).toEqual(["industry","industryFeatured","publicResults"]); // Reuse the already loaded Industry state.
  // The separate Broadcasts destination reuses the same certified result projection.
- await page.getByRole("button",{name:"Open World menu"}).click();
- const drawer=page.getByRole("navigation",{name:"Promotion navigation"});
- await drawer.getByRole("button",{name:/Recent Broadcasts/}).click();
+ await page.getByRole("button",{name:"More",exact:true}).click();
+ const drawer=page.getByRole("dialog",{name:"More"});
+ await drawer.getByRole("link",{name:/Recent Broadcasts/}).click();
  await expect(page).toHaveURL(/#\/broadcasts$/);
  await expect(page.getByRole("heading",{name:"Recent Broadcasts"})).toBeVisible();
  await page.locator(".ppw-industry-broadcast").getByRole("button",{name:"Read Results"}).click();

@@ -1,0 +1,225 @@
+#game .ppw-results {
+ --ringside-panel: #1b2132;
+ --ringside-ink: #fcf4e5;
+ --ringside-muted: #d0d6e5;
+ --ringside-accent: #f6d087;
+ --ringside-line: #595e73;
+}
+#game .ppw-results[data-premium-poster] {
+ --ringside-panel: var(--ppw-ppv-surface, #251d2b);
+ --ringside-line: var(--ppw-ppv-border, #79586a);
+}
+#game .ppw-results[data-results-skin="territory-tv"] {
+ --ringside-panel: var(--tt-paper);
+ --ringside-ink: var(--tt-ink);
+ --ringside-muted: var(--tt-navy);
+ --ringside-accent: var(--tt-red-dark);
+ --ringside-line: var(--tt-line);
+}
+#game .ppw-results[data-results-skin="fight-night"] {
+ --ringside-panel: var(--fn-paper);
+ --ringside-ink: var(--fn-ink);
+ --ringside-muted: var(--fn-muted);
+ --ringside-accent: var(--fn-red-dark);
+ --ringside-line: var(--fn-line);
+}
+#game .ppw-results[data-results-skin="underground-zine"] {
+ --ringside-panel: var(--uz-paper);
+ --ringside-ink: var(--uz-ink);
+ --ringside-muted: var(--uz-muted);
+ --ringside-accent: #963517;
+ --ringside-line: var(--uz-border);
+}
+#game .ppw-results[data-results-skin="retro-booker-02"] {
+ --ringside-panel: var(--rb-paper);
+ --ringside-ink: var(--rb-ink);
+ --ringside-muted: var(--rb-muted);
+ --ringside-accent: var(--rb-dark);
+ --ringside-line: var(--rb-line);
+}
+
+#game .ppw-results :is(.ppw-ringside-masthead,.ppw-ringside-week-link,
+ .ppw-ringside-moments,.ppw-ringside-handoff-heading) {
+ color: var(--ringside-ink);
+ background: var(--ringside-panel);
+ border: 1px solid var(--ringside-line);
+}
+.ppw-ringside-masthead {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 5px 12px;
+ align-items: center;
+ padding: 8px 11px;
+ margin-bottom: 8px;
+ font-size: .75rem;
+ font-variant-numeric: tabular-nums;
+}
+#game .ppw-ringside-certification {
+ color: var(--ringside-accent);
+ font-weight: 850;
+}
+#game .ppw-ringside-crowd {
+ margin-inline-start: auto;
+ color: var(--ringside-ink);
+ white-space: nowrap;
+}
+.ppw-ringside-week {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 6px;
+ margin-bottom: 9px;
+}
+#game .ppw-ringside-week-link {
+ flex: 1 1 130px;
+ min-width: 0;
+ min-height: 44px;
+ display: flex;
+ gap: 8px;
+ align-items: center;
+ padding: 7px 10px;
+ text-align: start;
+ font-size: .81rem;
+ overflow-wrap: anywhere;
+}
+#game .ppw-ringside-week-link[aria-current="page"] {
+ border-width: 1px 1px 3px;
+ border-bottom-color: var(--ringside-accent);
+}
+#game .ppw-ringside-week-link strong {
+ color: var(--ringside-ink);
+}
+.ppw-ringside-week-format {
+ color: var(--ringside-accent);
+ font-size: .73rem;
+ font-weight: 850;
+}
+#game .ppw-results .ppw-ringside-marquee {
+ position: relative;
+ isolation: isolate;
+ min-block-size: clamp(150px, 31vw, 234px);
+ display: flex;
+ align-items: end;
+ margin-block-end: 12px;
+ overflow: hidden;
+ color: #fff9eb;
+ padding: clamp(14px, 4vw, 28px);
+ border: 1px solid var(--ringside-line);
+ background: #141823;
+}
+#game .ppw-ringside-event-art {
+ position: absolute;
+ z-index: -2;
+ inset: 0;
+ width: 100%;
+ height: 100%;
+ object-fit: cover;
+ object-position: right center;
+}
+.ppw-ringside-marquee::after {
+ content: "";
+ position: absolute;
+ inset: 0;
+ z-index: -1;
+ background: linear-gradient(95deg, #0c1221f5 0%, #0c1221d4 35%, #1017256b 75%),
+  linear-gradient(0deg, #0c1221e3, transparent 65%);
+}
+#game .ppw-results .ppw-ringside-event-name :is(h1,p) {
+ color: #fff9eb;
+ margin: 0;
+ line-height: 1.07;
+ text-shadow: 0 2px 12px #050711;
+}
+#game .ppw-ringside-event-name h1 {
+ font-size: clamp(1.5rem, 7vw, 3.4rem);
+ overflow-wrap: anywhere;
+}
+#game .ppw-ringside-event-name p {
+ margin-block-end: 7px;
+ font-size: .78rem;
+ font-weight: 750;
+}
+#game .ppw-ringside-opening:not([data-playing]) :is(.ppw-tv-motion,
+ .ppw-event-poster, .ppw-event-poster *) {
+ animation-play-state: paused !important;
+}
+.ppw-ringside-opening .ppw-ringside-play {
+ margin: 4px 0 0 auto;
+ display: block;
+}
+#game .ppw-ringside-text-button {
+ min-height: 44px;
+ color: var(--ringside-accent);
+ background: var(--ringside-panel);
+ border: 1px solid var(--ringside-line);
+ border-radius: 4px;
+ padding: 7px 10px;
+ text-align: start;
+ font-size: .83rem;
+ font-weight: 800;
+}
+.ppw-ringside-moments {
+ margin: 0 0 14px;
+ padding: 9px 12px 2px;
+}
+#game .ppw-ringside-moments :is(h2,h3) {
+ margin: 0;
+ color: var(--ringside-ink);
+}
+#game .ppw-ringside-moments h2 {
+ font-size: clamp(1.16rem, 4.8vw, 1.6rem);
+ padding-block: 5px 7px;
+}
+.ppw-ringside-moment {
+ display: flex;
+ align-items: start;
+ gap: 10px;
+ padding-block: 9px;
+ border-top: 1px solid var(--ringside-line);
+}
+.ppw-ringside-moment-copy {
+ flex: 1 1 auto;
+ min-width: 0;
+}
+#game .ppw-ringside-moment h3 {
+ font-size: 1.06rem;
+ line-height: 1.12;
+ overflow-wrap: anywhere;
+}
+#game .ppw-ringside-moment p {
+ color: var(--ringside-muted);
+ font-size: .85rem;
+ line-height: 1.46;
+ margin: 4px 0 0;
+ overflow-wrap: anywhere;
+}
+.ppw-ringside-title-change {
+ border-top: 3px solid var(--ringside-accent);
+}
+.ppw-ringside-belt {
+ flex: none;
+ width: clamp(63px, 21vw, 140px);
+ align-self: center;
+}
+.ppw-ringside-moment .ppw-ringside-text-button {
+ margin-top: 5px;
+}
+#game .ppw-ringside-handoff-heading {
+ padding: 10px 13px;
+ margin: 0 0 9px;
+ text-transform: uppercase;
+ font-size: clamp(1.4rem, 5.4vw, 2.25rem);
+ border-inline-start: 4px solid var(--ringside-accent);
+}
+.ppw-ringside-onwards {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 7px;
+ padding-top: 10px;
+}
+#game .ppw-results[data-press-active] > :not(.ppw-ringside-press) {
+ display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+ #game .ppw-ringside-opening .ppw-ringside-play { display: none; }
+ #game .ppw-ringside-opening * { animation: none !important; }
+}

@@ -10,6 +10,7 @@ import {closeUnavailableBackstageRequests}
  from "../src/db/backstage-closure.js";
 import {readPortablePersonaWorkspace} from "../src/db/portable-persona-workspace.js";
 import {publishBackstageMemories} from "../src/db/backstage-memories.js";
+import {readPlayerWorldOverview} from "../src/db/player-world-overview.js";
 
 const url=process.env.PPW_NEON_TEST_URL;
 /** Authoritative private messages -> real authored draft -> certified match
@@ -98,6 +99,13 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
   assert.equal(initial.conversations[0]?.status,"PROMISED");
   assert.equal(initial.conversations[0]?.plannedBooking,null,
    "A verbal commitment never creates a draft booking");
+  const office=()=>readPlayerWorldOverview(db.pool,worldId,owner);
+  const rivalOffice=()=>readPlayerWorldOverview(db.pool,worldId,rival);
+  const outstanding=(await office())?.promotion?.attention.promise;
+  assert.equal(outstanding?.conversationId,"request-a");
+  assert.equal(outstanding?.decision,"PROMISE_APPEARANCE");
+  assert.equal(outstanding?.planned,null);
+  assert.equal((await rivalOffice())?.promotion?.attention.promise,undefined);
   await withWorldTransaction(db.pool,async tx=>{
    await tx.query("INSERT INTO ppw_card_slots("+
     "world_id,draft_id,slot_id,position,kind,payload) VALUES"+
@@ -115,6 +123,7 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
    personId:"a"})).conversations[0]!;
   assert.deepEqual(bookedA.plannedBooking,{
    showName:"CWA Ascension",year:1,week:2,status:"DRAFT",kind:"MATCH"});
+  assert.deepEqual((await office())?.promotion?.attention.promise?.planned,bookedA.plannedBooking);
   const bookedB=(await readPortablePersonaWorkspace(db.pool,{...context,
    personId:"b"})).conversations[0]!;
   assert.equal(bookedB.plannedBooking?.kind,"SEGMENT");
@@ -184,6 +193,25 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
    closeUnavailableBackstageRequests(tx,worldId,1))).closed,0);
   await withWorldTransaction(db.pool,tx=>tx.query(
    "UPDATE ppw_worlds SET week=2 WHERE world_id=$1",[worldId]));
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_name)
+    VALUES($1,'medical-return',$2,1,2,'DRAFT','Early comeback');
+  `,[worldId,promotionId]));
+  await withWorldTransaction(db.pool,tx=>tx.query(`
+   INSERT INTO ppw_card_slots(world_id,draft_id,slot_id,position,kind,payload)
+    VALUES($1,'medical-return','early-slot',0,'MATCH',
+     '{"participants":[{"personId":"c","contractId":"contract-c"}]}'::jsonb)
+  `,[worldId]));
+  assert.deepEqual((await office())?.promotion?.attention.medicalHold,{
+   showId:"medical-return",showName:"Early comeback",personId:"c",name:"Injured Wrestler",
+   position:1,clearedWeekIndex:4
+  });
+  await withWorldTransaction(db.pool,tx=>tx.query(
+   "INSERT INTO ppw_promotion_controls(world_id,player_id,promotion_id) VALUES($1,$2,$3)",
+   [worldId,rival,otherPromotion]));
+  assert.equal((await rivalOffice())?.promotion?.id,otherPromotion);
+  assert.equal((await rivalOffice())?.promotion?.attention.promise,undefined);
+  assert.equal((await rivalOffice())?.promotion?.attention.medicalHold,undefined);
   const heard=await decideBackstageRequest(db.pool,{...context,
    conversationId:incoming.conversationId,requestId:"talk-medical",
    expectedRevision:await revision(),decision:"TALK"});
@@ -233,6 +261,7 @@ test("Phase 47 booking commitments distinguish draft, verified delivery, injured
   assert.equal(done.status,"FULFILLED");
   assert.equal(done.plannedBooking,null,
    "A completed show is never offered as a still-outstanding draft");
+  assert.equal((await office())?.promotion?.attention.promise,undefined);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const table of [
