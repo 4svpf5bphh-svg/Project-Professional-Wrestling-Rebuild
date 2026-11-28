@@ -179,7 +179,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
  const selectedFinalePayoffs=new Map<string,ProgrammePayoff>();
  const finaleRequests=new Map<string,{fingerprint:string;requestId:string}>();
  let picker:{slotId:string;side:number;member:number;role?:"actors"|"targets"|"RUN_IN";
-  query:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
+  query:string;searchDraft?:string;cursor:TalentPage["cursor"];items:TalentPage["talent"];
   sort:"POPULARITY"|"MOMENTUM"|"IN_RING"|"PRESENTATION"|"DATES"|"NAME";
   division:"ALL"|"MEN"|"WOMEN";showOther?:boolean;
   source?:"ALL"|"FEUDS"|"TEAMS"|"TRIOS"|"FACTIONS";
@@ -528,6 +528,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const request=picker;
   const sequence=++talentRequestSequence;
   const cursor=append?request.cursor:null;
+  if(!append)request.searchDraft=query;
   try{
    const reusable=!query&&!append&&quickSlots.has(request.slotId);
    const page=reusable&&firstTalentPage?firstTalentPage:await port.talent(query,cursor);
@@ -3338,7 +3339,11 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    const form=document.createElement("form");form.className="ppw-search";
    const search=document.createElement("input");
    search.type="search";search.placeholder="Search your roster";
-   search.value=current.query;search.setAttribute("aria-label","Search wrestlers");
+   // Keep draft text when the initial roster response redraws this sheet.
+   // Pagination still uses the query that produced the loaded results.
+   search.value=current.searchDraft??current.query;
+   search.setAttribute("aria-label","Search wrestlers");
+   search.oninput=()=>{current.searchDraft=search.value;};
    form.append(search);
    const submit=document.createElement("button");submit.type="submit";
    submit.textContent="Search";form.append(submit);

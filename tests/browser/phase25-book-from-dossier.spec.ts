@@ -42,13 +42,15 @@ const card={showId:"week5-card",year:1,week:5,worldRevision:4,
  programmes:[],programmeLinks:[],bookableTeams:[],bookableTrios:[],
  advisers:[],selectedPeople:[],slots:[]};
 async function mock(page:import("@playwright/test").Page,settings?:{
- availability?:"AVAILABLE"|"INJURED";hasDraft?:boolean;
+ availability?:"AVAILABLE"|"INJURED";hasDraft?:boolean;deferInitialTalent?:Promise<void>;
 }){
  const calls:string[]=[];
  await page.route("**/api/session",route=>route.fulfill({json:session}));
- await page.route("**/api/card",route=>{
-  const method=String(route.request().postDataJSON().method);
+ await page.route("**/api/card",async route=>{
+  const request=route.request().postDataJSON();
+  const method=String(request.method);
   calls.push(method);
+  if(method==="talent"&&request.search==="")await settings?.deferInitialTalent;
   const data=method==="wrestlerDirectory"?roster:
    method==="wrestlerProfile"?dossier:
    method==="planner"?{...planner,weeks:[{
@@ -119,14 +121,17 @@ test("dossier-based promo is explicitly unsaved and does not bypass the angle ed
 test("430px keyboard inspection returns to the same unsaved match and talent search",async({page})=>{
  await page.setViewportSize({width:430,height:780});
  await page.emulateMedia({reducedMotion:"reduce"});
- const calls=await mock(page);
+ let releaseTalent!:()=>void;
+ const deferInitialTalent=new Promise<void>(resolve=>{releaseTalent=resolve;});
+ const calls=await mock(page,{deferInitialTalent});
  await openFromDossier(page);
  await page.locator(".ppw-card-wrestler-focus").getByRole("button",{name:"Start a match"}).click();
  const editor=page.getByRole("dialog",{name:"Edit match"});
  await editor.getByRole("button",{name:"Choose wrestler",exact:true}).last().click();
  const picker=page.getByRole("dialog",{name:"Choose wrestler"});
  const search=picker.locator('input[type="search"]');
- await search.fill("Alice");
+ try{await search.fill("Alice");}
+ finally{releaseTalent();}
  const inspect=picker.getByRole("button",{name:"View full wrestler profile"});
  await inspect.focus();await page.keyboard.press("Enter");
  const profile=page.getByRole("dialog",{name:"Wrestler profile"});
