@@ -1,3 +1,4 @@
+import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 /** Private PPW communications from certified World events and employed staff.
  * Only real World evidence may appear; no random text per page view, Groq call, or
@@ -168,7 +169,8 @@ WITH owner AS MATERIALIZED (
   (SELECT count(*)::integer FROM ppw_contracts c
     WHERE c.world_id=$1 AND c.promotion_id=$2 AND c.status='SIGNED'
      AND c.start_week_index<=o.now
-     AND c.expires_week_index BETWEEN o.now AND o.now+4) AS due,
+     AND c.expires_week_index BETWEEN o.now AND o.now+3
+     AND c.family<>'ONE_OFF' AND NOT EXISTS (${agreedNextTermSql("c")})) AS due,
   (SELECT count(DISTINCT c.person_id)::integer
     FROM ppw_contracts c JOIN ppw_people p
      ON p.world_id=c.world_id AND p.person_id=c.person_id

@@ -364,13 +364,15 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
       "RENEWAL SENT · AWAITING REPLY"));
     else if(c.pendingNegotiation)
      chips.append(el("small","ppw-contract-pending-label","DATES REQUESTED"));
-    else if(c.reason==="NO_DATES")
+    if(c.renewalArranged&&c.reason==="NO_DATES")
+     chips.append(el("small","ppw-contract-danger","NO DATES THIS TERM"));
+    else if(!c.renewalArranged&&!c.pendingRenewalOffer&&!c.pendingRenewal&&!c.pendingNegotiation&&c.reason==="NO_DATES")
      chips.append(el("small","ppw-contract-danger","NO DATES"));
     else if(c.expiringSoon)
      chips.append(el("small","ppw-contract-danger","EXPIRING"));
     summary.append(chips);card.append(summary);
     const body=el("div","ppw-contract-details");
-    if(c.remainingDates!==null&&c.remainingDates>0&&c.weeksRemaining<=4){
+    if(!c.renewalArranged&&c.remainingDates!==null&&c.remainingDates>0&&c.weeksRemaining<=4){
      const finalYear=Math.floor(c.expiresWeekIndex/52)+1;
      const finalWeek=c.expiresWeekIndex%52+1;
      const warning=el("p","ppw-contract-renew-hint",
@@ -445,7 +447,9 @@ export function mountContractDesk(root:HTMLElement,port:ContractDeskPort,onBack?
     const negotiatedPending=c.renewalArranged||view!.offers.some(o=>o.source_contract_id===c.contractId)||
      view!.renewals.some(r=>r.contract_id===c.contractId);
     if(c.renewalArranged)body.append(el("p","ppw-contract-renew-hint",
-     "A renewal has already been accepted. Its new terms begin after this agreement expires; no second offer is needed."));
+     "The next term has been agreed."+(c.nextTermStart===null?"":
+      " It begins in Year "+(Math.floor(c.nextTermStart/52)+1)+" Week "+(c.nextTermStart%52+1)+".")+
+      (c.reason==="NO_DATES"?" No appearances remain under the current term.":"")));
     if(c.renewalEligible&&!c.pendingRenewal&&view!.canEdit&&!negotiatedPending){
      if(c.sameTermsUnavailableReason)body.append(el("p","ppw-contract-renew-hint",
       c.sameTermsUnavailableReason));

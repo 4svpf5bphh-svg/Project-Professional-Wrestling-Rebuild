@@ -1,3 +1,4 @@
+import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 import type {TransactionPool} from "./transaction.js";
 import {withSqlClient} from "./postgres.js";
@@ -73,7 +74,7 @@ export async function readContractDesk(
    career_stage:string|null;in_ring_quality:number|null;match_craft:number|null;
    presentation:number|null;stamina:number|null;fatigue:number|null;weekly_service_capacity:number|null;
    other_commitments:CompactSignedCommitment[]|null;
-   backstage_contract_request_id:string|null;renewal_secured:boolean;
+   backstage_contract_request_id:string|null;next_term_start:number|null;
   }>(`
    SELECT c.contract_id,c.person_id,p.name,c.family,c.status,
      c.remaining_dates,c.expires_week_index,c.start_week_index,c.date_entitlement,c.weekly_guarantee,
@@ -83,13 +84,7 @@ export async function readContractDesk(
      (SELECT jsonb_agg(jsonb_build_array(other.family='EXCLUSIVE',other.remaining_dates,other.start_week_index,other.expires_week_index))
       FROM ppw_signed_service_windows other WHERE other.world_id=c.world_id AND other.person_id=c.person_id
        AND other.contract_id<>c.contract_id AND other.status='SIGNED' AND other.expires_week_index>=$3) AS other_commitments,
-     EXISTS(SELECT 1 FROM ppw_contract_offers accepted
-      WHERE accepted.world_id=c.world_id AND accepted.promotion_id=c.promotion_id
-       AND accepted.person_id=c.person_id
-       AND accepted.source_contract_id=c.contract_id
-       AND accepted.status='ACCEPTED'
-       AND (accepted.terms->>'startWeekIndex')::integer
-           BETWEEN $3 AND c.expires_week_index+2) AS renewal_secured,
+     (${agreedNextTermSql("c")}) AS next_term_start,
      (SELECT request_id FROM ppw_backstage_requests r
       WHERE r.world_id=c.world_id AND r.promotion_id=c.promotion_id
         AND r.person_id=c.person_id AND r.kind='CONTRACT'
@@ -181,7 +176,7 @@ export async function readContractDesk(
    // the duplicate "renew now" alarm but cannot pretend a contract is signed.
    const pendingTerms=awaitingRenewalOfferIds.has(c.contract_id)||
     awaitingSameTermsIds.has(c.contract_id);
-   return c.renewal_secured?{...entry,expiringSoon:false,
+   return c.next_term_start!==null?{...entry,expiringSoon:false,
     needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:
     pendingTerms?{...entry,expiringSoon:false,
      needsAttention:entry.reason==="NO_DATES",renewalEligible:false}:entry;
@@ -274,7 +269,8 @@ export async function readContractDesk(
     pendingNegotiation:pendingIds.has(c.contractId),
     pendingRenewal:renewalIds.has(c.contractId),
     pendingRenewalOffer:awaitingRenewalOfferIds.has(c.contractId),
-    renewalArranged:arrangedIds.has(c.contractId)||cost.renewal_secured,
+    renewalArranged:arrangedIds.has(c.contractId)||cost.next_term_start!==null,
+    nextTermStart:cost.next_term_start,
     backstageContractConversationId:cost.backstage_contract_request_id};}),
    requests:requests.map(q=>({...q,additional_payment:Number(q.additional_payment)})),
    renewals,offers:pendingOffers,

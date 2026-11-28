@@ -1,3 +1,4 @@
+import {agreedNextTermSql} from "./contract-renewal-status-sql.js";
 import {weekDateRangeSql} from "./week-date-sql.js";
 import {withSqlClient} from "./postgres.js";
 import type {TransactionPool} from "./transaction.js";
@@ -41,7 +42,7 @@ export interface PlayerWorldOverview {
    backstageUnreadCount?:number;
    pendingContractOffers:boolean;plannedShows:number;
    backstageRequests?:{personId:string;name:string;kind:string}[];
-   offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"}[];
+   offerResults?:{id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED";renewal?:boolean;startWeekIndex?:number|null}[];
    dateDecisions?:{id:string;contractId:string;personId:string;name:string;
     status:"ACCEPTED"|"REJECTED";additionalDates:number;
     additionalPayment:number;year:number;week:number}[];
@@ -55,7 +56,7 @@ export interface PlayerWorldOverview {
     winnerName:string;holderType:"PERSON"|"TEAM";personId:string|null;
     year:number;week:number}[];
    contractAlerts?:{contractId:string;personId:string;name:string;
-    kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean}[];
+    kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean;nextTermStart?:number|null}[];
    kpClaimAvailable?:boolean;unseenLegends?:number;
    worldStories?:{eventId:string;kind:string;year:number;week:number;
     personId:string|null;personName:string|null;
@@ -278,7 +279,8 @@ export async function readPlayerWorldOverview(
            AND c.status='SIGNED'
            AND c.start_week_index<=(w.year-1)*52+w.week-1
            AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
-             AND (w.year-1)*52+w.week+3))
+             AND (w.year-1)*52+w.week+2
+           AND c.family<>'ONE_OFF' AND NOT EXISTS (${agreedNextTermSql("c")})))
          OR (e.role='MEDICAL' AND EXISTS(
           SELECT 1 FROM ppw_contracts c JOIN ppw_people p
            ON p.world_id=c.world_id AND p.person_id=c.person_id
@@ -552,44 +554,41 @@ export async function readPlayerWorldOverview(
         AND c.start_week_index<=(w.year-1)*52+w.week-1
         AND c.expires_week_index BETWEEN (w.year-1)*52+w.week-1
          AND (w.year-1)*52+w.week+1
-        AND NOT EXISTS (
-         SELECT 1 FROM ppw_contracts newer
-         WHERE newer.world_id=c.world_id AND newer.promotion_id=c.promotion_id
-          AND newer.person_id=c.person_id AND newer.contract_id<>c.contract_id
-          AND newer.status='SIGNED'
-          AND newer.expires_week_index>c.expires_week_index
-          AND newer.start_week_index<=c.expires_week_index+2
-          AND (newer.remaining_dates IS NULL OR newer.remaining_dates>0))
-        AND NOT EXISTS (
-         SELECT 1 FROM ppw_contract_offers accepted
-         WHERE accepted.world_id=c.world_id
-          AND accepted.promotion_id=c.promotion_id
-          AND accepted.person_id=c.person_id
-          AND accepted.source_contract_id=c.contract_id
-          AND accepted.status='ACCEPTED'
-          AND (accepted.terms->>'startWeekIndex')::integer
-              BETWEEN (w.year-1)*52+w.week-1 AND c.expires_week_index+2)
+        AND NOT EXISTS (${agreedNextTermSql("c")})
         LIMIT 1) AS expiring_talent,
      EXISTS (SELECT 1 FROM ppw_contract_offers o
        WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
         AND o.status='PENDING' LIMIT 1) AS pending_contract_offers,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
-       'id','offer-result:'||recent.offer_id,'personId',recent.person_id,
-       'name',recent.name,'status',recent.status)
-       ORDER BY recent.submitted_week_index DESC,recent.offer_id DESC),'[]'::jsonb)
-      FROM (SELECT o.offer_id,o.person_id,person.name,o.status,o.submitted_week_index
-       FROM ppw_contract_offers o
-       JOIN ppw_people person ON person.world_id=o.world_id
-        AND person.person_id=o.person_id
-       WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
-        AND o.status IN ('ACCEPTED','REJECTED')
-        AND o.submitted_week_index BETWEEN
-         greatest(0,(w.year-1)*52+w.week-1-3) AND (w.year-1)*52+w.week-1
-        AND NOT EXISTS (SELECT 1 FROM ppw_player_attention_dismissals dismissal
-          WHERE dismissal.world_id=o.world_id
-           AND dismissal.player_id=$2 AND dismissal.promotion_id=owned.promotion_id
-           AND dismissal.attention_id='offer-result:'||o.offer_id)
-       ORDER BY o.submitted_week_index DESC,o.offer_id DESC LIMIT 5) recent
+       'id',recent.id,'personId',recent.person_id,
+       'name',person.name,'status',recent.status,'renewal',recent.renewal,
+       'startWeekIndex',recent.start_week_index)
+       ORDER BY recent.notice_week DESC,recent.id DESC),'[]'::jsonb)
+      FROM (
+       SELECT result.* FROM (
+        SELECT 'offer-result:'||o.offer_id AS id,o.person_id,o.status,
+         o.submitted_week_index AS notice_week,o.source_contract_id IS NOT NULL AS renewal,
+         CASE WHEN o.source_contract_id IS NOT NULL THEN (o.terms->>'startWeekIndex')::integer END AS start_week_index
+        FROM ppw_contract_offers o
+        WHERE o.world_id=w.world_id AND o.promotion_id=owned.promotion_id
+         AND o.status IN ('ACCEPTED','REJECTED')
+         AND o.submitted_week_index BETWEEN greatest(0,(w.year-1)*52+w.week-4) AND (w.year-1)*52+w.week-1
+        UNION ALL
+        SELECT 'renewal-result:'||r.proposal_id,r.person_id,
+         CASE WHEN r.status='ACTIVATED' THEN 'ACCEPTED' ELSE r.status END,
+         r.created_week_index,true,
+         CASE WHEN r.status='ACTIVATED' THEN c.start_week_index ELSE c.expires_week_index+1 END
+        FROM ppw_contract_renewal_proposals r JOIN ppw_contracts c USING(world_id,contract_id)
+        WHERE r.world_id=w.world_id AND r.promotion_id=owned.promotion_id
+         AND r.status IN ('ACCEPTED','ACTIVATED','REJECTED')
+         AND r.proposal_id NOT LIKE 'accepted:%'
+         AND r.created_week_index BETWEEN greatest(0,(w.year-1)*52+w.week-4) AND (w.year-1)*52+w.week-1
+       ) result
+       WHERE NOT EXISTS (SELECT 1 FROM ppw_player_attention_dismissals dismissal
+        WHERE dismissal.world_id=w.world_id AND dismissal.player_id=$2 AND dismissal.promotion_id=owned.promotion_id
+         AND dismissal.attention_id=result.id)
+       ORDER BY result.notice_week DESC,result.id DESC LIMIT 5
+      ) recent JOIN ppw_people person ON person.world_id=w.world_id AND person.person_id=recent.person_id
      ) AS offer_results,
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
        'id','contract-dates:'||recent.event_id::text,
@@ -705,52 +704,38 @@ export async function readPlayerWorldOverview(
      (SELECT coalesce(jsonb_agg(jsonb_build_object(
       'contractId',relevant.contract_id,'personId',relevant.person_id,
       'name',relevant.name,'kind',relevant.kind,
-      'weeksRemaining',relevant.weeks_remaining,'waiting',relevant.waiting)
+      'weeksRemaining',relevant.weeks_remaining,'waiting',relevant.waiting,'nextTermStart',relevant.next_term_start)
       ORDER BY relevant.priority,relevant.weeks_remaining,relevant.contract_id),
       '[]'::jsonb)
       FROM (
        SELECT c.contract_id,c.person_id,person.name,
         CASE WHEN c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0
          THEN 'DATES_EXHAUSTED' ELSE 'EXPIRING' END AS kind,
-        c.expires_week_index-((w.year-1)*52+w.week-1) AS weeks_remaining,
-        CASE WHEN EXISTS(SELECT 1 FROM ppw_contract_offers offer
+        c.expires_week_index-((w.year-1)*52+w.week-1)+1 AS weeks_remaining,
+        replacement.start_week_index AS next_term_start,
+        CASE WHEN (NOT (c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0) AND (EXISTS(SELECT 1 FROM ppw_contract_offers offer
           WHERE offer.world_id=c.world_id AND offer.promotion_id=c.promotion_id
            AND offer.person_id=c.person_id AND offer.status='PENDING')
+         OR EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals renew
+          WHERE renew.world_id=c.world_id AND renew.promotion_id=c.promotion_id
+           AND renew.contract_id=c.contract_id AND renew.status='PENDING')))
          OR EXISTS(SELECT 1 FROM ppw_contract_date_requests dates
           WHERE dates.world_id=c.world_id AND dates.promotion_id=c.promotion_id
            AND dates.contract_id=c.contract_id AND dates.status='PENDING')
-         OR EXISTS(SELECT 1 FROM ppw_contract_renewal_proposals renew
-          WHERE renew.world_id=c.world_id AND renew.promotion_id=c.promotion_id
-           AND renew.contract_id=c.contract_id AND renew.status='PENDING')
         THEN true ELSE false END AS waiting,
         CASE WHEN c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0
          THEN 0 ELSE 1 END AS priority
        FROM ppw_contracts c JOIN ppw_people person
         ON person.world_id=c.world_id AND person.person_id=c.person_id
+       LEFT JOIN LATERAL (${agreedNextTermSql("c")}) replacement ON true
        WHERE c.world_id=w.world_id AND c.promotion_id=owned.promotion_id
         AND c.status='SIGNED' AND person.status='ACTIVE'
         AND c.start_week_index<=((w.year-1)*52+w.week-1)
         AND c.expires_week_index>=((w.year-1)*52+w.week-1)
-        -- Do not alarm on an old exhausted/expiring agreement when another
-        -- signed agreement now covers the wrestler and has bookable dates.
-        AND NOT EXISTS (
-         SELECT 1 FROM ppw_contracts newer
-         WHERE newer.world_id=c.world_id AND newer.promotion_id=c.promotion_id
-          AND newer.person_id=c.person_id AND newer.contract_id<>c.contract_id
-          AND newer.status='SIGNED'
-          AND newer.expires_week_index>c.expires_week_index
-          AND newer.start_week_index<=c.expires_week_index+2
-          AND (newer.remaining_dates IS NULL OR newer.remaining_dates>0))
-        AND ((c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0)
-          OR (c.expires_week_index<=((w.year-1)*52+w.week+1)
-           AND NOT EXISTS(SELECT 1 FROM ppw_contract_offers accepted
-            WHERE accepted.world_id=c.world_id
-             AND accepted.promotion_id=c.promotion_id
-             AND accepted.person_id=c.person_id
-             AND accepted.source_contract_id=c.contract_id
-             AND accepted.status='ACCEPTED'
-             AND (accepted.terms->>'startWeekIndex')::integer
-                  BETWEEN ((w.year-1)*52+w.week-1) AND c.expires_week_index+2)))
+        AND ((c.family='LIMITED_NON_EXCLUSIVE' AND c.remaining_dates=0 AND
+          (replacement.start_week_index IS NULL OR replacement.start_week_index>(w.year-1)*52+w.week-1))
+         OR (c.expires_week_index<=((w.year-1)*52+w.week+1)
+          AND replacement.start_week_index IS NULL))
        ORDER BY priority,c.expires_week_index,c.contract_id LIMIT 5
       ) relevant
      ) AS contract_alerts,
@@ -1058,7 +1043,7 @@ export async function readPlayerWorldOverview(
        typeof request.kind==="string"):[],
      offerResults:Array.isArray(x.offer_results)?
       x.offer_results.filter((news):news is {
-       id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED"
+       id:string;personId:string;name:string;status:"ACCEPTED"|"REJECTED";renewal?:boolean;startWeekIndex?:number|null
       }=>news!==null&&typeof news==="object"&&
        typeof news.id==="string"&&typeof news.personId==="string"&&
        typeof news.name==="string"&&
@@ -1125,7 +1110,7 @@ export async function readPlayerWorldOverview(
      contractAlerts:Array.isArray(x.contract_alerts)?
       x.contract_alerts.filter((alert):alert is {
        contractId:string;personId:string;name:string;
-       kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean
+       kind:"DATES_EXHAUSTED"|"EXPIRING";weeksRemaining:number;waiting:boolean;nextTermStart?:number|null
       }=>alert!==null&&typeof alert==="object"&&
        typeof alert.contractId==="string"&&typeof alert.personId==="string"&&
        typeof alert.name==="string"&&

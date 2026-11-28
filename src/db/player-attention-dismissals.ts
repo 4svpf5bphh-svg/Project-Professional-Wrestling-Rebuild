@@ -9,6 +9,10 @@ export interface DismissalScope{
 }
 export async function dismissResolvedOfferAttention(pool:TransactionPool,scope:DismissalScope){
  const {worldId,promotionId,playerId,attentionId}=scope;
+ if(typeof attentionId==="string"&&attentionId.startsWith("renewal-result:")){
+  const result=await dismissResolvedAttentionBatch(pool,{worldId,promotionId,playerId,attentionIds:[attentionId]});
+  return {dismissed:true,firstDismissal:result.firstDismissals===1};
+ }
  const prefix="offer-result:",backstagePrefix="backstage-result:",
   businessPrefix="business-update:",titlePrefix="title-reign:",
   injuryPrefix="injury-report:",clearancePrefix="medical-clearance:",
@@ -272,7 +276,7 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
  const {worldId,promotionId,playerId,attentionIds}=s;
  const valid=(id:string)=>(
   id.startsWith("offer-result:")&&id.length>13&&id.length<=230
- )||/^backstage-result:[1-9][0-9]{0,14}$/.test(id)||
+ )||(id.startsWith("renewal-result:")&&id.length>15&&id.length<=230)||/^backstage-result:[1-9][0-9]{0,14}$/.test(id)||
   /^business-update:[1-9][0-9]{0,18}$/.test(id)||
   (id.startsWith("title-reign:")&&id.length>12&&id.length<=212)||
   /^contract-dates:[1-9][0-9]{0,18}$/.test(id)||
@@ -304,6 +308,13 @@ export async function dismissResolvedAttentionBatch(pool:TransactionPool,s:{
    "AND offer.status IN ('ACCEPTED','REJECTED')",
    "AND offer.submitted_week_index BETWEEN",
    "greatest(0,(w.year-1)*52+w.week-1-3) AND (w.year-1)*52+w.week-1)",
+   "OR EXISTS (SELECT 1 FROM ppw_contract_renewal_proposals renewal",
+   "WHERE renewal.world_id=w.world_id AND renewal.promotion_id=$2",
+   "AND requested.attention_id='renewal-result:'||renewal.proposal_id",
+   "AND renewal.status IN ('ACCEPTED','ACTIVATED','REJECTED')",
+   "AND renewal.proposal_id NOT LIKE 'accepted:%'",
+   "AND renewal.created_week_index BETWEEN",
+   "greatest(0,(w.year-1)*52+w.week-4) AND (w.year-1)*52+w.week-1)",
    "OR EXISTS (SELECT 1 FROM ppw_ledger_events event",
    "WHERE event.world_id=w.world_id",
    "AND requested.attention_id='contract-dates:'||event.event_id::text",
