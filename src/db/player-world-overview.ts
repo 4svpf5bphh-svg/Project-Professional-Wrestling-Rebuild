@@ -106,7 +106,7 @@ export async function readPlayerWorldOverview(
    medical_clearances:unknown;world_stories:unknown;
    kp_claim_available:boolean|null;unseen_legends:number|null;
    standing:unknown;upcoming_shows:HomeUpcomingShow[]|null;latest_shows:unknown;flagship_name:string|null;
-   office_medical:OfficeMedicalHold|null;office_programme:OfficeProgramme|null;office_promise:OfficePromise|null;
+   office:{medical?:OfficeMedicalHold;programme?:OfficeProgramme;promise?:OfficePromise}|null;
    cp:PromotionCompetitionCard|null;
   }>(`
    SELECT w.world_id,w.name AS world_name,w.year,w.week,w.day,
@@ -129,7 +129,8 @@ export async function readPlayerWorldOverview(
     notices.injury_news,notices.medical_clearances,
     public_news.world_stories,kp.kp_claim_available,legends.unseen_legends,
     dashboard.standing,dashboard.upcoming_shows,dashboard.latest_shows,dashboard.flagship_name,
-    office.medical AS office_medical,office.programme AS office_programme,office.promise AS office_promise,
+    (SELECT jsonb_object_agg(key,value) FROM jsonb_each(to_jsonb(office))
+     WHERE value<>'null'::jsonb) AS office,
     ${promotionCompetitionProjectionSql("w.world_id","owned.promotion_id")}
      AS cp
    FROM ppw_worlds w
@@ -1044,9 +1045,9 @@ export async function readPlayerWorldOverview(
      unseenLegends:Number(x.unseen_legends??0),
      unpreparedShow:x.unprepared_show===true,
      pendingBackstage:x.pending_backstage===true,
-     ...(x.office_medical?{medicalHold:x.office_medical}:{}),
-     ...(x.office_programme?{programme:x.office_programme}:{}),
-     ...(x.office_promise?{promise:x.office_promise}:{}),
+     ...(x.office?.medical?{medicalHold:x.office.medical}:{}),
+     ...(x.office?.programme?{programme:x.office.programme}:{}),
+     ...(x.office?.promise?{promise:x.office.promise}:{}),
      // The compact Home snapshot did not contain a Backstage count before
      // this feature. Omit zero rather than allocating an extra field on
      // every ordinary overview response or breaking existing consumers.

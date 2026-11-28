@@ -684,6 +684,9 @@ function showOwnerName(){
    const saved=await command("/api/profile",{action:"SET_NAME",name:name.value},
     session!.csrfToken) as {displayName:string};
    confirmedOwnerName={playerId:session!.playerId,displayName:saved.displayName};
+   const promotion=session!.overview.promotion;
+   if(promotion&&!promotion.latestShow&&!(promotion.latestShows?.length))
+    showFirstShowGuideFor(promotion.id);
    await loadSession();
   }catch(error){showError(card,error instanceof Error?error.message:"Name could not be saved");}
   finally{submit.disabled=false;}
