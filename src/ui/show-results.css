@@ -786,3 +786,27 @@ html:has(.ppw-results:is([data-premium-poster="steelworks"],[data-premium-poster
 html:has(.ppw-results[data-premium-poster]),html:has(.ppw-results[data-premium-poster]) body,html:has(.ppw-results[data-premium-poster]) #game{background:var(--ppw-active-event-bg)!important;background-image:none!important}
 #game .ppw-results[data-premium-poster]{background:var(--ppw-ppv-deep)!important;background-image:none!important}
 #game .ppw-results[data-premium-poster] :is(.ppw-result-lineup,.ppw-result-script-sequence,.ppw-breakdown-card,.ppw-result-story,.ppw-results-analysis,.ppw-post-show-road-agent,.ppw-crowd-noise-card,.ppw-media-scrum,.ppw-press-question,.ppw-press-head,.ppw-show-breakdown-toggle){background:var(--ppw-ppv-surface)!important;border-color:var(--ppw-ppv-border);color:#f6faff}
+
+.ppw-results-sections{
+ display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 8px}
+#game .ppw-results-sections .ppw-results-section-tab{
+ min-height:44px;margin:0;border:2px solid #879ab6;border-radius:8px;
+ padding:5px 7px;font-size:13px;font-weight:750;text-shadow:none;
+ color:#e8f3fc;background:#202b3e}
+#game .ppw-results-sections .ppw-results-section-tab[aria-pressed=true]{
+ background:#e8f2fd;color:#172538;border-color:#e8f2fd;
+ box-shadow:inset 0 -4px #2b537b}
+#game .ppw-results-sections .ppw-results-section-tab:focus-visible{
+ outline:2px solid #172538;outline-offset:1px;box-shadow:0 0 0 4px #e8f2fd}
+#game .ppw-results-sections .ppw-results-section-tab[aria-pressed=true]:focus-visible{
+ box-shadow:inset 0 -4px #2b537b,0 0 0 4px #e8f2fd}
+.ppw-results-premium-intro{
+ position:relative;isolation:isolate;display:grid;align-content:center;
+ min-height:130px;padding:16px;border-radius:8px;overflow:hidden;
+ background:#192335;color:#fff}
+.ppw-results-premium-intro img{
+ position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover}
+.ppw-results-premium-intro::after{
+ content:"";position:absolute;inset:0;z-index:-1;
+ background:linear-gradient(90deg,#07101cf5,#07101c99)}
+.ppw-results-premium-intro :is(h1,.ppw-muted,.ppw-eyebrow){color:#f7f9fc}

@@ -1,4 +1,4 @@
-import {premiumOnlyWeekSql} from "./premium-only-week.js";
+import {noRegularShowRequiredSql,premiumOnlyWeekSql} from "./premium-only-week.js";
 /** Trusted, bounded World resolution with durable stage checkpoints.
  * Never player callable, never advances without audited certification.
  */
@@ -27,7 +27,7 @@ export type ResolutionReadiness={
  year:number;week:number;phase:string;active:number;submitted:number;regularSubmitted:number;
  showEconomicsEnabled:boolean;
  cleared:number|null;certified:number|null;legacyResolved:number;
- detailedResolved:number;blockers:string[];editorialProgress?:{total:number;completed:number;fallbacks:number;state:"WAITING"|"PROCESSING"|"RECOVERY_AVAILABLE"};
+ detailedResolved:number;blockers:string[];fallbackPending?:boolean;editorialProgress?:{total:number;completed:number;fallbacks:number;state:"WAITING"|"PROCESSING"|"RECOVERY_AVAILABLE"};
 };
 export async function inspectWorldResolutionReadiness(
  pool:TransactionPool,worldId:string,
@@ -54,7 +54,7 @@ export async function inspectWorldResolutionReadiness(
     blockers:[],editorialProgress:rows[0]!};
   }
   const rows=await tx.query<{
-   active:number;submitted:number;regular_submitted:number;cleared:number|null;
+   fallback_pending:boolean;active:number;submitted:number;regular_submitted:number;cleared:number|null;
    certified:number|null;legacy_resolved:number;detailed_resolved:number;
   }>(`SELECT
      (SELECT count(*)::integer FROM ppw_promotions p WHERE p.world_id=$1
@@ -64,12 +64,21 @@ export async function inspectWorldResolutionReadiness(
    AND off_week.year=$2 AND off_week.week=$3)) AS active,
      (SELECT count(*)::integer FROM ppw_booking_drafts WHERE world_id=$1
         AND year=$2 AND week=$3 AND status='SUBMITTED') AS submitted,
-     (SELECT count(DISTINCT d.promotion_id)::integer FROM ppw_booking_drafts d
-       JOIN ppw_promotions p ON p.world_id=d.world_id
-        AND p.promotion_id=d.promotion_id AND p.lifecycle='ACTIVE'
-       WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3
-        AND d.status='SUBMITTED' AND (d.booking_class='REGULAR' OR
-         (d.booking_class='PREMIUM' AND ${premiumOnlyWeekSql("p")}))) AS regular_submitted,
+     (SELECT count(*)::integer FROM ppw_promotions p
+       WHERE p.world_id=$1 AND p.lifecycle='ACTIVE'
+        AND NOT EXISTS(SELECT FROM ppw_playtest_dark_weeks off
+          WHERE off.world_id=p.world_id AND off.promotion_id=p.promotion_id
+            AND off.year=$2 AND off.week=$3)
+        AND (${noRegularShowRequiredSql()} OR EXISTS(
+         SELECT FROM ppw_booking_drafts d WHERE d.world_id=p.world_id
+          AND d.promotion_id=p.promotion_id AND d.year=$2 AND d.week=$3
+          AND d.status='SUBMITTED' AND (d.booking_class='REGULAR'
+           OR (d.booking_class='PREMIUM' AND ${premiumOnlyWeekSql("p")}))))) AS regular_submitted,
+     (EXISTS(SELECT FROM ppw_week_continuity_assessments a
+       WHERE a.world_id=$1 AND a.year=$2 AND a.week=$3 AND a.status='AI_MANAGED'
+        AND a.show_id IS NULL)
+      AND NOT EXISTS(SELECT FROM ppw_week_staff_fallback_runs f
+       WHERE f.world_id=$1 AND f.year=$2 AND f.week=$3)) AS fallback_pending,
      (SELECT eligible_promotions FROM ppw_week_resource_clearances
         WHERE world_id=$1 AND year=$2 AND week=$3) AS cleared,
      (SELECT certified_promotions FROM ppw_week_resolution_seals
@@ -83,13 +92,13 @@ export async function inspectWorldResolutionReadiness(
   const r=rows[0]!,blockers:string[]=[];
   if(phase!=="RESOLVING")blockers.push("WORLD_NOT_RESOLVING");
   if(r.active<1||r.active>128)blockers.push("INVALID_ACTIVE_PROMOTION_COUNT");
-  if(r.regular_submitted!==r.active||r.submitted<r.active||
+  if(r.regular_submitted!==r.active||
    r.submitted>r.active*2)blockers.push("SHOWS_NOT_SUBMITTED");
   if(r.cleared!==r.active)blockers.push("RESOURCES_NOT_CLEARED");
   if(r.legacy_resolved>r.submitted||r.detailed_resolved>r.submitted)
    blockers.push("EXCESS_RESOLUTION_RECEIPTS");
   return {year,week,phase,showEconomicsEnabled:w[0]!.show_economics_enabled===true,
-   active:r.active,submitted:r.submitted,regularSubmitted:r.regular_submitted,
+   active:r.active,submitted:r.submitted,regularSubmitted:r.regular_submitted,fallbackPending:r.fallback_pending,
    cleared:r.cleared,certified:r.certified,legacyResolved:r.legacy_resolved,
    detailedResolved:r.detailed_resolved,blockers};
  });
@@ -142,7 +151,9 @@ export async function planNextWorldResolutionAction(
    !stages[0]!.finalized?"FINALIZE_PREPARED_SHOWS":
    "BEGIN_RESOLUTION";
  }else if(ready.phase==="RESOLVING"){
-  if(ready.regularSubmitted!==ready.active){
+  if(ready.fallbackPending&&ready.cleared===null){
+   action="GENERATE_STAFF_AND_AI_CARDS";
+  }else if(ready.regularSubmitted!==ready.active){
    const run=await withWorldTransaction(pool,tx=>tx.query<{
     done:boolean;eligible:number;
    }>(`SELECT

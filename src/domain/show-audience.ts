@@ -36,7 +36,9 @@ export function projectShowAudience(x:ShowAudienceInput):ShowAudienceReceipt{
  if(x.eventType==="REGULAR"){
   const rating=cap(.04+4.75*strength*Math.pow(reach,1.28)*
    fan*quality*interest,.01,5.5*strength+.07);
-  return {format:"TV",householdRating:Math.round(rating*10)/10,
+  // Local audiences can sit on either side of a network's fractional target.
+  const precision=rating<1?100:10;
+  return {format:"TV",householdRating:Math.round(rating*precision)/precision,
    estimatedViewers:Math.round(125_000_000*rating/100*1.35/1000)*1000,ppvBuys:null};
  }
  const base=PPV_TIER_BASE_BUYS;

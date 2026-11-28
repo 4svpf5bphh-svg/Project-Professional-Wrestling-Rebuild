@@ -62,3 +62,25 @@ test("a strong legacy audience alone cannot promote a company without certified 
  assert.throws(()=>sustainableAnnualTier("LOCAL",score,"HEALTHY",-1),
   /Invalid annual certified show count/);
 });
+
+test("small weekly age effects accumulate over five years for an established veteran",()=>{
+ const veteran={...prospect,biologicalAge:44,wear:48,popularity:72,recognition:70,
+  careerStage:"VETERAN" as const};
+ let career:Parameters<typeof originalCareerWeek>[0]=veteran;
+ for(let week=0;week<260;week++)career=originalCareerWeek(career,0,0).next;
+ assert.ok(career.skills.inRingQuality<veteran.skills.inRingQuality);
+ assert.ok(career.skills.stamina<veteran.skills.stamina);
+ assert.ok(career.skills.matchCraft>veteran.skills.matchCraft);
+ assert.equal(career.popularity,veteran.popularity);
+ assert.equal(career.recognition,veteran.recognition);
+});
+
+test("annual expansion earns its territorial breadth from certified markets",()=>{
+ const market={liveStrength:53,awareness:61,loyalty:51};
+ const evidence={mediaReach:76,showPerformance:51,financialDistress:"HEALTHY" as const};
+ const estimate=(visits:number)=>originalPromotionScaleScore({...evidence,
+  localMarkets:Array.from({length:4},(_,index)=>({...market,certifiedShow:index<visits}))});
+ assert.equal(sustainableAnnualTier("NATIONAL",estimate(4),"HEALTHY",52,estimate(1)),"NATIONAL");
+ assert.equal(sustainableAnnualTier("GLOBAL",estimate(4),"HEALTHY",52,estimate(0)),"GLOBAL");
+ assert.equal(sustainableAnnualTier("NATIONAL",estimate(4),"HEALTHY",52),"GLOBAL");
+});

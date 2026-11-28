@@ -782,7 +782,10 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
    masthead.append(art);
    section.append(masthead,
     el("h2","ppw-news-masthead-fallback",official?"Official News":"Dirt Sheets"));
-   if(newsBusy)section.append(el("p","ppw-industry-muted","Opening this week's news desk…"));
+   if(newsBusy){
+    const pending=el("p","ppw-industry-muted","Opening this week’s edition…");
+    pending.setAttribute("role","status");section.append(pending);
+   }
    if(newsError)section.append(el("p","ppw-alert ppw-error",newsError),
     btn("Retry",()=>void loadNews()));
    if(official&&news?.awards.length){
@@ -875,7 +878,7 @@ export function mountIndustryWorldHub(root:HTMLElement,port:IndustryHubPort,init
      if(seenStories.has(signature))return false;
      seenStories.add(signature);return true;
     });
-   if(!newsBusy&&!published.length&&(!official||!view.headlines.length))
+   if(!newsBusy&&!newsError&&!published.length&&(!official||!view.headlines.length))
     section.append(el("p","ppw-industry-empty",official?
      "No major certified headlines yet. The next completed World week will publish its highlights.":
      "No new rumours from the locker room this week. The next World Lock may give the wrestling press something to argue about."));

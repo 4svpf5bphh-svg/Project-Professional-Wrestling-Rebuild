@@ -37,7 +37,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
    finance_event_count:number;finance_categories:FinanceLine[];
    finance_recent:FinanceEntry[];
    commercial_deals:{dealId:string;kind:"BROADCAST"|"SPONSOR";offerCode:string;
-    weeklyIncome:number;baselineIncome:number;reachIncrease:number;
+    weeklyIncome:number;baselineIncome:number;reachIncrease:number;agreedReach:number|null;
     startWeekIndex:number;endWeekIndex:number;source:"HUMAN"|"AI";
     airingDay:number|null;airingHour:number|null;
     lastSlotChange:number|null;
@@ -97,7 +97,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
       SELECT d.deal_id AS "dealId",d.kind,d.offer_code AS "offerCode",
        d.agreed_income::double precision AS "weeklyIncome",
        d.baseline_income::double precision AS "baselineIncome",
-       coalesce(d.agreed_reach-d.baseline_reach,0) AS "reachIncrease",
+       coalesce(d.agreed_reach-d.baseline_reach,0) AS "reachIncrease",d.agreed_reach AS "agreedReach",
        d.start_week_index AS "startWeekIndex",d.end_week_index AS "endWeekIndex",
        d.source,d.airing_day AS "airingDay",d.airing_hour AS "airingHour",
        (SELECT jsonb_agg(jsonb_build_object(
@@ -357,7 +357,7 @@ export async function readBusinessWorkspace(pool:TransactionPool,scope:{
       startWeekIndex:Math.max(deal.startWeekIndex,
        deal.lastSlotChange??deal.startWeekIndex),
       endWeekIndex:deal.endWeekIndex,
-      airingDay:deal.airingDay,airingHour:deal.airingHour,
+      airingDay:deal.airingDay,airingHour:deal.airingHour,agreedReach:deal.agreedReach,
       regularSchedule:deal.regularSchedule??undefined
      },shows.filter(show=>show.booking_class==="REGULAR"&&
       (show.year-1)*52+show.week-1>=Math.max(deal.startWeekIndex,

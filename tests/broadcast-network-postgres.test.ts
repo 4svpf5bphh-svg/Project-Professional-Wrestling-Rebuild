@@ -16,24 +16,27 @@ test("Network warnings, missed slots, earned bonuses and recovery publish once i
 },async()=>{
  const world="network-review-"+randomUUID(),player="reviewer-"+randomUUID();
  const db=postgresPool(url!,3),promotion="promotion-0",dealId="network-"+randomUUID();
- const insertShow=async(week:number,day:number,rating:number)=>{
+ const insertShow=async(week:number,day:number,rating:number|null,crowd=90)=>{
   await withWorldTransaction(db.pool,async tx=>{
-   const showId="network-tv-"+week;
+   const premium=rating===null;
+   const showId=(premium?"network-ppv-":"network-tv-")+week;
    await tx.query(`INSERT INTO ppw_booking_drafts
     (world_id,draft_id,promotion_id,year,week,status,show_day,show_name,event_type,booking_class)
-    VALUES($1,$2,$3,1,$4,'SUBMITTED',$5,'Nightly TV','REGULAR','REGULAR')`,
-    [world,showId,promotion,week,day]);
+    VALUES($1,$2,$3,1,$4,'SUBMITTED',$5,'Network show',$6,$7)`,
+    [world,showId,promotion,week,day,premium?"MAJOR":"REGULAR",premium?"PREMIUM":"REGULAR"]);
    await tx.query(`INSERT INTO ppw_completed_shows
     (world_id,promotion_id,show_id,year,week,resolution_id,crowd_response,receipt_json,receipt_digest)
-    VALUES($1,$2,$3,1,$4,$5,90,'{}'::jsonb,repeat('f',64))`,
-    [world,promotion,showId,week,"review-"+week]);
+    VALUES($1,$2,$3,1,$4,$5,$6,'{}'::jsonb,repeat('f',64))`,
+    [world,promotion,showId,week,"review-"+week,crowd]);
    await tx.query(`INSERT INTO ppw_show_economics
     (world_id,show_id,promotion_id,year,week,attendance,expected_demand,
      gate_revenue,venue_cost,production_cost,travel_cost,appearance_fees,
      total_cost,net_result,incremental_cash,
-     audience_format,tv_household_rating,estimated_viewers)
+     audience_format,tv_household_rating,estimated_viewers,ppv_buys)
     VALUES($1,$2,$3,1,$4,1000,1100,100000,20000,30000,10000,10000,
-     70000,30000,40000,'TV',$5,1000000)`,[world,showId,promotion,week,rating]);
+     70000,30000,40000,$6,$5,$7,$8)`,
+    [world,showId,promotion,week,rating,premium?"PPV":"TV",
+     premium?null:1000000,premium?20000:null]);
   });
  };
  const news=async()=>withWorldTransaction(db.pool,tx=>tx.query<{
@@ -94,12 +97,18 @@ test("Network warnings, missed slots, earned bonuses and recovery publish once i
    WHERE world_id=$1 AND show_id='network-tv-4'`,[world]));
   assert.equal(offSlotRating[0]!.ratings_war_opponents,0,
    "Off-slot broadcasts are excluded from real-time ratings battles");
-  await insertShow(5,5,4.9);
+  await insertShow(5,5,4.9,60);
+  await insertShow(5,7,null);
   await withWorldTransaction(db.pool,tx=>tx.query(`
    INSERT INTO ppw_world_news_weeks(world_id,year,week) VALUES($1,1,5)`,[world]));
   const restored=await withWorldTransaction(db.pool,tx=>settleCommercialWorldWeek(tx,world,1,5));
   assert.equal(restored.bonusPromotions,1,
    "A recovered network programme earns the real performance bonus again");
+  const bonus=await withWorldTransaction(db.pool,tx=>tx.query<{amount:string}>(`
+   SELECT amount::text FROM ppw_commercial_bonus_receipts
+   WHERE world_id=$1 AND deal_id=$2 AND year=1 AND week=5`,[world,dealId]));
+  assert.deepEqual(bonus,[{amount:"5521"}],
+   "Only the contracted TV episode earns its crowd incentive in a TV and PPV week");
   const latest=await news();
   assert.ok(latest.some(x=>x.story_key.includes("recovery:")));
   const published=await readIndustryWorldNews(db.pool,{

@@ -98,7 +98,7 @@ export async function advanceResolvedWorldWeek(pool:TransactionPool,input:Advanc
         certified_promotions:certified,cleared_promotions:cleared,
         has_active_human_manager:hasActiveHumanManager}=ready[0]!;
       if(required<1) throw new Error("World has no active promotions");
-      if(submitted<required||submitted>required*2||resolved!==submitted)
+      if(submitted>required*2||resolved!==submitted)
        throw new Error("World week incomplete: active promotions need resolved shows; all submitted PPVs also require matching receipts");
       if(cleared!==required) throw new Error("World week has no valid pre-resolution resource clearance");
       if(certified!==required) throw new Error("World week has no valid resolution certification");

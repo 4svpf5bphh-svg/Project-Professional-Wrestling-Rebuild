@@ -64,7 +64,7 @@ export async function settleLivingPromotionSurvival(
    idx-p.last_restructure_week_index>=12);
   const ai=p.management_mode==="AI"&&!p.human_controlled;
   const restructure=ai&&due;
-  const recovered=counters.healthyWeeks>=8&&p.restructuring_count>0&&
+  const recovered=ai&&counters.healthyWeeks>=8&&p.restructuring_count>0&&
    Number(p.weekly_fixed_overhead)!==Number(p.baseline_weekly_fixed_overhead);
   // Original has threshold 24 crisis and 12 insufficient staff. Human
   // managers retain their promotions; AI dormancy only after cash exhaustion.
@@ -193,30 +193,55 @@ export async function settleLivingPromotionSurvival(
  }
  const dormant=changes.filter(x=>x.dormant);
  if(dormant.length){
-  // AI only: no active human controller may lose a company automatically.
-  await tx.query(`UPDATE ppw_promotions p SET lifecycle='DORMANT',
-   weekly_fixed_overhead=0
-   FROM jsonb_to_recordset($2::jsonb) x(promotion_id text)
-   WHERE p.world_id=$1 AND p.promotion_id=x.promotion_id
-    AND p.management_mode='AI' AND p.lifecycle='ACTIVE'
-    AND NOT EXISTS(SELECT 1 FROM ppw_promotion_controls control
-     WHERE control.world_id=p.world_id AND control.promotion_id=p.promotion_id
-      AND control.active)`,[worldId,JSON.stringify(dormant)]);
-  await tx.query(`UPDATE ppw_contracts c SET status='TERMINATED',revision=revision+1
-   WHERE c.world_id=$1 AND c.status='SIGNED'
-    AND c.promotion_id=ANY($2::text[])`,[worldId,dormant.map(x=>x.promotion_id)]);
-  await tx.query(`INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+  // Original dormancy pays one week's guarantee on release. The employer
+  // settles its own terms, including contracts that serve an affiliate.
+  const settled=await tx.query<{promotion_id:string}>(`
+   WITH closing AS (
+    SELECT p.promotion_id FROM ppw_promotions p
+    WHERE p.world_id=$1 AND p.promotion_id=ANY($2::text[])
+     AND p.management_mode='AI' AND p.lifecycle='ACTIVE'
+     AND NOT EXISTS(SELECT 1 FROM ppw_promotion_controls control
+      WHERE control.world_id=p.world_id AND control.promotion_id=p.promotion_id
+       AND control.active)
+   ), released AS (
+    UPDATE ppw_contracts c SET status='TERMINATED',revision=revision+1
+    FROM closing p WHERE c.world_id=$1 AND c.promotion_id=p.promotion_id
+     AND c.status='SIGNED' AND c.expires_week_index>=$5
+    RETURNING c.promotion_id,c.contract_id,c.person_id,c.weekly_guarantee
+   ), released_ledger AS (
+    INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
+    SELECT $1,$3,$4,'CONTRACT_TERMINATED_DURING_RESTRUCTURING',
+     jsonb_build_object('promotionId',promotion_id,'personId',person_id,
+      'contractId',contract_id,'settlement',weekly_guarantee,'significance','ROUTINE')
+    FROM released
+   ), withdrawn AS (
+    UPDATE ppw_contract_offers o SET status='WITHDRAWN',rejection_reason='promotion dormancy'
+    FROM closing p WHERE o.world_id=$1 AND o.promotion_id=p.promotion_id AND o.status='PENDING'
+   ), bills AS (
+    SELECT promotion_id,sum(weekly_guarantee)::bigint AS amount,count(*) AS releases
+    FROM released GROUP BY promotion_id
+   ), closed AS (
+    UPDATE ppw_promotions p SET lifecycle='DORMANT',weekly_fixed_overhead=0,
+     cash=p.cash-coalesce(bills.amount,0),
+     last_weekly_net=coalesce(p.last_weekly_net,0)-coalesce(bills.amount,0)
+    FROM closing LEFT JOIN bills USING(promotion_id)
+    WHERE p.world_id=$1 AND p.promotion_id=closing.promotion_id
+    RETURNING p.promotion_id,p.cash,coalesce(bills.releases,0) AS releases
+   )
+   INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
    SELECT $1,$3,$4,'PROMOTION_ENTERED_DORMANCY',
-    jsonb_build_object('promotionId',x.promotion_id,'significance','MAJOR')
-   FROM jsonb_to_recordset($2::jsonb) x(promotion_id text)`,
-   [worldId,JSON.stringify(dormant),year,week]);
+    jsonb_build_object('promotionId',promotion_id,'cash',cash,
+     'releasedContracts',releases,'significance','MAJOR') FROM closed
+   RETURNING payload->>'promotionId' AS promotion_id`,
+   [worldId,dormant.map(x=>x.promotion_id),year,week,idx]);
+  if(settled.length!==dormant.length)throw new Error("Dormancy settlement conflicted with promotion control");
  }
  return {evaluated:changes.length,restructured:restructured.length,
   dormant:dormant.length,recovered:recovered.length};
 }
 type AnnualRow={promotion_id:string;tier:PromotionTier;financial_distress:Distress;
  media_reach:number;markets:unknown;show_performance:string|number|null;
- completed:number};
+ completed:number;certified_markets:string[]|null};
 export async function settleAnnualPromotionScale(
  tx:SqlRows,worldId:string,year:number,week:number){
  if(week!==52)return {evaluated:0,changed:0};
@@ -224,24 +249,28 @@ export async function settleAnnualPromotionScale(
  const rows=await tx.query<AnnualRow>(`
  WITH locals AS (
   SELECT s.promotion_id,jsonb_agg(jsonb_build_object(
-   'liveStrength',s.live_strength,'awareness',s.awareness,
+   'marketId',s.market_id,'liveStrength',s.live_strength,'awareness',s.awareness,
    'loyalty',s.loyalty) ORDER BY s.market_id) AS markets
   FROM ppw_promotion_market_states s WHERE s.world_id=$1
   GROUP BY s.promotion_id
  ), events AS (
   SELECT completed.promotion_id,count(*)::integer AS completed,
+   array_agg(DISTINCT booked.market_id) FILTER(WHERE booked.market_id IS NOT NULL) AS certified_markets,
    avg(completed.crowd_response*.55+
     least(100,greatest(0,eco.attendance::double precision/
      greatest(1,eco.expected_demand)*75))*.45) AS show_performance
   FROM ppw_completed_shows completed
   JOIN ppw_show_economics eco ON eco.world_id=completed.world_id
    AND eco.show_id=completed.show_id
+  LEFT JOIN ppw_booking_drafts booked ON booked.world_id=completed.world_id
+   AND booked.promotion_id=completed.promotion_id AND booked.draft_id=completed.show_id
+   AND booked.status='SUBMITTED'
   WHERE completed.world_id=$1 AND (completed.year,completed.week)
    BETWEEN ($2::integer,1) AND ($2::integer,52)
   GROUP BY completed.promotion_id
  )
  SELECT p.promotion_id,p.tier,p.financial_distress,p.media_reach,
-  locals.markets,events.show_performance,coalesce(events.completed,0) AS completed
+  locals.markets,events.show_performance,events.certified_markets,coalesce(events.completed,0) AS completed
  FROM ppw_promotions p LEFT JOIN locals ON locals.promotion_id=p.promotion_id
  LEFT JOIN events ON events.promotion_id=p.promotion_id
  WHERE p.world_id=$1 AND p.lifecycle NOT IN ('DORMANT','CLOSED')
@@ -250,17 +279,22 @@ export async function settleAnnualPromotionScale(
  const eligible=rows.flatMap(x=>{
   if(!x.financial_distress||x.media_reach===null||!x.markets||
    (x.completed>0&&x.show_performance===null))return [];
-  const local=x.markets as {liveStrength:number;awareness:number;loyalty:number}[];
+  const local=x.markets as {marketId:string;liveStrength:number;awareness:number;loyalty:number}[];
   if(!Array.isArray(local)||local.length>128||
    !local.every(m=>[m.liveStrength,m.awareness,m.loyalty].every(Number.isFinite)))
    throw new Error("Annual company lacks verified local market evidence");
   const performance=x.completed>0?Number(x.show_performance):45;
-  const score=originalPromotionScaleScore({localMarkets:local,
-   showPerformance:performance,mediaReach:x.media_reach,
-   financialDistress:x.financial_distress});
-  const next=sustainableAnnualTier(x.tier,score,x.financial_distress,x.completed);
+  const evidence={localMarkets:local,showPerformance:performance,
+   mediaReach:x.media_reach,financialDistress:x.financial_distress};
+  const score=originalPromotionScaleScore(evidence);
+  // Preserve existing retention rules. An expansion bid only gets breadth
+  // credit for territories that hosted a certified show this season.
+  const markets=new Set(x.certified_markets??[]);
+  const expansionScore=originalPromotionScaleScore({...evidence,
+   localMarkets:local.map(m=>({...m,certifiedShow:markets.has(m.marketId)}))});
+  const next=sustainableAnnualTier(x.tier,score,x.financial_distress,x.completed,expansionScore);
   return [{promotion_id:x.promotion_id,from_tier:x.tier,to_tier:next,
-   score,cadence:{GLOBAL:1,NATIONAL:1,RISING:2,INDEPENDENT:2,LOCAL:3}[next]}];
+   score,expansionScore,cadence:{GLOBAL:1,NATIONAL:1,RISING:2,INDEPENDENT:2,LOCAL:3}[next]}];
  });
  const changed=eligible.filter(x=>x.from_tier!==x.to_tier);
  if(changed.length){
@@ -271,7 +305,10 @@ export async function settleAnnualPromotionScale(
     event_cadence_weeks=CASE WHEN p.management_mode='AI' AND
      NOT EXISTS(SELECT 1 FROM ppw_promotion_controls c
       WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
-       AND c.active) THEN x.cadence ELSE p.event_cadence_weeks END
+       AND c.active) THEN least(4,x.cadence+CASE WHEN EXISTS (
+      SELECT FROM ppw_promotion_survival s WHERE s.world_id=p.world_id
+       AND s.promotion_id=p.promotion_id AND p.event_cadence_weeks>s.baseline_event_cadence_weeks
+     ) THEN 1 ELSE 0 END) ELSE p.event_cadence_weeks END
    FROM jsonb_to_recordset($2::jsonb) x(
     promotion_id text,to_tier text,cadence integer)
    WHERE p.world_id=$1 AND p.promotion_id=x.promotion_id
@@ -285,10 +322,10 @@ export async function settleAnnualPromotionScale(
    INSERT INTO ppw_ledger_events(world_id,year,week,event_type,payload)
    SELECT $1,$3,$4,'PROMOTION_TIER_CHANGED',
     jsonb_build_object('promotionId',x.promotion_id,'fromTier',x.from_tier,
-     'toTier',x.to_tier,'scaleScore',x.score,
+     'toTier',x.to_tier,'scaleScore',x.score,'expansionScore',x."expansionScore",
      'normalCadenceWeeks',x.cadence,'significance','NOTABLE')
    FROM jsonb_to_recordset($2::jsonb) x(promotion_id text,from_tier text,
-    to_tier text,score double precision,cadence integer)`,
+    to_tier text,score double precision,"expansionScore" double precision,cadence integer)`,
    [worldId,JSON.stringify(changed),year,week]);
  }
  return {evaluated:eligible.length,changed:changed.length};

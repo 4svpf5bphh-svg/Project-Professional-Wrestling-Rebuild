@@ -39,7 +39,7 @@ test("same-slot ties, small local audiences and solo weekly events do not fabric
  assert.ok(tied.every(x=>x.change===0&&x.opponents===1));
  const tiny=projectRatingsWarWeek([e("a","a",4,20,.2),e("b","b",4,20,1.9)]);
  assert.ok(tiny.every(x=>x.change===0));
- assert.deepEqual(projectRatingsWarWeek([e("solo","solo",7,18,2.9)])[0]!.change,0);
+ assert.deepEqual(projectRatingsWarWeek([e("solo","solo",7,18,.07)])[0]!.householdRating,.07);
 });
 test("a crowded ratings night remains zero sum, capped and deterministic",()=>{
  const input=Array.from({length:12},(_,i)=>e("episode-"+i,"promotion-"+i,6,21,
@@ -58,7 +58,7 @@ test("malformed broadcasts, duplicate companies and unbounded worlds fail closed
  assert.throws(()=>projectRatingsWarWeek([e("one","p",0,20,1)]),/Invalid/);
  assert.throws(()=>projectRatingsWarWeek([e("one","p",1,24,1)]),/Invalid/);
  assert.throws(()=>projectRatingsWarWeek([e("one","p",1,20,-1)]),/Invalid/);
- assert.throws(()=>projectRatingsWarWeek([e("one","p",1,20,1.55)]),/Invalid/);
+ assert.throws(()=>projectRatingsWarWeek([e("one","p",1,20,1.555)]),/Invalid/);
  assert.throws(()=>projectRatingsWarWeek(Array.from({length:129},(_,i)=>
   e("s"+i,"p"+i,1,20,1))),/bounded/);
 });

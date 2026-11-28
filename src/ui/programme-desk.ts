@@ -1,3 +1,4 @@
+import {createChoiceDialog} from "./choice-dialog.js";
 import {activateWorkspaceRoot} from "./workspace-root.js";
 /** Mobile PPW feud desk. Uses server-validated original programme sides.
  * No World-wide data, auto-submission, or mandatory flow.
@@ -117,19 +118,6 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
   }catch(e){error=e instanceof Error?e.message:"Unable to save this decision";}
   finally{working=false;render();}
  }
- function selector(options:readonly {key:string;label:string}[],
-  selected:string,change:(value:string)=>void,
-  forbidden:ReadonlySet<string>=new Set()):HTMLSelectElement{
-  const x=document.createElement("select");x.disabled=working||!view?.canEdit;
-  x.setAttribute("aria-label",newFormat==="RIVALRY"?
-   "Choose rivalry participant":"Choose story participant");
-  for(const o of options){
-   const item=document.createElement("option");item.value=o.key;
-   item.textContent=o.label;item.selected=o.key===selected;
-   item.disabled=forbidden.has(o.key)&&o.key!==selected;x.append(item);
-  }
-  x.value=selected;x.onchange=()=>change(x.value);return x;
- }
  function sideControl(side:"A"|"B",values:(ProgrammeRef|null)[]){
   const wrap=element("div","ppw-programme-side");
   wrap.append(element("h3","",newFormat==="RIVALRY"?
@@ -147,10 +135,18 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
     ...refsB.flatMap((value,index)=>side==="B"&&index===i||!value?[]:[value])];
    const forbidden=new Set(rosterOptions().filter(p=>!availableProgrammeOption({kind:p.kind,refId:p.refId},others,teamMembers()))
     .map(p=>p.kind+":"+p.refId));
-   wrap.append(selector(choices,selected,value=>{
+   const label=newFormat==="RIVALRY"?"Side "+side+" participant "+(i+1):
+    "Story participant "+(i+1);
+   wrap.append(createChoiceDialog(label,selected,choices.map(choice=>({
+    value:choice.key,label:choice.label,
+    disabled:forbidden.has(choice.key)&&choice.key!==selected
+   })),value=>{
     const found=rosterOptions().find(p=>p.kind+":"+p.refId===value);
     values[i]=found?{kind:found.kind,refId:found.refId}:null;render();
-   },forbidden));
+    const trigger=[...root.querySelectorAll<HTMLButtonElement>(".ppw-choice-trigger")]
+     .find(button=>button.getAttribute("aria-label")?.startsWith(label+" · "));
+    trigger?.focus({preventScroll:true});
+   },working||!view?.canEdit));
    if(ref?.kind==="PERSON"&&port.openWrestler){
     const open=button("View "+name(ref)+"'s dossier ↗",
      ()=>port.openWrestler?.(ref.refId));
@@ -258,7 +254,7 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    selectedProgrammeId=active[0]?.programmeId??null;
   // One-tap feud navigation, not four complete rivalry dossiers stacked.
   const overview=element("nav","ppw-programme-switcher");
-  overview.setAttribute("aria-label","Choose a feud to manage");
+  overview.setAttribute("aria-label","Choose a Programme to manage");
   for(const item of active){
    const name=storyLabel(item);
    const planned=item.plannedActivity?.[0];
@@ -908,14 +904,10 @@ export function mountProgrammeDesk(root:HTMLElement,port:ProgrammeDeskPort,
    }
    creation.append(formats,sideControl("A",refsA));
    if(newFormat==="RIVALRY")creation.append(sideControl("B",refsB));
-   if(view.championships.length){
-    const box=element("label","ppw-field");
-    box.append(element("span","","Championship (optional)"),
-     selector([{key:"",label:"No championship"},
-      ...view.championships.map(t=>({key:t.championshipId,label:t.name}))],
-      titleId??"",x=>{titleId=x||null;render();}));
-    creation.append(box);
-   }
+   if(view.championships.length)creation.append(createChoiceDialog(
+    "Championship (optional)",titleId??"",[{value:"",label:"No championship"},
+     ...view.championships.map(t=>({value:t.championshipId,label:t.name}))],
+    value=>{titleId=value||null;render();},working||!view?.canEdit));
    const a=refsA.filter((x):x is ProgrammeRef=>!!x);
    const b=refsB.filter((x):x is ProgrammeRef=>!!x);
    const overlap=programmeOverlaps(allSelected(),teamMembers());

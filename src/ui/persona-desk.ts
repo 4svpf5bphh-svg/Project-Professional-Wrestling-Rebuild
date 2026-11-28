@@ -734,6 +734,7 @@ export function mountPersonaDesk(root:HTMLElement,
      render();
     });
     if(filter==="DISAGREEMENTS")b.setAttribute("aria-label","Staff disagreements");
+    b.setAttribute("aria-pressed",String(filter===inboxFilter));
     if(filter===inboxFilter)b.classList.add("ppw-persona-selected");
     controls.append(b);
    }
@@ -846,12 +847,18 @@ export function mountPersonaDesk(root:HTMLElement,
      el("span","ppw-backstage-contact-preview",
       summary.replace(/^ · /,"")||(wrestler.isCurrent?"Open conversation":"Former talent")));
     item.append(avatar,copy);
-    if(incoming?.status==="PENDING")
+    if(incoming?.status==="PENDING"){
+     item.dataset.needsDecision="true";
      item.append(el("span","ppw-messenger-awaiting","REPLY"));
+    }
     if(unread)item.append(el("span","ppw-backstage-unread-dot",""));
     entries.append(item);
     count++;
    }
+   const prioritised=Array.from(entries.children).sort((a,b)=>
+    Number(b.hasAttribute("data-needs-decision"))-Number(a.hasAttribute("data-needs-decision"))||
+    Number(b.classList.contains("ppw-backstage-unread"))-Number(a.classList.contains("ppw-backstage-unread")));
+   entries.append(...prioritised);
    const empty=el("p","ppw-muted",count?
     "No matching conversations.":"No messages yet. Use Wrestler profile to inspect your roster.");
    const updateSearch=()=>{

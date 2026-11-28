@@ -58,24 +58,25 @@ for(const width of [320,390]){
   await create.locator("summary").click();
   const pick=async(format:string,people:readonly string[])=>{
    await create.getByRole("button",{name:format,exact:false}).first().click();
-   const selects=create.getByRole("combobox",{name:"Choose story participant"});
+   const selects=create.getByRole("button",{name:/^Story participant/});
    if(format==="Relationship"||format==="Faction story"){
     // An author may remove a third/fourth optional character again instead
     // of having to fill every available faction slot.
     const original=await selects.count();
     await create.getByRole("button",{name:"+ Add another"}).click();
-    await expect(create.getByRole("combobox",{
-     name:"Choose story participant"})).toHaveCount(original+1);
+    await expect(selects).toHaveCount(original+1);
     await create.getByRole("button",{name:"− Remove extra"}).click();
-    await expect(create.getByRole("combobox",{
-     name:"Choose story participant"})).toHaveCount(original);
+    await expect(selects).toHaveCount(original);
    }
    const current=await selects.count();
    for(let i=current;i<people.length;i++)
     await create.getByRole("button",{name:"+ Add another"}).click();
-   const ready=create.getByRole("combobox",{name:"Choose story participant"});
-   expect(await ready.count()).toBe(people.length);
-   for(const [index,id] of people.entries())await ready.nth(index).selectOption("PERSON:"+id);
+   expect(await selects.count()).toBe(people.length);
+   for(const [index,id] of people.entries()){
+    await selects.nth(index).click();
+    await page.getByRole("dialog",{name:"Story participant "+(index+1)})
+     .getByRole("button",{name:cast.find(wrestler=>wrestler.refId===id)!.name,exact:true}).click();
+   }
    await create.getByRole("button",{name:"Start story",exact:true}).click();
    await expect(page.locator(".ppw-programme-switch")).toHaveCount(started.length);
    // The normal selected story view has no fictitious "VS" rival.

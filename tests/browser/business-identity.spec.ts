@@ -146,8 +146,8 @@ test("iPhone owner adjusts allocation without spending bank cash or inventing a 
  await page.getByRole("spinbutton",{name:"Cash reserve"}).fill("2000000");
  await expect(page.locator(".ppw-business-signing-check")).toHaveCount(0);
  // Costing a new wrestler is now handled where the actual offer is made.
- await expect(page.locator(".ppw-finance-snapshot")).toContainText("Weekly income");
- await expect(page.locator(".ppw-finance-snapshot")).toContainText("Weekly commitments");
+ await expect(page.locator(".ppw-finance-snapshot").first()).toContainText("Weekly income");
+ await expect(page.locator(".ppw-finance-snapshot").first()).toContainText("Weekly commitments");
  await expect(page.locator(".ppw-business-budget-preview")).toContainText("60,000");
  await page.getByRole("button",{name:"Save spending plan"}).click();
  await expect.poll(()=>methods.includes("setSpendingPlan"),{

@@ -429,3 +429,34 @@ test("flexible TV and PPVs try the next legal date when the seeded first venue h
    excludedDays:[alternative.schedule.day]}).status,"READY");
  }
 });
+
+test("AI spreads limited contracted dates across the term before filling more undercard matches",()=>{
+ const deals=roster.slice(0,18).map((person,i)=>({
+  ...person,remainingDates:4+(i%3),contractExpires:12,
+ }));
+ let appearances=0;
+ for(let week=1;week<=13;week++){
+  const card=chooseAiWorldCard({...base,week,roster:deals.filter(p=>p.remainingDates>0)});
+  assert.equal(card.status,"READY","A limited-date roster must still have a match in week "+week);
+  if(card.status!=="READY")continue;
+  const participants=card.matches.flatMap(match=>match.participants);
+  if(week===1)assert.equal(participants.length,6);
+  for(const p of participants){
+   const deal=deals.find(x=>x.contractId===p.contractId)!;
+   assert.ok(deal.remainingDates>0);
+   deal.remainingDates--;
+   appearances++;
+  }
+ }
+ assert.ok(appearances>=52,"A smaller card still books multiple matches through the term");
+});
+
+test("a cash-constrained show books an affordable pair before discretionary undercard",()=>{
+ const priced=roster.map((p,i)=>({...p,appearanceFee:i<3?50:1000}));
+ const result=chooseAiWorldCard({...base,roster:priced,appearanceRoom:100});
+ assert.equal(result.status,"READY");
+ if(result.status!=="READY")return;
+ assert.equal(result.matches.length,1);
+ assert.equal(result.matches[0]!.participants.reduce((sum,p)=>
+  sum+priced.find(x=>x.personId===p.personId)!.appearanceFee,0),100);
+});

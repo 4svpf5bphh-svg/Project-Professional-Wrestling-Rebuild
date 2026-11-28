@@ -276,12 +276,22 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
    const fixedWeekly=view.weeklyFixedOverhead!=null?
     view.weeklyFixedOverhead+view.weeklyGuarantees+view.weeklyStaffPayroll:null;
    const bank=el("section","ppw-finance-first");
-   bank.append(el("span","ppw-business-kicker","YOUR COMPANY / YOUR MONEY"),
-    el("h2","","Financial position"));
+   const financialHead=el("header","ppw-finance-heading");
+   financialHead.append(el("h2","","Financial position"));
+   if(view.financialDistress){
+    const badge=el("span","ppw-finance-health",
+     {HEALTHY:"Healthy",WATCH:"Watch",DISTRESSED:"Distressed",CRISIS:"Crisis"}[
+      view.financialDistress]??view.financialDistress.replaceAll("_"," "));
+    badge.dataset.health=view.financialDistress.toLowerCase();
+    financialHead.append(badge);
+   }
+   bank.append(financialHead);
    const balance=el("div","ppw-finance-bank");
    balance.append(el("small","","Cash in the bank"),
     el("strong","",money(view.cash)));
-   bank.append(balance);
+   if(view.runwayWeeks!=null)balance.append(el("small","ppw-finance-runway",
+    "Estimated runway · "+view.runwayWeeks.toFixed(1)+" weeks"));
+   bank.append(balance,el("h3","ppw-finance-group-label","Recurring weekly commitments"));
    const snapshot=el("div","ppw-finance-snapshot");
    const item=(caption:string,figure:string,help:string)=>{
     const tile=el("div","ppw-finance-snapshot-tile");
@@ -294,10 +304,15 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     item("Weekly commitments",fixedWeekly===null?"Not reported":money(fixedWeekly),
      "Wages, staff and overhead"),
     item("Operating room",view.recurringMargin===null?"Not reported":
-     money(view.recurringMargin),"Before show income and costs"),
-    item("Last week net",view.lastWeeklyNet===null?"Not settled":
-     money(view.lastWeeklyNet),"After the last weekly settlement"));
-   bank.append(snapshot);
+     money(view.recurringMargin),"Before show income and costs"));
+   bank.append(snapshot,el("h3","ppw-finance-group-label","Recorded cash activity"));
+   const settled=el("div","ppw-finance-snapshot ppw-finance-settled");
+   settled.append(item("Last week net",view.lastWeeklyNet===null?"Not settled":
+    money(view.lastWeeklyNet),"Weekly settlement"));
+   if(view.rollingFourWeeks)settled.append(
+    item("Recent income",money(view.rollingFourWeeks.income),"Last four weeks"),
+    item("Recent spending",money(view.rollingFourWeeks.spending),"Last four weeks"));
+   bank.append(settled);
    // Full-term roster exposure remains available in Contracts, where it is actionable.
    if(view.debt>0)bank.append(el("p","ppw-finance-debt",
     "Outstanding debt · "+money(view.debt)));
@@ -899,7 +914,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
       (typeof episode.ratingsWarChange==="number"&&episode.ratingsWarChange!==0?
        " · WAR "+(episode.ratingsWarChange>0?"+":"")+episode.ratingsWarChange.toFixed(1):"")));
     const numbers=el("div","ppw-ratings-war-rival-number");
-    numbers.append(el("b","",episode.householdRating.toFixed(1)),
+    numbers.append(el("b","",formatTvRating(episode.householdRating)),
      el("small","",episode.estimatedViewers===null?
       "Household rating":episode.estimatedViewers.toLocaleString("en-GB")+" viewers"));
     row.append(description,numbers);
@@ -1054,11 +1069,13 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
     const reserved=(view.partnerInventory??[]).find(d=>d.offerCode===code);
     const offer=view.commercialOffers.find(d=>d.code===code);
     const qualified=(view.commercialQualified??view.commercialOffers).find(d=>d.code===code);
+    const offeredReach=view.mediaReach==null?null:Math.min(100,
+     view.mediaReach+(qualified?.reachIncrease??0));
     const item=el("article","ppw-commercial-offer");
     item.dataset.availability=reserved?"TAKEN":offer?"AVAILABLE":"LOCKED";
     item.append(commercialPartnerBrand(code));
     item.append(el("p","ppw-commercial-voice",partnerResponse(code,{
-     tier:view.tier,averageTvRating:view.averageTvRating,
+     tier:view.tier,reach:offeredReach,averageTvRating:view.averageTvRating,
      crowd:view.recentAverageCrowd,current:false,
      heldBy:reserved?.promotionName??null
     })));
@@ -1077,7 +1094,7 @@ export function mountBusinessDesk(root:HTMLElement,port:BusinessPort,
       item.append(el("span","ppw-commercial-slot",
        "Contracted weekly slot: "+(day[identity.preferredDay-1]??"weekly")+
        " at "+identity.airtime+" · Rating target "+
-       broadcasterRatingTarget(code,view.tier).toFixed(1)));
+       broadcasterRatingTarget(code,view.tier,offeredReach).toFixed(2)));
       item.append(el("span","ppw-commercial-slot",
        "+"+Math.round(offer.reachIncrease)+" distribution reach"));
      }else item.append(el("small","ppw-commercial-slot",identity.preference));

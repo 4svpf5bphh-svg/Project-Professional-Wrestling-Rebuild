@@ -114,3 +114,7 @@
 #game .ppw-results[data-results-skin="retro-booker-02"] .ppw-result-entry .ppw-result-main-event{
  background:#a62740!important;color:#fff7d7!important;border-color:#f1c8d7!important;
  border-radius:0!important;font-family:ui-monospace,Consolas,monospace!important}
+/* The certified fallback is a text node, so it takes the story's paper ink. */
+#game .ppw-results[data-results-skin] .ppw-result-story .ppw-ringside-slot{
+ color:inherit;
+}

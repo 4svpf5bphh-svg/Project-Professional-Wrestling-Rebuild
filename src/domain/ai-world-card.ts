@@ -14,12 +14,13 @@ import {aiTagPairKey,bookAiProgrammeAngle,type AiProgrammeAngle,type AiProgramme
 import type {ProgrammePayoff} from "./programme-finales.js";
 export interface AiRosterCandidate extends StaffWrestlerCandidate{
  momentum:number;popularity:number;recognition:number;presentation:number;matchCraft:number;
- careerStage?:string|null;contractExpires?:number;remainingDates?:number|null;
+ careerStage?:string|null;contractExpires?:number;remainingDates?:number|null;appearanceFee?:number;
 }
 export interface AiCardInput{
  worldId:string;worldSeed:string;year:number;week:number;promotionId:string;showId:string;
  roster:readonly AiRosterCandidate[];bookedShows:readonly ExistingShowBooking[];
- activeVenues:readonly string[];eventType:EventType;
+ preferredVenueIds?:readonly string[];
+ activeVenues:readonly string[];eventType:EventType;appearanceRoom?:number;
  /** Signed weekly programme night (including grandfathered MAJOR-labelled TV).
   * Actual PPVs omit this; the event rating alone never makes TV flexible. */
  contractedDay?:number|null;
@@ -218,7 +219,7 @@ export function chooseAiWorldCard(input:AiCardInput):AiCardResult{
   preferredVenueId:null,personIds:[],
   excludedDays:input.excludedDays,
   preferredDays:input.eventType==="MAJOR"?[6,7]:undefined,
-  availableVenueIds:input.activeVenues,bookedShows:input.bookedShows});
+  availableVenueIds:input.activeVenues,preferredVenueIds:input.preferredVenueIds,bookedShows:input.bookedShows});
  const triedDays=new Set<number>();
  for(const schedule of schedules){
   if(triedDays.has(schedule.day))continue;
@@ -380,6 +381,14 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
  const creativeTag=lead&&partner&&otherTeam.length===2&&(!ordinaryTag?.titleId||beat?.payoff)?
   {first:{aId:lead.personId,bId:partner.personId},
    second:{aId:otherTeam[0]!.personId,bId:otherTeam[1]!.personId},titleId:null,inaugural:false}:null;
+ const weekIndex=(input.year-1)*52+input.week-1;
+ // Spread limited service dates across the weeks they still cover. Reserve
+ // actual clearances unchanged; the budget only controls AI card depth.
+ const coverage=available.reduce((sum,p)=>sum+(
+  p.remainingDates==null||p.contractExpires===undefined?1:
+   Math.min(1,p.remainingDates/Math.max(1,p.contractExpires-weekIndex+1))
+ ),0);
+ const appearanceBudget=Math.max(2,Math.floor(coverage/2)*2);
  const tagChoice=creativeTag??ordinaryTag;
  const tagIds=new Set(tagChoice?[tagChoice.first.aId,tagChoice.first.bId,
   tagChoice.second.aId,tagChoice.second.bId]:[]);
@@ -406,11 +415,16 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
  // never by inventing extra matches or reusing a wrestler twice.
  // Only a consequential title match earns extra cast capacity. Ordinary
  // established-team TV bouts keep their original ten-appearance ceiling.
- const maxCast=tagChoice?.titleId?12:10;
+ // Preserve eligible features and pace the discretionary undercard.
+ const featuredCast=(reserve?2:0)+(tagChoice?4:0);
+ const maxCast=Math.min(Math.max(appearanceBudget,featuredCast),tagChoice?.titleId?12:10);
  const chosen:AiRosterCandidate[]=[];
  if(reserve)chosen.push(byId.get(reserve.aId)!,byId.get(reserve.bId)!);
  if(tagChoice)for(const id of tagIds)chosen.push(byId.get(id)!);
- if(men.length>=2&&women.length>=2&&available.length>=4){
+ const fee=(p:AiRosterCandidate)=>p.appearanceFee??0;
+ const room=input.appearanceRoom??Infinity;
+ let castCost=chosen.reduce((sum,p)=>sum+fee(p),0);
+ if(room===Infinity&&men.length>=2&&women.length>=2&&available.length>=4){
   for(const p of [...nextDivision(men),...nextDivision(women)]){
    if(chosen.length<maxCast&&!chosen.some(x=>x.personId===p.personId))chosen.push(p);
   }
@@ -423,12 +437,25 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   if(chosen.length>maxCast-2||chosen.some(x=>x.personId===p.personId))return false;
   const opponent=rotationOrder.find(x=>x.personId!==p.personId&&
    x.bookingDivision===p.bookingDivision&&
-   !chosen.some(c=>c.personId===x.personId));
+   !chosen.some(c=>c.personId===x.personId)&&castCost+fee(p)+fee(x)<=room);
   if(!opponent)return false;
+  castCost+=fee(p)+fee(opponent);
   chosen.push(p,opponent);
   return true;
  };
- if(input.strategy?.focus==="BUILD_STARS"){
+ if(room!==Infinity&&!chosen.length&&!rotationOrder.some(p=>reservePair(p))){
+  // Honor the scheduled show with the lowest-cost legal pair when even
+  // two appearances exceed the margin. Featured bouts were reserved above.
+  const pairs=[men,women].flatMap(division=>{
+   const pair=[...division].sort((a,b)=>fee(a)-fee(b)||best(a,b)).slice(0,2);
+   return pair.length===2?[pair]:[];
+  }).sort((a,b)=>fee(a[0]!)+fee(a[1]!)-fee(b[0]!)-fee(b[1]!));
+  if(pairs[0]){
+   chosen.push(...pairs[0]);
+   castCost=pairs[0].reduce((sum,p)=>sum+fee(p),0);
+  }
+ }
+ if(room===Infinity&&input.strategy?.focus==="BUILD_STARS"){
   const developing=available.filter(p=>p.popularity<60&&p.momentum>=45&&
    p.matchCraft>=40&&!chosen.some(x=>x.personId===p.personId))
    .sort(best)[0];
@@ -492,7 +519,10 @@ function buildAiCard(input:AiCardInput,schedule:StaffScheduleChoice,
   while(alternatives.length>=2&&cards.length<singlesLimit){
    const head=alternatives.shift()!;
    const opponent=alternatives.findIndex(p=>canMeet(head,p));
-   if(opponent>=0)cards.push([head,alternatives.splice(opponent,1)[0]!]);
+   if(opponent>=0){
+    const other=alternatives.splice(opponent,1)[0]!;
+    if(room===Infinity||!cards.length&&!tagChoice)cards.push([head,other]);
+   }
   }
  }
  if(!cards.length&&!tagChoice)return {status:"UNFILLED",reason:"NO_ELIGIBLE_PAIR"};

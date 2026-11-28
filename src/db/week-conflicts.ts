@@ -1,4 +1,4 @@
-import {premiumOnlyWeekSql} from "./premium-only-week.js";
+import {noRegularShowRequiredSql,premiumOnlyWeekSql} from "./premium-only-week.js";
 import type {SqlRows} from "./world-operations.js";
 import {createHash} from "node:crypto";
 import {appearancesFromSlots} from "../domain/card-participants.js";
@@ -49,9 +49,10 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   if(!Number.isSafeInteger(year)||year<1 || !Number.isSafeInteger(week)||week<1||week>52)
     throw new Error("Invalid World clock");
   const promotions=await tx.query<{
-    promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;already_completed:boolean;premium_only_week:boolean;
+    promotion_id:string;draft_id:string|null;booking_class:"REGULAR"|"PREMIUM"|null;show_day:number|null;venue_id:string|null;already_resolved:boolean;already_completed:boolean;premium_only_week:boolean;no_regular_required:boolean;
   }>(
-    `SELECT p.promotion_id,(${premiumOnlyWeekSql("p")}) AS premium_only_week,
+    `SELECT p.promotion_id,(${premiumOnlyWeekSql("p")}) AS premium_only_week, CASE WHEN d.booking_class = 'REGULAR' THEN false
+              ELSE (${noRegularShowRequiredSql()}) END AS no_regular_required,
             d.draft_id,d.booking_class,d.show_day,d.venue_id,
             (r.show_id IS NOT NULL) AS already_resolved,
             (done.show_id IS NOT NULL) AS already_completed
@@ -72,7 +73,7 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   );
   if(promotions.length>256) throw new Error("World has too many submitted shows for weekly inspection");
   const activePromotionIds=new Set(promotions.map(p=>p.promotion_id));
-  const coveredPromotionIds=new Set(promotions.filter(p=>p.booking_class==="REGULAR"||
+  const coveredPromotionIds=new Set(promotions.filter(p=>p.no_regular_required||p.booking_class==="REGULAR"||
     (p.booking_class==="PREMIUM"&&p.premium_only_week)).map(p=>p.promotion_id));
   const slots=await tx.query<{draft_id:string;slot_id:string;position:number;kind:string;payload:unknown}>(
     `SELECT s.draft_id,s.slot_id,s.position,s.kind,s.payload FROM ppw_card_slots s
@@ -295,5 +296,5 @@ export async function inspectWeekConflicts(tx:SqlRows,worldId:string):Promise<We
   return {year,week,activePromotions:activePromotionIds.size,submittedShows,
     inspectedSlots:slots.length,blockers,worldSeed,arbitrationClaims,reservedContractDates,stateFingerprint,
     provisionalClear:activePromotionIds.size>0 &&
-   submittedShows>=activePromotionIds.size&&blockers.length===0};
+   blockers.length===0};
 }

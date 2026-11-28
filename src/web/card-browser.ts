@@ -205,7 +205,9 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
  manualAdvance?:WorldHomePort["manualAdvance"],
  extendBooking?:WorldHomePort["extendBooking"],
  onWeekPublished?:WorldHomePort["onWeekPublished"],
- openCompletedShow?:(showId:string)=>void){
+ openCompletedShow?:(showId:string)=>void,
+ openUpcomingShow?:(showId:string)=>void,
+ initialOverview?:PlayerWorldOverview){
  const call=createCardClient(scope);
  const go=(section:HostSection,fallback:()=>void)=>onNavigate?
   ()=>onNavigate(section):fallback;
@@ -224,6 +226,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   dismissAttentionBatch:attentionIds=>call("dismissAttentionBatch",{attentionIds}),
   openWrestler:personId=>openWrestlerDossier(root,scope,call,personId),
   planner:go("planner",()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope))),
+  openUpcomingShow,
   openUnfinishedCard:onNavigate?()=>onNavigate("planner","CARD"):
    ()=>mountPlannerPage(root,scope,()=>mountWorldHomePage(root,scope),true),
   roster:go("roster",()=>mountRosterMarket(root,rosterMarketPort(root,scope,call),"ROSTER")),
@@ -262,7 +265,7 @@ export function mountWorldHomePage(root:HTMLElement,scope:Scope,
   championships:go("championships",()=>{void mountChampionshipsPage(root,scope,
    ()=>mountWorldHomePage(root,scope));})
  };
- return mountWorldHome(root,port);
+ return mountWorldHome(root,port,initialOverview);
 }
 /** Browser fetch bridge. Auth is via host's secure same-origin session cookie. */
 export function mountBookingPage(root:HTMLElement,scope:Scope,

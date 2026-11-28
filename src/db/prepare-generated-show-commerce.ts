@@ -74,9 +74,21 @@ export async function prepareGeneratedWorldShowCommerce(
       AND c.promotion_id=d.promotion_id AND c.active
     LEFT JOIN ppw_venues v ON v.world_id=d.world_id AND v.venue_id=d.venue_id
     WHERE d.world_id=$1 AND d.year=$2 AND d.week=$3 AND d.status='SUBMITTED'
-    ORDER BY d.promotion_id,d.booking_class DESC LIMIT 257`,
+    ORDER BY d.promotion_id,d.booking_class DESC,d.draft_id LIMIT 257`,
     [input.worldId,year,week]);
    if(submitted.length>256)throw new Error("World submission population exceeds bound");
+   const needAiVenue=submitted.some(d=>d.management_mode==="AI"&&d.controller_player_id===null&&
+    (d.booking_expected_demand===null||d.booking_ticket_yield===null));
+   const venues=needAiVenue?await tx.query<{
+    venue_id:string;market_id:string;capacity:number;cost:number;
+   }>(`
+    SELECT venue_id,market_id,capacity,weekly_hire_cost::double precision AS cost
+    FROM ppw_venues WHERE world_id=$1 AND status='ACTIVE' AND market_id IS NOT NULL
+     AND capacity IS NOT NULL AND weekly_hire_cost IS NOT NULL
+    ORDER BY weekly_hire_cost,venue_id LIMIT 257`,[input.worldId]):[];
+   if(venues.length>256)throw new Error("Venue catalogue limit exceeded");
+   const venuesById=new Map(venues.map(v=>[v.venue_id,v]));
+   const occupied=new Set(submitted.map(d=>d.show_day+":"+d.venue_id));
    const updated:string[]=[];
    const normalEventType:EventType=((year-1)*52+week)%majorInterval===0?"MAJOR":"REGULAR";
    for(const d of submitted){
@@ -116,15 +128,39 @@ export async function prepareGeneratedWorldShowCommerce(
       ORDER BY position LIMIT 101`,[input.worldId,d.draft_id]);
     const snapshot=await snapshotPreparedShowDemand(tx,input.worldId,
       d.promotion_id,d.draft_id,slots,"SUBMITTED");
+    // Keep the territory, day and ticket strategy. For small promotions,
+    // trading capacity for lower hire is worthwhile when the saving beats
+    // even the maximum gate forgone. Larger shows preserve their gate ceiling.
+    const booked=d.venue_id===null?undefined:venuesById.get(d.venue_id);
+    let alternative:typeof booked;
+    if(ai&&booked){
+     const demandCeiling=Math.round(snapshot.expectedDemand*1.08);
+     const gateCeiling=(capacity:number)=>Math.round(Math.min(capacity,demandCeiling)*snapshot.ticketYield);
+     const bookedGate=gateCeiling(booked.capacity);
+     const small=d.tier==="LOCAL"||d.tier==="INDEPENDENT";
+     let bestSaving=0;
+     for(const venue of venues){
+      if(venue.market_id!==booked.market_id||venue.cost>=booked.cost||
+       occupied.has(d.show_day+":"+venue.venue_id))continue;
+      const lostGate=Math.max(0,bookedGate-gateCeiling(venue.capacity));
+      if(!small&&lostGate>0)continue;
+      const saving=booked.cost-venue.cost-lostGate;
+      if(saving<=bestSaving)continue;
+      bestSaving=saving;
+      alternative=venue;
+     }
+    }
+    const venueId=alternative?.venue_id??d.venue_id;
+    if(alternative)occupied.add(d.show_day+":"+venueId);
     const fingerprint=preparedDraftFingerprint({
       worldId:input.worldId,promotionId:d.promotion_id,showId:d.draft_id,
-      year,week,day:d.show_day,venueId:d.venue_id,slots,commercial:snapshot});
+      year,week,day:d.show_day,venueId,slots,commercial:snapshot});
     const complete=await tx.query<{draft_id:string}>(`
-     UPDATE ppw_booking_drafts SET booking_expected_demand=$3,
+     UPDATE ppw_booking_drafts SET booking_expected_demand=$3,venue_id=$6,
       booking_ticket_yield=$4,booking_snapshot_fingerprint=$5,revision=revision+1
      WHERE world_id=$1 AND draft_id=$2 AND status='SUBMITTED'
      RETURNING draft_id`,[input.worldId,d.draft_id,
-       snapshot.expectedDemand,snapshot.ticketYield,fingerprint]);
+       snapshot.expectedDemand,snapshot.ticketYield,fingerprint,venueId]);
     if(complete.length!==1)throw new Error("Generated show forecast not saved");
     updated.push(d.draft_id);
    }

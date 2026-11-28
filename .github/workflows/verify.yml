@@ -892,6 +892,18 @@ jobs:
         env:
           PGPASSWORD: ppw_test
         run: psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -X -f db/migrations/0166_weekly_editorial_inspection.sql
+      - name: Install fractional household ratings and verify repeatability
+        env:
+          PGPASSWORD: ppw_test
+        run: |
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -X -f db/migrations/0167_fractional_household_ratings.sql
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -X -f db/migrations/0167_fractional_household_ratings.sql
+      - name: Install the operating finance index and verify repeatability
+        env:
+          PGPASSWORD: ppw_test
+        run: |
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -X -f db/migrations/0168_operating_finance_week_index.sql
+          psql -h localhost -U ppw_test -d ppw_test -v ON_ERROR_STOP=1 -X -f db/migrations/0168_operating_finance_week_index.sql
       - name: Verify real concurrent claims and transaction rollback
         env:
           PPW_NEON_TEST_URL: postgres://ppw_test:ppw_test@localhost:5432/ppw_test

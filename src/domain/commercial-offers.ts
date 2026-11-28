@@ -1,7 +1,7 @@
 /** Fictional commercial universe; terms come from certified shows, not client cash.
  * One live broadcaster and sponsor at a time. AI and players use this catalogue.
  */
-import {PPV_TIER_BASE_BUYS} from "./show-audience.js";
+import {PPV_TIER_BASE_BUYS,projectShowAudience} from "./show-audience.js";
 export type CommercialKind="BROADCAST"|"SPONSOR";
 export type CommercialOffer={
  code:string;kind:CommercialKind;name:string;description:string;
@@ -72,15 +72,23 @@ export function certifiedPremiumSponsorLift(e:CommercialEvidence):number{
 export const COMMERCIAL_TIER_RATING_TARGET:Readonly<Record<string,number>>={
  LOCAL:.10,INDEPENDENT:.14,RISING:.38,NATIONAL:1.35,GLOBAL:3.1
 };
-export function broadcasterRatingTarget(code:string,tier:string):number{
+export function broadcasterRatingTarget(code:string,tier:string,reach?:number|null):number{
  const base=COMMERCIAL_TIER_RATING_TARGET[tier]??.25;
- return Math.round(base*(COMMERCIAL_COMPANIES[code]?.ratingPressure??1)*100)/100;
+ const target=Math.round(base*(COMMERCIAL_COMPANIES[code]?.ratingPressure??1)*100)/100;
+ if((tier!=="LOCAL"&&tier!=="INDEPENDENT")||reach==null||!Number.isFinite(reach)||reach<0||reach>100)
+  return target;
+ // A network cannot demand more households than its own distribution
+ // can deliver. Preserve its ordinary tier target wherever it is reachable.
+ const ceiling=projectShowAudience({tier,eventType:"REGULAR",mediaReach:reach,
+  awareness:100,liveStrength:100,loyalty:100,wrestlingInterest:100,
+  expectedDemand:0,averageMatchRating:5}).householdRating!;
+ return Math.min(target,ceiling);
 }
 /** Preserve useful scale below one Nielsen point. */
 export const formatTvRating=(rating:number):string=>rating<1?
  rating.toFixed(2):rating.toFixed(1);
 export function partnerResponse(code:string,input:{
- tier:string;averageTvRating?:number|null;crowd?:number|null;
+ tier:string;reach?:number|null;averageTvRating?:number|null;crowd?:number|null;
  current:boolean;heldBy?:string|null;
 }):string{
  const partner=COMMERCIAL_COMPANIES[code];
@@ -89,7 +97,7 @@ export function partnerResponse(code:string,input:{
   ". We'll talk when that agreement ends.";
  const rating=input.averageTvRating;
  if(code.startsWith("BROADCAST_")&&typeof rating==="number"&&Number.isFinite(rating)){
-  const target=broadcasterRatingTarget(code,input.tier);
+  const target=broadcasterRatingTarget(code,input.tier,input.reach);
   if(rating>=target*1.2)return "Your "+formatTvRating(rating)+" rating beats our "+
    formatTvRating(target)+" target. Let's talk about a stronger deal.";
   if(rating<target*.8)return "The "+formatTvRating(rating)+" rating is below "+

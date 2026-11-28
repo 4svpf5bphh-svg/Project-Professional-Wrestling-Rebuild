@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect,type Locator} from "@playwright/test";
 import {mkdirSync} from "node:fs";
 const images="test-results/presentation-screenshots";
 mkdirSync(images,{recursive:true});
@@ -34,6 +34,131 @@ const review={showHeadline:"Omega gives Dynamite its spark",
  slots:[{slotId:"omega-match",headline:"Omega takes the win",
   recap:"Joe threw heavy leather, but Omega's V-Trigger opened the door to the One Winged Angel and a clean pin."},
  {slotId:"angle",headline:"A challenge made",recap:"A pointed microphone exchange held the audience's attention."}]};
+
+async function textContrast(locator:Locator){
+ return locator.evaluate(element=>{
+  const channels=(color:string)=>color.match(/[\d.]+/g)!.map(Number);
+  const paint=(front:number[],back:number[])=>{
+   const alpha=front[3]??1;
+   return back.map((value,index)=>front[index]!*alpha+value*(1-alpha));
+  };
+  const luminance=(color:number[])=>color.slice(0,3).reduce((sum,value,index)=>{
+   const channel=value/255;
+   return sum+[.2126,.7152,.0722][index]!*
+    (channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4);
+  },0);
+  const layers:number[][][]=[];
+  for(let node:Element|null=element;node;node=node.parentElement){
+   const style=getComputedStyle(node);
+   const background=channels(style.backgroundColor);
+   // Check every gradient stop as well as translucent paint on ancestor surfaces.
+   const stops=style.backgroundImage.match(/rgba?\([^)]+\)/g)?.map(channels)??[];
+   layers.unshift([background],...(stops.length?[stops]:[]));
+   if((background[3]??1)===1||stops.length&&stops.every(stop=>(stop[3]??1)===1))break;
+  }
+  const backgrounds=layers.reduce((colors,layer)=>
+   colors.flatMap(back=>layer.map(front=>paint(front,back))),[[255,255,255]]);
+  const foreground=channels(getComputedStyle(element).color);
+  return Math.min(...backgrounds.map(back=>{
+   const levels=[luminance(paint(foreground,back))+.05,luminance(back)+.05].sort((a,b)=>b-a);
+   return levels[0]!/levels[1]!;
+  }));
+ });
+}
+
+for(const skin of [null,"TERRITORY_TV","FIGHT_NIGHT","UNDERGROUND_ZINE","RETRO_BOOKER_02"]){
+ for(const bookingClass of ["REGULAR","PREMIUM"] as const){
+  const premium=bookingClass==="PREMIUM";
+  test(`Results text and selected section contrast · ${skin??"Default"} · ${premium?"PPV":"TV"}`,
+   async({page})=>{
+    await page.setViewportSize({width:390,height:844});
+    let resultReads=0,commentaryReads=0;
+    let releaseReview!:()=>void;
+    const pendingReview=new Promise<void>(resolve=>{releaseReview=resolve;});
+    const showName=premium?"The Lottery":show.showName;
+    const audience=premium?{format:"PPV",ppvBuys:18000,householdRating:null,estimatedViewers:null}:
+     {format:"TV",householdRating:.8,estimatedViewers:1350000,ppvBuys:null};
+    const result={...show,showName,bookingClass,audience,promotionName:"AEW",resultsSkin:skin,
+     broadcastPackage:"PRIZEFIGHT",eventPosterStyle:premium?"INFERNO":null};
+    await page.route("**/api/session",r=>r.fulfill({json:session}));
+    await page.route("**/api/card",r=>{
+     const method=r.request().postDataJSON().method;
+     if(method==="results")resultReads++;
+     return r.fulfill({json:method==="resultsArchive"?{
+      items:[{...result,entries:undefined}],nextCursor:null}:result});
+    });
+    await page.route("**/api/results-commentary",async r=>{
+     commentaryReads++;
+     await pendingReview;
+     return r.fulfill({json:{status:"ready",review}});
+    });
+    await page.goto("/#/results");
+    await page.getByRole("button",{name:/Read ringside report/}).click();
+    const report=page.locator(".ppw-results");
+    const editorialStatus=report.locator(".ppw-ringside-ai-status");
+    const story=report.locator(".ppw-result-match .ppw-ringside-slot").first();
+    const angle=report.locator(".ppw-result-angle .ppw-ringside-slot").first();
+    try{
+     await expect(story).toBeVisible();
+     await expect(story).not.toHaveText("");
+     await expect(angle).toBeVisible();
+     expect.soft(await textContrast(story),"fallback match narrative").toBeGreaterThanOrEqual(4.5);
+     expect.soft(await textContrast(angle),"fallback segment narrative").toBeGreaterThanOrEqual(4.5);
+     expect.soft(await textContrast(editorialStatus),"article loading label").toBeGreaterThanOrEqual(4.5);
+     const nav=report.getByRole("navigation",{name:"Show report sections"});
+     const full=nav.getByRole("button",{name:"Full show",exact:true});
+     const after=nav.getByRole("button",{name:"Post-show brief",exact:true});
+     await expect(full).toHaveAttribute("aria-pressed","true");
+     await expect(after).toHaveAttribute("aria-pressed","false");
+     const light=await full.evaluate(el=>getComputedStyle(el).backgroundColor);
+     const dark=await after.evaluate(el=>getComputedStyle(el).backgroundColor);
+     expect.soft(light,"selected and unselected backgrounds").not.toBe(dark);
+     expect.soft(await textContrast(full),"selected tab label").toBeGreaterThanOrEqual(4.5);
+     expect.soft(await textContrast(after),"unselected tab label").toBeGreaterThanOrEqual(4.5);
+     await after.click();
+     await expect(after).toHaveAttribute("aria-pressed","true");
+     await expect(full).toHaveAttribute("aria-pressed","false");
+     await expect(after).toHaveCSS("background-color",light);
+     await expect(full).toHaveCSS("background-color",dark);
+     await expect(report.locator('.ppw-results-page[data-page="after"]')).toBeVisible();
+     const counts=report.locator(".ppw-result-pulse-stat").first();
+     expect.soft(await textContrast(counts.locator("strong")),"post-show count").toBeGreaterThanOrEqual(4.5);
+     expect.soft(await textContrast(counts.locator("span")),"post-show count label").toBeGreaterThanOrEqual(4.5);
+     await full.click();
+     if(premium){
+      const poster=report.locator(".ppw-results-event-poster .ppw-event-poster");
+      await expect(poster).toHaveAttribute("data-poster","inferno");
+      await expect(poster.locator(".ppw-ep-title")).toHaveText("The Lottery");
+      await expect(report.locator(".ppw-tv-opening-wrap")).toHaveCount(0);
+     }else{
+      await expect(report.locator(".ppw-tv-opening-wrap .ppw-tv-frame"))
+       .toHaveAttribute("data-broadcast-package","prizefight");
+      await expect(report.locator(".ppw-tv-opening-wrap .ppw-tv-red-label")).toHaveText("LIVE BROADCAST");
+      await expect(report.locator(".ppw-results-event-poster")).toHaveCount(0);
+     }
+     if(skin){
+      await expect(report).toHaveAttribute("data-results-skin",skin.toLowerCase().replaceAll("_","-"));
+      await expect(report).not.toHaveAttribute("data-premium-poster");
+     }else if(premium){
+      await expect(report).toHaveAttribute("data-premium-poster","inferno");
+     }
+    }finally{releaseReview();}
+    const headline=story.getByRole("heading",{name:"Omega takes the win"});
+    const paragraph=story.locator(".ppw-ringside-slot-paragraph").first();
+    await expect(headline).toBeVisible();
+    await expect(paragraph).toContainText("One Winged Angel");
+    expect.soft(await textContrast(headline),"provider narrative headline").toBeGreaterThanOrEqual(4.5);
+    expect.soft(await textContrast(paragraph),"provider match narrative").toBeGreaterThanOrEqual(4.5);
+    const angleParagraph=angle.locator(".ppw-ringside-slot-paragraph").first();
+    const conclusion=report.locator(".ppw-ringside-conclusion p");
+    expect.soft(await textContrast(angleParagraph),"provider segment narrative").toBeGreaterThanOrEqual(4.5);
+    expect.soft(await textContrast(conclusion),"provider closing paragraph").toBeGreaterThanOrEqual(4.5);
+    expect.soft(await textContrast(editorialStatus),"verified article label").toBeGreaterThanOrEqual(4.5);
+    expect(resultReads).toBe(1);
+    expect(commentaryReads).toBe(1);
+   });
+ }
+}
 for(const width of [320,390]){
  test(`Ringside ${width}px: visible finish, editorial and crowd coexist without Booker Breakdown`,async({page})=>{
   await page.setViewportSize({width,height:844});
@@ -620,7 +745,7 @@ for(const width of [320,390]){
  });
 }
 
-test("named Armageddon Inferno poster overrides global Results Skin and weekly TV package",async({page})=>{
+test("renamed PPV preserves its poster choice and the equipped Results skin",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.route("**/api/session",r=>r.fulfill({json:session}));
  await page.route("**/api/card",r=>{
@@ -629,7 +754,7 @@ test("named Armageddon Inferno poster overrides global Results Skin and weekly T
    items:[{showId:"armageddon",year:1,week:14,showName:"Armageddon",
     bookingClass:"PREMIUM",crowdResponse:84,matchCount:1,angleCount:1}],
    nextCursor:null
-  }:{...show,showId:"armageddon",showName:"Armageddon",year:1,week:14,
+  }:{...show,showId:"armageddon",showName:"The Lottery",year:1,week:14,
    promotionName:"Chaotic Wrestling Alliance",bookingClass:"PREMIUM",
    eventPosterStyle:"INFERNO",resultsSkin:"RETRO_BOOKER_02",
    broadcastPackage:"MIDNIGHT_FREQUENCY"}});
@@ -637,16 +762,19 @@ test("named Armageddon Inferno poster overrides global Results Skin and weekly T
  await page.route("**/api/results-commentary",r=>r.fulfill({json:{status:"unavailable"}}));
  await page.goto("/#/results");
  await page.getByRole("button",{name:/Read ringside report/}).click();
- await expect(page.locator(".ppw-results")).toHaveAttribute("data-premium-poster","inferno");
- await expect(page.locator(".ppw-results")).not.toHaveAttribute("data-results-skin");
+ await expect(page.locator(".ppw-results")).toHaveAttribute("data-results-skin","retro-booker-02");
  const artwork=page.locator(".ppw-results-event-poster .ppw-event-poster");
  await expect(artwork).toHaveAttribute("data-poster","inferno");
- await expect(artwork.locator(".ppw-ep-title")).toHaveText("Armageddon");
+ await expect(artwork.locator(".ppw-ep-title")).toHaveText("The Lottery");
  await expect(artwork.locator(".ppw-ep-main-label")).toHaveText("MAIN EVENT");
  await expect(artwork.locator(".ppw-ep-main")).toHaveText("Kenny Omega vs Samoa Joe");
  await expect(artwork).not.toContainText("TO BE ANNOUNCED");
  await expect(page.locator(".ppw-tv-opening-wrap")).toHaveCount(0);
- await expect(page.locator(".ppw-retro-station")).toHaveCount(0);
+ await expect(page.locator(".ppw-results-page[data-page=full]")).toBeVisible();
+ expect(await page.evaluate(()=>getComputedStyle(document.body).backgroundColor))
+  .toBe("rgb(36, 39, 44)");
+ await page.getByRole("button",{name:"Post-show brief",exact:true}).first().click();
+ await expect(page.locator(".ppw-results-page[data-page=after]")).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
@@ -743,8 +871,8 @@ test("A certified HOT TAG wrestler post opens focused Programmes without booking
  await expect(page).toHaveURL(/#\/programmes$/);
  await expect(page.getByRole("heading",{name:"Programmes"})).toBeVisible();
  await expect(page.locator(".ppw-programme-create-fold")).toHaveAttribute("open","");
- await expect(page.getByRole("combobox",{name:"Choose rivalry participant"}).first())
-  .toHaveValue("PERSON:omega");
+ await expect(page.getByRole("button",{name:/^Side [AB] participant/}).first())
+  .toContainText("Kenny Omega");
  expect(methods).toEqual(["resultsArchive","results","programmes"]);
  expect(methods).not.toContain("startProgramme");
  expect(methods).not.toContain("saveCard");

@@ -146,6 +146,16 @@ test("two independently owned promotions survive 26/52 weeks and 3 years of evol
   assert.ok((news.get("WRESTLER_RETIRED")??0)>=1);
   assert.ok((news.get("WRESTLER_DEBUTED")??0)>=1);
   assert.ok((news.get("PROMOTION_ENTERED_DORMANCY")??0)>=1);
+  const release=await withWorldTransaction(db.pool,tx=>tx.query(`
+   SELECT p.cash, (SELECT count(*) FROM ppw_contracts c
+    WHERE c.world_id=p.world_id AND c.promotion_id=p.promotion_id
+     AND c.status='TERMINATED') AS released,
+    (SELECT sum((e.payload->>'settlement')::bigint) FROM ppw_ledger_events e
+     WHERE e.world_id=p.world_id AND e.event_type='CONTRACT_TERMINATED_DURING_RESTRUCTURING'
+      AND e.payload->>'promotionId'=p.promotion_id) AS settlement
+   FROM ppw_promotions p WHERE p.world_id=$1 AND p.promotion_id='computer'`,[world]));
+  assert.deepEqual(release,[{cash:"-2000",released:"2",settlement:"2000"}],
+   "Dormancy pays the original release settlement exactly once");
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
    for(const name of [

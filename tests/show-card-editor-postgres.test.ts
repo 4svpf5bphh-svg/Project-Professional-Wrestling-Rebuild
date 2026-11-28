@@ -591,12 +591,22 @@ test("renewed signed agreements are immediately bookable in next week's preplann
     await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,start_week_index,remaining_dates,expires_week_index,appearance_fee) VALUES($1,$2,$3,$4,'LIMITED_NON_EXCLUSIVE',$5,$6,9,$7,9000)",[
      world,id,person,promotion,status,start,end
     ]);
+   await tx.query(`INSERT INTO ppw_people(world_id,person_id,name,booking_division)
+    VALUES($1,'future','Future Debut','MEN'),($1,'exhausted','No Dates','MEN')`,[world]);
+   await tx.query(`INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,
+    family,status,start_week_index,remaining_dates,expires_week_index)
+    VALUES($1,'future-deal','future',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',2,6,52),
+          ($1,'exhausted-deal','exhausted',$2,'LIMITED_NON_EXCLUSIVE','SIGNED',0,0,52)`,[world,promotion]);
    await tx.query("INSERT INTO ppw_booking_drafts(world_id,draft_id,promotion_id,year,week,status,show_day,venue_id,market_id,booking_class) VALUES($1,$2,$3,1,2,'DRAFT',3,'hall','market','REGULAR')",[world,show,promotion]);
   });
   const talent=await cardTalentAsActor(context,world,promotion,show,"austin",null,40);
   assert.equal(talent.talent.length,1,"Future-card picker must not offer expired old agreements");
   assert.equal(talent.talent[0]!.contractId,"austin-renewed");
   assert.equal(talent.talent[0]!.available,true);
+  for(const [name,reason] of [["Future Debut","NOT_STARTED"],["No Dates","NO_DATES"]] as const){
+   const unavailable=await cardTalentAsActor(context,world,promotion,show,name,null,40);
+   assert.deepEqual(unavailable.talent.map(x=>[x.available,x.reason]),[[false,reason]]);
+  }
   await assert.rejects(saveCardEditorAsActor(context,{
    worldId:world,promotionId:promotion,showId:show,
    requestId:"old-contract",expectedRevision:0,

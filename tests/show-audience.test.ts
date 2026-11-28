@@ -33,3 +33,9 @@ test("bad audience evidence fails instead of fabricating a rating",()=>{
  assert.throws(()=>projectShowAudience({...base,mediaReach:NaN}));
  assert.throws(()=>projectShowAudience({...base,expectedDemand:-100}));
 });
+
+test("local television preserves fractional ratings around a local network target",()=>{
+ const local={...base,tier:"LOCAL" as const};
+ assert.equal(projectShowAudience({...local,mediaReach:5}).householdRating,.04);
+ assert.equal(projectShowAudience({...local,mediaReach:40}).householdRating,.07);
+});

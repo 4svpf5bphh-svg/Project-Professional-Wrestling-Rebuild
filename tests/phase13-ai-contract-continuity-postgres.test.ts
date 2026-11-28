@@ -17,7 +17,7 @@ test("AI renews a bounded mixed-division core at expiry without touching owner c
  try{
   await withWorldTransaction(db.pool,async tx=>{
    await createWorld(tx,{id:world,name:"AI Retention",seed:58,rulesetVersion:"test"});
-   for(const p of ["autonomous","owner-controlled","human"])
+   for(const p of ["autonomous","owner-controlled","human","affiliate"])
     await addPromotion(tx,world,{id:p,name:p,tier:"LOCAL"});
    await tx.query("UPDATE ppw_promotions SET management_mode='AI' WHERE world_id=$1 AND promotion_id IN ('autonomous','owner-controlled')",[world]);
    await tx.query("INSERT INTO ppw_players(player_id) VALUES($1)",[owner]);
@@ -30,6 +30,11 @@ test("AI renews a bounded mixed-division core at expiry without touching owner c
     await tx.query("INSERT INTO ppw_people(world_id,person_id,name,booking_division,popularity,match_craft,presentation) VALUES($1,$2,$3,$4,$5,75,75)",[world,id,"Talent "+i,division,80-i]);
     await tx.query("INSERT INTO ppw_contracts(world_id,contract_id,person_id,promotion_id,family,status,start_week_index,expires_week_index,remaining_dates,date_entitlement,weekly_guarantee) VALUES($1,$2,$2,$3,'LIMITED_NON_EXCLUSIVE','SIGNED',0,25,0,7,3000)",[world,id,promotion]);
    }
+   await tx.query("UPDATE ppw_promotions SET parent_promotion_id='autonomous' WHERE world_id=$1 AND promotion_id='affiliate'",[world]);
+   await tx.query(`INSERT INTO ppw_wrestler_promotion_affiliations
+    (world_id,person_id,promotion_id,role,basis)
+    SELECT world_id,person_id,'affiliate','PRIMARY','PARENT_COMPANY' FROM ppw_people
+    WHERE world_id=$1 AND person_id IN ('candidate-18','candidate-19','candidate-28','candidate-29')`,[world]);
   });
   const result=await withWorldTransaction(db.pool,tx=>expireAndRetainAiContracts(tx,world,1,26));
   assert.deepEqual(result,[{promotion_id:"autonomous",retained:24}]);
@@ -41,6 +46,11 @@ test("AI renews a bounded mixed-division core at expiry without touching owner c
    {promotion_id:"human",status:"EXPIRED",count:2},
    {promotion_id:"owner-controlled",status:"EXPIRED",count:2},
   ]);
+  assert.deepEqual(await query<{retained:number}>(`
+   SELECT count(*)::integer AS retained FROM ppw_wrestler_promotion_affiliations a
+   JOIN ppw_contracts c USING(world_id,person_id)
+   WHERE a.world_id=$1 AND a.promotion_id='affiliate' AND c.status='SIGNED'
+    AND c.promotion_id='autonomous'`,[world]),[{retained:4}]);
   const terms=await query<{start_week_index:number;expires_week_index:number;
    remaining_dates:number;date_entitlement:number}>(
    "SELECT start_week_index,expires_week_index,remaining_dates,date_entitlement FROM ppw_contracts WHERE world_id=$1 AND status='SIGNED' LIMIT 1",[world]);
@@ -54,7 +64,7 @@ test("AI renews a bounded mixed-division core at expiry without touching owner c
   assert.deepEqual(ledger,[{n:1,count:24}]);
  }finally{
   await withWorldTransaction(db.pool,async tx=>{
-   for(const table of ["ppw_ledger_events","ppw_contracts","ppw_promotion_controls",
+   for(const table of ["ppw_ledger_events","ppw_wrestler_promotion_affiliations","ppw_contracts","ppw_promotion_controls",
     "ppw_memberships","ppw_people","ppw_promotions","ppw_worlds"])
     await tx.query("DELETE FROM "+table+" WHERE world_id=$1",[world]);
    await tx.query("DELETE FROM ppw_players WHERE player_id=$1",[owner]);

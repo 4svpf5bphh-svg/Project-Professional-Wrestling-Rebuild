@@ -7,7 +7,7 @@ export type BroadcastDelivery="ON_TARGET"|"WATCH"|"BELOW_TARGET"|"OFF_SLOT"|"NO_
 export type BroadcastMilestone="WARNING"|"FINAL_WARNING"|"RECOVERED"|null;
 export interface BroadcastNetworkTerms{
  dealId:string;offerCode:string;tier:string;startWeekIndex:number;endWeekIndex:number;
- airingDay:number|null;airingHour:number|null;
+ airingDay:number|null;airingHour:number|null;agreedReach?:number|null;
  /** Contracted regular-show recurrence (same rows used by the PPW calendar). */
  regularSchedule?:readonly {cadenceWeeks:number;anchorWeek:number}[];
 }
@@ -62,7 +62,7 @@ export function assessBroadcastNetwork(terms:BroadcastNetworkTerms,
     !Number.isSafeInteger(s.anchorWeek)||s.anchorWeek<0))))
   throw new Error("Invalid broadcast obligations");
  if(reviewWeekIndex<terms.startWeekIndex||reviewWeekIndex>terms.endWeekIndex)return null;
- const target=broadcasterRatingTarget(terms.offerCode,terms.tier);
+ const target=broadcasterRatingTarget(terms.offerCode,terms.tier,terms.agreedReach);
  const evidence=new Map<number,CertifiedNetworkWeek>();
  for(const e of episodes){
   if(!Number.isSafeInteger(e.weekIndex)||!e.showId||

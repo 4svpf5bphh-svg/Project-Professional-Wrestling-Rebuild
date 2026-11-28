@@ -17,15 +17,18 @@ export interface CareerChange {
 }
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const round2=(v:number)=>Math.round(v*100)/100;
+// Weekly age and wear effects can be smaller than half a hundredth.
+// Keep those changes across matches and weekly settlements.
+const roundSkill=(v:number)=>Math.round(v*10000)/10000;
 const stageFactor:Record<CareerStage,number>={
  PROSPECT:1.35,PRIME:.75,VETERAN:.28,SPECIAL_ATTRACTION:.12,
 };
 const develop=(value:number,growth:number)=>
- round2(clamp(value+growth*Math.max(.05,(100-value)/100),1,99));
+ roundSkill(clamp(value+growth*Math.max(.05,(100-value)/100),1,99));
 const WEEKS_PER_YEAR=52;
 const CAREER_TIME_FACTOR=.14;
 const RETIREMENT_AGE=42;
-/** One application for an already-certified World week, identical to original ordering:
+/** One application for an already-certified World week, preserving the original ordering:
  * skill improvement -> age/wear decline -> stage transition -> retirement chance.
  */
 export function originalCareerWeek(
@@ -54,8 +57,8 @@ export function originalCareerWeek(
   const wearPressure=Math.max(0,p.wear-58)/42;
   const decline=biologicalWeek*(agePressure+wearPressure*.75);
   if(decline>0){
-   p.skills.stamina=round2(clamp(p.skills.stamina-decline*2.4,10,99));
-   p.skills.inRingQuality=round2(clamp(p.skills.inRingQuality-decline*.7,10,99));
+   p.skills.stamina=roundSkill(clamp(p.skills.stamina-decline*2.4,10,99));
+   p.skills.inRingQuality=roundSkill(clamp(p.skills.inRingQuality-decline*.7,10,99));
    p.skills.matchCraft=develop(p.skills.matchCraft,decline*.25);
   }
   if(p.careerStage==="PROSPECT"&&(p.biologicalAge>=25||p.careerExperience>=45))
@@ -117,13 +120,14 @@ export function originalAnnualTier(tier:PromotionTier,score:number):PromotionTie
 export function sustainableAnnualTier(
  tier:PromotionTier,score:number,
  distress:"HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS",
- completedShows:number,
+ completedShows:number,expansionScore=score,
 ):PromotionTier{
  if(!Number.isSafeInteger(completedShows)||completedShows<0)
   throw new Error("Invalid annual certified show count");
  const proposed=originalAnnualTier(tier,score);
  return ORDER.indexOf(proposed)>ORDER.indexOf(tier)&&
-  (distress!=="HEALTHY"||completedShows===0)?tier:proposed;
+  (distress!=="HEALTHY"||completedShows===0||
+   originalAnnualTier(tier,expansionScore)!==proposed)?tier:proposed;
 }
 
 /** Original processWrestlerMoraleForWeek, averaging every relevant contract.
@@ -152,7 +156,8 @@ export function originalWeeklyMorale(input:{
 export const ORIGINAL_ROSTER_TARGET={GLOBAL:46,NATIONAL:36,RISING:29,
  INDEPENDENT:24,LOCAL:16} as const;
 export function originalPromotionScaleScore(input:{
- localMarkets:readonly {liveStrength:number;awareness:number;loyalty:number}[];
+ localMarkets:readonly {liveStrength:number;awareness:number;loyalty:number;
+  certifiedShow?:boolean}[];
  mediaReach:number;showPerformance:number;financialDistress:
  "HEALTHY"|"WATCH"|"DISTRESSED"|"CRISIS"
 }):number{
@@ -161,7 +166,8 @@ export function originalPromotionScaleScore(input:{
  const core=local.slice(0,5);
  const strength=core.length?core.reduce((a,b)=>a+b,0)/core.length:0;
  const breadth=input.localMarkets.length?input.localMarkets.filter(s=>
-  s.awareness>=25&&s.liveStrength>=20).length/input.localMarkets.length*100:0;
+  s.certifiedShow!==false&&s.awareness>=25&&s.liveStrength>=20
+ ).length/input.localMarkets.length*100:0;
  const finances={HEALTHY:80,WATCH:60,DISTRESSED:38,CRISIS:15};
  return Math.round(clamp(strength*.32+breadth*.16+input.mediaReach*.2+
   input.showPerformance*.22+finances[input.financialDistress]*.1,0,100)*10)/10;
