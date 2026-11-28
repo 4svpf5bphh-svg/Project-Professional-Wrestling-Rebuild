@@ -56,6 +56,8 @@ for(const width of [320,390]){
      ...(saved?[{slotId:saved.slotId,kind:"SEGMENT",position:1,payload:saved.payload}]:[])]
    }});
    if(method==="save"){
+    expect(r.request().headers()["x-ppw-csrf"]).toBe(session.csrfToken);
+    expect(body).toMatchObject({worldId:session.worldId,promotionId:"cwa",showId:"weekly"});
     const segments=body.segments as {slotId:string;payload:Record<string,unknown>;
      programmeId:string|null}[];
     expect(segments).toHaveLength(1);
@@ -91,7 +93,7 @@ for(const width of [320,390]){
   const rosterSheet=page.getByRole("dialog",{name:"Choose wrestler"});
   await expect(rosterSheet).toContainText("Solo stories have no Side B");
   await expect(rosterSheet).toContainText("The Champion");
-  await rosterSheet.getByRole("button",{name:"×"}).click();
+  await rosterSheet.getByRole("button",{name:"Close wrestler picker"}).click();
   // The authenticated save below verifies the actual Joe actor ID.
   // Avoid matching a hidden <option> label in the optional Storyline selector.
   await expect(dialog.getByRole("button",{name:"Next · Script outcome"})).toBeEnabled();

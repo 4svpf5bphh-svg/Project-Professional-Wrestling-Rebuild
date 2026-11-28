@@ -91,13 +91,14 @@ function officeDecisions(promotion:NonNullable<PlayerWorldOverview["promotion"]>
  const renewal:OfficeDecision|null=contract?{
   category:"Contract",
   headline:contract.kind==="DATES_EXHAUSTED"?contract.name+" has no dates left":
-   contract.name+"'s deal ends "+(contract.weeksRemaining<=1?"this week":
-    weekLabel(weekIndex+contract.weeksRemaining-1)),
+   contract.name+"'s contract expires "+(contract.weeksRemaining<=1?"this week":
+    "after "+contract.weeksRemaining+" weeks, including this week"),
   detail:contract.kind==="DATES_EXHAUSTED"?
    (contract.nextTermStart==null?
     "Review the terms for extra dates or prepare a card without this wrestler.":
     "The next term begins "+weekLabel(contract.nextTermStart)+". The current term has no bookable dates."):
-   "See the current costs and available renewal terms. The wrestler decides whether to accept.",
+   "Last contracted week: "+weekLabel(weekIndex+Math.max(0,contract.weeksRemaining-1))+
+   ". Review renewal terms before committing future bookings.",
   action:{label:"Review "+contract.name+"'s contract",open:()=>port.openContract?
    port.openContract(contract.personId):(port.contractsExpiring??port.contracts)()}
  }:null;

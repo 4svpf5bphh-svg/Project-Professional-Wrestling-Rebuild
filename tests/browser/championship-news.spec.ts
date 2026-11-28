@@ -157,5 +157,5 @@ test("champion photos and unavailable photographs use identical named portrait w
   await expect(page.locator(".ppw-bottom-navigation .ppw-bottom-tab")).toHaveCount(5);
  }
  expect(calls).toEqual(["championships"]);
- // Same-screen re-entry is served from the session view cache: no second Neon read.
+ // Same-screen re-entry keeps the mounted view: no second Neon read.
 });

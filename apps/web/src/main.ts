@@ -514,9 +514,11 @@ function restoreHistoryRoute(){
 }
 window.addEventListener("hashchange",restoreHistoryRoute);
 // History entries with different cards or Results may share a public URL.
+// Other workspaces have no history state to restore.
 // For a different URL the hashchange listener already handles restoration.
 window.addEventListener("popstate",()=>{
- if(location.hash===renderedHash)restoreHistoryRoute();
+ const section=readHostSection(location.hash);
+ if(location.hash===renderedHash&&(section==="card"||section==="results"))restoreHistoryRoute();
 });
 window.addEventListener("beforeunload",event=>{
  if(bookingDirty){event.preventDefault();event.returnValue="";}

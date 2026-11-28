@@ -59,7 +59,7 @@ test("intentional five-year booking horizon stays intact without filling Home wi
   route.request().postDataJSON().method==="overview"?longOverview:{}}));
  await page.goto("/#/home");
  await expect(page.locator(".ppw-home-countdown"))
-  .toHaveText("Booking is open · finish your next card when ready");
+  .toHaveText("Booking is open");
  await expect(page.locator(".ppw-manual-test")).toHaveCount(0);
  await expect(page.getByRole("button",{name:/Advance Week/})).toHaveCount(0);
  expect(longWorld.nextLockEpoch-longWorld.serverEpoch).toBeGreaterThan(1824*86400);
@@ -178,7 +178,7 @@ test("Home alerts open expiring agreements or pending offers directly without an
  await expect(page.getByRole("dialog",{name:"More"})).toBeHidden();
 });
 
-test("named contract alerts give the right negotiation and expiry routes without hiding booking",async({page})=>{
+test("the Office opens the named expiring contract and keeps other contract matters accessible",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const calls:string[]=[];
  const home={...overview,promotion:{...overview.promotion,attention:{
@@ -188,12 +188,21 @@ test("named contract alerts give the right negotiation and expiry routes without
    {contractId:"unused",personId:"ada",name:"Ada",kind:"DATES_EXHAUSTED",
     weeksRemaining:26,waiting:true},
    {contractId:"soon",personId:"bert",name:"Bert",kind:"EXPIRING",
-    weeksRemaining:2,waiting:false}]
+    weeksRemaining:2,waiting:false},
+   {contractId:"next",personId:"cara",name:"Cara",kind:"EXPIRING",
+    weeksRemaining:3,waiting:false}]
  }}};
+ const bert={personId:"bert",contractId:"soon",name:"Bert",family:"LIMITED_NON_EXCLUSIVE",
+  status:"SIGNED",remainingDates:3,startWeekIndex:0,expiresWeekIndex:6,weeksRemaining:2,
+  dateEntitlement:6,weeklyGuarantee:1200,appearanceFee:2000,signingBonus:0,
+  roleExpectation:"FEATURED",creativeControl:"NONE",needsAttention:true,expiringSoon:true,
+  renewalEligible:true,additionalDatesEligible:false,reason:null,pendingNegotiation:false,
+  pendingRenewal:false,pendingRenewalOffer:false,renewalArranged:false,estimatedWeeklyValue:4000};
  const contracts={year:1,week:5,worldRevision:4,canEdit:true,currentWeekIndex:4,
-  roster:[],requests:[],renewals:[],offers:[],
-  summary:{signed:0,expiringSoon:0,noDates:0,backstageContractDiscussions:0,
-   pendingNegotiations:0,pendingRenewals:0,pendingOffers:0,weeklyGuarantees:0}};
+  roster:[bert,{...bert,personId:"cara",contractId:"next",name:"Cara",weeksRemaining:3}],
+  requests:[],renewals:[],offers:[],
+  summary:{signed:2,expiringSoon:2,noDates:0,backstageContractDiscussions:0,
+   pendingNegotiations:0,pendingRenewals:0,pendingOffers:0,weeklyGuarantees:2400}};
  await page.route("**/api/session",route=>route.fulfill({json:current}));
  await page.route("**/api/card",route=>{
   const method=String(route.request().postDataJSON().method);
@@ -201,13 +210,23 @@ test("named contract alerts give the right negotiation and expiry routes without
   return route.fulfill({json:method==="overview"?home:method==="contracts"?contracts:{}});
  });
  await page.goto("/#/home");
- await expect(page.getByRole("button",{name:/Ada has a negotiation pending/})).toHaveCount(0);
- await expect(page.getByRole("button",{name:/Bert's contract expires after 2 weeks/})).toBeVisible();
+ await expect(page.getByText(/Ada has a negotiation pending/)).toHaveCount(0);
+ const office=page.getByRole("region",{name:"At your desk"});
+ await expect(office.getByRole("heading",{name:/Bert's contract expires after 2 weeks/})).toBeVisible();
+ await expect(office.getByText(/Last contracted week: Y1 W6/)).toBeVisible();
+ await expect(page.getByRole("button",{name:/Cara's contract expires after 3 weeks/})).toBeVisible();
  await expect(page.getByRole("button",{name:/Next [Ss]how/})).toBeVisible();
- await page.getByRole("button",{name:/Bert's contract expires after 2 weeks/}).click();
-  await expect(page).toHaveURL(/#\/contracts\/expiring$/);
+ await office.getByRole("button",{name:"Review Bert's contract"}).click();
+ await expect(page).toHaveURL(/#\/contracts$/);
+ await expect(page.locator("details[open]").filter({hasText:"Bert"})).toBeVisible();
+ await expect(page.locator("details").filter({hasText:"Cara"})).toHaveCount(0);
+ await expect(page.getByRole("navigation",{name:"Contract Desk sections"})
+  .getByRole("button",{name:/Offers/})).toBeVisible();
+ await page.goBack();
+ await page.getByRole("button",{name:/Cara's contract expires after 3 weeks/}).click();
+ await expect(page).toHaveURL(/#\/contracts\/expiring$/);
  await expect(page.getByRole("button",{name:"Expiring soon"})).toHaveAttribute("aria-pressed","true");
- expect(calls).toEqual(["overview","contracts"]);
+ expect(calls).toEqual(["overview","contracts","overview","contracts"]);
 });
 test("named Home concerns open only the intended wrestler conversation",async({page})=>{
  await page.setViewportSize({width:390,height:844});
@@ -620,8 +639,10 @@ test("iPhone finish confirmation preserves the authored match on cancel and clea
  await expect(page).toHaveURL(/#\/card$/);
  await expect(page.getByRole("heading",{name:"The Card"})).toBeVisible();
  await expect(page.getByText("18 / 120 min")).toBeVisible();
- await expect(page.getByRole("progressbar",{name:"Total match and angle minutes against the television running-time guide"}))
-  .toHaveAttribute("aria-valuenow","18");
+ const airtime=page.getByRole("progressbar",{name:"Booked minutes against the weekly running time limit"});
+ await expect(airtime).toHaveAttribute("aria-valuemin","0");
+ await expect(airtime).toHaveAttribute("aria-valuemax","120");
+ await expect(airtime).toHaveAttribute("aria-valuenow","18");
  await page.locator(".ppw-card-bar .ppw-expand").click();
  const focused=page.getByRole("dialog",{name:"Edit match"});
  await expect(focused).toBeVisible();
