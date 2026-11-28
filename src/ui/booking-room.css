@@ -184,9 +184,16 @@
 }
 
 #game .ppw-card-booking .ppw-card-bar .ppw-actions {
- grid-column:2/-1;
+ grid-column:3;
  justify-self:end;
 }
+
+#game .ppw-card-booking .ppw-card-bar:has(.ppw-actions) .ppw-card-open-zone {
+ grid-column:2;
+ grid-row:1/3;
+}
+
+#game .ppw-card-booking .ppw-card-bar .ppw-booking-slot-clock { grid-column:3;grid-row:1; }
 
 .ppw-booking-slot-clock {
  display:grid;
@@ -276,4 +283,5 @@ body>.ppw-sheet-shade .ppw-quick-talent-sheet { padding-bottom:max(16px,env(safe
  #game .ppw-card-booking .ppw-card-show-identity { grid-template-columns:minmax(0,1fr) 145px; }
  #game .ppw-card-booking .ppw-card-bar { grid-template-columns:36px minmax(0,1fr) 65px auto; }
  #game .ppw-card-booking .ppw-card-bar .ppw-actions { grid-column:4; }
+ #game .ppw-card-booking .ppw-card-bar:has(.ppw-actions) .ppw-card-open-zone { grid-row:1; }
 }

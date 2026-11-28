@@ -346,9 +346,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
   const fmt=FORMATS.find(x=>x.value===m.format)?.label??"Match";
   const cast=assignedIds(m).length;
   const needed=m.teams.reduce((a,s)=>a+s.length,0);
-  // Once the cast is complete, the readiness count adds no useful detail.
-  return fmt+(cast<needed?" · "+cast+" / "+needed+" cast":"")+
-   " · "+m.plannedLengthMinutes+" min · "+nice(m.plannedFinish);
+  return [m.stipulation&&m.stipulation!=="STANDARD"?fmt:null,
+   cast<needed?cast+" / "+needed+" cast":null,nice(m.plannedFinish)].filter(Boolean).join(" · ");
  };
  function markDirty(){dirty=true;pendingRequestId=null;error="";success="";
   port.onDraftChange?.(true);}
@@ -1383,8 +1382,7 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
     lineup.append(el("span","ppw-card-lineup-context",[
      segment?.scene?angleSceneLabel(segment.scene.location):"",
      segment?.scene?angleSceneLabel(segment.scene.purpose):"",
-     ...angleDetails.split(" · ").filter(Boolean),
-     segment?.durationMinutes+" min"
+     ...angleDetails.split(" · ").filter(Boolean)
     ].filter(Boolean).join(" · ")));
    }
    label.append(lineup);
@@ -1540,7 +1538,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
    if(segment?.kind==="POST_MATCH_ASSAULT"&&segment.sourceMatchSlotId&&
     order[i-1]===segment.sourceMatchSlotId)
     label.append(el("small","ppw-card-linked","Follows its match · moves together"));
-   bar.append(arrows);card.append(bar);
+   if(mutable()&&(up||down))bar.append(arrows);
+   card.append(bar);
    if(m&&m.teams.flat().some(Boolean)){
     const matchup=el("div","ppw-card-matchup");
     if(m.teams.length<=2)for(const [sideIndex,side] of m.teams.entries()){
@@ -2665,6 +2664,8 @@ export function mountCardEditor(root:HTMLElement,port:CardEditorPort){
           el("span","","Additional talent fees · $"+Math.round(fees.amount).toLocaleString("en-GB")+
            (fees.complete?" estimated":" + unknown")));
          if(warning)summary.append(el("strong","",warning.title));
+         if(hasWinner)for(const term of previewMatchCreativeTerms(m,roster))
+          summary.append(el("span","",term.message));
          guide.append(summary);
          extraContent.prepend(direction);
          if(!extra.contains(extraContent))extra.append(extraContent);
